@@ -1,0 +1,10 @@
+# application compilation intermediate files
+
+/OutOfPhase/OutOfPhase/obj/*
+
+# local utility scripts, etc.
+
+Sync.cmd
+Diff.cmd
+
+link.URL
