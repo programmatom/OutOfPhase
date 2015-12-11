@@ -1,6 +1,8 @@
 # application compilation intermediate files
 
 /OutOfPhase/OutOfPhase/obj/*
+/OutOfPhase/OutOfPhase/OutOfPhase.csproj.user
+/OutOfPhase/Setup/*
 
 # local utility scripts, etc.
 
