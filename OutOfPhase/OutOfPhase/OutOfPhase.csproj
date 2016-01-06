@@ -1,0 +1,609 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.50727</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{CEDFF1AC-BA16-4694-833B-C4432117E072}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>OutOfPhase</RootNamespace>
+    <AssemblyName>OutOfPhase</AssemblyName>
+    <ApplicationIcon>_Resources\Icon2.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="TextEditorDirectWrite, Version=1.0.5781.17299, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\TextEditor\TextEditorLib\bin\Debug\TextEditorDirectWrite.dll</HintPath>
+    </Reference>
+    <Reference Include="TextEditorLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\TextEditor\TextEditorLib\bin\Debug\TextEditorLib.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AboutBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AboutBox.Designer.cs">
+      <DependentUpon>AboutBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="AIFFReader.cs" />
+    <Compile Include="AIFFWriter.cs" />
+    <Compile Include="AlgoSampWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AlgoSampWindow.Designer.cs">
+      <DependentUpon>AlgoSampWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="AlgoWaveTableWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AlgoWaveTableWindow.Designer.cs">
+      <DependentUpon>AlgoWaveTableWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="AudioFileReader.cs" />
+    <Compile Include="AudioFileWriter.cs" />
+    <Compile Include="CalculatorWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CalculatorWindow.Designer.cs">
+      <DependentUpon>CalculatorWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ClipboardSerializers.cs" />
+    <Compile Include="CmdDlgOneBinaryChoice.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CmdDlgOneBinaryChoice.Designer.cs">
+      <DependentUpon>CmdDlgOneBinaryChoice.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CmdDlgOneParam.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CmdDlgOneParam.Designer.cs">
+      <DependentUpon>CmdDlgOneParam.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CmdDlgTwoParams.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CmdDlgTwoParams.Designer.cs">
+      <DependentUpon>CmdDlgTwoParams.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelNumericTypes.cs" />
+    <Compile Include="EditCommandParameters.cs" />
+    <Compile Include="ExportAIFFSample.cs" />
+    <Compile Include="ExportWAVSample.cs" />
+    <Compile Include="GlobalPrefs.cs" />
+    <Compile Include="GlobalPrefsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GlobalPrefsDialog.Designer.cs">
+      <DependentUpon>GlobalPrefsDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Hacks.cs" />
+    <Compile Include="IHighlightLine.cs" />
+    <Compile Include="ImportAIFFSample.cs" />
+    <Compile Include="ImportRawSample.cs" />
+    <Compile Include="ImportRawSampleDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ImportRawSampleDialog.Designer.cs">
+      <DependentUpon>ImportRawSampleDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ImportWAVSample.cs" />
+    <Compile Include="LongRunningOperationWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="LongRunningOperationWindow.Designer.cs">
+      <DependentUpon>LongRunningOperationWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MIDIImport\ConvertIntToQuant.cs" />
+    <Compile Include="MIDIImport\ConvertQuantToNote.cs" />
+    <Compile Include="MIDIImport\ConvertRawToInterval.cs" />
+    <Compile Include="MIDIImport\IntervalEvent.cs" />
+    <Compile Include="MIDIImport\IntervalTrack.cs" />
+    <Compile Include="MIDIImport\MIDIImport.cs" />
+    <Compile Include="MIDIImport\ParseMIDIFile.cs" />
+    <Compile Include="MIDIImport\QuantizedEvent.cs" />
+    <Compile Include="MIDIImport\QuantizedTrack.cs" />
+    <Compile Include="MIDIImport\QuantNoteTieMapping.cs" />
+    <Compile Include="MIDIImport\RawMIDIEvent.cs" />
+    <Compile Include="MIDIImport\RawMIDIScore.cs" />
+    <Compile Include="MIDIImport\RawMIDITrack.cs" />
+    <Compile Include="MyListBox.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyListBox.Designer.cs">
+      <DependentUpon>MyListBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MenuStripManager.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MenuStripManager.Designer.cs">
+      <DependentUpon>MenuStripManager.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MyProgressBar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyProgressBar.Designer.cs">
+      <DependentUpon>MyProgressBar.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NoteAttributeDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="NoteAttributeDialog.Designer.cs">
+      <DependentUpon>NoteAttributeDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="OutputDevice.cs" />
+    <Compile Include="OutputGeneric.cs" />
+    <Compile Include="OutputFile.cs" />
+    <Compile Include="OutputSynthesizer.cs" />
+    <Compile Include="PcodeSystem\CILObject.cs" />
+    <Compile Include="PcodeSystem\CompilerAST.cs" />
+    <Compile Include="BinaryReaderWriter.cs" />
+    <Compile Include="Bitmaps.cs" />
+    <Compile Include="CodeCenter.cs" />
+    <Compile Include="CommandChooser.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CommandChooser.Designer.cs">
+      <DependentUpon>CommandChooser.cs</DependentUpon>
+    </Compile>
+    <Compile Include="CommandMappings.cs" />
+    <Compile Include="PcodeSystem\CompilerParser.cs" />
+    <Compile Include="PcodeSystem\CompilerRoot.cs" />
+    <Compile Include="PcodeSystem\CompilerScanner.cs" />
+    <Compile Include="DataModel.cs" />
+    <Compile Include="DataModelBuild.cs" />
+    <Compile Include="PersistWindowRect.cs" />
+    <Compile Include="PlayAudioFileWithEffects.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PlayAudioFileWithEffects.Designer.cs">
+      <DependentUpon>PlayAudioFileWithEffects.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PlayFile.cs" />
+    <Compile Include="PlayPrefsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PlayPrefsDialog.Designer.cs">
+      <DependentUpon>PlayPrefsDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RandomNumbers.cs" />
+    <Compile Include="ScoreEffectWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScoreEffectWindow.Designer.cs">
+      <DependentUpon>ScoreEffectWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SectionChooseDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SectionChooseDialog.Designer.cs">
+      <DependentUpon>SectionChooseDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SectionEditDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SectionEditDialog.Designer.cs">
+      <DependentUpon>SectionEditDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SectionWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SectionWindow.Designer.cs">
+      <DependentUpon>SectionWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SequencerConfigWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SequencerConfigWindow.Designer.cs">
+      <DependentUpon>SequencerConfigWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SynthEngine\AlignedWorkspace.cs" />
+    <Compile Include="SynthEngine\IEffect.cs" />
+    <Compile Include="SynthEngine\SplayTree.cs" />
+    <Compile Include="SynthEngine\SplayTreeArray.cs" />
+    <Compile Include="SymbolicDuration.cs" />
+    <Compile Include="SynthBuild\BuildInstrument.cs" />
+    <Compile Include="SynthBuild\BuildSequencer.cs" />
+    <Compile Include="SynthBuild\CompressorSpec.cs" />
+    <Compile Include="SynthBuild\DelayEffectSpec.cs" />
+    <Compile Include="DisassemblyWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DisassemblyWindow.Designer.cs">
+      <DependentUpon>DisassemblyWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Registration.cs" />
+    <Compile Include="FunctionCode.cs" />
+    <Compile Include="FunctionWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FunctionWindow.Designer.cs">
+      <DependentUpon>FunctionWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="InstrumentWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="InstrumentWindow.Designer.cs">
+      <DependentUpon>InstrumentWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="InteractionWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="InteractionWindow.Designer.cs">
+      <DependentUpon>InteractionWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MainWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MainWindow.Designer.cs">
+      <DependentUpon>MainWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Main.cs" />
+    <Compile Include="NoteViewControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="NoteViewControl.Designer.cs">
+      <DependentUpon>NoteViewControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PcodeSystem\PcodeDisassembly.cs" />
+    <Compile Include="PcodeSystem\PcodeExterns.cs" />
+    <Compile Include="PcodeSystem\PcodeObject.cs" />
+    <Compile Include="PcodeSystem\PcodeStack.cs" />
+    <Compile Include="PcodeSystem\PcodeSystem.cs" />
+    <Compile Include="PcodeSystem\PcodePeepholeOptimizer.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="AboutBox.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>AboutBox.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AlgoSampWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>AlgoSampWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="AlgoWaveTableWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>AlgoWaveTableWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CalculatorWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>CalculatorWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CmdDlgOneBinaryChoice.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>CmdDlgOneBinaryChoice.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CmdDlgOneParam.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>CmdDlgOneParam.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CmdDlgTwoParams.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>CmdDlgTwoParams.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CommandChooser.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>CommandChooser.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="DisassemblyWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>DisassemblyWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FunctionWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>FunctionWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GlobalPrefsDialog.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>GlobalPrefsDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ImportRawSampleDialog.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>ImportRawSampleDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="InstrumentWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>InstrumentWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="InteractionWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>InteractionWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="LongRunningOperationWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>LongRunningOperationWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MainWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>MainWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MenuStripManager.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>MenuStripManager.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NoteAttributeDialog.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>NoteAttributeDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PlayAudioFileWithEffects.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>PlayAudioFileWithEffects.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PlayPrefsDialog.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>PlayPrefsDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SampleWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>SampleWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="OutputProgressWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>OutputProgressWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ScoreEffectWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>ScoreEffectWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SectionChooseDialog.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>SectionChooseDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SectionEditDialog.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>SectionEditDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SectionWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>SectionWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SequencerConfigWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>SequencerConfigWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TrackAttributeDialog.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>TrackAttributeDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TrackWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>TrackWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UnsavedDialog.resx">
+      <DependentUpon>UnsavedDialog.cs</DependentUpon>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="WaveTableWindow.resx">
+      <SubType>Designer</SubType>
+      <DependentUpon>WaveTableWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="_Resources\AboutBoxContent.resx">
+      <SubType>Designer</SubType>
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>AboutBoxContent.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <None Include="Properties\DataSources\AlgoSampObjectRec.datasource" />
+    <None Include="Properties\DataSources\AlgoWaveTableObjectRec.datasource" />
+    <None Include="Properties\DataSources\Document.datasource" />
+    <None Include="Properties\DataSources\FunctionObjectRec.datasource" />
+    <None Include="Properties\DataSources\Import.ImportRawSettings.datasource" />
+    <None Include="Properties\DataSources\InstrObjectRec.datasource" />
+    <None Include="Properties\DataSources\NoteNoteObjectRec.datasource" />
+    <None Include="Properties\DataSources\PlayPrefsDialog.Source.datasource" />
+    <None Include="Properties\DataSources\SampleObjectRec.datasource" />
+    <None Include="Properties\DataSources\ScoreEffectsRec.datasource" />
+    <None Include="Properties\DataSources\SectionObjectRec.datasource" />
+    <None Include="Properties\DataSources\SequencerRec.datasource" />
+    <None Include="Properties\DataSources\TrackObjectRec.datasource" />
+    <None Include="Properties\DataSources\WaveTableObjectRec.datasource" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <Compile Include="SampleControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="SampleControl.Designer.cs">
+      <DependentUpon>SampleControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SampleWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SampleWindow.Designer.cs">
+      <DependentUpon>SampleWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SymbolicPitch.cs" />
+    <Compile Include="Symbols.cs" />
+    <Compile Include="SynthEngine\64BitMath.cs" />
+    <Compile Include="SynthEngine\AlgorithmicOscControl.cs" />
+    <Compile Include="SynthEngine\Analyzer.cs" />
+    <Compile Include="SynthEngine\CheckNameUniqueness.cs" />
+    <Compile Include="SynthEngine\CheckUnreferencedThings.cs" />
+    <Compile Include="SynthEngine\CompressorUnified.cs" />
+    <Compile Include="SynthEngine\Convolution.cs" />
+    <Compile Include="SynthEngine\ConvolverEffect.cs" />
+    <Compile Include="SynthEngine\DelayLineUnified.cs" />
+    <Compile Include="SynthEngine\DeterminedNoteStructure.cs" />
+    <Compile Include="SynthEngine\Dither.cs" />
+    <Compile Include="SynthEngine\EnvelopeState.cs" />
+    <Compile Include="SynthEngine\FFT.cs" />
+    <Compile Include="SynthEngine\FilterArrayUnified.cs" />
+    <Compile Include="SynthEngine\FMSynth.cs" />
+    <Compile Include="SynthEngine\FOFOscControl.cs" />
+    <Compile Include="SynthEngine\Histogram.cs" />
+    <Compile Include="SynthEngine\IdealLowpass.cs" />
+    <Compile Include="SynthEngine\IncrementalParameterUpdator.cs" />
+    <Compile Include="SynthEngine\LFOGenerator.cs" />
+    <Compile Include="SynthEngine\MultiSample.cs" />
+    <Compile Include="SynthEngine\MultiWaveTable.cs" />
+    <Compile Include="SynthEngine\NLProcUnified.cs" />
+    <Compile Include="SynthEngine\OscBankPlayer.cs" />
+    <Compile Include="SynthEngine\OscEffectGenerator.cs" />
+    <Compile Include="SynthEngine\PlayTrackInfoThang.cs" />
+    <Compile Include="SynthEngine\ResamplerProc.cs" />
+    <Compile Include="SynthEngine\SampleOscControl.cs" />
+    <Compile Include="SynthEngine\SequencerTable.cs" />
+    <Compile Include="SynthEngine\TrackEffectGenerator.cs" />
+    <Compile Include="SynthEngine\UnsafeCasts.cs" />
+    <Compile Include="SynthEngine\UserEffectProc.cs" />
+    <Compile Include="SynthEngine\Vocoder.cs" />
+    <Compile Include="SynthEngine\WaveTableOscControl.cs" />
+    <Compile Include="SynthBuild\AccentStruct.cs" />
+    <Compile Include="SynthBuild\AnalyzerSpec.cs" />
+    <Compile Include="SynthBuild\ConvolverSpec.cs" />
+    <Compile Include="SynthBuild\EffectSpecList.cs" />
+    <Compile Include="SynthBuild\Envelope.cs" />
+    <Compile Include="SynthBuild\FilterSpec.cs" />
+    <Compile Include="SynthBuild\FMSynthSpec.cs" />
+    <Compile Include="SynthBuild\HistogramSpec.cs" />
+    <Compile Include="SynthBuild\IdealLowpassSpec.cs" />
+    <Compile Include="SynthBuild\InstrumentStructure.cs" />
+    <Compile Include="SynthBuild\LFOListSpecifier.cs" />
+    <Compile Include="SynthBuild\LFOSpecifier.cs" />
+    <Compile Include="SynthBuild\MultiInstrSpec.cs" />
+    <Compile Include="SynthBuild\NonlinearProcSpec.cs" />
+    <Compile Include="SynthBuild\OscillatorListSpecifier.cs" />
+    <Compile Include="SynthBuild\OscillatorSpecifier.cs" />
+    <Compile Include="SynthBuild\ResamplerSpec.cs" />
+    <Compile Include="SynthBuild\SampleSelector.cs" />
+    <Compile Include="SynthBuild\SequencerConfigSpec.cs" />
+    <Compile Include="SynthBuild\SkipSegments.cs" />
+    <Compile Include="SynthBuild\UserEffectSpec.cs" />
+    <Compile Include="SynthBuild\VocoderSpecRec.cs" />
+    <Compile Include="SynthEngine\Constants.cs" />
+    <Compile Include="SynthEngine\ExecuteSynthesis.cs" />
+    <Compile Include="SynthBuild\ScalarParamEval.cs" />
+    <Compile Include="SynthBuild\WaveSampDictionary.cs" />
+    <Compile Include="SynthEngine\FilterButterworthBandpass.cs" />
+    <Compile Include="SynthEngine\FilterButterworthBandreject.cs" />
+    <Compile Include="SynthEngine\FilterButterworthHighpass.cs" />
+    <Compile Include="SynthEngine\FilterButterworthLowpass.cs" />
+    <Compile Include="SynthEngine\FilterFirstOrderHighpass.cs" />
+    <Compile Include="SynthEngine\FilterFirstOrderLowpass.cs" />
+    <Compile Include="SynthEngine\FilterHighShelfEqualizer.cs" />
+    <Compile Include="SynthEngine\FilterLowShelfEqualizer.cs" />
+    <Compile Include="SynthEngine\FilterNull.cs" />
+    <Compile Include="SynthEngine\FilterParametricEqualizer.cs" />
+    <Compile Include="SynthEngine\FilterParametricEqualizer2.cs" />
+    <Compile Include="SynthEngine\FilterResonantLowpass.cs" />
+    <Compile Include="SynthEngine\FilterResonantLowpass2.cs" />
+    <Compile Include="SynthEngine\FilterSecondOrderReson.cs" />
+    <Compile Include="SynthEngine\FilterSecondOrderZero.cs" />
+    <Compile Include="SynthEngine\FloatVectors.cs" />
+    <Compile Include="SynthEngine\LinearTransition.cs" />
+    <Compile Include="SynthEngine\TempoController.cs" />
+    <Compile Include="SynthEngine\WaveIndexUtility.cs" />
+    <Compile Include="OutputProgressWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="OutputProgressWindow.Designer.cs">
+      <DependentUpon>OutputProgressWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TextBoxWindowHelper.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="TextBoxWindowHelper.Designer.cs">
+      <DependentUpon>TextBoxWindowHelper.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TrackAttributeDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TrackAttributeDialog.Designer.cs">
+      <DependentUpon>TrackAttributeDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TrackViewControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="TrackViewControl.Designer.cs">
+      <DependentUpon>TrackViewControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="TrackWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TrackWindow.Designer.cs">
+      <DependentUpon>TrackWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UndoHelper.cs" />
+    <Compile Include="UnsavedDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UnsavedDialog.designer.cs">
+      <DependentUpon>UnsavedDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="WaveTableControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="WaveTableControl.Designer.cs">
+      <DependentUpon>WaveTableControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="WaveTableWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="WaveTableWindow.Designer.cs">
+      <DependentUpon>WaveTableWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="WAVReader.cs" />
+    <Compile Include="WAVWriter.cs" />
+    <Compile Include="_Resources\AboutBoxContent.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>AboutBoxContent.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="libfftw3f-3.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="_Resources\Icon2.ico" />
+    <Content Include="_Resources\Icon1.ico" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

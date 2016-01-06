@@ -1,8 +1,16 @@
 # application compilation intermediate files
 
+/OutOfPhase/OutOfPhase.ncb
+/OutOfPhase/OutOfPhase.suo
+/OutOfPhase/OutOfPhase/bin/Debug/OutOfPhase.vshost.exe
+/OutOfPhase/OutOfPhase/bin/Release/OutOfPhase.vshost.exe
 /OutOfPhase/OutOfPhase/obj/*
 /OutOfPhase/OutOfPhase/OutOfPhase.csproj.user
 /OutOfPhase/Setup/*
+/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer.suo
+/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer/bin/Debug/OutOfPhaseTraceScheduleAnalyzer.vshost.exe
+/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer/obj/*
+/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer.csproj.user
 
 # local utility scripts, etc.
 
