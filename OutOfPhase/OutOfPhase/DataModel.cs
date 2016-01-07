@@ -624,6 +624,12 @@ namespace OutOfPhase
         public MyBindingList<SectionObjectRec> SectionList { get { return _SectionList; } }
 
 
+        private NewSchoolRec _NewSchool;
+        public const string NewSchool_PropertyName = "NewSchool";
+        [Bindable(true)]
+        public NewSchoolRec NewSchool { get { return _NewSchool; } }
+
+
         // TODO: These values are not persisted, but probably should be
 
         private short _SavedWindowXLoc;
@@ -661,6 +667,7 @@ namespace OutOfPhase
         {
             _ScoreEffects = new ScoreEffectsRec(this);
             _Sequencer = new SequencerRec(this);
+            _NewSchool = new NewSchoolRec(this);
 
             functionBuilderProxy = new FunctionBuilderProxy(this, _FunctionList);
 
@@ -873,6 +880,9 @@ namespace OutOfPhase
                 }
                 // 4-byte int random number seed value
                 _Seed = reader.ReadInt32();
+
+                // n-bytes new features area
+                _NewSchool = new NewSchoolRec(reader, loadContext);
             }
 
             _ScoreEffects = new ScoreEffectsRec(reader, loadContext);
@@ -1069,6 +1079,9 @@ namespace OutOfPhase
             // 4-byte int random number seed value
             writer.WriteInt32(_Seed);
 
+            // n-bytes new features area
+            _NewSchool.Save(writer, saveContext);
+
             _ScoreEffects.Save(writer, saveContext);
 
             /*   n-byte section list */
@@ -1213,6 +1226,39 @@ namespace OutOfPhase
         public SaveContext(Document document)
         {
             this.document = document;
+        }
+    }
+
+    public class NewSchoolRec : HierarchicalBindingBase
+    {
+        public NewSchoolRec(Document document)
+            : base(document, Document.NewSchool_PropertyName)
+        {
+        }
+
+        private const int SubsectionFormatVersionNumber = 1;
+
+        public NewSchoolRec(BinaryReader reader, LoadContext loadContext)
+            : this(loadContext.document)
+        {
+            // 1-byte boolean - object is present [0 or 1]
+            byte present = reader.ReadByte();
+            if (present != 0)
+            {
+                Debug.Assert(false);
+                throw new InvalidDataException();
+            }
+        }
+
+        public static NewSchoolRec Create(BinaryReader reader, LoadContext loadContext)
+        {
+            return new NewSchoolRec(reader, loadContext);
+        }
+
+        public void Save(BinaryWriter writer, SaveContext saveContext)
+        {
+            // 1-byte boolean - object is present [0 or 1]
+            writer.WriteByte(0);
         }
     }
 
@@ -2188,13 +2234,13 @@ namespace OutOfPhase
         /* inserted or removed from the specified point. (for removal, NumAddedFrames < 0) */
         public void ShiftPoints(int Position, int NumAddedFrames)
         {
-            ShiftPointsHelper(Position, NumAddedFrames, delegate() { return Origin; }, delegate(int value) { Origin = value; });
-            ShiftPointsHelper(Position, NumAddedFrames, delegate() { return LoopStart1; }, delegate(int value) { LoopStart1 = value; });
-            ShiftPointsHelper(Position, NumAddedFrames, delegate() { return LoopStart2; }, delegate(int value) { LoopStart2 = value; });
-            ShiftPointsHelper(Position, NumAddedFrames, delegate() { return LoopStart3; }, delegate(int value) { LoopStart3 = value; });
-            ShiftPointsHelper(Position, NumAddedFrames, delegate() { return LoopEnd1; }, delegate(int value) { LoopEnd1 = value; });
-            ShiftPointsHelper(Position, NumAddedFrames, delegate() { return LoopEnd2; }, delegate(int value) { LoopEnd2 = value; });
-            ShiftPointsHelper(Position, NumAddedFrames, delegate() { return LoopEnd3; }, delegate(int value) { LoopEnd3 = value; });
+            ShiftPointsHelper(Position, NumAddedFrames, delegate () { return Origin; }, delegate (int value) { Origin = value; });
+            ShiftPointsHelper(Position, NumAddedFrames, delegate () { return LoopStart1; }, delegate (int value) { LoopStart1 = value; });
+            ShiftPointsHelper(Position, NumAddedFrames, delegate () { return LoopStart2; }, delegate (int value) { LoopStart2 = value; });
+            ShiftPointsHelper(Position, NumAddedFrames, delegate () { return LoopStart3; }, delegate (int value) { LoopStart3 = value; });
+            ShiftPointsHelper(Position, NumAddedFrames, delegate () { return LoopEnd1; }, delegate (int value) { LoopEnd1 = value; });
+            ShiftPointsHelper(Position, NumAddedFrames, delegate () { return LoopEnd2; }, delegate (int value) { LoopEnd2 = value; });
+            ShiftPointsHelper(Position, NumAddedFrames, delegate () { return LoopEnd3; }, delegate (int value) { LoopEnd3 = value; });
         }
     }
 
@@ -5249,7 +5295,7 @@ namespace OutOfPhase
                             Debug.Assert(false);
                             throw new ArgumentException();
 
-                            /* jump out here when tie target has been found */
+                        /* jump out here when tie target has been found */
                         DoneSearchingForTieTargetPoint:
                             ;
                         }
@@ -6454,13 +6500,13 @@ namespace OutOfPhase
                     && ((_Flags & NoteFlags.eDurationAdjustMask) != NoteFlags.eDurationAdjustAdditive)
                     && ((_Flags & NoteFlags.eDurationAdjustMask) != NoteFlags.eDurationAdjustMultiplicative))
                 ||
-                /* we do not check former pitch LFO bits, since someone may have used them, */
-                /* unless we are not in the version 1 file format */
+                    /* we do not check former pitch LFO bits, since someone may have used them, */
+                    /* unless we are not in the version 1 file format */
                     ((FormatVersionNumber == 1)
                         && (((_Flags & (NoteFlags.eUnusedBitMask
                             & ~(NoteFlags.eDEALLOCATED17 | NoteFlags.eDEALLOCATED18))) != 0)))
                 ||
-                /* non-version 1 formats we check all unused bits */
+                    /* non-version 1 formats we check all unused bits */
                     ((FormatVersionNumber != 1) && ((_Flags & NoteFlags.eUnusedBitMask) != 0)))
             {
                 throw new InvalidDataException();
