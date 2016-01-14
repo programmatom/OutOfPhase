@@ -47,6 +47,8 @@ namespace OutOfPhase
             public string InitFuncName; /* NIL = none */
             public string ArgUpdateFuncName; /* NIL = none */
             public string ProcessDataFuncName;
+
+            public bool NoOversampling;
         }
 
         /* validate type signature of pcode things */
@@ -300,6 +302,19 @@ namespace OutOfPhase
             int Index)
         {
             return Spec.Items[Index].ParamLFO;
+        }
+
+        public static void SetUserEffectSpecNoOversampling(
+            UserEffectSpecRec Spec,
+            bool NoOversampling)
+        {
+            Spec.NoOversampling = NoOversampling;
+        }
+
+        public static bool GetUserEffectSpecNoOversampling(
+            UserEffectSpecRec Spec)
+        {
+            return Spec.NoOversampling;
         }
     }
 }

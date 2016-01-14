@@ -156,7 +156,8 @@ namespace OutOfPhase
             {
                 totalWidth = Schedule.TotalWidth;
             }
-            AutoScrollMinSize = new Size(totalWidth, StaffCalibration.MaxVerticalSize);
+            const int AutoScrollMinSizeHorizontalExtra = 50;
+            AutoScrollMinSize = new Size(totalWidth + AutoScrollMinSizeHorizontalExtra, StaffCalibration.MaxVerticalSize);
         }
 
         private void Schedule_TrackExtentsChanged(object sender, EventArgs e)
@@ -241,6 +242,18 @@ namespace OutOfPhase
         }
 
 
+        // focus
+
+        protected override void OnLostFocus(EventArgs e)
+        {
+            using (GraphicsContext gc = new GraphicsContext(this))
+            {
+                TrackViewUndrawCursorBar();
+            }
+
+            base.OnLostFocus(e);
+        }
+
         // keyboard and mouse handling
 
         protected override bool IsInputKey(Keys keyData)
@@ -250,10 +263,15 @@ namespace OutOfPhase
                 default:
                     break;
 
+                case Keys.Escape:
+
                 case Keys.Left:
                 case Keys.Right:
                 case Keys.Up:
                 case Keys.Down:
+
+                case Keys.End:
+                case Keys.Home:
 
                     return true;
             }
@@ -274,6 +292,7 @@ namespace OutOfPhase
                 switch (e.KeyCode)
                 {
                     case Keys.Left:
+                    case Keys.Home:
                         if ((e.KeyData & Keys.Shift) != 0)
                         {
                             int Pivot = 0;
@@ -303,7 +322,7 @@ namespace OutOfPhase
                                     NewActive = Temp;
                                 }
                             }
-                            if ((e.KeyData & Keys.Control) != 0)
+                            if (((e.KeyData & Keys.Control) != 0) || (e.KeyCode == Keys.Home))
                             {
                                 NewActive = 0;
                             }
@@ -320,16 +339,19 @@ namespace OutOfPhase
                                 false/*end is active*/);
                             TrackViewShowSelection();
                         }
-                        else if ((e.KeyData & Keys.Control) != 0)
+                        else if ((e.KeyData & Keys.Control) == 0)
                         {
-                            if (TrackViewIsARangeSelected())
+                            if (e.KeyCode == Keys.Home)
+                            {
+                                TrackViewSetInsertionPoint(0);
+                            }
+                            else if (TrackViewIsARangeSelected())
                             {
                                 /* collapse to ip to active end */
                                 TrackViewSetInsertionPoint(
                                     TrackViewIsRangeStartActive()
                                         ? TrackViewGetRangeStart()
                                         : TrackViewGetRangeEndPlusOne());
-                                TrackViewShowSelection();
                             }
                             else
                             {
@@ -341,7 +363,6 @@ namespace OutOfPhase
                                             TrackViewGetInsertionPointIndex() - 1,
                                             trackObject.FrameArray[TrackViewGetInsertionPointIndex() - 1].Count - 1);
                                     }
-                                    TrackViewShowSelection();
                                 }
                                 else if (TrackViewIsASingleNoteSelected() || TrackViewIsASingleCommandSelected())
                                 {
@@ -356,18 +377,34 @@ namespace OutOfPhase
                                         TrackViewSetInsertionPoint(
                                             TrackViewGetSingleNoteSelectionFrameNumber());
                                     }
-                                    TrackViewShowSelection();
+                                }
+                                if ((e.KeyData & Keys.Alt) != 0)
+                                {
+                                    if (TrackViewIsASingleNoteSelected() || TrackViewIsASingleCommandSelected())
+                                    {
+                                        TrackViewSetInsertionPoint(
+                                            TrackViewGetSingleNoteSelectionFrameNumber());
+                                    }
                                 }
                             }
+                            TrackViewShowSelection();
                         }
                         else
                         {
-                            AutoScrollPosition = new Point(-AutoScrollPosition.X - ClientSize.Width / 8, -AutoScrollPosition.Y);
+                            if (e.KeyCode == Keys.Home)
+                            {
+                                AutoScrollPosition = new Point(0, -AutoScrollPosition.Y);
+                            }
+                            else
+                            {
+                                AutoScrollPosition = new Point(-AutoScrollPosition.X - ClientSize.Width / 8, -AutoScrollPosition.Y);
+                            }
                         }
                         e.Handled = true;
                         return;
 
                     case Keys.Right:
+                    case Keys.End:
                         if ((e.KeyData & Keys.Shift) != 0)
                         {
                             int Pivot = 0;
@@ -394,7 +431,7 @@ namespace OutOfPhase
                                     NewActive = Temp;
                                 }
                             }
-                            if ((e.KeyData & Keys.Control) != 0)
+                            if (((e.KeyData & Keys.Control) != 0) || (e.KeyCode == Keys.End))
                             {
                                 NewActive = trackObject.FrameArray.Count;
                             }
@@ -411,16 +448,19 @@ namespace OutOfPhase
                                 false/*end is active*/);
                             TrackViewShowSelection();
                         }
-                        else if ((e.KeyData & Keys.Control) != 0)
+                        else if ((e.KeyData & Keys.Control) == 0)
                         {
-                            if (TrackViewIsARangeSelected())
+                            if (e.KeyCode == Keys.End)
+                            {
+                                TrackViewSetInsertionPoint(trackObject.FrameArray.Count);
+                            }
+                            else if (TrackViewIsARangeSelected())
                             {
                                 /* collapse to ip to active end */
                                 TrackViewSetInsertionPoint(
                                     TrackViewIsRangeStartActive()
                                         ? TrackViewGetRangeStart()
                                         : TrackViewGetRangeEndPlusOne());
-                                TrackViewShowSelection();
                             }
                             else
                             {
@@ -432,7 +472,6 @@ namespace OutOfPhase
                                             TrackViewGetInsertionPointIndex(),
                                             0);
                                     }
-                                    TrackViewShowSelection();
                                 }
                                 else if (TrackViewIsASingleNoteSelected() || TrackViewIsASingleCommandSelected())
                                 {
@@ -450,13 +489,28 @@ namespace OutOfPhase
                                         TrackViewSetInsertionPoint(
                                             TrackViewGetSingleNoteSelectionFrameNumber() + 1);
                                     }
-                                    TrackViewShowSelection();
+                                }
+                                if ((e.KeyData & Keys.Alt) != 0)
+                                {
+                                    if (TrackViewIsASingleNoteSelected() || TrackViewIsASingleCommandSelected())
+                                    {
+                                        TrackViewSetInsertionPoint(
+                                            TrackViewGetSingleNoteSelectionFrameNumber() + 1);
+                                    }
                                 }
                             }
+                            TrackViewShowSelection();
                         }
                         else
                         {
-                            AutoScrollPosition = new Point(-AutoScrollPosition.X + ClientSize.Width / 8, -AutoScrollPosition.Y);
+                            if (e.KeyCode == Keys.End)
+                            {
+                                AutoScrollPosition = new Point(AutoScrollMinSize.Width, -AutoScrollPosition.Y);
+                            }
+                            else
+                            {
+                                AutoScrollPosition = new Point(-AutoScrollPosition.X + ClientSize.Width / 8, -AutoScrollPosition.Y);
+                            }
                         }
                         e.Handled = true;
                         return;
@@ -485,7 +539,7 @@ namespace OutOfPhase
                         }
                         else
                         {
-                            AutoScrollPosition = new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y - ClientSize.Height / 8);
+                            AutoScrollPosition = new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y - ClientSize.Height / 16);
                         }
                         e.Handled = true;
                         return;
@@ -514,7 +568,7 @@ namespace OutOfPhase
                         }
                         else
                         {
-                            AutoScrollPosition = new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y + ClientSize.Height / 8);
+                            AutoScrollPosition = new Point(-AutoScrollPosition.X, -AutoScrollPosition.Y + ClientSize.Height / 16);
                         }
                         e.Handled = true;
                         return;
@@ -524,8 +578,18 @@ namespace OutOfPhase
                         Window.NoteState = NoteFlags.e4thNote | NoteFlags.eDiv1Modifier;
                         e.Handled = true;
                         return;
-                    case Keys.A:
                     case Keys.Escape:
+                        // first escape clears selection, subsequent one resets command to "arrow"
+                        if (SelectionMode != SelectionModes.eTrackViewNoSelection)
+                        {
+                            SelectionMode = SelectionModes.eTrackViewNoSelection;
+                            TrackViewRedrawAll();
+                            e.Handled = true;
+                            return;
+                        }
+                        goto ResetCommandBar; // fallthrough
+                    case Keys.A:
+                    ResetCommandBar:
                         Window.NoteReady = false;
                         //Window.NoteState = NoteFlags.e4thNote | NoteFlags.eDiv1Modifier; /* reset the note */
                         TrackViewUndrawCursorBar();
@@ -751,6 +815,11 @@ namespace OutOfPhase
 
 
                 // uncaptured mouse move behavior
+
+                if (!Focused)
+                {
+                    return;
+                }
 
                 bool NoteReady = Window.NoteReady;
                 TrackViewUpdateMouseCursor(e.X, e.Y, NoteReady);
@@ -1360,7 +1429,7 @@ namespace OutOfPhase
 
             /* enter the selection tracking loop */
             // Old Macintosh program used local modal event pump.
-            MouseMoveCapture += new MouseEventHandler(delegate(object sender, MouseEventArgs ee)
+            MouseMoveCapture += new MouseEventHandler(delegate (object sender, MouseEventArgs ee)
             {
                 TrackViewControl_MouseMoveCapture_SelectionLocalLoopBody(sender, ee, ActiveEnd, BaseSelectPivot);
             });
@@ -1550,49 +1619,62 @@ namespace OutOfPhase
 
         public void TrackViewShowSelection()
         {
-            int CenteringIndex;
-            int PixelIndex;
+            using (GraphicsContext gc = new GraphicsContext(this))
+            {
+                int FrameIndex;
+                int FrameWidth;
+                int PixelIndex;
 
-            switch (SelectionMode)
-            {
-                default:
-                    Debug.Assert(false);
-                    throw new InvalidOperationException();
-                case SelectionModes.eTrackViewNoSelection:
-                    CenteringIndex = InsertionPointIndex;
-                    break;
-                case SelectionModes.eTrackViewSingleNoteSelection:
-                case SelectionModes.eTrackViewSingleCommandSelection:
-                    CenteringIndex = SelectedNoteFrame;
-                    break;
-                case SelectionModes.eTrackViewRangeSelection:
-                    CenteringIndex = RangeSelectStartIsActive
-                        ? RangeSelectStart
-                        : RangeSelectEnd;
-                    break;
+                switch (SelectionMode)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new InvalidOperationException();
+                    case SelectionModes.eTrackViewNoSelection:
+                        FrameIndex = InsertionPointIndex;
+                        break;
+                    case SelectionModes.eTrackViewSingleNoteSelection:
+                    case SelectionModes.eTrackViewSingleCommandSelection:
+                        FrameIndex = SelectedNoteFrame;
+                        break;
+                    case SelectionModes.eTrackViewRangeSelection:
+                        FrameIndex = RangeSelectStartIsActive
+                            ? RangeSelectStart
+                            : RangeSelectEnd;
+                        break;
+                }
+                if (FrameIndex < trackObject.FrameArray.Count)
+                {
+                    Schedule.TrackDisplayIndexToPixel(0/*first track*/, FrameIndex, out PixelIndex);
+                    FrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(gc, 0, 0, trackObject.FrameArray[FrameIndex], false/*don't draw*/, false);
+                }
+                else if (trackObject.FrameArray.Count > 0)
+                {
+                    Schedule.TrackDisplayIndexToPixel(
+                        0/*first track*/,
+                        trackObject.FrameArray.Count - 1,
+                        out PixelIndex);
+                    FrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(gc, 0, 0, trackObject.FrameArray[trackObject.FrameArray.Count - 1], false/*don't draw*/, false);
+                    PixelIndex += FrameWidth;
+                    FrameWidth = 0;
+                }
+                else
+                {
+                    /* no frames at all. */
+                    PixelIndex = 0;
+                    FrameWidth = 0;
+                }
+
+                const int ScrollIntoViewMargin = 75;
+                if (-AutoScrollPosition.X > PixelIndex - ScrollIntoViewMargin)
+                {
+                    AutoScrollPosition = new Point(PixelIndex - ScrollIntoViewMargin, -AutoScrollPosition.Y);
+                }
+                else if (-AutoScrollPosition.X < PixelIndex + FrameWidth - ClientSize.Width + ScrollIntoViewMargin)
+                {
+                    AutoScrollPosition = new Point(PixelIndex + FrameWidth - ClientSize.Width + ScrollIntoViewMargin, -AutoScrollPosition.Y);
+                }
             }
-            if (CenteringIndex < trackObject.FrameArray.Count)
-            {
-                Schedule.TrackDisplayIndexToPixel(0/*first track*/, CenteringIndex, out PixelIndex);
-            }
-            else if (trackObject.FrameArray.Count > 0)
-            {
-                Schedule.TrackDisplayIndexToPixel(
-                    0/*first track*/,
-                    trackObject.FrameArray.Count - 1,
-                    out PixelIndex);
-            }
-            else
-            {
-                /* no frames at all. */
-                PixelIndex = 0;
-            }
-            PixelIndex -= ClientSize.Width / 2;
-            if (PixelIndex < 0)
-            {
-                PixelIndex = 0;
-            }
-            AutoScrollPosition = new Point(PixelIndex, -AutoScrollPosition.Y);
         }
 
         /* set an insertion point at the specified frame index */
@@ -2550,7 +2632,7 @@ namespace OutOfPhase
             }
 
             /* draw cursor bar */
-            if (CursorBarIsVisible)
+            if (CursorBarIsVisible && Focused)
             {
                 TrackViewDrawCursorBar();
             }
@@ -3115,8 +3197,8 @@ namespace OutOfPhase
         }
 
         private static readonly int[] OneOctaveHalfStepTable = new int[]
-	    {
-		    0, /* pixel 0 == C */
+        {
+            0, /* pixel 0 == C */
 		    2, /* pixel 4 == D */
 		    4, /* pixel 8 == E */
 		    5, /* pixel 12 == F */
@@ -3148,8 +3230,8 @@ namespace OutOfPhase
         }
 
         public static readonly int[] MajorStaffList = new int[]
-	    {
-		    Constants.CENTERNOTE + 4, /* E */
+        {
+            Constants.CENTERNOTE + 4, /* E */
 		    Constants.CENTERNOTE + 7, /* G */
 		    Constants.CENTERNOTE + 11, /* B */
 		    Constants.CENTERNOTE + 14, /* D */
@@ -3162,8 +3244,8 @@ namespace OutOfPhase
 	    };
 
         private static readonly int[] TwoOctaveStaffTable = new int[]
-	    {
-		    0, /* C0 */
+        {
+            0, /* C0 */
 		    4, /* E0 */
 		    7, /* G0 */
 		    11, /* B0 */
@@ -3308,7 +3390,7 @@ namespace OutOfPhase
 
         public void Add(TrackObjectRec TrackObj)
         {
-            if (Array.FindIndex(TrackAttrArray, delegate(TrackAttrRec candidate) { return candidate.TrackObj == TrackObj; }) >= 0)
+            if (Array.FindIndex(TrackAttrArray, delegate (TrackAttrRec candidate) { return candidate.TrackObj == TrackObj; }) >= 0)
             {
                 Debug.Assert(false);
                 throw new ArgumentException();
@@ -3322,7 +3404,7 @@ namespace OutOfPhase
 
         public void Remove(TrackObjectRec TrackObj)
         {
-            int i = Array.FindIndex(TrackAttrArray, delegate(TrackAttrRec candidate) { return candidate.TrackObj == TrackObj; });
+            int i = Array.FindIndex(TrackAttrArray, delegate (TrackAttrRec candidate) { return candidate.TrackObj == TrackObj; });
             if (i < 0)
             {
                 Debug.Assert(false);

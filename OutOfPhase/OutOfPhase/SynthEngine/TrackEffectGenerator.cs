@@ -239,7 +239,7 @@ namespace OutOfPhase
         /* update control state for effects processors.  this is called once per envelope */
         /* tick, and constitutes the first half of the control-update cycle. */
         /* returns true if successful, or false if it failed. */
-        public static void UpdateStateTrackEffectGenerator(
+        public static SynthErrorCodes UpdateStateTrackEffectGenerator(
             TrackEffectGenRec Generator,
             SynthParamRec SynthParams)
         {
@@ -260,12 +260,18 @@ namespace OutOfPhase
                 OneEffectRec Scan = Generator.List;
                 while (Scan != null)
                 {
-                    Scan.u.TrackUpdateState(
+                    SynthErrorCodes error = Scan.u.TrackUpdateState(
                         ref Accents,
                         SynthParams);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                     Scan = Scan.Next;
                 }
             }
+
+            return SynthErrorCodes.eSynthDone;
         }
 
         /* autoquiescence processor */

@@ -121,7 +121,13 @@ namespace OutOfPhase
         public readonly DataTypes returnType;
         public readonly Type managedReturnType;
 
-        public const bool EnableCIL = true; // enable for .NET jitted code generation (disable for pcode)
+        private MethodInfo cachedMethodInfo;
+
+        private string methodNameShim;
+        private MethodInfo cachedMethodInfoShim;
+
+        // enable for .NET jitted code generation (disable for pcode)
+        public static bool EnableCIL { get { return Program.Config.EnableCIL; } }
 
         private static int methodNameSequencer;
 
@@ -170,23 +176,160 @@ namespace OutOfPhase
                     managedFunctionLinker),
                 ast);
             ilGenerator.Emit(OpCodes.Ret);
+
+
+            // Generate shim (see explanation at InvokeShim)
+
+            methodNameShim = String.Format("s{0}", methodSequenceNumber);
+            MethodBuilder methodBuilderShim = cilAssembly.typeBuilder.DefineMethod(
+                methodNameShim,
+                MethodAttributes.Public | MethodAttributes.Static,
+                typeof(void),
+                new Type[0]);
+            ILGenerator ilGeneratorShim = methodBuilderShim.GetILGenerator();
+            ilGeneratorShim.Emit(OpCodes.Call, typeof(CILThreadLocalStorage).GetMethod("get_CurrentShimArg", BindingFlags.Public | BindingFlags.Static));
+            LocalBuilder localShimArg = ilGeneratorShim.DeclareLocal(typeof(StackElement[]));
+            ilGeneratorShim.Emit(OpCodes.Stloc, localShimArg);
+            for (int i = 0; i < argsTypes.Length; i++)
+            {
+                ilGeneratorShim.Emit(OpCodes.Ldloc, localShimArg);
+                ilGeneratorShim.Emit(OpCodes.Ldc_I4, (int)i);
+                ilGeneratorShim.Emit(OpCodes.Ldelema, typeof(StackElement));
+                LocalBuilder locElemAddr = ilGeneratorShim.DeclareLocal(typeof(object));
+                ilGeneratorShim.Emit(OpCodes.Dup);
+                ilGeneratorShim.Emit(OpCodes.Stloc, locElemAddr);
+                bool arrayType;
+                switch (argsTypes[i])
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case DataTypes.eBoolean:
+                    case DataTypes.eInteger:
+                        ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("Data"));
+                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ScalarOverlayType).GetField("Integer"));
+                        arrayType = false;
+                        break;
+                    case DataTypes.eFloat:
+                        ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("Data"));
+                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ScalarOverlayType).GetField("Float"));
+                        arrayType = false;
+                        break;
+                    case DataTypes.eDouble:
+                        ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("Data"));
+                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ScalarOverlayType).GetField("Double"));
+                        arrayType = false;
+                        break;
+                    case DataTypes.eArrayOfBoolean:
+                    case DataTypes.eArrayOfByte:
+                        ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
+                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ReferenceOverlayType).GetField("arrayHandleByte"));
+                        arrayType = true;
+                        break;
+                    case DataTypes.eArrayOfInteger:
+                        ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
+                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ReferenceOverlayType).GetField("arrayHandleInt32"));
+                        arrayType = true;
+                        break;
+                    case DataTypes.eArrayOfFloat:
+                        ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
+                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ReferenceOverlayType).GetField("arrayHandleFloat"));
+                        arrayType = true;
+                        break;
+                    case DataTypes.eArrayOfDouble:
+                        ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
+                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ReferenceOverlayType).GetField("arrayHandleDouble"));
+                        arrayType = true;
+                        break;
+                }
+                ilGeneratorShim.Emit(OpCodes.Ldloc, locElemAddr);
+                if (arrayType)
+                {
+                    ilGeneratorShim.Emit(OpCodes.Call, typeof(StackElement).GetMethod("ClearArray"));
+                }
+                else
+                {
+                    ilGeneratorShim.Emit(OpCodes.Call, typeof(StackElement).GetMethod("ClearScalar"));
+                }
+            }
+            ilGeneratorShim.Emit(OpCodes.Call, methodBuilder);
+
+            LocalBuilder retVal = ilGeneratorShim.DeclareLocal(managedReturnType);
+            ilGeneratorShim.Emit(OpCodes.Stloc, retVal);
+
+            ilGeneratorShim.Emit(OpCodes.Ldloc, localShimArg);
+            ilGeneratorShim.Emit(OpCodes.Ldc_I4_0);
+            ilGeneratorShim.Emit(OpCodes.Ldelema, typeof(StackElement));
+            switch (returnType)
+            {
+                default:
+                    Debug.Assert(false);
+                    throw new ArgumentException();
+                case DataTypes.eBoolean:
+                case DataTypes.eInteger:
+                    ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("Data"));
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, retVal);
+                    ilGeneratorShim.Emit(OpCodes.Stfld, typeof(ScalarOverlayType).GetField("Integer"));
+                    break;
+                case DataTypes.eFloat:
+                    ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("Data"));
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, retVal);
+                    ilGeneratorShim.Emit(OpCodes.Stfld, typeof(ScalarOverlayType).GetField("Float"));
+                    break;
+                case DataTypes.eDouble:
+                    ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("Data"));
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, retVal);
+                    ilGeneratorShim.Emit(OpCodes.Stfld, typeof(ScalarOverlayType).GetField("Double"));
+                    break;
+                case DataTypes.eArrayOfBoolean:
+                case DataTypes.eArrayOfByte:
+                    ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, retVal);
+                    ilGeneratorShim.Emit(OpCodes.Stfld, typeof(ReferenceOverlayType).GetField("arrayHandleByte"));
+                    break;
+                case DataTypes.eArrayOfInteger:
+                    ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, retVal);
+                    ilGeneratorShim.Emit(OpCodes.Stfld, typeof(ReferenceOverlayType).GetField("arrayHandleInt32"));
+                    break;
+                case DataTypes.eArrayOfFloat:
+                    ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, retVal);
+                    ilGeneratorShim.Emit(OpCodes.Stfld, typeof(ReferenceOverlayType).GetField("arrayHandleFloat"));
+                    break;
+                case DataTypes.eArrayOfDouble:
+                    ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, retVal);
+                    ilGeneratorShim.Emit(OpCodes.Stfld, typeof(ReferenceOverlayType).GetField("arrayHandleDouble"));
+                    break;
+            }
+
+            ilGeneratorShim.Emit(OpCodes.Ret);
         }
 
         public MethodInfo MethodInfo
         {
             get
             {
-                MethodInfo mi = cilAssembly.GeneratedType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
-                Debug.Assert(mi != null);
-                return mi;
+                if (cachedMethodInfo == null)
+                {
+                    cachedMethodInfo = cilAssembly.GeneratedType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Static);
+                    Debug.Assert(cachedMethodInfo != null);
+                }
+                return cachedMethodInfo;
             }
         }
 
-        // TODO: provide more specific information about mismatch (i.e. which arg, or retval, and line number)
-        public class SignatureMismatchException : Exception
+        public MethodInfo MethodInfoShim
         {
-            public SignatureMismatchException()
+            get
             {
+                if (cachedMethodInfoShim == null)
+                {
+                    cachedMethodInfoShim = cilAssembly.GeneratedType.GetMethod(methodNameShim, BindingFlags.Public | BindingFlags.Static);
+                    Debug.Assert(cachedMethodInfoShim != null);
+                }
+                return cachedMethodInfoShim;
             }
         }
 
@@ -246,6 +389,87 @@ namespace OutOfPhase
             return EvalErrors.eEvalNoError;
         }
 
+        // InvokeShim() is a fast custom-marshaled invocation for anonymous function entry. The above Invoke() standard method
+        // has the following problems:
+        // - runtime type checking (unneeded - we always know the types statically and there is no variance)
+        // - memory allocation of the object[] array (and another copy made in MethodBase::CheckArguments()) as well as boxing
+        //   of individual arguments (most of which are of type double)
+        // Since we don't need that, we generate shim code to marshal the expected arguments directly from StackElement[] to
+        // a static-bound direct call in CIL.
+        // The one hitch is that there is no static invoke in reflection, so passing StackElement[] to the shim would still
+        // incur a copy in CheckArgs() even when we reuse our object[] arg array. To avoid even this, the argument is passed
+        // in a thread-global variable accessed via the CILThreadLocalStorage.CurrentShimArg property. This is very short-lived:
+        // the property is set immediately before the invoke, and read as the first instruction of the shim. There shouldn't
+        // be any reentrance issues with the approach.
+        // One final note: anonymous function entry currently always sets up the args as the only values on the stack and
+        // returns the result in Stack[0]. Therefore, passing StackPtr is not neccesary (it will always equal the number of
+        // function arguments). In future, if there is some sort of reetrant interop supported on the same Stack (e.g. calling
+        // an extern application function, which in turn calls into user code again), this would need to be passed into the
+        // shim as well (among many other changes required).
+        public EvalErrors InvokeShim(StackElement[] Stack, ref int StackPtr)
+        {
+            try
+            {
+                Debug.Assert(StackPtr == argsTypes.Length);
+                CILThreadLocalStorage.CurrentShimArg = Stack;
+                MethodInfoShim.Invoke(null, null);
+                CILThreadLocalStorage.CurrentShimArg = null;
+                StackPtr -= argsTypes.Length;
+                //StackPtr = StackPtr - 1/*retaddr*/ + 1/*retval*/; - no-op
+            }
+            catch (TargetInvocationException exception)
+            {
+                if (exception.InnerException is OutOfMemoryException)
+                {
+                    return EvalErrors.eEvalOutOfMemory;
+                }
+                else if (exception.InnerException is DivideByZeroException)
+                {
+                    return EvalErrors.eEvalDivideByZero;
+                }
+                else if (exception.InnerException is NullReferenceException)
+                {
+                    return EvalErrors.eEvalArrayDoesntExist;
+                }
+                else if (exception.InnerException is IndexOutOfRangeException)
+                {
+                    return EvalErrors.eEvalArraySubscriptOutOfRange;
+                }
+                else if (exception.InnerException is SignatureMismatchException)
+                {
+                    return EvalErrors.eEvalFunctionSignatureMismatch;
+                }
+                else if (exception.InnerException is PcodeExterns.EvalErrorException)
+                {
+                    // from managed code generated calls to IEvaluationContext.Invoke()
+                    return ((PcodeExterns.EvalErrorException)(exception.InnerException)).Error;
+                }
+                else
+                {
+                    Debug.Assert(false, "unhandled exception from target code", exception.ToString());
+                    throw;
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.Assert(false, "unhandled invoke exception", exception.ToString());
+                throw;
+            }
+
+            return EvalErrors.eEvalNoError;
+        }
+
+        // Thrown by generated code when actual function signature doesn't match expected signature. This should happen
+        // much less often now that whole program compilation is used, but hasn't been proven ruled out. The runtime
+        // cost is one compare-and-branch per function call.
+        // TODO: provide more specific information about mismatch (i.e. which arg, or retval, and line number)
+        public class SignatureMismatchException : Exception
+        {
+            public SignatureMismatchException()
+            {
+            }
+        }
+
         public static Type GetManagedType(DataTypes type)
         {
             switch (type)
@@ -292,14 +516,22 @@ namespace OutOfPhase
     {
         [ThreadStaticAttribute]
         private static CILThreadLocalStorage threadLocal = null;
+        [ThreadStaticAttribute]
+        private static CILThreadLocalStorage threadFreeList = null;
 
-        private readonly PcodeSystem.IEvaluationContext EvaluationContext;
-        private readonly IntPtr[] FunctionPointers;
-        private readonly int[] FunctionSignatures;
+        private PcodeSystem.IEvaluationContext EvaluationContext;
+        private IntPtr[] FunctionPointers;
+        private int[] FunctionSignatures;
 
-        private readonly CILThreadLocalStorage previous;
+        private StackElement[] ShimArg;
 
-        private CILThreadLocalStorage(
+        private CILThreadLocalStorage previous;
+
+        private CILThreadLocalStorage()
+        {
+        }
+
+        private void Init(
             PcodeSystem.IEvaluationContext EvaluationContext,
             IntPtr[] FunctionPointers,
             int[] FunctionSignatures,
@@ -316,18 +548,36 @@ namespace OutOfPhase
         public static IntPtr[] CurrentFunctionPointers { get { return threadLocal.FunctionPointers; } }
         public static int[] CurrentFunctionSignatures { get { return threadLocal.FunctionSignatures; } }
 
+        public static StackElement[] CurrentShimArg { get { return threadLocal.ShimArg; } set { threadLocal.ShimArg = value; } }
+
         public static void Push(
             PcodeSystem.IEvaluationContext EvaluationContext,
             IntPtr[] FunctionPointers,
             int[] FunctionSignatures)
         {
-            threadLocal = new CILThreadLocalStorage(EvaluationContext, FunctionPointers, FunctionSignatures, threadLocal);
+            CILThreadLocalStorage top = threadFreeList;
+            if (top == null)
+            {
+                top = new CILThreadLocalStorage();
+            }
+            else
+            {
+                threadFreeList = threadFreeList.previous;
+            }
+            top.Init(EvaluationContext, FunctionPointers, FunctionSignatures, threadLocal);
+            threadLocal = top;
         }
 
         public static void Pop()
         {
             Debug.Assert(threadLocal != null);
+
+            CILThreadLocalStorage temp = threadLocal;
+
             threadLocal = threadLocal.previous;
+
+            temp.previous = threadFreeList;
+            threadFreeList = temp;
         }
     }
 }

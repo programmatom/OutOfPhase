@@ -233,6 +233,7 @@ namespace OutOfPhase
             eBuildInstrMultipleIndexaccent6,
             eBuildInstrMultipleIndexaccent7,
             eBuildInstrMultipleIndexaccent8,
+            eBuildInstrMultipleOverflow,
             eBuildInstrMultipleFreqaccent5,
             eBuildInstrMultipleFreqaccent6,
             eBuildInstrMultipleFreqaccent7,
@@ -447,383 +448,396 @@ namespace OutOfPhase
             eBuildInstrMultipleAccent7,
             eBuildInstrMultipleAccent8,
             eBuildInstrMustSpecifyGoodOrBroken,
+            eBuildInstrExpectedWrapOrClamp,
+            eBuildInstrExpectedMinsamplingrateOrSemicolon,
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            eBuildInstrMultipleLFOLoopEnvelope,
+#endif
 
             eBuildInstr_End,
         }
 
         private static KeywordRec<InstrKeywordType>[] InstrKeywordTable = new KeywordRec<InstrKeywordType>[]
-	    {
-		    new KeywordRec<InstrKeywordType>("absval", InstrKeywordType.eKeywordAbsval),
-		    new KeywordRec<InstrKeywordType>("accent1", InstrKeywordType.eKeywordAccent1),
-		    new KeywordRec<InstrKeywordType>("accent2", InstrKeywordType.eKeywordAccent2),
-		    new KeywordRec<InstrKeywordType>("accent3", InstrKeywordType.eKeywordAccent3),
-		    new KeywordRec<InstrKeywordType>("accent4", InstrKeywordType.eKeywordAccent4),
-		    new KeywordRec<InstrKeywordType>("accent5", InstrKeywordType.eKeywordAccent5),
-		    new KeywordRec<InstrKeywordType>("accent6", InstrKeywordType.eKeywordAccent6),
-		    new KeywordRec<InstrKeywordType>("accent7", InstrKeywordType.eKeywordAccent7),
-		    new KeywordRec<InstrKeywordType>("accent8", InstrKeywordType.eKeywordAccent8),
-		    new KeywordRec<InstrKeywordType>("additive", InstrKeywordType.eKeywordAdditive),
-		    new KeywordRec<InstrKeywordType>("ampaccent1", InstrKeywordType.eKeywordAmpaccent1),
-		    new KeywordRec<InstrKeywordType>("ampaccent2", InstrKeywordType.eKeywordAmpaccent2),
-		    new KeywordRec<InstrKeywordType>("ampaccent3", InstrKeywordType.eKeywordAmpaccent3),
-		    new KeywordRec<InstrKeywordType>("ampaccent4", InstrKeywordType.eKeywordAmpaccent4),
-		    new KeywordRec<InstrKeywordType>("ampaccent5", InstrKeywordType.eKeywordAmpaccent5),
-		    new KeywordRec<InstrKeywordType>("ampaccent6", InstrKeywordType.eKeywordAmpaccent6),
-		    new KeywordRec<InstrKeywordType>("ampaccent7", InstrKeywordType.eKeywordAmpaccent7),
-		    new KeywordRec<InstrKeywordType>("ampaccent8", InstrKeywordType.eKeywordAmpaccent8),
-		    new KeywordRec<InstrKeywordType>("ampenvelope", InstrKeywordType.eKeywordAmpenvelope),
-		    new KeywordRec<InstrKeywordType>("ampfreq", InstrKeywordType.eKeywordAmpfreq),
-		    new KeywordRec<InstrKeywordType>("amplfo", InstrKeywordType.eKeywordAmplfo),
-		    new KeywordRec<InstrKeywordType>("analyzer", InstrKeywordType.eKeywordAnalyzer),
-		    new KeywordRec<InstrKeywordType>("attackrate", InstrKeywordType.eKeywordAttackrate),
-		    new KeywordRec<InstrKeywordType>("attackrateaccent1", InstrKeywordType.eKeywordAttackrateaccent1),
-		    new KeywordRec<InstrKeywordType>("attackrateaccent2", InstrKeywordType.eKeywordAttackrateaccent2),
-		    new KeywordRec<InstrKeywordType>("attackrateaccent3", InstrKeywordType.eKeywordAttackrateaccent3),
-		    new KeywordRec<InstrKeywordType>("attackrateaccent4", InstrKeywordType.eKeywordAttackrateaccent4),
-		    new KeywordRec<InstrKeywordType>("attackrateaccent5", InstrKeywordType.eKeywordAttackrateaccent5),
-		    new KeywordRec<InstrKeywordType>("attackrateaccent6", InstrKeywordType.eKeywordAttackrateaccent6),
-		    new KeywordRec<InstrKeywordType>("attackrateaccent7", InstrKeywordType.eKeywordAttackrateaccent7),
-		    new KeywordRec<InstrKeywordType>("attackrateaccent8", InstrKeywordType.eKeywordAttackrateaccent8),
-		    new KeywordRec<InstrKeywordType>("attackrateenvelope", InstrKeywordType.eKeywordAttackrateenvelope),
-		    new KeywordRec<InstrKeywordType>("attackratelfo", InstrKeywordType.eKeywordAttackratelfo),
-		    new KeywordRec<InstrKeywordType>("autoquiescence", InstrKeywordType.eKeywordAutoquiescence),
-		    new KeywordRec<InstrKeywordType>("averageafter", InstrKeywordType.eKeywordAverageafter),
-		    new KeywordRec<InstrKeywordType>("averagebefore", InstrKeywordType.eKeywordAveragebefore),
-		    new KeywordRec<InstrKeywordType>("bandwidth", InstrKeywordType.eKeywordBandwidth),
-		    new KeywordRec<InstrKeywordType>("bandwidthaccent1", InstrKeywordType.eKeywordBandwidthaccent1),
-		    new KeywordRec<InstrKeywordType>("bandwidthaccent2", InstrKeywordType.eKeywordBandwidthaccent2),
-		    new KeywordRec<InstrKeywordType>("bandwidthaccent3", InstrKeywordType.eKeywordBandwidthaccent3),
-		    new KeywordRec<InstrKeywordType>("bandwidthaccent4", InstrKeywordType.eKeywordBandwidthaccent4),
-		    new KeywordRec<InstrKeywordType>("bandwidthaccent5", InstrKeywordType.eKeywordBandwidthaccent5),
-		    new KeywordRec<InstrKeywordType>("bandwidthaccent6", InstrKeywordType.eKeywordBandwidthaccent6),
-		    new KeywordRec<InstrKeywordType>("bandwidthaccent7", InstrKeywordType.eKeywordBandwidthaccent7),
-		    new KeywordRec<InstrKeywordType>("bandwidthaccent8", InstrKeywordType.eKeywordBandwidthaccent8),
-		    new KeywordRec<InstrKeywordType>("bandwidthenvelope", InstrKeywordType.eKeywordBandwidthenvelope),
-		    new KeywordRec<InstrKeywordType>("bandwidthlfo", InstrKeywordType.eKeywordBandwidthlfo),
-		    new KeywordRec<InstrKeywordType>("bars", InstrKeywordType.eKeywordBars),
-		    new KeywordRec<InstrKeywordType>("bistereo", InstrKeywordType.eKeywordBistereo),
-		    new KeywordRec<InstrKeywordType>("broken", InstrKeywordType.eKeywordBroken),
-		    new KeywordRec<InstrKeywordType>("butterworthbandpass", InstrKeywordType.eKeywordButterworthbandpass),
-		    new KeywordRec<InstrKeywordType>("butterworthbandreject", InstrKeywordType.eKeywordButterworthbandreject),
-		    new KeywordRec<InstrKeywordType>("butterworthhighpass", InstrKeywordType.eKeywordButterworthhighpass),
-		    new KeywordRec<InstrKeywordType>("butterworthlowpass", InstrKeywordType.eKeywordButterworthlowpass),
-		    new KeywordRec<InstrKeywordType>("center", InstrKeywordType.eKeywordCenter),
-		    new KeywordRec<InstrKeywordType>("compressor", InstrKeywordType.eKeywordCompressor),
-		    new KeywordRec<InstrKeywordType>("constant", InstrKeywordType.eKeywordConstant),
-		    new KeywordRec<InstrKeywordType>("convolver", InstrKeywordType.eKeywordConvolver),
-		    new KeywordRec<InstrKeywordType>("datafunc", InstrKeywordType.eKeywordDatafunc),
-		    new KeywordRec<InstrKeywordType>("decayrate", InstrKeywordType.eKeywordDecayrate),
-		    new KeywordRec<InstrKeywordType>("decayrateaccent1", InstrKeywordType.eKeywordDecayrateaccent1),
-		    new KeywordRec<InstrKeywordType>("decayrateaccent2", InstrKeywordType.eKeywordDecayrateaccent2),
-		    new KeywordRec<InstrKeywordType>("decayrateaccent3", InstrKeywordType.eKeywordDecayrateaccent3),
-		    new KeywordRec<InstrKeywordType>("decayrateaccent4", InstrKeywordType.eKeywordDecayrateaccent4),
-		    new KeywordRec<InstrKeywordType>("decayrateaccent5", InstrKeywordType.eKeywordDecayrateaccent5),
-		    new KeywordRec<InstrKeywordType>("decayrateaccent6", InstrKeywordType.eKeywordDecayrateaccent6),
-		    new KeywordRec<InstrKeywordType>("decayrateaccent7", InstrKeywordType.eKeywordDecayrateaccent7),
-		    new KeywordRec<InstrKeywordType>("decayrateaccent8", InstrKeywordType.eKeywordDecayrateaccent8),
-		    new KeywordRec<InstrKeywordType>("decayrateenvelope", InstrKeywordType.eKeywordDecayrateenvelope),
-		    new KeywordRec<InstrKeywordType>("decayratelfo", InstrKeywordType.eKeywordDecayratelfo),
-		    new KeywordRec<InstrKeywordType>("decibels", InstrKeywordType.eKeywordDecibels),
-		    new KeywordRec<InstrKeywordType>("defaultscaling", InstrKeywordType.eKeywordDefaultscaling),
-		    new KeywordRec<InstrKeywordType>("delay", InstrKeywordType.eKeywordDelay),
-		    new KeywordRec<InstrKeywordType>("delayline", InstrKeywordType.eKeywordDelayline),
-		    new KeywordRec<InstrKeywordType>("directgain", InstrKeywordType.eKeywordDirectgain),
-		    new KeywordRec<InstrKeywordType>("disabled", InstrKeywordType.eKeywordDisabled),
-		    new KeywordRec<InstrKeywordType>("discard", InstrKeywordType.eKeywordDiscard),
-		    new KeywordRec<InstrKeywordType>("discardunders", InstrKeywordType.eKeywordDiscardunders),
-		    new KeywordRec<InstrKeywordType>("displacement", InstrKeywordType.eKeywordDisplacement),
-		    new KeywordRec<InstrKeywordType>("effect", InstrKeywordType.eKeywordEffect),
-		    new KeywordRec<InstrKeywordType>("envelope", InstrKeywordType.eKeywordEnvelope),
-		    new KeywordRec<InstrKeywordType>("estimatepower", InstrKeywordType.eKeywordEstimatepower),
-		    new KeywordRec<InstrKeywordType>("exponential", InstrKeywordType.eKeywordExponential),
-		    new KeywordRec<InstrKeywordType>("filter", InstrKeywordType.eKeywordFilter),
-		    new KeywordRec<InstrKeywordType>("filtercutoff", InstrKeywordType.eKeywordFiltercutoff),
-		    new KeywordRec<InstrKeywordType>("filtercutoffaccent1", InstrKeywordType.eKeywordFiltercutoffaccent1),
-		    new KeywordRec<InstrKeywordType>("filtercutoffaccent2", InstrKeywordType.eKeywordFiltercutoffaccent2),
-		    new KeywordRec<InstrKeywordType>("filtercutoffaccent3", InstrKeywordType.eKeywordFiltercutoffaccent3),
-		    new KeywordRec<InstrKeywordType>("filtercutoffaccent4", InstrKeywordType.eKeywordFiltercutoffaccent4),
-		    new KeywordRec<InstrKeywordType>("filtercutoffaccent5", InstrKeywordType.eKeywordFiltercutoffaccent5),
-		    new KeywordRec<InstrKeywordType>("filtercutoffaccent6", InstrKeywordType.eKeywordFiltercutoffaccent6),
-		    new KeywordRec<InstrKeywordType>("filtercutoffaccent7", InstrKeywordType.eKeywordFiltercutoffaccent7),
-		    new KeywordRec<InstrKeywordType>("filtercutoffaccent8", InstrKeywordType.eKeywordFiltercutoffaccent8),
-		    new KeywordRec<InstrKeywordType>("filtercutoffenvelope", InstrKeywordType.eKeywordFiltercutoffenvelope),
-		    new KeywordRec<InstrKeywordType>("filtercutofflfo", InstrKeywordType.eKeywordFiltercutofflfo),
-		    new KeywordRec<InstrKeywordType>("fof", InstrKeywordType.eKeywordFof),
-		    new KeywordRec<InstrKeywordType>("fofcompress", InstrKeywordType.eKeywordFofcompress),
-		    new KeywordRec<InstrKeywordType>("fofexpand", InstrKeywordType.eKeywordFofexpand),
-		    new KeywordRec<InstrKeywordType>("fofsamprate", InstrKeywordType.eKeywordFofsamprate),
-		    new KeywordRec<InstrKeywordType>("fofsamprateenvelope", InstrKeywordType.eKeywordFofsamprateenvelope),
-		    new KeywordRec<InstrKeywordType>("fofsampratelfo", InstrKeywordType.eKeywordFofsampratelfo),
-		    new KeywordRec<InstrKeywordType>("formula", InstrKeywordType.eKeywordFormula),
-		    new KeywordRec<InstrKeywordType>("freq", InstrKeywordType.eKeywordFreq),
-		    new KeywordRec<InstrKeywordType>("freqaccent1", InstrKeywordType.eKeywordFreqaccent1),
-		    new KeywordRec<InstrKeywordType>("freqaccent2", InstrKeywordType.eKeywordFreqaccent2),
-		    new KeywordRec<InstrKeywordType>("freqaccent3", InstrKeywordType.eKeywordFreqaccent3),
-		    new KeywordRec<InstrKeywordType>("freqaccent4", InstrKeywordType.eKeywordFreqaccent4),
-		    new KeywordRec<InstrKeywordType>("freqaccent5", InstrKeywordType.eKeywordFreqaccent5),
-		    new KeywordRec<InstrKeywordType>("freqaccent6", InstrKeywordType.eKeywordFreqaccent6),
-		    new KeywordRec<InstrKeywordType>("freqaccent7", InstrKeywordType.eKeywordFreqaccent7),
-		    new KeywordRec<InstrKeywordType>("freqaccent8", InstrKeywordType.eKeywordFreqaccent8),
-		    new KeywordRec<InstrKeywordType>("freqadder", InstrKeywordType.eKeywordFreqadder),
-		    new KeywordRec<InstrKeywordType>("freqdivisor", InstrKeywordType.eKeywordFreqdivisor),
-		    new KeywordRec<InstrKeywordType>("freqenvelope", InstrKeywordType.eKeywordFreqenvelope),
-		    new KeywordRec<InstrKeywordType>("freqlfo", InstrKeywordType.eKeywordFreqlfo),
-		    new KeywordRec<InstrKeywordType>("freqmultiplier", InstrKeywordType.eKeywordFreqmultiplier),
-		    new KeywordRec<InstrKeywordType>("frequencylfo", InstrKeywordType.eKeywordFrequencylfo),
-		    new KeywordRec<InstrKeywordType>("gain", InstrKeywordType.eKeywordGain),
-		    new KeywordRec<InstrKeywordType>("gainaccent1", InstrKeywordType.eKeywordGainaccent1),
-		    new KeywordRec<InstrKeywordType>("gainaccent2", InstrKeywordType.eKeywordGainaccent2),
-		    new KeywordRec<InstrKeywordType>("gainaccent3", InstrKeywordType.eKeywordGainaccent3),
-		    new KeywordRec<InstrKeywordType>("gainaccent4", InstrKeywordType.eKeywordGainaccent4),
-		    new KeywordRec<InstrKeywordType>("gainaccent5", InstrKeywordType.eKeywordGainaccent5),
-		    new KeywordRec<InstrKeywordType>("gainaccent6", InstrKeywordType.eKeywordGainaccent6),
-		    new KeywordRec<InstrKeywordType>("gainaccent7", InstrKeywordType.eKeywordGainaccent7),
-		    new KeywordRec<InstrKeywordType>("gainaccent8", InstrKeywordType.eKeywordGainaccent8),
-		    new KeywordRec<InstrKeywordType>("gainenvelope", InstrKeywordType.eKeywordGainenvelope),
-		    new KeywordRec<InstrKeywordType>("gainlfo", InstrKeywordType.eKeywordGainlfo),
-		    new KeywordRec<InstrKeywordType>("good", InstrKeywordType.eKeywordGood),
-		    new KeywordRec<InstrKeywordType>("halfsteps", InstrKeywordType.eKeywordHalfsteps),
-		    new KeywordRec<InstrKeywordType>("hertz", InstrKeywordType.eKeywordHertz),
-		    new KeywordRec<InstrKeywordType>("highpass", InstrKeywordType.eKeywordHighpass),
-		    new KeywordRec<InstrKeywordType>("highshelfeq", InstrKeywordType.eKeywordHighshelfeq),
-		    new KeywordRec<InstrKeywordType>("histogram", InstrKeywordType.eKeywordHistogram),
-		    new KeywordRec<InstrKeywordType>("ideallowpass", InstrKeywordType.eKeywordIdeallowpass),
-		    new KeywordRec<InstrKeywordType>("indexaccent1", InstrKeywordType.eKeywordIndexaccent1),
-		    new KeywordRec<InstrKeywordType>("indexaccent2", InstrKeywordType.eKeywordIndexaccent2),
-		    new KeywordRec<InstrKeywordType>("indexaccent3", InstrKeywordType.eKeywordIndexaccent3),
-		    new KeywordRec<InstrKeywordType>("indexaccent4", InstrKeywordType.eKeywordIndexaccent4),
-		    new KeywordRec<InstrKeywordType>("indexaccent5", InstrKeywordType.eKeywordIndexaccent5),
-		    new KeywordRec<InstrKeywordType>("indexaccent6", InstrKeywordType.eKeywordIndexaccent6),
-		    new KeywordRec<InstrKeywordType>("indexaccent7", InstrKeywordType.eKeywordIndexaccent7),
-		    new KeywordRec<InstrKeywordType>("indexaccent8", InstrKeywordType.eKeywordIndexaccent8),
-		    new KeywordRec<InstrKeywordType>("indexenvelope", InstrKeywordType.eKeywordIndexenvelope),
-		    new KeywordRec<InstrKeywordType>("indexlfo", InstrKeywordType.eKeywordIndexlfo),
-		    new KeywordRec<InstrKeywordType>("initfunc", InstrKeywordType.eKeywordInitfunc),
-		    new KeywordRec<InstrKeywordType>("inputaccent1", InstrKeywordType.eKeywordInputaccent1),
-		    new KeywordRec<InstrKeywordType>("inputaccent2", InstrKeywordType.eKeywordInputaccent2),
-		    new KeywordRec<InstrKeywordType>("inputaccent3", InstrKeywordType.eKeywordInputaccent3),
-		    new KeywordRec<InstrKeywordType>("inputaccent4", InstrKeywordType.eKeywordInputaccent4),
-		    new KeywordRec<InstrKeywordType>("inputaccent5", InstrKeywordType.eKeywordInputaccent5),
-		    new KeywordRec<InstrKeywordType>("inputaccent6", InstrKeywordType.eKeywordInputaccent6),
-		    new KeywordRec<InstrKeywordType>("inputaccent7", InstrKeywordType.eKeywordInputaccent7),
-		    new KeywordRec<InstrKeywordType>("inputaccent8", InstrKeywordType.eKeywordInputaccent8),
-		    new KeywordRec<InstrKeywordType>("inputscaling", InstrKeywordType.eKeywordInputscaling),
-		    new KeywordRec<InstrKeywordType>("inputscalingenvelope", InstrKeywordType.eKeywordInputscalingenvelope),
-		    new KeywordRec<InstrKeywordType>("inputscalinglfo", InstrKeywordType.eKeywordInputscalinglfo),
-		    new KeywordRec<InstrKeywordType>("instrument", InstrKeywordType.eKeywordInstrument),
-		    new KeywordRec<InstrKeywordType>("interpolate", InstrKeywordType.eKeywordInterpolate),
-		    new KeywordRec<InstrKeywordType>("inversemult", InstrKeywordType.eKeywordInversemult),
-		    new KeywordRec<InstrKeywordType>("latency", InstrKeywordType.eKeywordLatency),
-		    new KeywordRec<InstrKeywordType>("left", InstrKeywordType.eKeywordLeft),
-		    new KeywordRec<InstrKeywordType>("leftintoleft", InstrKeywordType.eKeywordLeftintoleft),
-		    new KeywordRec<InstrKeywordType>("leftintoright", InstrKeywordType.eKeywordLeftintoright),
-		    new KeywordRec<InstrKeywordType>("level", InstrKeywordType.eKeywordLevel),
-		    new KeywordRec<InstrKeywordType>("lfo", InstrKeywordType.eKeywordLfo),
-		    new KeywordRec<InstrKeywordType>("limitingexcess", InstrKeywordType.eKeywordLimitingexcess),
-		    new KeywordRec<InstrKeywordType>("limitingexcessaccent1", InstrKeywordType.eKeywordLimitingexcessaccent1),
-		    new KeywordRec<InstrKeywordType>("limitingexcessaccent2", InstrKeywordType.eKeywordLimitingexcessaccent2),
-		    new KeywordRec<InstrKeywordType>("limitingexcessaccent3", InstrKeywordType.eKeywordLimitingexcessaccent3),
-		    new KeywordRec<InstrKeywordType>("limitingexcessaccent4", InstrKeywordType.eKeywordLimitingexcessaccent4),
-		    new KeywordRec<InstrKeywordType>("limitingexcessaccent5", InstrKeywordType.eKeywordLimitingexcessaccent5),
-		    new KeywordRec<InstrKeywordType>("limitingexcessaccent6", InstrKeywordType.eKeywordLimitingexcessaccent6),
-		    new KeywordRec<InstrKeywordType>("limitingexcessaccent7", InstrKeywordType.eKeywordLimitingexcessaccent7),
-		    new KeywordRec<InstrKeywordType>("limitingexcessaccent8", InstrKeywordType.eKeywordLimitingexcessaccent8),
-		    new KeywordRec<InstrKeywordType>("limitingexcessenvelope", InstrKeywordType.eKeywordLimitingexcessenvelope),
-		    new KeywordRec<InstrKeywordType>("limitingexcesslfo", InstrKeywordType.eKeywordLimitingexcesslfo),
-		    new KeywordRec<InstrKeywordType>("linear", InstrKeywordType.eKeywordLinear),
-		    new KeywordRec<InstrKeywordType>("logarithmic", InstrKeywordType.eKeywordLogarithmic),
-		    new KeywordRec<InstrKeywordType>("loop", InstrKeywordType.eKeywordLoop),
-		    new KeywordRec<InstrKeywordType>("loudness", InstrKeywordType.eKeywordLoudness),
-		    new KeywordRec<InstrKeywordType>("loudnessenvelope", InstrKeywordType.eKeywordLoudnessenvelope),
-		    new KeywordRec<InstrKeywordType>("loudnesslfo", InstrKeywordType.eKeywordLoudnesslfo),
-		    new KeywordRec<InstrKeywordType>("lowpass", InstrKeywordType.eKeywordLowpass),
-		    new KeywordRec<InstrKeywordType>("lowpassfilter", InstrKeywordType.eKeywordLowpassfilter),
-		    new KeywordRec<InstrKeywordType>("lowshelfeq", InstrKeywordType.eKeywordLowshelfeq),
-		    new KeywordRec<InstrKeywordType>("max", InstrKeywordType.eKeywordMax),
-		    new KeywordRec<InstrKeywordType>("maxafter", InstrKeywordType.eKeywordMaxafter),
-		    new KeywordRec<InstrKeywordType>("maxbandcount", InstrKeywordType.eKeywordMaxbandcount),
-		    new KeywordRec<InstrKeywordType>("maxdelaytime", InstrKeywordType.eKeywordMaxdelaytime),
-		    new KeywordRec<InstrKeywordType>("min", InstrKeywordType.eKeywordMin),
-		    new KeywordRec<InstrKeywordType>("modulation", InstrKeywordType.eKeywordModulation),
-		    new KeywordRec<InstrKeywordType>("mono", InstrKeywordType.eKeywordMono),
-		    new KeywordRec<InstrKeywordType>("multiplicative", InstrKeywordType.eKeywordMultiplicative),
-		    new KeywordRec<InstrKeywordType>("network", InstrKeywordType.eKeywordNetwork),
-		    new KeywordRec<InstrKeywordType>("nlproc", InstrKeywordType.eKeywordNlproc),
-		    new KeywordRec<InstrKeywordType>("nodiscardunders", InstrKeywordType.eKeywordNodiscardunders),
-		    new KeywordRec<InstrKeywordType>("normalpower", InstrKeywordType.eKeywordNormalpower),
-		    new KeywordRec<InstrKeywordType>("normalpoweraccent1", InstrKeywordType.eKeywordNormalpoweraccent1),
-		    new KeywordRec<InstrKeywordType>("normalpoweraccent2", InstrKeywordType.eKeywordNormalpoweraccent2),
-		    new KeywordRec<InstrKeywordType>("normalpoweraccent3", InstrKeywordType.eKeywordNormalpoweraccent3),
-		    new KeywordRec<InstrKeywordType>("normalpoweraccent4", InstrKeywordType.eKeywordNormalpoweraccent4),
-		    new KeywordRec<InstrKeywordType>("normalpoweraccent5", InstrKeywordType.eKeywordNormalpoweraccent5),
-		    new KeywordRec<InstrKeywordType>("normalpoweraccent6", InstrKeywordType.eKeywordNormalpoweraccent6),
-		    new KeywordRec<InstrKeywordType>("normalpoweraccent7", InstrKeywordType.eKeywordNormalpoweraccent7),
-		    new KeywordRec<InstrKeywordType>("normalpoweraccent8", InstrKeywordType.eKeywordNormalpoweraccent8),
-		    new KeywordRec<InstrKeywordType>("normalpowerenvelope", InstrKeywordType.eKeywordNormalpowerenvelope),
-		    new KeywordRec<InstrKeywordType>("normalpowerlfo", InstrKeywordType.eKeywordNormalpowerlfo),
-		    new KeywordRec<InstrKeywordType>("null", InstrKeywordType.eKeywordNull),
-		    new KeywordRec<InstrKeywordType>("numbins", InstrKeywordType.eKeywordNumbins),
-		    new KeywordRec<InstrKeywordType>("order", InstrKeywordType.eKeywordOrder),
-		    new KeywordRec<InstrKeywordType>("origin", InstrKeywordType.eKeywordOrigin),
-		    new KeywordRec<InstrKeywordType>("oscillator", InstrKeywordType.eKeywordOscillator),
-		    new KeywordRec<InstrKeywordType>("outputaccent1", InstrKeywordType.eKeywordOutputaccent1),
-		    new KeywordRec<InstrKeywordType>("outputaccent2", InstrKeywordType.eKeywordOutputaccent2),
-		    new KeywordRec<InstrKeywordType>("outputaccent3", InstrKeywordType.eKeywordOutputaccent3),
-		    new KeywordRec<InstrKeywordType>("outputaccent4", InstrKeywordType.eKeywordOutputaccent4),
-		    new KeywordRec<InstrKeywordType>("outputaccent5", InstrKeywordType.eKeywordOutputaccent5),
-		    new KeywordRec<InstrKeywordType>("outputaccent6", InstrKeywordType.eKeywordOutputaccent6),
-		    new KeywordRec<InstrKeywordType>("outputaccent7", InstrKeywordType.eKeywordOutputaccent7),
-		    new KeywordRec<InstrKeywordType>("outputaccent8", InstrKeywordType.eKeywordOutputaccent8),
-		    new KeywordRec<InstrKeywordType>("outputgain", InstrKeywordType.eKeywordOutputgain),
-		    new KeywordRec<InstrKeywordType>("outputgainenvelope", InstrKeywordType.eKeywordOutputgainenvelope),
-		    new KeywordRec<InstrKeywordType>("outputgainlfo", InstrKeywordType.eKeywordOutputgainlfo),
-		    new KeywordRec<InstrKeywordType>("outputscaling", InstrKeywordType.eKeywordOutputscaling),
-		    new KeywordRec<InstrKeywordType>("outputscalingenvelope", InstrKeywordType.eKeywordOutputscalingenvelope),
-		    new KeywordRec<InstrKeywordType>("outputscalinglfo", InstrKeywordType.eKeywordOutputscalinglfo),
-		    new KeywordRec<InstrKeywordType>("overlap", InstrKeywordType.eKeywordOverlap),
-		    new KeywordRec<InstrKeywordType>("param", InstrKeywordType.eKeywordParam),
-		    new KeywordRec<InstrKeywordType>("parameq", InstrKeywordType.eKeywordParameq),
-		    new KeywordRec<InstrKeywordType>("parameq2", InstrKeywordType.eKeywordParameq2),
-		    new KeywordRec<InstrKeywordType>("parameqold", InstrKeywordType.eKeywordParameqold),
-		    new KeywordRec<InstrKeywordType>("peak", InstrKeywordType.eKeywordPeak),
-		    new KeywordRec<InstrKeywordType>("peaklookahead", InstrKeywordType.eKeywordPeaklookahead),
-		    new KeywordRec<InstrKeywordType>("phaseadd", InstrKeywordType.eKeywordPhaseadd),
-		    new KeywordRec<InstrKeywordType>("phasemodulation", InstrKeywordType.eKeywordPhasemodulation),
-		    new KeywordRec<InstrKeywordType>("pitchcontrol", InstrKeywordType.eKeywordPitchcontrol),
-		    new KeywordRec<InstrKeywordType>("pluslinfuzz", InstrKeywordType.eKeywordPluslinfuzz),
-		    new KeywordRec<InstrKeywordType>("plusramp", InstrKeywordType.eKeywordPlusramp),
-		    new KeywordRec<InstrKeywordType>("plussine", InstrKeywordType.eKeywordPlussine),
-		    new KeywordRec<InstrKeywordType>("plussquare", InstrKeywordType.eKeywordPlussquare),
-		    new KeywordRec<InstrKeywordType>("plustriangle", InstrKeywordType.eKeywordPlustriangle),
-		    new KeywordRec<InstrKeywordType>("points", InstrKeywordType.eKeywordPoints),
-		    new KeywordRec<InstrKeywordType>("processedgain", InstrKeywordType.eKeywordProcessedgain),
-		    new KeywordRec<InstrKeywordType>("pulse", InstrKeywordType.eKeywordPulse),
-		    new KeywordRec<InstrKeywordType>("ramp", InstrKeywordType.eKeywordRamp),
-		    new KeywordRec<InstrKeywordType>("rate", InstrKeywordType.eKeywordRate),
-		    new KeywordRec<InstrKeywordType>("rateaccent1", InstrKeywordType.eKeywordRateaccent1),
-		    new KeywordRec<InstrKeywordType>("rateaccent2", InstrKeywordType.eKeywordRateaccent2),
-		    new KeywordRec<InstrKeywordType>("rateaccent3", InstrKeywordType.eKeywordRateaccent3),
-		    new KeywordRec<InstrKeywordType>("rateaccent4", InstrKeywordType.eKeywordRateaccent4),
-		    new KeywordRec<InstrKeywordType>("rateaccent5", InstrKeywordType.eKeywordRateaccent5),
-		    new KeywordRec<InstrKeywordType>("rateaccent6", InstrKeywordType.eKeywordRateaccent6),
-		    new KeywordRec<InstrKeywordType>("rateaccent7", InstrKeywordType.eKeywordRateaccent7),
-		    new KeywordRec<InstrKeywordType>("rateaccent8", InstrKeywordType.eKeywordRateaccent8),
-		    new KeywordRec<InstrKeywordType>("ratefreq", InstrKeywordType.eKeywordRatefreq),
-		    new KeywordRec<InstrKeywordType>("ratio", InstrKeywordType.eKeywordRatio),
-		    new KeywordRec<InstrKeywordType>("ratioaccent1", InstrKeywordType.eKeywordRatioaccent1),
-		    new KeywordRec<InstrKeywordType>("ratioaccent2", InstrKeywordType.eKeywordRatioaccent2),
-		    new KeywordRec<InstrKeywordType>("ratioaccent3", InstrKeywordType.eKeywordRatioaccent3),
-		    new KeywordRec<InstrKeywordType>("ratioaccent4", InstrKeywordType.eKeywordRatioaccent4),
-		    new KeywordRec<InstrKeywordType>("ratioaccent5", InstrKeywordType.eKeywordRatioaccent5),
-		    new KeywordRec<InstrKeywordType>("ratioaccent6", InstrKeywordType.eKeywordRatioaccent6),
-		    new KeywordRec<InstrKeywordType>("ratioaccent7", InstrKeywordType.eKeywordRatioaccent7),
-		    new KeywordRec<InstrKeywordType>("ratioaccent8", InstrKeywordType.eKeywordRatioaccent8),
-		    new KeywordRec<InstrKeywordType>("ratioenvelope", InstrKeywordType.eKeywordRatioenvelope),
-		    new KeywordRec<InstrKeywordType>("ratiolfo", InstrKeywordType.eKeywordRatiolfo),
-		    new KeywordRec<InstrKeywordType>("releasepoint", InstrKeywordType.eKeywordReleasepoint),
-		    new KeywordRec<InstrKeywordType>("releasepointnoskip", InstrKeywordType.eKeywordReleasepointnoskip),
-		    new KeywordRec<InstrKeywordType>("report", InstrKeywordType.eKeywordReport),
-		    new KeywordRec<InstrKeywordType>("resampler", InstrKeywordType.eKeywordResampler),
-		    new KeywordRec<InstrKeywordType>("reson", InstrKeywordType.eKeywordReson),
-		    new KeywordRec<InstrKeywordType>("resonantlowpass", InstrKeywordType.eKeywordResonantlowpass),
-		    new KeywordRec<InstrKeywordType>("resonantlowpass2", InstrKeywordType.eKeywordResonantlowpass2),
-		    new KeywordRec<InstrKeywordType>("right", InstrKeywordType.eKeywordRight),
-		    new KeywordRec<InstrKeywordType>("rightintoleft", InstrKeywordType.eKeywordRightintoleft),
-		    new KeywordRec<InstrKeywordType>("rightintoright", InstrKeywordType.eKeywordRightintoright),
-		    new KeywordRec<InstrKeywordType>("rms", InstrKeywordType.eKeywordRms),
-		    new KeywordRec<InstrKeywordType>("sample", InstrKeywordType.eKeywordSample),
-		    new KeywordRec<InstrKeywordType>("sampleandhold", InstrKeywordType.eKeywordSampleandhold),
-		    new KeywordRec<InstrKeywordType>("sampled", InstrKeywordType.eKeywordSampled),
-		    new KeywordRec<InstrKeywordType>("samplelist", InstrKeywordType.eKeywordSamplelist),
-		    new KeywordRec<InstrKeywordType>("scale", InstrKeywordType.eKeywordScale),
-		    new KeywordRec<InstrKeywordType>("scaleaccent1", InstrKeywordType.eKeywordScaleaccent1),
-		    new KeywordRec<InstrKeywordType>("scaleaccent2", InstrKeywordType.eKeywordScaleaccent2),
-		    new KeywordRec<InstrKeywordType>("scaleaccent3", InstrKeywordType.eKeywordScaleaccent3),
-		    new KeywordRec<InstrKeywordType>("scaleaccent4", InstrKeywordType.eKeywordScaleaccent4),
-		    new KeywordRec<InstrKeywordType>("scaleaccent5", InstrKeywordType.eKeywordScaleaccent5),
-		    new KeywordRec<InstrKeywordType>("scaleaccent6", InstrKeywordType.eKeywordScaleaccent6),
-		    new KeywordRec<InstrKeywordType>("scaleaccent7", InstrKeywordType.eKeywordScaleaccent7),
-		    new KeywordRec<InstrKeywordType>("scaleaccent8", InstrKeywordType.eKeywordScaleaccent8),
-		    new KeywordRec<InstrKeywordType>("scaleenvelope", InstrKeywordType.eKeywordScaleenvelope),
-		    new KeywordRec<InstrKeywordType>("scalelfo", InstrKeywordType.eKeywordScalelfo),
-		    new KeywordRec<InstrKeywordType>("scoreeffect", InstrKeywordType.eKeywordScoreeffect),
-		    new KeywordRec<InstrKeywordType>("sectioneffect", InstrKeywordType.eKeywordSectioneffect),
-		    new KeywordRec<InstrKeywordType>("signlinfuzz", InstrKeywordType.eKeywordSignlinfuzz),
-		    new KeywordRec<InstrKeywordType>("signramp", InstrKeywordType.eKeywordSignramp),
-		    new KeywordRec<InstrKeywordType>("signsine", InstrKeywordType.eKeywordSignsine),
-		    new KeywordRec<InstrKeywordType>("signsquare", InstrKeywordType.eKeywordSignsquare),
-		    new KeywordRec<InstrKeywordType>("signtriangle", InstrKeywordType.eKeywordSigntriangle),
-		    new KeywordRec<InstrKeywordType>("silence", InstrKeywordType.eKeywordSilence),
-		    new KeywordRec<InstrKeywordType>("slope", InstrKeywordType.eKeywordSlope),
-		    new KeywordRec<InstrKeywordType>("slopeaccent1", InstrKeywordType.eKeywordSlopeaccent1),
-		    new KeywordRec<InstrKeywordType>("slopeaccent2", InstrKeywordType.eKeywordSlopeaccent2),
-		    new KeywordRec<InstrKeywordType>("slopeaccent3", InstrKeywordType.eKeywordSlopeaccent3),
-		    new KeywordRec<InstrKeywordType>("slopeaccent4", InstrKeywordType.eKeywordSlopeaccent4),
-		    new KeywordRec<InstrKeywordType>("slopeaccent5", InstrKeywordType.eKeywordSlopeaccent5),
-		    new KeywordRec<InstrKeywordType>("slopeaccent6", InstrKeywordType.eKeywordSlopeaccent6),
-		    new KeywordRec<InstrKeywordType>("slopeaccent7", InstrKeywordType.eKeywordSlopeaccent7),
-		    new KeywordRec<InstrKeywordType>("slopeaccent8", InstrKeywordType.eKeywordSlopeaccent8),
-		    new KeywordRec<InstrKeywordType>("slopeenvelope", InstrKeywordType.eKeywordSlopeenvelope),
-		    new KeywordRec<InstrKeywordType>("slopelfo", InstrKeywordType.eKeywordSlopelfo),
-		    new KeywordRec<InstrKeywordType>("smoothedabsval", InstrKeywordType.eKeywordSmoothedabsval),
-		    new KeywordRec<InstrKeywordType>("smoothedrms", InstrKeywordType.eKeywordSmoothedrms),
-		    new KeywordRec<InstrKeywordType>("sourceaccent1", InstrKeywordType.eKeywordSourceaccent1),
-		    new KeywordRec<InstrKeywordType>("sourceaccent2", InstrKeywordType.eKeywordSourceaccent2),
-		    new KeywordRec<InstrKeywordType>("sourceaccent3", InstrKeywordType.eKeywordSourceaccent3),
-		    new KeywordRec<InstrKeywordType>("sourceaccent4", InstrKeywordType.eKeywordSourceaccent4),
-		    new KeywordRec<InstrKeywordType>("sourceaccent5", InstrKeywordType.eKeywordSourceaccent5),
-		    new KeywordRec<InstrKeywordType>("sourceaccent6", InstrKeywordType.eKeywordSourceaccent6),
-		    new KeywordRec<InstrKeywordType>("sourceaccent7", InstrKeywordType.eKeywordSourceaccent7),
-		    new KeywordRec<InstrKeywordType>("sourceaccent8", InstrKeywordType.eKeywordSourceaccent8),
-		    new KeywordRec<InstrKeywordType>("sourceenvelope", InstrKeywordType.eKeywordSourceenvelope),
-		    new KeywordRec<InstrKeywordType>("sourcelfo", InstrKeywordType.eKeywordSourcelfo),
-		    new KeywordRec<InstrKeywordType>("square", InstrKeywordType.eKeywordSquare),
-		    new KeywordRec<InstrKeywordType>("stereo", InstrKeywordType.eKeywordStereo),
-		    new KeywordRec<InstrKeywordType>("stereobias", InstrKeywordType.eKeywordStereobias),
-		    new KeywordRec<InstrKeywordType>("suppressinitialsilence", InstrKeywordType.eKeywordSuppressinitialsilence),
-		    new KeywordRec<InstrKeywordType>("surroundbias", InstrKeywordType.eKeywordSurroundbias),
-		    new KeywordRec<InstrKeywordType>("sustainpoint", InstrKeywordType.eKeywordSustainpoint),
-		    new KeywordRec<InstrKeywordType>("sustainpointnoskip", InstrKeywordType.eKeywordSustainpointnoskip),
-		    new KeywordRec<InstrKeywordType>("tap", InstrKeywordType.eKeywordTap),
-		    new KeywordRec<InstrKeywordType>("targetaccent1", InstrKeywordType.eKeywordTargetaccent1),
-		    new KeywordRec<InstrKeywordType>("targetaccent2", InstrKeywordType.eKeywordTargetaccent2),
-		    new KeywordRec<InstrKeywordType>("targetaccent3", InstrKeywordType.eKeywordTargetaccent3),
-		    new KeywordRec<InstrKeywordType>("targetaccent4", InstrKeywordType.eKeywordTargetaccent4),
-		    new KeywordRec<InstrKeywordType>("targetaccent5", InstrKeywordType.eKeywordTargetaccent5),
-		    new KeywordRec<InstrKeywordType>("targetaccent6", InstrKeywordType.eKeywordTargetaccent6),
-		    new KeywordRec<InstrKeywordType>("targetaccent7", InstrKeywordType.eKeywordTargetaccent7),
-		    new KeywordRec<InstrKeywordType>("targetaccent8", InstrKeywordType.eKeywordTargetaccent8),
-		    new KeywordRec<InstrKeywordType>("targetenvelope", InstrKeywordType.eKeywordTargetenvelope),
-		    new KeywordRec<InstrKeywordType>("targetlfo", InstrKeywordType.eKeywordTargetlfo),
-		    new KeywordRec<InstrKeywordType>("threshpower", InstrKeywordType.eKeywordThreshpower),
-		    new KeywordRec<InstrKeywordType>("threshpoweraccent1", InstrKeywordType.eKeywordThreshpoweraccent1),
-		    new KeywordRec<InstrKeywordType>("threshpoweraccent2", InstrKeywordType.eKeywordThreshpoweraccent2),
-		    new KeywordRec<InstrKeywordType>("threshpoweraccent3", InstrKeywordType.eKeywordThreshpoweraccent3),
-		    new KeywordRec<InstrKeywordType>("threshpoweraccent4", InstrKeywordType.eKeywordThreshpoweraccent4),
-		    new KeywordRec<InstrKeywordType>("threshpoweraccent5", InstrKeywordType.eKeywordThreshpoweraccent5),
-		    new KeywordRec<InstrKeywordType>("threshpoweraccent6", InstrKeywordType.eKeywordThreshpoweraccent6),
-		    new KeywordRec<InstrKeywordType>("threshpoweraccent7", InstrKeywordType.eKeywordThreshpoweraccent7),
-		    new KeywordRec<InstrKeywordType>("threshpoweraccent8", InstrKeywordType.eKeywordThreshpoweraccent8),
-		    new KeywordRec<InstrKeywordType>("threshpowerenvelope", InstrKeywordType.eKeywordThreshpowerenvelope),
-		    new KeywordRec<InstrKeywordType>("threshpowerlfo", InstrKeywordType.eKeywordThreshpowerlfo),
-		    new KeywordRec<InstrKeywordType>("to", InstrKeywordType.eKeywordTo),
-		    new KeywordRec<InstrKeywordType>("totalscaling", InstrKeywordType.eKeywordTotalscaling),
-		    new KeywordRec<InstrKeywordType>("trackeffect", InstrKeywordType.eKeywordTrackeffect),
-		    new KeywordRec<InstrKeywordType>("triangle", InstrKeywordType.eKeywordTriangle),
-		    new KeywordRec<InstrKeywordType>("truncate", InstrKeywordType.eKeywordTruncate),
-		    new KeywordRec<InstrKeywordType>("type", InstrKeywordType.eKeywordType),
-		    new KeywordRec<InstrKeywordType>("unitymidbandgain", InstrKeywordType.eKeywordUnitymidbandgain),
-		    new KeywordRec<InstrKeywordType>("unitynoisegain", InstrKeywordType.eKeywordUnitynoisegain),
-		    new KeywordRec<InstrKeywordType>("unityzerohertzgain", InstrKeywordType.eKeywordUnityzerohertzgain),
-		    new KeywordRec<InstrKeywordType>("updatefunc", InstrKeywordType.eKeywordUpdatefunc),
-		    new KeywordRec<InstrKeywordType>("usereffect", InstrKeywordType.eKeywordUsereffect),
-		    new KeywordRec<InstrKeywordType>("vocoder", InstrKeywordType.eKeywordVocoder),
-		    new KeywordRec<InstrKeywordType>("wave", InstrKeywordType.eKeywordWave),
-		    new KeywordRec<InstrKeywordType>("wavetable", InstrKeywordType.eKeywordWavetable),
-		    new KeywordRec<InstrKeywordType>("wavetableindex", InstrKeywordType.eKeywordWavetableindex),
-		    new KeywordRec<InstrKeywordType>("windowduration", InstrKeywordType.eKeywordWindowduration),
-		    new KeywordRec<InstrKeywordType>("zero", InstrKeywordType.eKeywordZero),
-	    };
+        {
+            new KeywordRec<InstrKeywordType>("absval", InstrKeywordType.eKeywordAbsval),
+            new KeywordRec<InstrKeywordType>("accent1", InstrKeywordType.eKeywordAccent1),
+            new KeywordRec<InstrKeywordType>("accent2", InstrKeywordType.eKeywordAccent2),
+            new KeywordRec<InstrKeywordType>("accent3", InstrKeywordType.eKeywordAccent3),
+            new KeywordRec<InstrKeywordType>("accent4", InstrKeywordType.eKeywordAccent4),
+            new KeywordRec<InstrKeywordType>("accent5", InstrKeywordType.eKeywordAccent5),
+            new KeywordRec<InstrKeywordType>("accent6", InstrKeywordType.eKeywordAccent6),
+            new KeywordRec<InstrKeywordType>("accent7", InstrKeywordType.eKeywordAccent7),
+            new KeywordRec<InstrKeywordType>("accent8", InstrKeywordType.eKeywordAccent8),
+            new KeywordRec<InstrKeywordType>("additive", InstrKeywordType.eKeywordAdditive),
+            new KeywordRec<InstrKeywordType>("ampaccent1", InstrKeywordType.eKeywordAmpaccent1),
+            new KeywordRec<InstrKeywordType>("ampaccent2", InstrKeywordType.eKeywordAmpaccent2),
+            new KeywordRec<InstrKeywordType>("ampaccent3", InstrKeywordType.eKeywordAmpaccent3),
+            new KeywordRec<InstrKeywordType>("ampaccent4", InstrKeywordType.eKeywordAmpaccent4),
+            new KeywordRec<InstrKeywordType>("ampaccent5", InstrKeywordType.eKeywordAmpaccent5),
+            new KeywordRec<InstrKeywordType>("ampaccent6", InstrKeywordType.eKeywordAmpaccent6),
+            new KeywordRec<InstrKeywordType>("ampaccent7", InstrKeywordType.eKeywordAmpaccent7),
+            new KeywordRec<InstrKeywordType>("ampaccent8", InstrKeywordType.eKeywordAmpaccent8),
+            new KeywordRec<InstrKeywordType>("ampenvelope", InstrKeywordType.eKeywordAmpenvelope),
+            new KeywordRec<InstrKeywordType>("ampfreq", InstrKeywordType.eKeywordAmpfreq),
+            new KeywordRec<InstrKeywordType>("amplfo", InstrKeywordType.eKeywordAmplfo),
+            new KeywordRec<InstrKeywordType>("analyzer", InstrKeywordType.eKeywordAnalyzer),
+            new KeywordRec<InstrKeywordType>("attackrate", InstrKeywordType.eKeywordAttackrate),
+            new KeywordRec<InstrKeywordType>("attackrateaccent1", InstrKeywordType.eKeywordAttackrateaccent1),
+            new KeywordRec<InstrKeywordType>("attackrateaccent2", InstrKeywordType.eKeywordAttackrateaccent2),
+            new KeywordRec<InstrKeywordType>("attackrateaccent3", InstrKeywordType.eKeywordAttackrateaccent3),
+            new KeywordRec<InstrKeywordType>("attackrateaccent4", InstrKeywordType.eKeywordAttackrateaccent4),
+            new KeywordRec<InstrKeywordType>("attackrateaccent5", InstrKeywordType.eKeywordAttackrateaccent5),
+            new KeywordRec<InstrKeywordType>("attackrateaccent6", InstrKeywordType.eKeywordAttackrateaccent6),
+            new KeywordRec<InstrKeywordType>("attackrateaccent7", InstrKeywordType.eKeywordAttackrateaccent7),
+            new KeywordRec<InstrKeywordType>("attackrateaccent8", InstrKeywordType.eKeywordAttackrateaccent8),
+            new KeywordRec<InstrKeywordType>("attackrateenvelope", InstrKeywordType.eKeywordAttackrateenvelope),
+            new KeywordRec<InstrKeywordType>("attackratelfo", InstrKeywordType.eKeywordAttackratelfo),
+            new KeywordRec<InstrKeywordType>("autoquiescence", InstrKeywordType.eKeywordAutoquiescence),
+            new KeywordRec<InstrKeywordType>("averageafter", InstrKeywordType.eKeywordAverageafter),
+            new KeywordRec<InstrKeywordType>("averagebefore", InstrKeywordType.eKeywordAveragebefore),
+            new KeywordRec<InstrKeywordType>("bandwidth", InstrKeywordType.eKeywordBandwidth),
+            new KeywordRec<InstrKeywordType>("bandwidthaccent1", InstrKeywordType.eKeywordBandwidthaccent1),
+            new KeywordRec<InstrKeywordType>("bandwidthaccent2", InstrKeywordType.eKeywordBandwidthaccent2),
+            new KeywordRec<InstrKeywordType>("bandwidthaccent3", InstrKeywordType.eKeywordBandwidthaccent3),
+            new KeywordRec<InstrKeywordType>("bandwidthaccent4", InstrKeywordType.eKeywordBandwidthaccent4),
+            new KeywordRec<InstrKeywordType>("bandwidthaccent5", InstrKeywordType.eKeywordBandwidthaccent5),
+            new KeywordRec<InstrKeywordType>("bandwidthaccent6", InstrKeywordType.eKeywordBandwidthaccent6),
+            new KeywordRec<InstrKeywordType>("bandwidthaccent7", InstrKeywordType.eKeywordBandwidthaccent7),
+            new KeywordRec<InstrKeywordType>("bandwidthaccent8", InstrKeywordType.eKeywordBandwidthaccent8),
+            new KeywordRec<InstrKeywordType>("bandwidthenvelope", InstrKeywordType.eKeywordBandwidthenvelope),
+            new KeywordRec<InstrKeywordType>("bandwidthlfo", InstrKeywordType.eKeywordBandwidthlfo),
+            new KeywordRec<InstrKeywordType>("bars", InstrKeywordType.eKeywordBars),
+            new KeywordRec<InstrKeywordType>("bistereo", InstrKeywordType.eKeywordBistereo),
+            new KeywordRec<InstrKeywordType>("broken", InstrKeywordType.eKeywordBroken),
+            new KeywordRec<InstrKeywordType>("butterworthbandpass", InstrKeywordType.eKeywordButterworthbandpass),
+            new KeywordRec<InstrKeywordType>("butterworthbandreject", InstrKeywordType.eKeywordButterworthbandreject),
+            new KeywordRec<InstrKeywordType>("butterworthhighpass", InstrKeywordType.eKeywordButterworthhighpass),
+            new KeywordRec<InstrKeywordType>("butterworthlowpass", InstrKeywordType.eKeywordButterworthlowpass),
+            new KeywordRec<InstrKeywordType>("center", InstrKeywordType.eKeywordCenter),
+            new KeywordRec<InstrKeywordType>("clamp", InstrKeywordType.eKeywordClamp),
+            new KeywordRec<InstrKeywordType>("compressor", InstrKeywordType.eKeywordCompressor),
+            new KeywordRec<InstrKeywordType>("constant", InstrKeywordType.eKeywordConstant),
+            new KeywordRec<InstrKeywordType>("convolver", InstrKeywordType.eKeywordConvolver),
+            new KeywordRec<InstrKeywordType>("datafunc", InstrKeywordType.eKeywordDatafunc),
+            new KeywordRec<InstrKeywordType>("decayrate", InstrKeywordType.eKeywordDecayrate),
+            new KeywordRec<InstrKeywordType>("decayrateaccent1", InstrKeywordType.eKeywordDecayrateaccent1),
+            new KeywordRec<InstrKeywordType>("decayrateaccent2", InstrKeywordType.eKeywordDecayrateaccent2),
+            new KeywordRec<InstrKeywordType>("decayrateaccent3", InstrKeywordType.eKeywordDecayrateaccent3),
+            new KeywordRec<InstrKeywordType>("decayrateaccent4", InstrKeywordType.eKeywordDecayrateaccent4),
+            new KeywordRec<InstrKeywordType>("decayrateaccent5", InstrKeywordType.eKeywordDecayrateaccent5),
+            new KeywordRec<InstrKeywordType>("decayrateaccent6", InstrKeywordType.eKeywordDecayrateaccent6),
+            new KeywordRec<InstrKeywordType>("decayrateaccent7", InstrKeywordType.eKeywordDecayrateaccent7),
+            new KeywordRec<InstrKeywordType>("decayrateaccent8", InstrKeywordType.eKeywordDecayrateaccent8),
+            new KeywordRec<InstrKeywordType>("decayrateenvelope", InstrKeywordType.eKeywordDecayrateenvelope),
+            new KeywordRec<InstrKeywordType>("decayratelfo", InstrKeywordType.eKeywordDecayratelfo),
+            new KeywordRec<InstrKeywordType>("decibels", InstrKeywordType.eKeywordDecibels),
+            new KeywordRec<InstrKeywordType>("defaultscaling", InstrKeywordType.eKeywordDefaultscaling),
+            new KeywordRec<InstrKeywordType>("delay", InstrKeywordType.eKeywordDelay),
+            new KeywordRec<InstrKeywordType>("delayline", InstrKeywordType.eKeywordDelayline),
+            new KeywordRec<InstrKeywordType>("directgain", InstrKeywordType.eKeywordDirectgain),
+            new KeywordRec<InstrKeywordType>("disabled", InstrKeywordType.eKeywordDisabled),
+            new KeywordRec<InstrKeywordType>("discard", InstrKeywordType.eKeywordDiscard),
+            new KeywordRec<InstrKeywordType>("discardunders", InstrKeywordType.eKeywordDiscardunders),
+            new KeywordRec<InstrKeywordType>("displacement", InstrKeywordType.eKeywordDisplacement),
+            new KeywordRec<InstrKeywordType>("effect", InstrKeywordType.eKeywordEffect),
+            new KeywordRec<InstrKeywordType>("envelope", InstrKeywordType.eKeywordEnvelope),
+            new KeywordRec<InstrKeywordType>("estimatepower", InstrKeywordType.eKeywordEstimatepower),
+            new KeywordRec<InstrKeywordType>("exponential", InstrKeywordType.eKeywordExponential),
+            new KeywordRec<InstrKeywordType>("filter", InstrKeywordType.eKeywordFilter),
+            new KeywordRec<InstrKeywordType>("filtercutoff", InstrKeywordType.eKeywordFiltercutoff),
+            new KeywordRec<InstrKeywordType>("filtercutoffaccent1", InstrKeywordType.eKeywordFiltercutoffaccent1),
+            new KeywordRec<InstrKeywordType>("filtercutoffaccent2", InstrKeywordType.eKeywordFiltercutoffaccent2),
+            new KeywordRec<InstrKeywordType>("filtercutoffaccent3", InstrKeywordType.eKeywordFiltercutoffaccent3),
+            new KeywordRec<InstrKeywordType>("filtercutoffaccent4", InstrKeywordType.eKeywordFiltercutoffaccent4),
+            new KeywordRec<InstrKeywordType>("filtercutoffaccent5", InstrKeywordType.eKeywordFiltercutoffaccent5),
+            new KeywordRec<InstrKeywordType>("filtercutoffaccent6", InstrKeywordType.eKeywordFiltercutoffaccent6),
+            new KeywordRec<InstrKeywordType>("filtercutoffaccent7", InstrKeywordType.eKeywordFiltercutoffaccent7),
+            new KeywordRec<InstrKeywordType>("filtercutoffaccent8", InstrKeywordType.eKeywordFiltercutoffaccent8),
+            new KeywordRec<InstrKeywordType>("filtercutoffenvelope", InstrKeywordType.eKeywordFiltercutoffenvelope),
+            new KeywordRec<InstrKeywordType>("filtercutofflfo", InstrKeywordType.eKeywordFiltercutofflfo),
+            new KeywordRec<InstrKeywordType>("fof", InstrKeywordType.eKeywordFof),
+            new KeywordRec<InstrKeywordType>("fofcompress", InstrKeywordType.eKeywordFofcompress),
+            new KeywordRec<InstrKeywordType>("fofexpand", InstrKeywordType.eKeywordFofexpand),
+            new KeywordRec<InstrKeywordType>("fofsamprate", InstrKeywordType.eKeywordFofsamprate),
+            new KeywordRec<InstrKeywordType>("fofsamprateenvelope", InstrKeywordType.eKeywordFofsamprateenvelope),
+            new KeywordRec<InstrKeywordType>("fofsampratelfo", InstrKeywordType.eKeywordFofsampratelfo),
+            new KeywordRec<InstrKeywordType>("formula", InstrKeywordType.eKeywordFormula),
+            new KeywordRec<InstrKeywordType>("freq", InstrKeywordType.eKeywordFreq),
+            new KeywordRec<InstrKeywordType>("freqaccent1", InstrKeywordType.eKeywordFreqaccent1),
+            new KeywordRec<InstrKeywordType>("freqaccent2", InstrKeywordType.eKeywordFreqaccent2),
+            new KeywordRec<InstrKeywordType>("freqaccent3", InstrKeywordType.eKeywordFreqaccent3),
+            new KeywordRec<InstrKeywordType>("freqaccent4", InstrKeywordType.eKeywordFreqaccent4),
+            new KeywordRec<InstrKeywordType>("freqaccent5", InstrKeywordType.eKeywordFreqaccent5),
+            new KeywordRec<InstrKeywordType>("freqaccent6", InstrKeywordType.eKeywordFreqaccent6),
+            new KeywordRec<InstrKeywordType>("freqaccent7", InstrKeywordType.eKeywordFreqaccent7),
+            new KeywordRec<InstrKeywordType>("freqaccent8", InstrKeywordType.eKeywordFreqaccent8),
+            new KeywordRec<InstrKeywordType>("freqadder", InstrKeywordType.eKeywordFreqadder),
+            new KeywordRec<InstrKeywordType>("freqdivisor", InstrKeywordType.eKeywordFreqdivisor),
+            new KeywordRec<InstrKeywordType>("freqenvelope", InstrKeywordType.eKeywordFreqenvelope),
+            new KeywordRec<InstrKeywordType>("freqlfo", InstrKeywordType.eKeywordFreqlfo),
+            new KeywordRec<InstrKeywordType>("freqmultiplier", InstrKeywordType.eKeywordFreqmultiplier),
+            new KeywordRec<InstrKeywordType>("frequencylfo", InstrKeywordType.eKeywordFrequencylfo),
+            new KeywordRec<InstrKeywordType>("gain", InstrKeywordType.eKeywordGain),
+            new KeywordRec<InstrKeywordType>("gainaccent1", InstrKeywordType.eKeywordGainaccent1),
+            new KeywordRec<InstrKeywordType>("gainaccent2", InstrKeywordType.eKeywordGainaccent2),
+            new KeywordRec<InstrKeywordType>("gainaccent3", InstrKeywordType.eKeywordGainaccent3),
+            new KeywordRec<InstrKeywordType>("gainaccent4", InstrKeywordType.eKeywordGainaccent4),
+            new KeywordRec<InstrKeywordType>("gainaccent5", InstrKeywordType.eKeywordGainaccent5),
+            new KeywordRec<InstrKeywordType>("gainaccent6", InstrKeywordType.eKeywordGainaccent6),
+            new KeywordRec<InstrKeywordType>("gainaccent7", InstrKeywordType.eKeywordGainaccent7),
+            new KeywordRec<InstrKeywordType>("gainaccent8", InstrKeywordType.eKeywordGainaccent8),
+            new KeywordRec<InstrKeywordType>("gainenvelope", InstrKeywordType.eKeywordGainenvelope),
+            new KeywordRec<InstrKeywordType>("gainlfo", InstrKeywordType.eKeywordGainlfo),
+            new KeywordRec<InstrKeywordType>("good", InstrKeywordType.eKeywordGood),
+            new KeywordRec<InstrKeywordType>("halfsteps", InstrKeywordType.eKeywordHalfsteps),
+            new KeywordRec<InstrKeywordType>("hertz", InstrKeywordType.eKeywordHertz),
+            new KeywordRec<InstrKeywordType>("highpass", InstrKeywordType.eKeywordHighpass),
+            new KeywordRec<InstrKeywordType>("highshelfeq", InstrKeywordType.eKeywordHighshelfeq),
+            new KeywordRec<InstrKeywordType>("histogram", InstrKeywordType.eKeywordHistogram),
+            new KeywordRec<InstrKeywordType>("ideallowpass", InstrKeywordType.eKeywordIdeallowpass),
+            new KeywordRec<InstrKeywordType>("indexaccent1", InstrKeywordType.eKeywordIndexaccent1),
+            new KeywordRec<InstrKeywordType>("indexaccent2", InstrKeywordType.eKeywordIndexaccent2),
+            new KeywordRec<InstrKeywordType>("indexaccent3", InstrKeywordType.eKeywordIndexaccent3),
+            new KeywordRec<InstrKeywordType>("indexaccent4", InstrKeywordType.eKeywordIndexaccent4),
+            new KeywordRec<InstrKeywordType>("indexaccent5", InstrKeywordType.eKeywordIndexaccent5),
+            new KeywordRec<InstrKeywordType>("indexaccent6", InstrKeywordType.eKeywordIndexaccent6),
+            new KeywordRec<InstrKeywordType>("indexaccent7", InstrKeywordType.eKeywordIndexaccent7),
+            new KeywordRec<InstrKeywordType>("indexaccent8", InstrKeywordType.eKeywordIndexaccent8),
+            new KeywordRec<InstrKeywordType>("indexenvelope", InstrKeywordType.eKeywordIndexenvelope),
+            new KeywordRec<InstrKeywordType>("indexlfo", InstrKeywordType.eKeywordIndexlfo),
+            new KeywordRec<InstrKeywordType>("initfunc", InstrKeywordType.eKeywordInitfunc),
+            new KeywordRec<InstrKeywordType>("inputaccent1", InstrKeywordType.eKeywordInputaccent1),
+            new KeywordRec<InstrKeywordType>("inputaccent2", InstrKeywordType.eKeywordInputaccent2),
+            new KeywordRec<InstrKeywordType>("inputaccent3", InstrKeywordType.eKeywordInputaccent3),
+            new KeywordRec<InstrKeywordType>("inputaccent4", InstrKeywordType.eKeywordInputaccent4),
+            new KeywordRec<InstrKeywordType>("inputaccent5", InstrKeywordType.eKeywordInputaccent5),
+            new KeywordRec<InstrKeywordType>("inputaccent6", InstrKeywordType.eKeywordInputaccent6),
+            new KeywordRec<InstrKeywordType>("inputaccent7", InstrKeywordType.eKeywordInputaccent7),
+            new KeywordRec<InstrKeywordType>("inputaccent8", InstrKeywordType.eKeywordInputaccent8),
+            new KeywordRec<InstrKeywordType>("inputscaling", InstrKeywordType.eKeywordInputscaling),
+            new KeywordRec<InstrKeywordType>("inputscalingenvelope", InstrKeywordType.eKeywordInputscalingenvelope),
+            new KeywordRec<InstrKeywordType>("inputscalinglfo", InstrKeywordType.eKeywordInputscalinglfo),
+            new KeywordRec<InstrKeywordType>("instrument", InstrKeywordType.eKeywordInstrument),
+            new KeywordRec<InstrKeywordType>("interpolate", InstrKeywordType.eKeywordInterpolate),
+            new KeywordRec<InstrKeywordType>("inversemult", InstrKeywordType.eKeywordInversemult),
+            new KeywordRec<InstrKeywordType>("latency", InstrKeywordType.eKeywordLatency),
+            new KeywordRec<InstrKeywordType>("left", InstrKeywordType.eKeywordLeft),
+            new KeywordRec<InstrKeywordType>("leftintoleft", InstrKeywordType.eKeywordLeftintoleft),
+            new KeywordRec<InstrKeywordType>("leftintoright", InstrKeywordType.eKeywordLeftintoright),
+            new KeywordRec<InstrKeywordType>("level", InstrKeywordType.eKeywordLevel),
+            new KeywordRec<InstrKeywordType>("lfo", InstrKeywordType.eKeywordLfo),
+            new KeywordRec<InstrKeywordType>("limitingexcess", InstrKeywordType.eKeywordLimitingexcess),
+            new KeywordRec<InstrKeywordType>("limitingexcessaccent1", InstrKeywordType.eKeywordLimitingexcessaccent1),
+            new KeywordRec<InstrKeywordType>("limitingexcessaccent2", InstrKeywordType.eKeywordLimitingexcessaccent2),
+            new KeywordRec<InstrKeywordType>("limitingexcessaccent3", InstrKeywordType.eKeywordLimitingexcessaccent3),
+            new KeywordRec<InstrKeywordType>("limitingexcessaccent4", InstrKeywordType.eKeywordLimitingexcessaccent4),
+            new KeywordRec<InstrKeywordType>("limitingexcessaccent5", InstrKeywordType.eKeywordLimitingexcessaccent5),
+            new KeywordRec<InstrKeywordType>("limitingexcessaccent6", InstrKeywordType.eKeywordLimitingexcessaccent6),
+            new KeywordRec<InstrKeywordType>("limitingexcessaccent7", InstrKeywordType.eKeywordLimitingexcessaccent7),
+            new KeywordRec<InstrKeywordType>("limitingexcessaccent8", InstrKeywordType.eKeywordLimitingexcessaccent8),
+            new KeywordRec<InstrKeywordType>("limitingexcessenvelope", InstrKeywordType.eKeywordLimitingexcessenvelope),
+            new KeywordRec<InstrKeywordType>("limitingexcesslfo", InstrKeywordType.eKeywordLimitingexcesslfo),
+            new KeywordRec<InstrKeywordType>("linear", InstrKeywordType.eKeywordLinear),
+            new KeywordRec<InstrKeywordType>("logarithmic", InstrKeywordType.eKeywordLogarithmic),
+            new KeywordRec<InstrKeywordType>("loop", InstrKeywordType.eKeywordLoop),
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            new KeywordRec<InstrKeywordType>("loopenvelope", InstrKeywordType.eKeywordLoopenvelope),
+#endif
+            new KeywordRec<InstrKeywordType>("loudness", InstrKeywordType.eKeywordLoudness),
+            new KeywordRec<InstrKeywordType>("loudnessenvelope", InstrKeywordType.eKeywordLoudnessenvelope),
+            new KeywordRec<InstrKeywordType>("loudnesslfo", InstrKeywordType.eKeywordLoudnesslfo),
+            new KeywordRec<InstrKeywordType>("lowpass", InstrKeywordType.eKeywordLowpass),
+            new KeywordRec<InstrKeywordType>("lowpassfilter", InstrKeywordType.eKeywordLowpassfilter),
+            new KeywordRec<InstrKeywordType>("lowshelfeq", InstrKeywordType.eKeywordLowshelfeq),
+            new KeywordRec<InstrKeywordType>("max", InstrKeywordType.eKeywordMax),
+            new KeywordRec<InstrKeywordType>("maxafter", InstrKeywordType.eKeywordMaxafter),
+            new KeywordRec<InstrKeywordType>("maxbandcount", InstrKeywordType.eKeywordMaxbandcount),
+            new KeywordRec<InstrKeywordType>("maxdelaytime", InstrKeywordType.eKeywordMaxdelaytime),
+            new KeywordRec<InstrKeywordType>("min", InstrKeywordType.eKeywordMin),
+            new KeywordRec<InstrKeywordType>("minsamplingrate", InstrKeywordType.eKeywordMinsamplingrate),
+            new KeywordRec<InstrKeywordType>("modulation", InstrKeywordType.eKeywordModulation),
+            new KeywordRec<InstrKeywordType>("mono", InstrKeywordType.eKeywordMono),
+            new KeywordRec<InstrKeywordType>("multiplicative", InstrKeywordType.eKeywordMultiplicative),
+            new KeywordRec<InstrKeywordType>("network", InstrKeywordType.eKeywordNetwork),
+            new KeywordRec<InstrKeywordType>("nlproc", InstrKeywordType.eKeywordNlproc),
+            new KeywordRec<InstrKeywordType>("nodiscardunders", InstrKeywordType.eKeywordNodiscardunders),
+            new KeywordRec<InstrKeywordType>("normalpower", InstrKeywordType.eKeywordNormalpower),
+            new KeywordRec<InstrKeywordType>("normalpoweraccent1", InstrKeywordType.eKeywordNormalpoweraccent1),
+            new KeywordRec<InstrKeywordType>("normalpoweraccent2", InstrKeywordType.eKeywordNormalpoweraccent2),
+            new KeywordRec<InstrKeywordType>("normalpoweraccent3", InstrKeywordType.eKeywordNormalpoweraccent3),
+            new KeywordRec<InstrKeywordType>("normalpoweraccent4", InstrKeywordType.eKeywordNormalpoweraccent4),
+            new KeywordRec<InstrKeywordType>("normalpoweraccent5", InstrKeywordType.eKeywordNormalpoweraccent5),
+            new KeywordRec<InstrKeywordType>("normalpoweraccent6", InstrKeywordType.eKeywordNormalpoweraccent6),
+            new KeywordRec<InstrKeywordType>("normalpoweraccent7", InstrKeywordType.eKeywordNormalpoweraccent7),
+            new KeywordRec<InstrKeywordType>("normalpoweraccent8", InstrKeywordType.eKeywordNormalpoweraccent8),
+            new KeywordRec<InstrKeywordType>("normalpowerenvelope", InstrKeywordType.eKeywordNormalpowerenvelope),
+            new KeywordRec<InstrKeywordType>("normalpowerlfo", InstrKeywordType.eKeywordNormalpowerlfo),
+            new KeywordRec<InstrKeywordType>("null", InstrKeywordType.eKeywordNull),
+            new KeywordRec<InstrKeywordType>("numbins", InstrKeywordType.eKeywordNumbins),
+            new KeywordRec<InstrKeywordType>("order", InstrKeywordType.eKeywordOrder),
+            new KeywordRec<InstrKeywordType>("origin", InstrKeywordType.eKeywordOrigin),
+            new KeywordRec<InstrKeywordType>("oscillator", InstrKeywordType.eKeywordOscillator),
+            new KeywordRec<InstrKeywordType>("outputaccent1", InstrKeywordType.eKeywordOutputaccent1),
+            new KeywordRec<InstrKeywordType>("outputaccent2", InstrKeywordType.eKeywordOutputaccent2),
+            new KeywordRec<InstrKeywordType>("outputaccent3", InstrKeywordType.eKeywordOutputaccent3),
+            new KeywordRec<InstrKeywordType>("outputaccent4", InstrKeywordType.eKeywordOutputaccent4),
+            new KeywordRec<InstrKeywordType>("outputaccent5", InstrKeywordType.eKeywordOutputaccent5),
+            new KeywordRec<InstrKeywordType>("outputaccent6", InstrKeywordType.eKeywordOutputaccent6),
+            new KeywordRec<InstrKeywordType>("outputaccent7", InstrKeywordType.eKeywordOutputaccent7),
+            new KeywordRec<InstrKeywordType>("outputaccent8", InstrKeywordType.eKeywordOutputaccent8),
+            new KeywordRec<InstrKeywordType>("outputgain", InstrKeywordType.eKeywordOutputgain),
+            new KeywordRec<InstrKeywordType>("outputgainenvelope", InstrKeywordType.eKeywordOutputgainenvelope),
+            new KeywordRec<InstrKeywordType>("outputgainlfo", InstrKeywordType.eKeywordOutputgainlfo),
+            new KeywordRec<InstrKeywordType>("outputscaling", InstrKeywordType.eKeywordOutputscaling),
+            new KeywordRec<InstrKeywordType>("outputscalingenvelope", InstrKeywordType.eKeywordOutputscalingenvelope),
+            new KeywordRec<InstrKeywordType>("outputscalinglfo", InstrKeywordType.eKeywordOutputscalinglfo),
+            new KeywordRec<InstrKeywordType>("overflow", InstrKeywordType.eKeywordOverflow),
+            new KeywordRec<InstrKeywordType>("overlap", InstrKeywordType.eKeywordOverlap),
+            new KeywordRec<InstrKeywordType>("oversamplingdisabled", InstrKeywordType.eKeywordOversamplingdisabled),
+            new KeywordRec<InstrKeywordType>("param", InstrKeywordType.eKeywordParam),
+            new KeywordRec<InstrKeywordType>("parameq", InstrKeywordType.eKeywordParameq),
+            new KeywordRec<InstrKeywordType>("parameq2", InstrKeywordType.eKeywordParameq2),
+            new KeywordRec<InstrKeywordType>("parameqold", InstrKeywordType.eKeywordParameqold),
+            new KeywordRec<InstrKeywordType>("peak", InstrKeywordType.eKeywordPeak),
+            new KeywordRec<InstrKeywordType>("peaklookahead", InstrKeywordType.eKeywordPeaklookahead),
+            new KeywordRec<InstrKeywordType>("phaseadd", InstrKeywordType.eKeywordPhaseadd),
+            new KeywordRec<InstrKeywordType>("phasemodulation", InstrKeywordType.eKeywordPhasemodulation),
+            new KeywordRec<InstrKeywordType>("pitchcontrol", InstrKeywordType.eKeywordPitchcontrol),
+            new KeywordRec<InstrKeywordType>("pluslinfuzz", InstrKeywordType.eKeywordPluslinfuzz),
+            new KeywordRec<InstrKeywordType>("plusramp", InstrKeywordType.eKeywordPlusramp),
+            new KeywordRec<InstrKeywordType>("plussine", InstrKeywordType.eKeywordPlussine),
+            new KeywordRec<InstrKeywordType>("plussquare", InstrKeywordType.eKeywordPlussquare),
+            new KeywordRec<InstrKeywordType>("plustriangle", InstrKeywordType.eKeywordPlustriangle),
+            new KeywordRec<InstrKeywordType>("points", InstrKeywordType.eKeywordPoints),
+            new KeywordRec<InstrKeywordType>("processedgain", InstrKeywordType.eKeywordProcessedgain),
+            new KeywordRec<InstrKeywordType>("pulse", InstrKeywordType.eKeywordPulse),
+            new KeywordRec<InstrKeywordType>("ramp", InstrKeywordType.eKeywordRamp),
+            new KeywordRec<InstrKeywordType>("rate", InstrKeywordType.eKeywordRate),
+            new KeywordRec<InstrKeywordType>("rateaccent1", InstrKeywordType.eKeywordRateaccent1),
+            new KeywordRec<InstrKeywordType>("rateaccent2", InstrKeywordType.eKeywordRateaccent2),
+            new KeywordRec<InstrKeywordType>("rateaccent3", InstrKeywordType.eKeywordRateaccent3),
+            new KeywordRec<InstrKeywordType>("rateaccent4", InstrKeywordType.eKeywordRateaccent4),
+            new KeywordRec<InstrKeywordType>("rateaccent5", InstrKeywordType.eKeywordRateaccent5),
+            new KeywordRec<InstrKeywordType>("rateaccent6", InstrKeywordType.eKeywordRateaccent6),
+            new KeywordRec<InstrKeywordType>("rateaccent7", InstrKeywordType.eKeywordRateaccent7),
+            new KeywordRec<InstrKeywordType>("rateaccent8", InstrKeywordType.eKeywordRateaccent8),
+            new KeywordRec<InstrKeywordType>("ratefreq", InstrKeywordType.eKeywordRatefreq),
+            new KeywordRec<InstrKeywordType>("ratio", InstrKeywordType.eKeywordRatio),
+            new KeywordRec<InstrKeywordType>("ratioaccent1", InstrKeywordType.eKeywordRatioaccent1),
+            new KeywordRec<InstrKeywordType>("ratioaccent2", InstrKeywordType.eKeywordRatioaccent2),
+            new KeywordRec<InstrKeywordType>("ratioaccent3", InstrKeywordType.eKeywordRatioaccent3),
+            new KeywordRec<InstrKeywordType>("ratioaccent4", InstrKeywordType.eKeywordRatioaccent4),
+            new KeywordRec<InstrKeywordType>("ratioaccent5", InstrKeywordType.eKeywordRatioaccent5),
+            new KeywordRec<InstrKeywordType>("ratioaccent6", InstrKeywordType.eKeywordRatioaccent6),
+            new KeywordRec<InstrKeywordType>("ratioaccent7", InstrKeywordType.eKeywordRatioaccent7),
+            new KeywordRec<InstrKeywordType>("ratioaccent8", InstrKeywordType.eKeywordRatioaccent8),
+            new KeywordRec<InstrKeywordType>("ratioenvelope", InstrKeywordType.eKeywordRatioenvelope),
+            new KeywordRec<InstrKeywordType>("ratiolfo", InstrKeywordType.eKeywordRatiolfo),
+            new KeywordRec<InstrKeywordType>("releasepoint", InstrKeywordType.eKeywordReleasepoint),
+            new KeywordRec<InstrKeywordType>("releasepointnoskip", InstrKeywordType.eKeywordReleasepointnoskip),
+            new KeywordRec<InstrKeywordType>("report", InstrKeywordType.eKeywordReport),
+            new KeywordRec<InstrKeywordType>("resampler", InstrKeywordType.eKeywordResampler),
+            new KeywordRec<InstrKeywordType>("reson", InstrKeywordType.eKeywordReson),
+            new KeywordRec<InstrKeywordType>("resonantlowpass", InstrKeywordType.eKeywordResonantlowpass),
+            new KeywordRec<InstrKeywordType>("resonantlowpass2", InstrKeywordType.eKeywordResonantlowpass2),
+            new KeywordRec<InstrKeywordType>("right", InstrKeywordType.eKeywordRight),
+            new KeywordRec<InstrKeywordType>("rightintoleft", InstrKeywordType.eKeywordRightintoleft),
+            new KeywordRec<InstrKeywordType>("rightintoright", InstrKeywordType.eKeywordRightintoright),
+            new KeywordRec<InstrKeywordType>("rms", InstrKeywordType.eKeywordRms),
+            new KeywordRec<InstrKeywordType>("sample", InstrKeywordType.eKeywordSample),
+            new KeywordRec<InstrKeywordType>("sampleandhold", InstrKeywordType.eKeywordSampleandhold),
+            new KeywordRec<InstrKeywordType>("sampled", InstrKeywordType.eKeywordSampled),
+            new KeywordRec<InstrKeywordType>("samplelist", InstrKeywordType.eKeywordSamplelist),
+            new KeywordRec<InstrKeywordType>("scale", InstrKeywordType.eKeywordScale),
+            new KeywordRec<InstrKeywordType>("scaleaccent1", InstrKeywordType.eKeywordScaleaccent1),
+            new KeywordRec<InstrKeywordType>("scaleaccent2", InstrKeywordType.eKeywordScaleaccent2),
+            new KeywordRec<InstrKeywordType>("scaleaccent3", InstrKeywordType.eKeywordScaleaccent3),
+            new KeywordRec<InstrKeywordType>("scaleaccent4", InstrKeywordType.eKeywordScaleaccent4),
+            new KeywordRec<InstrKeywordType>("scaleaccent5", InstrKeywordType.eKeywordScaleaccent5),
+            new KeywordRec<InstrKeywordType>("scaleaccent6", InstrKeywordType.eKeywordScaleaccent6),
+            new KeywordRec<InstrKeywordType>("scaleaccent7", InstrKeywordType.eKeywordScaleaccent7),
+            new KeywordRec<InstrKeywordType>("scaleaccent8", InstrKeywordType.eKeywordScaleaccent8),
+            new KeywordRec<InstrKeywordType>("scaleenvelope", InstrKeywordType.eKeywordScaleenvelope),
+            new KeywordRec<InstrKeywordType>("scalelfo", InstrKeywordType.eKeywordScalelfo),
+            new KeywordRec<InstrKeywordType>("scoreeffect", InstrKeywordType.eKeywordScoreeffect),
+            new KeywordRec<InstrKeywordType>("sectioneffect", InstrKeywordType.eKeywordSectioneffect),
+            new KeywordRec<InstrKeywordType>("signlinfuzz", InstrKeywordType.eKeywordSignlinfuzz),
+            new KeywordRec<InstrKeywordType>("signramp", InstrKeywordType.eKeywordSignramp),
+            new KeywordRec<InstrKeywordType>("signsine", InstrKeywordType.eKeywordSignsine),
+            new KeywordRec<InstrKeywordType>("signsquare", InstrKeywordType.eKeywordSignsquare),
+            new KeywordRec<InstrKeywordType>("signtriangle", InstrKeywordType.eKeywordSigntriangle),
+            new KeywordRec<InstrKeywordType>("silence", InstrKeywordType.eKeywordSilence),
+            new KeywordRec<InstrKeywordType>("slope", InstrKeywordType.eKeywordSlope),
+            new KeywordRec<InstrKeywordType>("slopeaccent1", InstrKeywordType.eKeywordSlopeaccent1),
+            new KeywordRec<InstrKeywordType>("slopeaccent2", InstrKeywordType.eKeywordSlopeaccent2),
+            new KeywordRec<InstrKeywordType>("slopeaccent3", InstrKeywordType.eKeywordSlopeaccent3),
+            new KeywordRec<InstrKeywordType>("slopeaccent4", InstrKeywordType.eKeywordSlopeaccent4),
+            new KeywordRec<InstrKeywordType>("slopeaccent5", InstrKeywordType.eKeywordSlopeaccent5),
+            new KeywordRec<InstrKeywordType>("slopeaccent6", InstrKeywordType.eKeywordSlopeaccent6),
+            new KeywordRec<InstrKeywordType>("slopeaccent7", InstrKeywordType.eKeywordSlopeaccent7),
+            new KeywordRec<InstrKeywordType>("slopeaccent8", InstrKeywordType.eKeywordSlopeaccent8),
+            new KeywordRec<InstrKeywordType>("slopeenvelope", InstrKeywordType.eKeywordSlopeenvelope),
+            new KeywordRec<InstrKeywordType>("slopelfo", InstrKeywordType.eKeywordSlopelfo),
+            new KeywordRec<InstrKeywordType>("smoothedabsval", InstrKeywordType.eKeywordSmoothedabsval),
+            new KeywordRec<InstrKeywordType>("smoothedrms", InstrKeywordType.eKeywordSmoothedrms),
+            new KeywordRec<InstrKeywordType>("sourceaccent1", InstrKeywordType.eKeywordSourceaccent1),
+            new KeywordRec<InstrKeywordType>("sourceaccent2", InstrKeywordType.eKeywordSourceaccent2),
+            new KeywordRec<InstrKeywordType>("sourceaccent3", InstrKeywordType.eKeywordSourceaccent3),
+            new KeywordRec<InstrKeywordType>("sourceaccent4", InstrKeywordType.eKeywordSourceaccent4),
+            new KeywordRec<InstrKeywordType>("sourceaccent5", InstrKeywordType.eKeywordSourceaccent5),
+            new KeywordRec<InstrKeywordType>("sourceaccent6", InstrKeywordType.eKeywordSourceaccent6),
+            new KeywordRec<InstrKeywordType>("sourceaccent7", InstrKeywordType.eKeywordSourceaccent7),
+            new KeywordRec<InstrKeywordType>("sourceaccent8", InstrKeywordType.eKeywordSourceaccent8),
+            new KeywordRec<InstrKeywordType>("sourceenvelope", InstrKeywordType.eKeywordSourceenvelope),
+            new KeywordRec<InstrKeywordType>("sourcelfo", InstrKeywordType.eKeywordSourcelfo),
+            new KeywordRec<InstrKeywordType>("square", InstrKeywordType.eKeywordSquare),
+            new KeywordRec<InstrKeywordType>("stereo", InstrKeywordType.eKeywordStereo),
+            new KeywordRec<InstrKeywordType>("stereobias", InstrKeywordType.eKeywordStereobias),
+            new KeywordRec<InstrKeywordType>("suppressinitialsilence", InstrKeywordType.eKeywordSuppressinitialsilence),
+            new KeywordRec<InstrKeywordType>("surroundbias", InstrKeywordType.eKeywordSurroundbias),
+            new KeywordRec<InstrKeywordType>("sustainpoint", InstrKeywordType.eKeywordSustainpoint),
+            new KeywordRec<InstrKeywordType>("sustainpointnoskip", InstrKeywordType.eKeywordSustainpointnoskip),
+            new KeywordRec<InstrKeywordType>("tap", InstrKeywordType.eKeywordTap),
+            new KeywordRec<InstrKeywordType>("targetaccent1", InstrKeywordType.eKeywordTargetaccent1),
+            new KeywordRec<InstrKeywordType>("targetaccent2", InstrKeywordType.eKeywordTargetaccent2),
+            new KeywordRec<InstrKeywordType>("targetaccent3", InstrKeywordType.eKeywordTargetaccent3),
+            new KeywordRec<InstrKeywordType>("targetaccent4", InstrKeywordType.eKeywordTargetaccent4),
+            new KeywordRec<InstrKeywordType>("targetaccent5", InstrKeywordType.eKeywordTargetaccent5),
+            new KeywordRec<InstrKeywordType>("targetaccent6", InstrKeywordType.eKeywordTargetaccent6),
+            new KeywordRec<InstrKeywordType>("targetaccent7", InstrKeywordType.eKeywordTargetaccent7),
+            new KeywordRec<InstrKeywordType>("targetaccent8", InstrKeywordType.eKeywordTargetaccent8),
+            new KeywordRec<InstrKeywordType>("targetenvelope", InstrKeywordType.eKeywordTargetenvelope),
+            new KeywordRec<InstrKeywordType>("targetlfo", InstrKeywordType.eKeywordTargetlfo),
+            new KeywordRec<InstrKeywordType>("threshpower", InstrKeywordType.eKeywordThreshpower),
+            new KeywordRec<InstrKeywordType>("threshpoweraccent1", InstrKeywordType.eKeywordThreshpoweraccent1),
+            new KeywordRec<InstrKeywordType>("threshpoweraccent2", InstrKeywordType.eKeywordThreshpoweraccent2),
+            new KeywordRec<InstrKeywordType>("threshpoweraccent3", InstrKeywordType.eKeywordThreshpoweraccent3),
+            new KeywordRec<InstrKeywordType>("threshpoweraccent4", InstrKeywordType.eKeywordThreshpoweraccent4),
+            new KeywordRec<InstrKeywordType>("threshpoweraccent5", InstrKeywordType.eKeywordThreshpoweraccent5),
+            new KeywordRec<InstrKeywordType>("threshpoweraccent6", InstrKeywordType.eKeywordThreshpoweraccent6),
+            new KeywordRec<InstrKeywordType>("threshpoweraccent7", InstrKeywordType.eKeywordThreshpoweraccent7),
+            new KeywordRec<InstrKeywordType>("threshpoweraccent8", InstrKeywordType.eKeywordThreshpoweraccent8),
+            new KeywordRec<InstrKeywordType>("threshpowerenvelope", InstrKeywordType.eKeywordThreshpowerenvelope),
+            new KeywordRec<InstrKeywordType>("threshpowerlfo", InstrKeywordType.eKeywordThreshpowerlfo),
+            new KeywordRec<InstrKeywordType>("to", InstrKeywordType.eKeywordTo),
+            new KeywordRec<InstrKeywordType>("totalscaling", InstrKeywordType.eKeywordTotalscaling),
+            new KeywordRec<InstrKeywordType>("trackeffect", InstrKeywordType.eKeywordTrackeffect),
+            new KeywordRec<InstrKeywordType>("triangle", InstrKeywordType.eKeywordTriangle),
+            new KeywordRec<InstrKeywordType>("truncate", InstrKeywordType.eKeywordTruncate),
+            new KeywordRec<InstrKeywordType>("type", InstrKeywordType.eKeywordType),
+            new KeywordRec<InstrKeywordType>("unitymidbandgain", InstrKeywordType.eKeywordUnitymidbandgain),
+            new KeywordRec<InstrKeywordType>("unitynoisegain", InstrKeywordType.eKeywordUnitynoisegain),
+            new KeywordRec<InstrKeywordType>("unityzerohertzgain", InstrKeywordType.eKeywordUnityzerohertzgain),
+            new KeywordRec<InstrKeywordType>("updatefunc", InstrKeywordType.eKeywordUpdatefunc),
+            new KeywordRec<InstrKeywordType>("usereffect", InstrKeywordType.eKeywordUsereffect),
+            new KeywordRec<InstrKeywordType>("vocoder", InstrKeywordType.eKeywordVocoder),
+            new KeywordRec<InstrKeywordType>("wave", InstrKeywordType.eKeywordWave),
+            new KeywordRec<InstrKeywordType>("wavetable", InstrKeywordType.eKeywordWavetable),
+            new KeywordRec<InstrKeywordType>("wavetableindex", InstrKeywordType.eKeywordWavetableindex),
+            new KeywordRec<InstrKeywordType>("windowduration", InstrKeywordType.eKeywordWindowduration),
+            new KeywordRec<InstrKeywordType>("wrap", InstrKeywordType.eKeywordWrap),
+            new KeywordRec<InstrKeywordType>("zero", InstrKeywordType.eKeywordZero),
+        };
 
         /* error table entry structure */
         public struct InstrErrorRec
@@ -842,860 +856,877 @@ namespace OutOfPhase
         }
 
         private static readonly InstrErrorRec[] InstrErrors = new InstrErrorRec[]
-	    {
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrNoError,
-			    "No error"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrUnexpectedInput,
-			    "Illegal characters beyond end of input"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInstrument,
-			    "Expected 'instrument'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOpenParen,
-			    "Expected '('"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedCloseParen,
-			    "Expected ')'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSemicolon,
-			    "Expected ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInstrumentMember,
-			    "Expected 'loudness', 'frequencylfo', 'oscillator', 'effect', " +
-			    "or 'trackeffect'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInstrLoudness,
-			    "Instrument parameter 'loudness' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNumber,
-			    "Expected a number"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedStringOrIdentifier,
-			    "Expected a string or identifier"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLFOMember,
-			    "Expected 'freqenvelope', 'ampenvelope', 'oscillator', 'modulation', " +
-			    "'linear', 'exponential', 'freqlfo', 'amplfo', 'lowpassfilter', " +
-			    "or 'sampleandhold'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOFreqEnvelope,
-			    "LFO parameter 'freqenvelope' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOAmpEnvelope,
-			    "LFO parameter 'ampenvelope' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOOscillatorType,
-			    "LFO parameter 'oscillator' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLFOOscillatorType,
-			    "Expected 'constant', 'signsine', 'plussine', 'signtriangle', "  +
-			    "'plustriangle', 'signsquare', 'plussquare', 'signramp', 'plusramp', " +
-			    "'signlinfuzz', 'pluslinfuzz', or 'wavetable'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOModulationType,
-			    "LFO parameter 'modulation' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOAddingMode,
-			    "LFO adding mode ('linear' or 'exponential') has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLFOModulationType,
-			    "Expected 'additive', 'multiplicative', or 'inversemult'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOscillatorMember,
-			    "Expected 'type', 'samplelist', 'loudness', " +
-			    "'freqmultiplier', 'freqdivisor', 'freqadder', " +
-			    "'loudnessenvelope', 'loudnesslfo', 'indexenvelope', 'indexlfo', " +
-			    "'stereobias', 'displacement', 'frequencylfo', 'fofsamprate', " +
-			    "'fofcompress', 'fofexpand', 'fofsamprateenvelope', or " +
-			    "'fofsampratelfo'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscType,
-			    "Oscillator parameter 'type' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscSampleList,
-			    "Oscillator parameter 'samplelist' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscLoudness,
-			    "Oscillator parameter 'loudness' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFreqMultiplier,
-			    "Oscillator parameter 'freqmultiplier' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFreqDivisor,
-			    "Oscillator parameter 'freqdivisor' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscLoudnessEnvelope,
-			    "Oscillator parameter 'loudnessenvelope' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscIndexEnvelope,
-			    "Oscillator parameter 'indexenvelope' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOscType,
-			    "Expected 'sampled', 'wavetable', 'pulse', 'ramp', 'fof', or 'phasemodulation'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInteger,
-			    "Expected an integer"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEnvelopeMember,
-			    "Expected 'totalscaling', 'points', 'pitchcontrol', or 'formula'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvTotalScaling,
-			    "Envelope parameter 'totalscaling' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvFormula,
-			    "Envelope paramater formula has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPoints,
-			    "Envelope parameter 'points' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDelayOrOrigin,
-			    "Expected 'delay' or 'origin'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLevelOrScale,
-			    "Expected 'level' or 'scale'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEnvPointMember,
-			    "Expected 'sustainpoint', 'sustainpointnoskip', 'releasepoint', " +
-			    "'releasepointnoskip', 'ampaccent[1-8]', 'ampfreq', 'rateaccent[1-8]', " +
-			    "'ratefreq', 'exponential', or 'linear'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIntBetween1And3,
-			    "Expected an integer in the range [1..3]"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrEnvSustainPointAlreadyDefined,
-			    "That envelope sustain point has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent1,
-			    "Envelope parameter 'ampaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent2,
-			    "Envelope parameter 'ampaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent3,
-			    "Envelope parameter 'ampaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent4,
-			    "Envelope parameter 'ampaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent5,
-			    "Envelope parameter 'ampaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent6,
-			    "Envelope parameter 'ampaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent7,
-			    "Envelope parameter 'ampaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent8,
-			    "Envelope parameter 'ampaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpFreq,
-			    "Envelope parameter 'ampfreq' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent1,
-			    "Envelope parameter 'rateaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent2,
-			    "Envelope parameter 'rateaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent3,
-			    "Envelope parameter 'rateaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent4,
-			    "Envelope parameter 'rateaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent5,
-			    "Envelope parameter 'rateaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent6,
-			    "Envelope parameter 'rateaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent7,
-			    "Envelope parameter 'rateaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent8,
-			    "Envelope parameter 'rateaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateFreq,
-			    "Envelope parameter 'ratefreq' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointCurveSpec,
-			    "Envelope parameter 'exponential' or 'linear' has " +
-			    "already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscStereoBias,
-			    "Oscillator parameter 'stereobias' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscDisplacement,
-			    "Oscillator parameter 'displacement' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscSurroundBias,
-			    "Oscillator parameter 'surroundbias' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFreqAdder,
-			    "Oscillator parameter 'freqadder' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSquareOrTriangle,
-			    "Expected 'square' or 'triangle'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEffectName,
-			    "Expected 'delayline', 'nlproc', 'filter', 'analyzer', 'histogram', 'resampler', " +
-			    "'compressor', 'vocoder', 'ideallowpass', 'convolver', or 'usereffect'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDelayLineElem,
-			    "Expected 'tap' or 'maxdelaytime'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTapChannel,
-			    "Expected 'left', 'right', or 'mono'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTo,
-			    "Expected 'to'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedScale,
-			    "Expected 'scale'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTapAttr,
-			    "Expected 'sourceaccent[1-8]', 'targetaccent[1-8]', 'scaleaccent[1-8]', " +
-			    "'lowpass', or 'freqaccent[1-8]'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent1,
-			    "Delay tap parameter 'sourceaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent2,
-			    "Delay tap parameter 'sourceaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent3,
-			    "Delay tap parameter 'sourceaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent4,
-			    "Delay tap parameter 'sourceaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent1,
-			    "Delay tap parameter 'targetaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent2,
-			    "Delay tap parameter 'targetaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent3,
-			    "Delay tap parameter 'targetaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent4,
-			    "Delay tap parameter 'targetaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent1,
-			    "Delay tap parameter 'scaleaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent2,
-			    "Delay tap parameter 'scaleaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent3,
-			    "Delay tap parameter 'scaleaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent4,
-			    "Delay tap parameter 'scaleaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilter,
-			    "Delay tap filter has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleMaxDelayTime,
-			    "Delay line parameter 'maxdelaytime' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSlope,
-			    "Expected 'slope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedCenter,
-			    "Expected 'center'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSamplelist,
-			    "Expected 'samplelist'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEnvelope,
-			    "Expected 'envelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWavetable,
-			    "Expected 'wavetable'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInputscaling,
-			    "Expected 'inputscaling'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputscaling,
-			    "Expected 'outputscaling'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNLAttribute,
-			    "Expected 'inputaccent[1-8]', 'outputaccent[1-8]', or 'indexaccent[1-8]'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent1,
-			    "Parameter 'inputaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent2,
-			    "Parameter 'inputaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent3,
-			    "Parameter 'inputaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent4,
-			    "Parameter 'inputaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent1,
-			    "Parameter 'outputaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent2,
-			    "Parameter 'outputaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent3,
-			    "Parameter 'outputaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent4,
-			    "Parameter 'outputaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent1,
-			    "Parameter 'indexaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent2,
-			    "Parameter 'indexaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent3,
-			    "Parameter 'indexaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent4,
-			    "Parameter 'indexaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWavetableindex,
-			    "Expected 'wavetableindex'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterType,
-			    "Expected 'lowpass', 'highpass', 'reson', 'zero', 'butterworthlowpass', " +
-			    "'butterworthhighpass', 'butterworthbandpass', 'butterworthbandreject', " +
-			    "'parameqold', 'parameq2', 'resonantlowpass', 'resonantlowpass2', " +
-			    "'lowshelfeq', or 'highshelfeq'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFreq,
-			    "Expected 'freq'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBandwidth,
-			    "Expected 'bandwidth'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDefaultScaling,
-			    "Expected 'defaultscaling'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedResonScaling,
-			    "Expected 'defaultscaling', 'unitymidbandgain', or 'unitynoisegain'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedZeroScaling,
-			    "Expected 'defaultscaling' or 'unityzerohertzgain'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterAttr,
-			    "Expected 'freqaccent[1-8]', 'bandwidthaccent[1-8]', 'outputscaling', " +
-			    "'outputaccent[1-8]', or 'gainaccent[1-8]'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent1,
-			    "Parameter 'freqaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent2,
-			    "Parameter 'freqaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent3,
-			    "Parameter 'freqaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent4,
-			    "Parameter 'freqaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent1,
-			    "Parameter 'bandwidthaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent2,
-			    "Parameter 'bandwidthaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent3,
-			    "Parameter 'bandwidthaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent4,
-			    "Parameter 'bandwidthaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScaling,
-			    "Parameter 'outputscaling' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent1,
-			    "Parameter 'outputaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent2,
-			    "Parameter 'outputaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent3,
-			    "Parameter 'outputaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent4,
-			    "Parameter 'outputaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterChannel,
-			    "Expected 'left', 'right', 'mono', 'defaultscaling', " +
-			    "'unitymidbandgain', 'unitynoisegain', or 'unityzerohertzgain'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrNullFilterHasNoFreqAccentX,
-			    "Parameter 'freqaccent[1-8]' can't be specified for null filter"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrFilterHasNoBandwidthAccentX,
-			    "Parameter 'bandwidthaccent[1-8]' can only be specified for " +
-			    "reson, zero, butterworthbandpass, butterworthbandreject, " +
-			    "parameqold, parameq2, resonantlowpass, " +
-			    "lowshelfeq, and highshelfeq"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedScoreEffect,
-			    "Expected 'scoreeffect'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOscillatorEffect,
-			    "Expected 'delayline', 'nlproc', 'filter', 'analyzer', 'histogram', 'resampler', " +
-			    "'compressor', 'vocoder', 'ideallowpass', or 'usereffect'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSourceEnvelope,
-			    "Expected 'sourceenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTargetEnvelope,
-			    "Expected 'targetenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedScaleEnvelope,
-			    "Expected 'scaleenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSourceLfoOrTo,
-			    "Expected 'sourcelfo' or 'to'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTargetLfoOrScaleEnvelope,
-			    "Expected 'targetlfo' or 'scaleenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedScaleLfoCutoffOrSemicolon,
-			    "Expected 'scalelfo', 'lowpass', or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInputScalingEnvelope,
-			    "Expected 'inputscalingenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputScalingEnvelope,
-			    "Expected 'outputscalingenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIndexEnvelope,
-			    "Expected 'indexenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInputScalingLfoOrOutputScalingEnvelope,
-			    "Expected 'inputscalinglfo' or 'outputscalingenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputScalingLfoOrIndexEnvelope,
-			    "Expected 'outputscalinglfo' or 'indexenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIndexLfoOrSemicolon,
-			    "Expected 'indexlfo' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFreqEnvelope,
-			    "Expected 'freqenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBandwidthEnvelope,
-			    "Expected 'bandwidthenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFreqLfoOrScalingOrChannel,
-			    "Expected 'freqlfo', 'left', 'right', 'mono', 'defaultscaling', " +
-			    "'unitymidbandgain', 'unitynoisegain', 'unityzerohertzgain', " +
-			    "or 'bandwidthenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBandwidthLfoOrScalingOrChannel,
-			    "Expected 'bandwidthlfo', 'gainenvelope', 'left', 'right', 'mono', " +
-			    "'defaultscaling', 'unitymidbandgain', 'unitynoisegain', " +
-			    "or 'unityzerohertzgain'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputScalingLfoOrSemicolon,
-			    "Expected 'outputscalinglfo' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilter,
-			    "Expected 'filter' or ')'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFreqLfoOrSemicolon,
-			    "Expected 'freqlfo' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayLowpassFreq,
-			    "Delay tap parameter 'lowpass freq' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent1,
-			    "Delay tap parameter 'freqaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent2,
-			    "Delay tap parameter 'freqaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent3,
-			    "Delay tap parameter 'freqaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent4,
-			    "Delay tap parameter 'freqaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIndexLFOOrSemicolon,
-			    "Expected 'indexlfo' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultiplePitchControl,
-			    "Envelope parameter 'pitchcontrol' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGain,
-			    "Expected 'gain'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent1,
-			    "Parameter 'gainaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent2,
-			    "Parameter 'gainaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent3,
-			    "Parameter 'gainaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent4,
-			    "Parameter 'gainaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGainEnvelope,
-			    "Expected 'gainenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGainLfoOrScalingOrChannel,
-			    "Expected 'gainlfo', 'left', 'right', 'mono', " +
-			    "'defaultscaling', 'unitymidbandgain', 'unitynoisegain', " +
-			    "or 'unityzerohertzgain'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrFilterHasNoGainAccentX,
-			    "Parameter 'gainaccent[1-8]' can only be applied to parameq, parameq2, " +
-			    "resonantlowpass, or resonantlowpass2"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOrder,
-			    "Expected 'order'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrOrderMustBeNonNegativeEvenInteger,
-			    "Filter order must be a non-negative even integer"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRate,
-			    "Expected 'rate'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTruncateOrInterpolate,
-			    "Expected 'truncate' or 'interpolate'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent5,
-			    "Delay tap parameter 'sourceaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent6,
-			    "Delay tap parameter 'sourceaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent7,
-			    "Delay tap parameter 'sourceaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent8,
-			    "Delay tap parameter 'sourceaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent5,
-			    "Delay tap parameter 'targetaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent6,
-			    "Delay tap parameter 'targetaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent7,
-			    "Delay tap parameter 'targetaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent8,
-			    "Delay tap parameter 'targetaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent5,
-			    "Delay tap parameter 'scaleaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent6,
-			    "Delay tap parameter 'scaleaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent7,
-			    "Delay tap parameter 'scaleaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent8,
-			    "Delay tap parameter 'scaleaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent5,
-			    "Delay tap parameter 'freqaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent6,
-			    "Delay tap parameter 'freqaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent7,
-			    "Delay tap parameter 'freqaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent8,
-			    "Delay tap parameter 'freqaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent5,
-			    "Parameter 'inputaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent6,
-			    "Parameter 'inputaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent7,
-			    "Parameter 'inputaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent8,
-			    "Parameter 'inputaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent5,
-			    "Parameter 'outputaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent6,
-			    "Parameter 'outputaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent7,
-			    "Parameter 'outputaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent8,
-			    "Parameter 'outputaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent5,
-			    "Parameter 'indexaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent6,
-			    "Parameter 'indexaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent7,
-			    "Parameter 'indexaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent8,
-			    "Parameter 'indexaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent5,
-			    "Parameter 'freqaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent6,
-			    "Parameter 'freqaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent7,
-			    "Parameter 'freqaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent8,
-			    "Parameter 'freqaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent5,
-			    "Parameter 'bandwidthaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent6,
-			    "Parameter 'bandwidthaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent7,
-			    "Parameter 'bandwidthaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent8,
-			    "Parameter 'bandwidthaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent5,
-			    "Parameter 'outputaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent6,
-			    "Parameter 'outputaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent7,
-			    "Parameter 'outputaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent8,
-			    "Parameter 'outputaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent5,
-			    "Parameter 'gainaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent6,
-			    "Parameter 'gainaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent7,
-			    "Parameter 'gainaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent8,
-			    "Parameter 'gainaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFOFSampRate,
-			    "Oscillator parameter 'fofsamprate' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFOFCompress,
-			    "Oscillator parameter 'fofcompress' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOverlapOrDiscard,
-			    "Expected 'overlap' or 'discard'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFOFExpand,
-			    "Oscillator parameter 'fofexpand' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSilenceOrLoop,
-			    "Expected 'silence' or 'loop'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFOFSamplingRateEnvelope,
-			    "Oscillator parameter 'fofsamprateenvelope' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillator,
-			    "At least one 'oscillator' must be specified in an instrument"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredAmpEnvelope,
-			    "LFO definition requires 'ampenvelope' to be specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorType,
-			    "Oscillator definition requires 'type' to be specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorLoudnessEnvelope,
-			    "Oscillator definition requires 'loudnessenvelope' to be specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorSampleList,
-			    "Oscillator definition requires 'samplelist' to be specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorFOFSampRate,
-			    "FOF Oscillator definition requires 'fofsamprate' to be specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorFOFCompress,
-			    "FOF Oscillator definition requires 'fofcompress' to be specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorFOFExpand,
-			    "FOF Oscillator definition requires 'fofexpand' to be specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorFOFEnvelope,
-			    "FOF Oscillator definition requires 'fofsamprateenvelope' to be specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredDelayLineMaxTime,
-			    "Delay Line definition requires 'maxdelaytime' to be specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOFilter,
-			    "LFO parameter 'lowpassfilter' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNormalPower,
-			    "Expected 'normalpower'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedThreshPower,
-			    "Expected 'threshpower'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRatio,
-			    "Expected 'ratio'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterCutoff,
-			    "Expected 'filtercutoff'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDecayRate,
-			    "Expected 'decayrate'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAttackRate,
-			    "Expected 'attackrate'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLimitingExcess,
-			    "Expected 'limitingexcess'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedCompressorAttribute,
-			    "Expected 'inputaccent[1-8]', 'outputaccent[1-8]', " +
-			    "'normalpoweraccent[1-8]', 'threshpoweraccent[1-8]', 'ratioaccent[1-8]', " +
-			    "'filtercutoff[1-8]', 'decayrateaccent[1-8]', 'attackrateaccent[1-8]', " +
-			    "'limitingexcessaccent[1-8]', or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent1,
-			    "Compressor parameter 'normalpoweraccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent2,
-			    "Compressor parameter 'normalpoweraccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent3,
-			    "Compressor parameter 'normalpoweraccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent4,
-			    "Compressor parameter 'normalpoweraccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent5,
-			    "Compressor parameter 'normalpoweraccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent6,
-			    "Compressor parameter 'normalpoweraccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent7,
-			    "Compressor parameter 'normalpoweraccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent8,
-			    "Compressor parameter 'normalpoweraccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent1,
-			    "Compressor parameter 'threshpoweraccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent2,
-			    "Compressor parameter 'threshpoweraccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent3,
-			    "Compressor parameter 'threshpoweraccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent4,
-			    "Compressor parameter 'threshpoweraccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent5,
-			    "Compressor parameter 'threshpoweraccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent6,
-			    "Compressor parameter 'threshpoweraccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent7,
-			    "Compressor parameter 'threshpoweraccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent8,
-			    "Compressor parameter 'threshpoweraccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent1,
-			    "Compressor parameter 'ratioaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent2,
-			    "Compressor parameter 'ratioaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent3,
-			    "Compressor parameter 'ratioaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent4,
-			    "Compressor parameter 'ratioaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent5,
-			    "Compressor parameter 'ratioaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent6,
-			    "Compressor parameter 'ratioaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent7,
-			    "Compressor parameter 'ratioaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent8,
-			    "Compressor parameter 'ratioaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent1,
-			    "Compressor parameter 'filtercutoffaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent2,
-			    "Compressor parameter 'filtercutoffaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent3,
-			    "Compressor parameter 'filtercutoffaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent4,
-			    "Compressor parameter 'filtercutoffaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent5,
-			    "Compressor parameter 'filtercutoffaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent6,
-			    "Compressor parameter 'filtercutoffaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent7,
-			    "Compressor parameter 'filtercutoffaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent8,
-			    "Compressor parameter 'filtercutoffaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent1,
-			    "Compressor parameter 'decayrateaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent2,
-			    "Compressor parameter 'decayrateaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent3,
-			    "Compressor parameter 'decayrateaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent4,
-			    "Compressor parameter 'decayrateaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent5,
-			    "Compressor parameter 'decayrateaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent6,
-			    "Compressor parameter 'decayrateaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent7,
-			    "Compressor parameter 'decayrateaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent8,
-			    "Compressor parameter 'decayrateaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent1,
-			    "Compressor parameter 'attackrateaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent2,
-			    "Compressor parameter 'attackrateaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent3,
-			    "Compressor parameter 'attackrateaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent4,
-			    "Compressor parameter 'attackrateaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent5,
-			    "Compressor parameter 'attackrateaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent6,
-			    "Compressor parameter 'attackrateaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent7,
-			    "Compressor parameter 'attackrateaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent8,
-			    "Compressor parameter 'attackrateaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent1,
-			    "Compressor parameter 'limitingexcessaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent2,
-			    "Compressor parameter 'limitingexcessaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent3,
-			    "Compressor parameter 'limitingexcessaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent4,
-			    "Compressor parameter 'limitingexcessaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent5,
-			    "Compressor parameter 'limitingexcessaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent6,
-			    "Compressor parameter 'limitingexcessaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent7,
-			    "Compressor parameter 'limitingexcessaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent8,
-			    "Compressor parameter 'limitingexcessaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputScalingLfoOrNormalPowerEnvelope,
-			    "Expected 'outputscalinglfo' or 'normalpowerenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNormalPowerEnvelope,
-			    "Expected 'normalpowerenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNormalPowerLfoOrThreshPowerEnvelope,
-			    "Expected 'normalpowerlfo' or 'threshpowerenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedThreshPowerEnvelope,
-			    "Expected 'threshpowerenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedThreshPowerLfoOrRatioEnvelope,
-			    "Expected 'threshpowerlfo' or 'ratioenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRatioEnvelope,
-			    "Expected 'ratioenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRatioLfoOrFilterCutoffEnvelope,
-			    "Expected 'ratiolfo' or 'filtercutoffenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterCutoffEnvelope,
-			    "Expected 'filtercutoffenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterCutoffLfoOrDecayRateEnvelope,
-			    "Expected 'filtercutofflfo' or 'decayrateenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDecayRateEnvelope,
-			    "Expected 'decayrateenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDecayRateLfoOrAttackRateEnvelope,
-			    "Expected 'decayratelfo' or 'attackrateenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAttackRateEnvelope,
-			    "Expected 'attackrateenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAttackRateLfoOrLimitingExcessEnvelope,
-			    "Expected 'attackratelfo' or 'limitingexcessenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLimitingExcessEnvelope,
-			    "Expected 'limitingexcessenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLimitingExcessLfoOrSemicolon,
-			    "Expected 'limitingexcesslfo' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSemicolonOrEstimatePower,
-			    "Expected 'estimatepower' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSourceLfoOrToOrInterpolate,
-			    "Expected 'sourcelfo', 'to', or 'interpolate'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedToOrInterpolate,
-			    "Expected 'to' or 'interpolate'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEstimatePower,
-			    "Expected 'estimatepower'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAbsValOrRMS,
-			    "Expected 'absval' or 'rms'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAbsValRMSOrPeak,
-			    "Expected 'absval', 'rms', 'peak', or 'peaklookahead'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOSampleHolds,
-			    "Sample and hold has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOscillatorEffectOrDisabled,
-			    "Expected 'delayline', 'nlproc', 'filter', 'analyzer', 'histogram', 'resampler', " +
-			    "'compressor', 'vocoder', 'ideallowpass', 'convolver', 'usereffect', or 'disabled'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEffectNameOrDisabled,
-			    "Expected 'delayline', 'nlproc', 'filter', 'analyzer', 'histogram', 'resampler', " +
-			    "'compressor', 'vocoder', 'ideallowpass', 'convolver', 'usereffect', 'disabled', 'autoquiescence', " +
-			    "or 'suppressinitialsilence'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMaxBandMustBeOneOrGreater,
-			    "Maximum band count must be at least 1"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputgain,
-			    "Expected 'outputgain'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputaccentIndexaccentOrSemicolon,
-			    "Expected 'outputaccent[1-8]', 'indexaccent[1-8]', or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIndexlfoOrOutputgainenvelope,
-			    "Expected 'indexlfo' or 'outputgainenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputgainlfoOrSemicolon,
-			    "Expected 'outputgainlfo' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMaxbandcount,
-			    "Expected 'maxbandcount'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrOrderMustBePositiveOddInteger,
-			    "Order must be a positive odd integer"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSectionEffect,
-			    "Expected 'sectioneffect'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrParameqObsolete,
-			    "The 'parameq' filter is obsolete; use 'parameqold' to access that filter.  It is recommended to use 'parameq2' for new instruments."),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble,
-			    "The envelope's formula parameter must return type 'double'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrEnvFormulaSyntaxError,
-			    "Syntax error in envelope's formula"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedQuotedFormula,
-			    "Expected quoted formula"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDecibels,
-			    "Expected 'decibels'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWindowduration,
-			    "Expected 'windowduration'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedReportOrSemicolon,
-			    "Expected 'report' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrQuiescenceAlreadySpecified,
-			    "Channel option 'autoquiescence' was already specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrDecibelsMustBeGEZero,
-			    "Decibels must be zero or greater"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrWindowDurationMustBeGEZero,
-			    "Window duration must be zero or greater"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSlopeEnvelope,
-			    "Expected 'slopeenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSlopeLfoOrScalingOrChannel,
-			    "Expected 'slopelfo', 'gainenvelope', 'left', 'right', or 'mono'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrFilterHasNoSlopeAccentX,
-			    "Parameter 'slopeaccent[1-8]' can only be specified for " +
-			    "lowshelfeq and highshelfeq"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent1,
-			    "Parameter 'slopeaccent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent2,
-			    "Parameter 'slopeaccent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent3,
-			    "Parameter 'slopeaccent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent4,
-			    "Parameter 'slopeaccent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent5,
-			    "Parameter 'slopeaccent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent6,
-			    "Parameter 'slopeaccent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent7,
-			    "Parameter 'slopeaccent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent8,
-			    "Parameter 'slopeaccent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrRLP2OrderMustBe24Or6,
-			    "Order for resonantlowpass2 must be 2, 4, or 6"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrOnlyAllowedInScoreEffects,
-			    "The 'suppressinitialsilence' option is only allowed in score effects"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLeftRightAverageMax,
-			    "Expected 'left', 'right', 'averagebefore', 'averageafter', or 'maxafter'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAbsValOrSmoothedx,
-			    "Expected 'absval', 'smoothedabsval', or 'smoothedrms'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLogOrLin,
-			    "Expected 'logarithmic' or 'linear'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMin,
-			    "Expected 'min'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMax,
-			    "Expected 'max'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMinMustBePositiveForLog,
-			    "For log histogram, min must be positive"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMaxMustBeGreaterThanMin,
-			    "Max must be greater than min"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMinMustBeNonNegForLin,
-			    "For linear histogram, min must be at least zero"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNumbins,
-			    "Expected 'numbins'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMustHaveAtLeastOneBin,
-			    "Numbins must be at least 1"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBinMustBeInteger,
-			    "Numbins must be integer"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDiscardOrNoDiscard,
-			    "Expected 'discardunders' or 'nodiscardunders'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBars,
-			    "Expected 'bars'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBarsCantBeNegative,
-			    "Bars must be at least zero"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBarsMustBeInteger,
-			    "Bars must be integer"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNetworks,
-			    "Phase modulation oscillator parameter 'network' was already specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIdentifier,
-			    "Expected identifier"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEqualOrPlusEqual,
-			    "Expected '=' or '+='"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWaveVarOrEnvelope,
-			    "Expected number, 'wave', or 'envelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedPlusOrMinus,
-			    "Expected '+', '-', or '*'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAsterisk,
-			    "Expected '*'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrPlusEqualsNotAllowed,
-			    "Accumulation ('+=') is not allowed for 'wave' or 'envelope' statements"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWaveComponent,
-			    "Expected 'samplelist', 'freqmultiplier', 'freqdivisor', 'freqadder', 'phaseadd', or 'indexenvelope'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGainOrSemicolon,
-			    "Expected 'gain' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveFreqMultiplierAlreadySpecified,
-			    "Component 'freqmultiplier' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveFreqDivisorAlreadySpecified,
-			    "Component 'freqdivisor' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveFreqAdderAlreadySpecified,
-			    "Component 'freqadder' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWavePhaseAddAlreadySpecified,
-			    "Component 'phaseadd' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveIndexAlreadySpecified,
-			    "Component 'indexenvelope' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLFOOrSemicolon,
-			    "Expected 'lfo' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorNetwork,
-			    "Phase modulation oscillator requires 'network' to be defined"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveSamplelistAlreadySpecified,
-			    "Component 'samplelist' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSampleName,
-			    "Expected sample name"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedConvolverInputType,
-			    "Expected 'mono', 'stereo', or 'bistereo'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSample,
-			    "Expected 'sample'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLeft,
-			    "Expeced 'left'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRight,
-			    "Expected 'right'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLeftIntoLeft,
-			    "Expected 'leftintoleft'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRightIntoLeft,
-			    "Expected 'rightintoleft'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLeftIntoRight,
-			    "Expected 'leftintoright'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRightIntoRight,
-			    "Expected 'rightintoright'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDirectgain,
-			    "Expected 'directgain'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedProcessedgain,
-			    "Expected 'processedgain'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLatencyOrSemicolon,
-			    "Expected 'latency' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrLatencyMustBeAtLeastZero,
-			    "Value for 'latency' must be zero or greater"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInitfunc,
-			    "Expected 'initfunc', 'updatefunc', or 'datafunc'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInitfuncString,
-			    "Expected name of initialization function, as string"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedUpdatefunc,
-			    "Expected 'updatefunc' or 'datafunc'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedUpdatefuncString,
-			    "Expected name of update function, as string"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDatafunc,
-			    "Expected 'datafunc'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDatafuncString,
-			    "Expected name of data processing function, as string"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedParamOrCParen,
-			    "Expected 'param' or ')'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAccentOrSemicolon,
-			    "Expected 'accent[1-8]' or ';'"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent1,
-			    "The parameter 'accent1' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent2,
-			    "The parameter 'accent2' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent3,
-			    "The parameter 'accent3' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent4,
-			    "The parameter 'accent4' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent5,
-			    "The parameter 'accent5' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent6,
-			    "The parameter 'accent6' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent7,
-			    "The parameter 'accent7' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent8,
-			    "The parameter 'accent8' has already been specified"),
-		    new InstrErrorRec(BuildInstrErrors.eBuildInstrMustSpecifyGoodOrBroken,
-			    "Filter of order 4 or 6 must specify 'good' or 'broken'"),
-	    };
+        {
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrNoError,
+                "No error"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrUnexpectedInput,
+                "Illegal characters beyond end of input"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInstrument,
+                "Expected 'instrument'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOpenParen,
+                "Expected '('"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedCloseParen,
+                "Expected ')'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSemicolon,
+                "Expected ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInstrumentMember,
+                "Expected 'loudness', 'frequencylfo', 'oscillator', 'effect', " +
+                "or 'trackeffect'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInstrLoudness,
+                "Instrument parameter 'loudness' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNumber,
+                "Expected a number"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedStringOrIdentifier,
+                "Expected a string or identifier"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLFOMember,
+                "Expected 'freqenvelope', 'ampenvelope', 'oscillator', 'modulation', " +
+                "'linear', 'exponential', 'freqlfo', 'amplfo', 'lowpassfilter', " +
+                "or 'sampleandhold'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOFreqEnvelope,
+                "LFO parameter 'freqenvelope' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOAmpEnvelope,
+                "LFO parameter 'ampenvelope' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOOscillatorType,
+                "LFO parameter 'oscillator' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLFOOscillatorType,
+                "Expected 'constant', 'signsine', 'plussine', 'signtriangle', "  +
+                "'plustriangle', 'signsquare', 'plussquare', 'signramp', 'plusramp', " +
+                "'signlinfuzz', 'pluslinfuzz', 'wavetable', or "+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+                "'loopenvelope'"
+#else
+                ""
+#endif
+                ),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOModulationType,
+                "LFO parameter 'modulation' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOAddingMode,
+                "LFO adding mode ('linear' or 'exponential') has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLFOModulationType,
+                "Expected 'additive', 'multiplicative', or 'inversemult'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOscillatorMember,
+                "Expected 'type', 'samplelist', 'loudness', " +
+                "'freqmultiplier', 'freqdivisor', 'freqadder', " +
+                "'loudnessenvelope', 'loudnesslfo', 'indexenvelope', 'indexlfo', " +
+                "'stereobias', 'displacement', 'frequencylfo', 'fofsamprate', " +
+                "'fofcompress', 'fofexpand', 'fofsamprateenvelope', or " +
+                "'fofsampratelfo'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscType,
+                "Oscillator parameter 'type' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscSampleList,
+                "Oscillator parameter 'samplelist' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscLoudness,
+                "Oscillator parameter 'loudness' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFreqMultiplier,
+                "Oscillator parameter 'freqmultiplier' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFreqDivisor,
+                "Oscillator parameter 'freqdivisor' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscLoudnessEnvelope,
+                "Oscillator parameter 'loudnessenvelope' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscIndexEnvelope,
+                "Oscillator parameter 'indexenvelope' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOscType,
+                "Expected 'sampled', 'wavetable', 'pulse', 'ramp', 'fof', or 'phasemodulation'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInteger,
+                "Expected an integer"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEnvelopeMember,
+                "Expected 'totalscaling', 'points', 'pitchcontrol', or 'formula'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvTotalScaling,
+                "Envelope parameter 'totalscaling' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvFormula,
+                "Envelope paramater formula has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPoints,
+                "Envelope parameter 'points' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDelayOrOrigin,
+                "Expected 'delay' or 'origin'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLevelOrScale,
+                "Expected 'level' or 'scale'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEnvPointMember,
+                "Expected 'sustainpoint', 'sustainpointnoskip', 'releasepoint', " +
+                "'releasepointnoskip', 'ampaccent[1-8]', 'ampfreq', 'rateaccent[1-8]', " +
+                "'ratefreq', 'exponential', or 'linear'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIntBetween1And3,
+                "Expected an integer in the range [1..3]"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrEnvSustainPointAlreadyDefined,
+                "That envelope sustain point has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent1,
+                "Envelope parameter 'ampaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent2,
+                "Envelope parameter 'ampaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent3,
+                "Envelope parameter 'ampaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent4,
+                "Envelope parameter 'ampaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent5,
+                "Envelope parameter 'ampaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent6,
+                "Envelope parameter 'ampaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent7,
+                "Envelope parameter 'ampaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpAccent8,
+                "Envelope parameter 'ampaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointAmpFreq,
+                "Envelope parameter 'ampfreq' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent1,
+                "Envelope parameter 'rateaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent2,
+                "Envelope parameter 'rateaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent3,
+                "Envelope parameter 'rateaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent4,
+                "Envelope parameter 'rateaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent5,
+                "Envelope parameter 'rateaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent6,
+                "Envelope parameter 'rateaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent7,
+                "Envelope parameter 'rateaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateAccent8,
+                "Envelope parameter 'rateaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointRateFreq,
+                "Envelope parameter 'ratefreq' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleEnvPointCurveSpec,
+                "Envelope parameter 'exponential' or 'linear' has " +
+                "already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscStereoBias,
+                "Oscillator parameter 'stereobias' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscDisplacement,
+                "Oscillator parameter 'displacement' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscSurroundBias,
+                "Oscillator parameter 'surroundbias' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFreqAdder,
+                "Oscillator parameter 'freqadder' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSquareOrTriangle,
+                "Expected 'square' or 'triangle'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEffectName,
+                "Expected 'delayline', 'nlproc', 'filter', 'analyzer', 'histogram', 'resampler', " +
+                "'compressor', 'vocoder', 'ideallowpass', 'convolver', or 'usereffect'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDelayLineElem,
+                "Expected 'tap' or 'maxdelaytime'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTapChannel,
+                "Expected 'left', 'right', or 'mono'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTo,
+                "Expected 'to'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedScale,
+                "Expected 'scale'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTapAttr,
+                "Expected 'sourceaccent[1-8]', 'targetaccent[1-8]', 'scaleaccent[1-8]', " +
+                "'lowpass', or 'freqaccent[1-8]'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent1,
+                "Delay tap parameter 'sourceaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent2,
+                "Delay tap parameter 'sourceaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent3,
+                "Delay tap parameter 'sourceaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent4,
+                "Delay tap parameter 'sourceaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent1,
+                "Delay tap parameter 'targetaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent2,
+                "Delay tap parameter 'targetaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent3,
+                "Delay tap parameter 'targetaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent4,
+                "Delay tap parameter 'targetaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent1,
+                "Delay tap parameter 'scaleaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent2,
+                "Delay tap parameter 'scaleaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent3,
+                "Delay tap parameter 'scaleaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent4,
+                "Delay tap parameter 'scaleaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilter,
+                "Delay tap filter has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleMaxDelayTime,
+                "Delay line parameter 'maxdelaytime' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSlope,
+                "Expected 'slope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedCenter,
+                "Expected 'center'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSamplelist,
+                "Expected 'samplelist'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEnvelope,
+                "Expected 'envelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWavetable,
+                "Expected 'wavetable'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInputscaling,
+                "Expected 'inputscaling'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputscaling,
+                "Expected 'outputscaling'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNLAttribute,
+                "Expected 'inputaccent[1-8]', 'outputaccent[1-8]', or 'indexaccent[1-8]'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent1,
+                "Parameter 'inputaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent2,
+                "Parameter 'inputaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent3,
+                "Parameter 'inputaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent4,
+                "Parameter 'inputaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent1,
+                "Parameter 'outputaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent2,
+                "Parameter 'outputaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent3,
+                "Parameter 'outputaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent4,
+                "Parameter 'outputaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent1,
+                "Parameter 'indexaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent2,
+                "Parameter 'indexaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent3,
+                "Parameter 'indexaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent4,
+                "Parameter 'indexaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWavetableindex,
+                "Expected 'wavetableindex'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterType,
+                "Expected 'lowpass', 'highpass', 'reson', 'zero', 'butterworthlowpass', " +
+                "'butterworthhighpass', 'butterworthbandpass', 'butterworthbandreject', " +
+                "'parameqold', 'parameq2', 'resonantlowpass', 'resonantlowpass2', " +
+                "'lowshelfeq', or 'highshelfeq'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFreq,
+                "Expected 'freq'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBandwidth,
+                "Expected 'bandwidth'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDefaultScaling,
+                "Expected 'defaultscaling'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedResonScaling,
+                "Expected 'defaultscaling', 'unitymidbandgain', or 'unitynoisegain'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedZeroScaling,
+                "Expected 'defaultscaling' or 'unityzerohertzgain'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterAttr,
+                "Expected 'freqaccent[1-8]', 'bandwidthaccent[1-8]', 'outputscaling', " +
+                "'outputaccent[1-8]', or 'gainaccent[1-8]'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent1,
+                "Parameter 'freqaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent2,
+                "Parameter 'freqaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent3,
+                "Parameter 'freqaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent4,
+                "Parameter 'freqaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent1,
+                "Parameter 'bandwidthaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent2,
+                "Parameter 'bandwidthaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent3,
+                "Parameter 'bandwidthaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent4,
+                "Parameter 'bandwidthaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScaling,
+                "Parameter 'outputscaling' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent1,
+                "Parameter 'outputaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent2,
+                "Parameter 'outputaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent3,
+                "Parameter 'outputaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent4,
+                "Parameter 'outputaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterChannel,
+                "Expected 'left', 'right', 'mono', 'defaultscaling', " +
+                "'unitymidbandgain', 'unitynoisegain', or 'unityzerohertzgain'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrNullFilterHasNoFreqAccentX,
+                "Parameter 'freqaccent[1-8]' can't be specified for null filter"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrFilterHasNoBandwidthAccentX,
+                "Parameter 'bandwidthaccent[1-8]' can only be specified for " +
+                "reson, zero, butterworthbandpass, butterworthbandreject, " +
+                "parameqold, parameq2, resonantlowpass, " +
+                "lowshelfeq, and highshelfeq"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedScoreEffect,
+                "Expected 'scoreeffect'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOscillatorEffect,
+                "Expected 'delayline', 'nlproc', 'filter', 'analyzer', 'histogram', 'resampler', " +
+                "'compressor', 'vocoder', 'ideallowpass', or 'usereffect'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSourceEnvelope,
+                "Expected 'sourceenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTargetEnvelope,
+                "Expected 'targetenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedScaleEnvelope,
+                "Expected 'scaleenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSourceLfoOrTo,
+                "Expected 'sourcelfo' or 'to'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTargetLfoOrScaleEnvelope,
+                "Expected 'targetlfo' or 'scaleenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedScaleLfoCutoffOrSemicolon,
+                "Expected 'scalelfo', 'lowpass', or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInputScalingEnvelope,
+                "Expected 'inputscalingenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputScalingEnvelope,
+                "Expected 'outputscalingenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIndexEnvelope,
+                "Expected 'indexenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInputScalingLfoOrOutputScalingEnvelope,
+                "Expected 'inputscalinglfo' or 'outputscalingenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputScalingLfoOrIndexEnvelope,
+                "Expected 'outputscalinglfo' or 'indexenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIndexLfoOrSemicolon,
+                "Expected 'indexlfo' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFreqEnvelope,
+                "Expected 'freqenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBandwidthEnvelope,
+                "Expected 'bandwidthenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFreqLfoOrScalingOrChannel,
+                "Expected 'freqlfo', 'left', 'right', 'mono', 'defaultscaling', " +
+                "'unitymidbandgain', 'unitynoisegain', 'unityzerohertzgain', " +
+                "or 'bandwidthenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBandwidthLfoOrScalingOrChannel,
+                "Expected 'bandwidthlfo', 'gainenvelope', 'left', 'right', 'mono', " +
+                "'defaultscaling', 'unitymidbandgain', 'unitynoisegain', " +
+                "or 'unityzerohertzgain'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputScalingLfoOrSemicolon,
+                "Expected 'outputscalinglfo' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilter,
+                "Expected 'filter' or ')'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFreqLfoOrSemicolon,
+                "Expected 'freqlfo' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayLowpassFreq,
+                "Delay tap parameter 'lowpass freq' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent1,
+                "Delay tap parameter 'freqaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent2,
+                "Delay tap parameter 'freqaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent3,
+                "Delay tap parameter 'freqaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent4,
+                "Delay tap parameter 'freqaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIndexLFOOrSemicolon,
+                "Expected 'indexlfo' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultiplePitchControl,
+                "Envelope parameter 'pitchcontrol' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGain,
+                "Expected 'gain'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent1,
+                "Parameter 'gainaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent2,
+                "Parameter 'gainaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent3,
+                "Parameter 'gainaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent4,
+                "Parameter 'gainaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGainEnvelope,
+                "Expected 'gainenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGainLfoOrScalingOrChannel,
+                "Expected 'gainlfo', 'left', 'right', 'mono', " +
+                "'defaultscaling', 'unitymidbandgain', 'unitynoisegain', " +
+                "or 'unityzerohertzgain'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrFilterHasNoGainAccentX,
+                "Parameter 'gainaccent[1-8]' can only be applied to parameq, parameq2, " +
+                "resonantlowpass, or resonantlowpass2"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOrder,
+                "Expected 'order'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrOrderMustBeNonNegativeEvenInteger,
+                "Filter order must be a non-negative even integer"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRate,
+                "Expected 'rate'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedTruncateOrInterpolate,
+                "Expected 'truncate' or 'interpolate'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent5,
+                "Delay tap parameter 'sourceaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent6,
+                "Delay tap parameter 'sourceaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent7,
+                "Delay tap parameter 'sourceaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSourceAccent8,
+                "Delay tap parameter 'sourceaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent5,
+                "Delay tap parameter 'targetaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent6,
+                "Delay tap parameter 'targetaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent7,
+                "Delay tap parameter 'targetaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleTargetAccent8,
+                "Delay tap parameter 'targetaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent5,
+                "Delay tap parameter 'scaleaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent6,
+                "Delay tap parameter 'scaleaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent7,
+                "Delay tap parameter 'scaleaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleScaleAccent8,
+                "Delay tap parameter 'scaleaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent5,
+                "Delay tap parameter 'freqaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent6,
+                "Delay tap parameter 'freqaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent7,
+                "Delay tap parameter 'freqaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDelayFilterAccent8,
+                "Delay tap parameter 'freqaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent5,
+                "Parameter 'inputaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent6,
+                "Parameter 'inputaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent7,
+                "Parameter 'inputaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInputaccent8,
+                "Parameter 'inputaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent5,
+                "Parameter 'outputaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent6,
+                "Parameter 'outputaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent7,
+                "Parameter 'outputaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputaccent8,
+                "Parameter 'outputaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent5,
+                "Parameter 'indexaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent6,
+                "Parameter 'indexaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent7,
+                "Parameter 'indexaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleIndexaccent8,
+                "Parameter 'indexaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOverflow,
+                "Parameter 'overflow' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent5,
+                "Parameter 'freqaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent6,
+                "Parameter 'freqaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent7,
+                "Parameter 'freqaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFreqaccent8,
+                "Parameter 'freqaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent5,
+                "Parameter 'bandwidthaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent6,
+                "Parameter 'bandwidthaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent7,
+                "Parameter 'bandwidthaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleBandwidthaccent8,
+                "Parameter 'bandwidthaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent5,
+                "Parameter 'outputaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent6,
+                "Parameter 'outputaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent7,
+                "Parameter 'outputaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent8,
+                "Parameter 'outputaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent5,
+                "Parameter 'gainaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent6,
+                "Parameter 'gainaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent7,
+                "Parameter 'gainaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleGainAccent8,
+                "Parameter 'gainaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFOFSampRate,
+                "Oscillator parameter 'fofsamprate' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFOFCompress,
+                "Oscillator parameter 'fofcompress' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOverlapOrDiscard,
+                "Expected 'overlap' or 'discard'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFOFExpand,
+                "Oscillator parameter 'fofexpand' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSilenceOrLoop,
+                "Expected 'silence' or 'loop'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFOFSamplingRateEnvelope,
+                "Oscillator parameter 'fofsamprateenvelope' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillator,
+                "At least one 'oscillator' must be specified in an instrument"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredAmpEnvelope,
+                "LFO definition requires 'ampenvelope' to be specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorType,
+                "Oscillator definition requires 'type' to be specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorLoudnessEnvelope,
+                "Oscillator definition requires 'loudnessenvelope' to be specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorSampleList,
+                "Oscillator definition requires 'samplelist' to be specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorFOFSampRate,
+                "FOF Oscillator definition requires 'fofsamprate' to be specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorFOFCompress,
+                "FOF Oscillator definition requires 'fofcompress' to be specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorFOFExpand,
+                "FOF Oscillator definition requires 'fofexpand' to be specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorFOFEnvelope,
+                "FOF Oscillator definition requires 'fofsamprateenvelope' to be specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredDelayLineMaxTime,
+                "Delay Line definition requires 'maxdelaytime' to be specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOFilter,
+                "LFO parameter 'lowpassfilter' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNormalPower,
+                "Expected 'normalpower'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedThreshPower,
+                "Expected 'threshpower'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRatio,
+                "Expected 'ratio'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterCutoff,
+                "Expected 'filtercutoff'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDecayRate,
+                "Expected 'decayrate'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAttackRate,
+                "Expected 'attackrate'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLimitingExcess,
+                "Expected 'limitingexcess'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedCompressorAttribute,
+                "Expected 'inputaccent[1-8]', 'outputaccent[1-8]', " +
+                "'normalpoweraccent[1-8]', 'threshpoweraccent[1-8]', 'ratioaccent[1-8]', " +
+                "'filtercutoff[1-8]', 'decayrateaccent[1-8]', 'attackrateaccent[1-8]', " +
+                "'limitingexcessaccent[1-8]', or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent1,
+                "Compressor parameter 'normalpoweraccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent2,
+                "Compressor parameter 'normalpoweraccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent3,
+                "Compressor parameter 'normalpoweraccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent4,
+                "Compressor parameter 'normalpoweraccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent5,
+                "Compressor parameter 'normalpoweraccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent6,
+                "Compressor parameter 'normalpoweraccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent7,
+                "Compressor parameter 'normalpoweraccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNormalPowerAccent8,
+                "Compressor parameter 'normalpoweraccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent1,
+                "Compressor parameter 'threshpoweraccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent2,
+                "Compressor parameter 'threshpoweraccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent3,
+                "Compressor parameter 'threshpoweraccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent4,
+                "Compressor parameter 'threshpoweraccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent5,
+                "Compressor parameter 'threshpoweraccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent6,
+                "Compressor parameter 'threshpoweraccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent7,
+                "Compressor parameter 'threshpoweraccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleThreshPowerAccent8,
+                "Compressor parameter 'threshpoweraccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent1,
+                "Compressor parameter 'ratioaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent2,
+                "Compressor parameter 'ratioaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent3,
+                "Compressor parameter 'ratioaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent4,
+                "Compressor parameter 'ratioaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent5,
+                "Compressor parameter 'ratioaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent6,
+                "Compressor parameter 'ratioaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent7,
+                "Compressor parameter 'ratioaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleRatioAccent8,
+                "Compressor parameter 'ratioaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent1,
+                "Compressor parameter 'filtercutoffaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent2,
+                "Compressor parameter 'filtercutoffaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent3,
+                "Compressor parameter 'filtercutoffaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent4,
+                "Compressor parameter 'filtercutoffaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent5,
+                "Compressor parameter 'filtercutoffaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent6,
+                "Compressor parameter 'filtercutoffaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent7,
+                "Compressor parameter 'filtercutoffaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleFilterCutoffAccent8,
+                "Compressor parameter 'filtercutoffaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent1,
+                "Compressor parameter 'decayrateaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent2,
+                "Compressor parameter 'decayrateaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent3,
+                "Compressor parameter 'decayrateaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent4,
+                "Compressor parameter 'decayrateaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent5,
+                "Compressor parameter 'decayrateaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent6,
+                "Compressor parameter 'decayrateaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent7,
+                "Compressor parameter 'decayrateaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleDecayRateAccent8,
+                "Compressor parameter 'decayrateaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent1,
+                "Compressor parameter 'attackrateaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent2,
+                "Compressor parameter 'attackrateaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent3,
+                "Compressor parameter 'attackrateaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent4,
+                "Compressor parameter 'attackrateaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent5,
+                "Compressor parameter 'attackrateaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent6,
+                "Compressor parameter 'attackrateaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent7,
+                "Compressor parameter 'attackrateaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAttackRateAccent8,
+                "Compressor parameter 'attackrateaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent1,
+                "Compressor parameter 'limitingexcessaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent2,
+                "Compressor parameter 'limitingexcessaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent3,
+                "Compressor parameter 'limitingexcessaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent4,
+                "Compressor parameter 'limitingexcessaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent5,
+                "Compressor parameter 'limitingexcessaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent6,
+                "Compressor parameter 'limitingexcessaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent7,
+                "Compressor parameter 'limitingexcessaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLimitingExcessAccent8,
+                "Compressor parameter 'limitingexcessaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputScalingLfoOrNormalPowerEnvelope,
+                "Expected 'outputscalinglfo' or 'normalpowerenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNormalPowerEnvelope,
+                "Expected 'normalpowerenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNormalPowerLfoOrThreshPowerEnvelope,
+                "Expected 'normalpowerlfo' or 'threshpowerenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedThreshPowerEnvelope,
+                "Expected 'threshpowerenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedThreshPowerLfoOrRatioEnvelope,
+                "Expected 'threshpowerlfo' or 'ratioenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRatioEnvelope,
+                "Expected 'ratioenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRatioLfoOrFilterCutoffEnvelope,
+                "Expected 'ratiolfo' or 'filtercutoffenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterCutoffEnvelope,
+                "Expected 'filtercutoffenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterCutoffLfoOrDecayRateEnvelope,
+                "Expected 'filtercutofflfo' or 'decayrateenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDecayRateEnvelope,
+                "Expected 'decayrateenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDecayRateLfoOrAttackRateEnvelope,
+                "Expected 'decayratelfo' or 'attackrateenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAttackRateEnvelope,
+                "Expected 'attackrateenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAttackRateLfoOrLimitingExcessEnvelope,
+                "Expected 'attackratelfo' or 'limitingexcessenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLimitingExcessEnvelope,
+                "Expected 'limitingexcessenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLimitingExcessLfoOrSemicolon,
+                "Expected 'limitingexcesslfo' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSemicolonOrEstimatePower,
+                "Expected 'estimatepower' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSourceLfoOrToOrInterpolate,
+                "Expected 'sourcelfo', 'to', or 'interpolate'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedToOrInterpolate,
+                "Expected 'to' or 'interpolate'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEstimatePower,
+                "Expected 'estimatepower'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAbsValOrRMS,
+                "Expected 'absval' or 'rms'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAbsValRMSOrPeak,
+                "Expected 'absval', 'rms', 'peak', or 'peaklookahead'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOSampleHolds,
+                "Sample and hold has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOscillatorEffectOrDisabled,
+                "Expected 'delayline', 'nlproc', 'filter', 'analyzer', 'histogram', 'resampler', " +
+                "'compressor', 'vocoder', 'ideallowpass', 'convolver', 'usereffect', or 'disabled'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEffectNameOrDisabled,
+                "Expected 'delayline', 'nlproc', 'filter', 'analyzer', 'histogram', 'resampler', " +
+                "'compressor', 'vocoder', 'ideallowpass', 'convolver', 'usereffect', 'disabled', 'autoquiescence', " +
+                "or 'suppressinitialsilence'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMaxBandMustBeOneOrGreater,
+                "Maximum band count must be at least 1"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputgain,
+                "Expected 'outputgain'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputaccentIndexaccentOrSemicolon,
+                "Expected 'outputaccent[1-8]', 'indexaccent[1-8]', or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIndexlfoOrOutputgainenvelope,
+                "Expected 'indexlfo' or 'outputgainenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputgainlfoOrSemicolon,
+                "Expected 'outputgainlfo' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMaxbandcount,
+                "Expected 'maxbandcount'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrOrderMustBePositiveOddInteger,
+                "Order must be a positive odd integer"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSectionEffect,
+                "Expected 'sectioneffect'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrParameqObsolete,
+                "The 'parameq' filter is obsolete; use 'parameqold' to access that filter. " +
+                "It is recommended to use 'parameq2' for new instruments."),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble,
+                "The envelope's formula parameter must return type 'double'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrEnvFormulaSyntaxError,
+                "Syntax error in envelope's formula"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedQuotedFormula,
+                "Expected quoted formula"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDecibels,
+                "Expected 'decibels'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWindowduration,
+                "Expected 'windowduration'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedReportOrSemicolon,
+                "Expected 'report' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrQuiescenceAlreadySpecified,
+                "Channel option 'autoquiescence' was already specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrDecibelsMustBeGEZero,
+                "Decibels must be zero or greater"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrWindowDurationMustBeGEZero,
+                "Window duration must be zero or greater"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSlopeEnvelope,
+                "Expected 'slopeenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSlopeLfoOrScalingOrChannel,
+                "Expected 'slopelfo', 'gainenvelope', 'left', 'right', or 'mono'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrFilterHasNoSlopeAccentX,
+                "Parameter 'slopeaccent[1-8]' can only be specified for " +
+                "lowshelfeq and highshelfeq"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent1,
+                "Parameter 'slopeaccent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent2,
+                "Parameter 'slopeaccent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent3,
+                "Parameter 'slopeaccent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent4,
+                "Parameter 'slopeaccent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent5,
+                "Parameter 'slopeaccent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent6,
+                "Parameter 'slopeaccent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent7,
+                "Parameter 'slopeaccent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleSlopeaccent8,
+                "Parameter 'slopeaccent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrRLP2OrderMustBe24Or6,
+                "Order for resonantlowpass2 must be 2, 4, or 6"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrOnlyAllowedInScoreEffects,
+                "The 'suppressinitialsilence' option is only allowed in score effects"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLeftRightAverageMax,
+                "Expected 'left', 'right', 'averagebefore', 'averageafter', or 'maxafter'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAbsValOrSmoothedx,
+                "Expected 'absval', 'smoothedabsval', or 'smoothedrms'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLogOrLin,
+                "Expected 'logarithmic' or 'linear'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMin,
+                "Expected 'min'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMax,
+                "Expected 'max'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMinMustBePositiveForLog,
+                "For log histogram, min must be positive"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMaxMustBeGreaterThanMin,
+                "Max must be greater than min"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMinMustBeNonNegForLin,
+                "For linear histogram, min must be at least zero"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedNumbins,
+                "Expected 'numbins'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMustHaveAtLeastOneBin,
+                "Numbins must be at least 1"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBinMustBeInteger,
+                "Numbins must be integer"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDiscardOrNoDiscard,
+                "Expected 'discardunders' or 'nodiscardunders'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBars,
+                "Expected 'bars'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBarsCantBeNegative,
+                "Bars must be at least zero"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBarsMustBeInteger,
+                "Bars must be integer"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleNetworks,
+                "Phase modulation oscillator parameter 'network' was already specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedIdentifier,
+                "Expected identifier"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEqualOrPlusEqual,
+                "Expected '=' or '+='"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWaveVarOrEnvelope,
+                "Expected number, 'wave', or 'envelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedPlusOrMinus,
+                "Expected '+', '-', or '*'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAsterisk,
+                "Expected '*'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPlusEqualsNotAllowed,
+                "Accumulation ('+=') is not allowed for 'wave' or 'envelope' statements"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWaveComponent,
+                "Expected 'samplelist', 'freqmultiplier', 'freqdivisor', 'freqadder', 'phaseadd', or 'indexenvelope'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGainOrSemicolon,
+                "Expected 'gain' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveFreqMultiplierAlreadySpecified,
+                "Component 'freqmultiplier' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveFreqDivisorAlreadySpecified,
+                "Component 'freqdivisor' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveFreqAdderAlreadySpecified,
+                "Component 'freqadder' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWavePhaseAddAlreadySpecified,
+                "Component 'phaseadd' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveIndexAlreadySpecified,
+                "Component 'indexenvelope' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLFOOrSemicolon,
+                "Expected 'lfo' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMissingRequiredOscillatorNetwork,
+                "Phase modulation oscillator requires 'network' to be defined"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrFMWaveSamplelistAlreadySpecified,
+                "Component 'samplelist' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSampleName,
+                "Expected sample name"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedConvolverInputType,
+                "Expected 'mono', 'stereo', or 'bistereo'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSample,
+                "Expected 'sample'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLeft,
+                "Expeced 'left'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRight,
+                "Expected 'right'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLeftIntoLeft,
+                "Expected 'leftintoleft'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRightIntoLeft,
+                "Expected 'rightintoleft'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLeftIntoRight,
+                "Expected 'leftintoright'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedRightIntoRight,
+                "Expected 'rightintoright'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDirectgain,
+                "Expected 'directgain'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedProcessedgain,
+                "Expected 'processedgain'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedLatencyOrSemicolon,
+                "Expected 'latency' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrLatencyMustBeAtLeastZero,
+                "Value for 'latency' must be zero or greater"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInitfunc,
+                "Expected 'initfunc', 'updatefunc', 'datafunc', or 'oversamplingdisabled'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInitfuncString,
+                "Expected name of initialization function, as string"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedUpdatefunc,
+                "Expected 'updatefunc' or 'datafunc'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedUpdatefuncString,
+                "Expected name of update function, as string"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDatafunc,
+                "Expected 'datafunc'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDatafuncString,
+                "Expected name of data processing function, as string"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedParamOrCParen,
+                "Expected 'param' or ')'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedAccentOrSemicolon,
+                "Expected 'accent[1-8]' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent1,
+                "The parameter 'accent1' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent2,
+                "The parameter 'accent2' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent3,
+                "The parameter 'accent3' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent4,
+                "The parameter 'accent4' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent5,
+                "The parameter 'accent5' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent6,
+                "The parameter 'accent6' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent7,
+                "The parameter 'accent7' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent8,
+                "The parameter 'accent8' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMustSpecifyGoodOrBroken,
+                "Filter of order 4 or 6 must specify 'good' or 'broken'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWrapOrClamp,
+                "Expected 'wrap' or 'clamp'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMinsamplingrateOrSemicolon,
+                "Expected 'minsamplingrate' or ';'"),
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOLoopEnvelope,
+                "LFO component 'loopenvelope' has already been specified"),
+#endif
+        };
 
         public class BuildInstrumentContext
         {
@@ -2264,6 +2295,14 @@ namespace OutOfPhase
             eKeywordAccent8,
             eKeywordBroken,
             eKeywordGood,
+            eKeywordOversamplingdisabled,
+            eKeywordOverflow,
+            eKeywordWrap,
+            eKeywordClamp,
+            eKeywordMinsamplingrate,
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            eKeywordLoopenvelope,
+#endif
         }
 
         /* symbols for detecting redundant or missing declarations in instruments */
@@ -2282,6 +2321,10 @@ namespace OutOfPhase
             LFODEFINITION_ONCEONLY_SAMPLEHOLD,
 
             LFODEFINITION_REQUIREDONCEONLY_AMPENVELOPE,
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            LFODEFINITION_REQUIREDONCEONLY_LOOPENVELOPE,
+#endif
 
 
             OSCILLATORDEFINITION_ONCEONLY_LOUDNESS,
@@ -2394,6 +2437,7 @@ namespace OutOfPhase
             NLPROCEFFECTATTR_ONCEONLY_INDEXACCENT6,
             NLPROCEFFECTATTR_ONCEONLY_INDEXACCENT7,
             NLPROCEFFECTATTR_ONCEONLY_INDEXACCENT8,
+            NLPROCEFFECTATTR_ONCEONLY_OVERFLOWMODE,
 
 
             FILTEREFFECTATTR_ONCEONLY_FREQACCENT1,
@@ -2763,7 +2807,7 @@ namespace OutOfPhase
             NumberOut = Double.NaN;
             ErrorLine = -1;
 
-            /* NOTE: this function should try to be compatible with ParseTrackEffectNumber */
+        /* NOTE: this function should try to be compatible with ParseTrackEffectNumber */
 
         Again:
             Token = Context.Scanner.GetNextToken();
@@ -3007,15 +3051,18 @@ namespace OutOfPhase
         /*  XXX:                           ::= sampleandhold freqenvelope ( */
         /*                                     <envelope_definition> ) { freqlfo ( */
         /*                                     <lfo_definition> ) } */
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+        /*  XXX:                           ::= loopenvelope ( <envelope_definition> ) */
+#endif
         /* FIRST SET: */
         /*  <lfo_elem>              : {oscillator, freqenvelope, modulation, ampenvelope} */
         /* FOLLOW SET: */
         /*  <lfo_elem>              : {;} */
         public static BuildInstrErrors ParseLfoElem(
-                                                                    LFOSpecRec LFO,
-                                                                    BuildInstrumentContext Context,
-                                                                    out int ErrorLine,
-                                                                    RequiredOnceOnlyRec RequiredOnceOnly)
+            LFOSpecRec LFO,
+            BuildInstrumentContext Context,
+            out int ErrorLine,
+            RequiredOnceOnlyRec RequiredOnceOnly)
         {
             TokenRec<InstrKeywordType> Token;
             BuildInstrErrors Error;
@@ -3331,6 +3378,12 @@ namespace OutOfPhase
                                 return BuildInstrErrors.eBuildInstrExpectedIndexLFOOrSemicolon;
                             }
                             break;
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+                        case InstrKeywordType.eKeywordLoopenvelope:
+                            SetLFOSpecOscillatorType(LFO, LFOOscTypes.eLFOLoopedEnvelope);
+                            break;
+#endif
                     }
                     break;
 
@@ -3508,6 +3561,17 @@ namespace OutOfPhase
 
                     LFOSpecSampleHoldHasBeenSpecified(LFO);
                     break;
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+                case InstrKeywordType.eKeywordLoopenvelope:
+                    if (MarkOnceOnlyPresent(RequiredOnceOnly, Req.LFODEFINITION_REQUIREDONCEONLY_LOOPENVELOPE))
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrMultipleLFOLoopEnvelope;
+                    }
+
+                    return ScanEnvelopeSpec(GetLFOSpecLoopedEnvelope(LFO), Context, out ErrorLine);
+#endif
             }
 
             return BuildInstrErrors.eBuildInstrNoError;
@@ -3834,7 +3898,7 @@ namespace OutOfPhase
                     break;
 
                 case InstrKeywordType.eKeywordEffect:
-                    Error = ParseOscillatorEffect(GetOscillatorEffectList(Oscillator), Context, out						ErrorLine);
+                    Error = ParseOscillatorEffect(GetOscillatorEffectList(Oscillator), Context, out ErrorLine);
                     if (Error != BuildInstrErrors.eBuildInstrNoError)
                     {
                         return Error;
@@ -4422,8 +4486,6 @@ namespace OutOfPhase
         {
             TokenRec<InstrKeywordType> Token;
             BuildInstrErrors Error;
-            double Delay;
-            double Level;
 
             ErrorLine = -1;
 
@@ -4441,11 +4503,81 @@ namespace OutOfPhase
                     return BuildInstrErrors.eBuildInstrExpectedDelayOrOrigin;
 
                 case InstrKeywordType.eKeywordDelay:
+
+                    double Delay = 0;
+                    PcodeRec DelayFunction = null;
+                    double Level = 0;
+                    PcodeRec LevelFunction = null;
+
+#if false // TODO: remove old
                     Error = ParseNumber(Context, out ErrorLine, out Delay);
                     if (Error != BuildInstrErrors.eBuildInstrNoError)
                     {
                         return Error;
                     }
+#else
+                    Token = Context.Scanner.GetNextToken();
+                    if (Token.GetTokenType() != TokenTypes.eTokenString)
+                    {
+                        Context.Scanner.UngetToken(Token);
+                        Error = ParseNumber(Context, out ErrorLine, out Delay);
+                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                        {
+                            return Error;
+                        }
+                    }
+                    else
+                    {
+                        int CompileErrorLine;
+                        DataTypes ReturnType;
+                        Compiler.ASTExpressionRec Expr;
+
+                        CompileErrors CompileError = Compiler.CompileSpecialFunction(
+                            Context.CodeCenter,
+                            EnvelopeInitFormulaArgsDefs,
+                            out CompileErrorLine,
+                            out ReturnType,
+                            Token.GetTokenStringValue(),
+                            false/*suppressCILEmission -- this code path always generates function*/,
+                            out DelayFunction,
+                            out Expr);
+                        if (CompileError != CompileErrors.eCompileNoError)
+                        {
+                            ErrorLine = CompileErrorLine + Context.Scanner.GetCurrentLineNumber() - 1;
+                            return BuildInstrErrors.eBuildInstrEnvFormulaSyntaxError;
+                        }
+                        if (ReturnType != DataTypes.eDouble)
+                        {
+                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                            return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
+                        }
+
+                        if (Compiler.ExprTypes.eExprOperand == Compiler.WhatKindOfExpressionIsThis(Expr))
+                        {
+                            // expression evaluates at compile time to a constant
+                            switch (ReturnType)
+                            {
+                                default:
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
+                                case DataTypes.eInteger:
+                                    Delay = Compiler.GetOperandIntegerLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    break;
+                                case DataTypes.eFloat:
+                                    Delay = Compiler.GetOperandSingleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    break;
+                                case DataTypes.eDouble:
+                                    Delay = Compiler.GetOperandDoubleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    break;
+                            }
+                            DelayFunction = null; // force use constant
+                        }
+                        else
+                        {
+                            // expression must be evaluated at performance time
+                        }
+                    }
+#endif
 
                     Token = Context.Scanner.GetNextToken();
                     if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
@@ -4455,15 +4587,80 @@ namespace OutOfPhase
                         ErrorLine = Context.Scanner.GetCurrentLineNumber();
                         return BuildInstrErrors.eBuildInstrExpectedLevelOrScale;
                     }
+                    InstrKeywordType levelOrScale = Token.GetTokenKeywordTag();
 
+#if false // TODO: remove old
                     Error = ParseNumber(Context, out ErrorLine, out Level);
                     if (Error != BuildInstrErrors.eBuildInstrNoError)
                     {
                         return Error;
                     }
+#else
+                    Token = Context.Scanner.GetNextToken();
+                    if (Token.GetTokenType() != TokenTypes.eTokenString)
+                    {
+                        Context.Scanner.UngetToken(Token);
+                        Error = ParseNumber(Context, out ErrorLine, out Level);
+                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                        {
+                            return Error;
+                        }
+                    }
+                    else
+                    {
+                        int CompileErrorLine;
+                        DataTypes ReturnType;
+                        Compiler.ASTExpressionRec Expr;
+
+                        CompileErrors CompileError = Compiler.CompileSpecialFunction(
+                            Context.CodeCenter,
+                            EnvelopeInitFormulaArgsDefs,
+                            out CompileErrorLine,
+                            out ReturnType,
+                            Token.GetTokenStringValue(),
+                            false/*suppressCILEmission -- this code path always generates function*/,
+                            out LevelFunction,
+                            out Expr);
+                        if (CompileError != CompileErrors.eCompileNoError)
+                        {
+                            ErrorLine = CompileErrorLine + Context.Scanner.GetCurrentLineNumber() - 1;
+                            return BuildInstrErrors.eBuildInstrEnvFormulaSyntaxError;
+                        }
+                        if (ReturnType != DataTypes.eDouble)
+                        {
+                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                            return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
+                        }
+
+                        if (Compiler.ExprTypes.eExprOperand == Compiler.WhatKindOfExpressionIsThis(Expr))
+                        {
+                            // expression evaluates at compile time to a constant
+                            switch (ReturnType)
+                            {
+                                default:
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
+                                case DataTypes.eInteger:
+                                    Level = Compiler.GetOperandIntegerLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    break;
+                                case DataTypes.eFloat:
+                                    Level = Compiler.GetOperandSingleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    break;
+                                case DataTypes.eDouble:
+                                    Level = Compiler.GetOperandDoubleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    break;
+                            }
+                            LevelFunction = null; // force use constant
+                        }
+                        else
+                        {
+                            // expression must be evaluated at performance time
+                        }
+                    }
+#endif
 
                     EnvelopeInsertPhase(Envelope, GetEnvelopeNumFrames(Envelope));
-                    if (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordScale)
+                    if (levelOrScale == InstrKeywordType.eKeywordScale)
                     {
                         EnvelopeSetPhaseTargetType(Envelope, GetEnvelopeNumFrames(Envelope) - 1, EnvTargetTypes.eEnvelopeTargetScaling);
                     }
@@ -4472,7 +4669,9 @@ namespace OutOfPhase
                         EnvelopeSetPhaseTargetType(Envelope, GetEnvelopeNumFrames(Envelope) - 1, EnvTargetTypes.eEnvelopeTargetAbsolute);
                     }
                     EnvelopeSetPhaseDuration(Envelope, GetEnvelopeNumFrames(Envelope) - 1, Delay);
+                    EnvelopeSetPhaseDurationFormula(Envelope, GetEnvelopeNumFrames(Envelope) - 1, DelayFunction);
                     EnvelopeSetPhaseFinalValue(Envelope, GetEnvelopeNumFrames(Envelope) - 1, Level);
+                    EnvelopeSetPhaseFinalValueFormula(Envelope, GetEnvelopeNumFrames(Envelope) - 1, LevelFunction);
 
                     return ScanEnvAttributes(Envelope, Context, out ErrorLine);
 
@@ -4494,10 +4693,10 @@ namespace OutOfPhase
         /* FOLLOW SET: */
         /*  <env_attributes>        : {;} */
         public static BuildInstrErrors ParseEnvAttributes(
-                                                                    EnvelopeRec Envelope,
-                                                                    BuildInstrumentContext Context,
-                                                                    out int ErrorLine,
-                                                                    RequiredOnceOnlyRec RequiredOnceOnly)
+            EnvelopeRec Envelope,
+            BuildInstrumentContext Context,
+            out int ErrorLine,
+            RequiredOnceOnlyRec RequiredOnceOnly)
         {
             TokenRec<InstrKeywordType> Token;
             BuildInstrErrors Error;
@@ -5294,18 +5493,30 @@ namespace OutOfPhase
                     return BuildInstrErrors.eBuildInstrExpectedDelayLineElem;
 
                 case InstrKeywordType.eKeywordMaxdelaytime: /* maxdelaytime <number> */
-                    if (MarkOnceOnlyPresent(RequiredOnceOnly,
-                        Req.DELAYEFFECT_REQUIREDONCEONLY_MAXDELAYTIME))
                     {
-                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                        return BuildInstrErrors.eBuildInstrMultipleMaxDelayTime;
+                        if (MarkOnceOnlyPresent(RequiredOnceOnly,
+                            Req.DELAYEFFECT_REQUIREDONCEONLY_MAXDELAYTIME))
+                        {
+                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                            return BuildInstrErrors.eBuildInstrMultipleMaxDelayTime;
+                        }
+#if false // TODO: remove old
+                        Error = ParseNumber(Context, out ErrorLine, out Number);
+                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                        {
+                            return Error;
+                        }
+#else
+                        PcodeRec Formula;
+                        Error = ParseTrackEffectNumber(Context, out ErrorLine, out Formula, out Number);
+                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                        {
+                            return Error;
+                        }
+#endif
+                        SetDelayMaxTime(DelayEffect, Number);
+                        SetDelayMaxTimeFormula(DelayEffect, Formula);
                     }
-                    Error = ParseNumber(Context, out ErrorLine, out Number);
-                    if (Error != BuildInstrErrors.eBuildInstrNoError)
-                    {
-                        return Error;
-                    }
-                    SetDelayMaxTime(DelayEffect, Number);
                     break;
 
                 case InstrKeywordType.eKeywordTap:
@@ -5988,6 +6199,7 @@ namespace OutOfPhase
         /*                        ::= indexaccent6 <number> */
         /*                        ::= indexaccent7 <number> */
         /*                        ::= indexaccent8 <number> */
+        /*                        ::= overflow {wrap | clamp} */
         /* FOLLOW SET */
         /*  <nlattributes> : {;} */
         public static BuildInstrErrors ParseNLAttributes(
@@ -6329,6 +6541,32 @@ namespace OutOfPhase
                         return Error;
                     }
                     PutNLProcIndexAccent(NLProcSpec, Number, 8);
+                    break;
+                case InstrKeywordType.eKeywordOverflow:
+                    if (MarkOnceOnlyPresent(RequiredOnceOnly, Req.NLPROCEFFECTATTR_ONCEONLY_OVERFLOWMODE))
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrMultipleOverflow;
+                    }
+                    Token = Context.Scanner.GetNextToken();
+                    if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrExpectedWrapOrClamp;
+                    }
+                    if (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordWrap)
+                    {
+                        SetNLProcOverflowMode(NLProcSpec, NonlinProcOverflowMode.Wrap);
+                    }
+                    else if (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordClamp)
+                    {
+                        SetNLProcOverflowMode(NLProcSpec, NonlinProcOverflowMode.Clamp);
+                    }
+                    else
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrExpectedWrapOrClamp;
+                    }
                     break;
             }
 
@@ -6862,7 +7100,7 @@ namespace OutOfPhase
                 return BuildInstrErrors.eBuildInstrExpectedWindowduration;
             }
 
-            Error = ParseNumber(Context, out ErrorLine, out                 WindowDuration);
+            Error = ParseNumber(Context, out ErrorLine, out WindowDuration);
             if (Error != BuildInstrErrors.eBuildInstrNoError)
             {
                 return Error;
@@ -7894,17 +8132,29 @@ namespace OutOfPhase
                     return BuildInstrErrors.eBuildInstrExpectedDelayLineElem;
 
                 case InstrKeywordType.eKeywordMaxdelaytime:
-                    if (MarkOnceOnlyPresent(RequiredOnceOnly, Req.DELAYEFFECT_REQUIREDONCEONLY_MAXDELAYTIME))
                     {
-                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                        return BuildInstrErrors.eBuildInstrMultipleMaxDelayTime;
+                        if (MarkOnceOnlyPresent(RequiredOnceOnly, Req.DELAYEFFECT_REQUIREDONCEONLY_MAXDELAYTIME))
+                        {
+                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                            return BuildInstrErrors.eBuildInstrMultipleMaxDelayTime;
+                        }
+#if false // tODO: remove old
+                        Error = ParseNumber(Context, out ErrorLine, out Number);
+                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                        {
+                            return Error;
+                        }
+#else
+                        PcodeRec Formula;
+                        Error = ParseTrackEffectNumber(Context, out ErrorLine, out Formula, out Number);
+                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                        {
+                            return Error;
+                        }
+#endif
+                        SetDelayMaxTime(DelayEffect, Number);
+                        SetDelayMaxTimeFormula(DelayEffect, Formula);
                     }
-                    Error = ParseNumber(Context, out ErrorLine, out Number);
-                    if (Error != BuildInstrErrors.eBuildInstrNoError)
-                    {
-                        return Error;
-                    }
-                    SetDelayMaxTime(DelayEffect, Number);
                     break;
 
                 case InstrKeywordType.eKeywordTap:
@@ -8242,6 +8492,28 @@ namespace OutOfPhase
             IdealLowpassSpec = NewIdealLowpassSpec(Cutoff, Order2);
             AddIdealLPToEffectSpecList(EffectList, IdealLowpassSpec, EnabledFlag);
 
+            Token = Context.Scanner.GetNextToken();
+            if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
+            {
+                if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                    || (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordMinsamplingrate))
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrExpectedMinsamplingrateOrSemicolon;
+                }
+                double MinSamplingRate;
+                Error = ParseNumber(Context, out ErrorLine, out MinSamplingRate);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    return Error;
+                }
+                SetIdealLowpassMinSamplingRate(IdealLowpassSpec, (int)MinSamplingRate);
+            }
+            else
+            {
+                Context.Scanner.UngetToken(Token);
+            }
+
             return BuildInstrErrors.eBuildInstrNoError;
         }
 
@@ -8268,42 +8540,42 @@ namespace OutOfPhase
             }
         }
         private static readonly ConvolveParseRec[] ConvolverMonoRule = new ConvolveParseRec[]
-	    {
-		    new ConvolveParseRec(
+        {
+            new ConvolveParseRec(
                 InstrKeywordType.eKeywordSample,
                 BuildInstrErrors.eBuildInstrExpectedSample,
                 ConvolverSpecSetImpulseResponseMono),
-	    };
+        };
         private static readonly ConvolveParseRec[] ConvolverStereoRule = new ConvolveParseRec[]
-	    {
-		    new ConvolveParseRec(
+        {
+            new ConvolveParseRec(
                 InstrKeywordType.eKeywordLeft,
                 BuildInstrErrors.eBuildInstrExpectedLeft,
                 ConvolverSpecSetImpulseResponseStereoLeft),
-		    new ConvolveParseRec(
+            new ConvolveParseRec(
                 InstrKeywordType.eKeywordRight,
                 BuildInstrErrors.eBuildInstrExpectedRight,
                 ConvolverSpecSetImpulseResponseStereoRight),
-	    };
+        };
         private static readonly ConvolveParseRec[] ConvolverBiStereoRule = new ConvolveParseRec[]
-	    {
-		    new ConvolveParseRec(
+        {
+            new ConvolveParseRec(
                 InstrKeywordType.eKeywordLeftintoleft,
                 BuildInstrErrors.eBuildInstrExpectedLeftIntoLeft,
                 ConvolverSpecSetImpulseResponseBiStereoLeftIntoLeft),
-		    new ConvolveParseRec(
+            new ConvolveParseRec(
                 InstrKeywordType.eKeywordRightintoleft,
                 BuildInstrErrors.eBuildInstrExpectedRightIntoLeft,
                 ConvolverSpecSetImpulseResponseBiStereoRightIntoLeft),
-		    new ConvolveParseRec(
+            new ConvolveParseRec(
                 InstrKeywordType.eKeywordLeftintoright,
                 BuildInstrErrors.eBuildInstrExpectedLeftIntoRight,
                 ConvolverSpecSetImpulseResponseBiStereoLeftIntoRight),
-		    new ConvolveParseRec(
+            new ConvolveParseRec(
                 InstrKeywordType.eKeywordRightintoright,
                 BuildInstrErrors.eBuildInstrExpectedRightIntoRight,
                 ConvolverSpecSetImpulseResponseBiStereoRightIntoRight),
-	    };
+        };
         public static BuildInstrErrors ParseConvolver(
             EffectSpecListRec EffectList,
             BuildInstrumentContext Context,
@@ -13154,6 +13426,25 @@ namespace OutOfPhase
                 return BuildInstrErrors.eBuildInstrExpectedOpenParen;
             }
 
+            bool noOversampling = false;
+            Token = Context.Scanner.GetNextToken();
+            if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
+                && (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordOversamplingdisabled))
+            {
+                noOversampling = true;
+
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrExpectedSemicolon;
+                }
+            }
+            else
+            {
+                Context.Scanner.UngetToken(Token);
+            }
+
             /*  <usereffect>          ::= [initfunc <string> ;] */
             Token = Context.Scanner.GetNextToken();
             if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
@@ -13242,6 +13533,8 @@ namespace OutOfPhase
                 (UpdateFuncIdentifier == null) ? null : UpdateFuncIdentifier.GetTokenStringValue(),
                 DataFuncIdentifier.GetTokenStringValue());
             AddUserEffectToEffectSpecList(EffectList, UserEffect, EnabledFlag);
+
+            SetUserEffectSpecNoOversampling(UserEffect, noOversampling);
 
             /*                            [param <number> [accent{1-8} <number>] ;]* */
             while (true)
@@ -13417,6 +13710,25 @@ namespace OutOfPhase
                 return BuildInstrErrors.eBuildInstrExpectedOpenParen;
             }
 
+            bool noOversampling = false;
+            Token = Context.Scanner.GetNextToken();
+            if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
+                && (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordOversamplingdisabled))
+            {
+                noOversampling = true;
+
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrExpectedSemicolon;
+                }
+            }
+            else
+            {
+                Context.Scanner.UngetToken(Token);
+            }
+
             /*  <usereffect>          ::= [initfunc <string> ;] */
             Token = Context.Scanner.GetNextToken();
             if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
@@ -13505,6 +13817,8 @@ namespace OutOfPhase
                 (UpdateFuncIdentifier == null) ? null : UpdateFuncIdentifier.GetTokenStringValue(),
                 DataFuncIdentifier.GetTokenStringValue());
             AddUserEffectToEffectSpecList(EffectList, UserEffect, EnabledFlag);
+
+            SetUserEffectSpecNoOversampling(UserEffect, noOversampling);
 
             /*                            param envelope () [lfo()...] ; ) */
             while (true)
@@ -13691,6 +14005,9 @@ namespace OutOfPhase
             AddOnceOnlyCode(LFORequiredOnceOnly, Req.LFODEFINITION_ONCEONLY_FILTER);
             AddOnceOnlyCode(LFORequiredOnceOnly, Req.LFODEFINITION_ONCEONLY_SAMPLEHOLD);
             AddRequiredOnceOnlyCode(LFORequiredOnceOnly, Req.LFODEFINITION_REQUIREDONCEONLY_AMPENVELOPE);
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            AddOnceOnlyCode(LFORequiredOnceOnly, Req.LFODEFINITION_REQUIREDONCEONLY_LOOPENVELOPE);
+#endif
             Error = ParseLfoDefinition(
                 LFO,
                 Context,
@@ -13978,6 +14295,7 @@ namespace OutOfPhase
             AddOnceOnlyCode(NLProcRequiredOnceOnly, Req.NLPROCEFFECTATTR_ONCEONLY_INDEXACCENT6);
             AddOnceOnlyCode(NLProcRequiredOnceOnly, Req.NLPROCEFFECTATTR_ONCEONLY_INDEXACCENT7);
             AddOnceOnlyCode(NLProcRequiredOnceOnly, Req.NLPROCEFFECTATTR_ONCEONLY_INDEXACCENT8);
+            AddOnceOnlyCode(NLProcRequiredOnceOnly, Req.NLPROCEFFECTATTR_ONCEONLY_OVERFLOWMODE);
             Error = ParseNLAttributes(
                 NLProcSpec,
                 Context,

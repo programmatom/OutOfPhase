@@ -50,10 +50,10 @@ namespace OutOfPhase
         private void InitializeComponent()
         {
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.labelPrompt = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.radioButtonTrue = new System.Windows.Forms.RadioButton();
             this.radioButtonFalse = new System.Windows.Forms.RadioButton();
+            this.radioButtonTrue = new System.Windows.Forms.RadioButton();
+            this.labelPrompt = new System.Windows.Forms.Label();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.buttonCancel = new System.Windows.Forms.Button();
             this.label2 = new System.Windows.Forms.Label();
@@ -87,17 +87,6 @@ namespace OutOfPhase
             this.tableLayoutPanel1.Size = new System.Drawing.Size(434, 261);
             this.tableLayoutPanel1.TabIndex = 0;
             // 
-            // labelPrompt
-            // 
-            this.labelPrompt.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.labelPrompt.AutoSize = true;
-            this.tableLayoutPanel1.SetColumnSpan(this.labelPrompt, 2);
-            this.labelPrompt.Location = new System.Drawing.Point(13, 15);
-            this.labelPrompt.Name = "labelPrompt";
-            this.labelPrompt.Size = new System.Drawing.Size(398, 13);
-            this.labelPrompt.TabIndex = 0;
-            this.labelPrompt.Text = "prompt";
-            // 
             // groupBox1
             // 
             this.groupBox1.AutoSize = true;
@@ -111,18 +100,6 @@ namespace OutOfPhase
             this.groupBox1.TabIndex = 1;
             this.groupBox1.TabStop = false;
             // 
-            // radioButtonTrue
-            // 
-            this.radioButtonTrue.AutoSize = true;
-            this.radioButtonTrue.Dock = System.Windows.Forms.DockStyle.Top;
-            this.radioButtonTrue.Location = new System.Drawing.Point(3, 16);
-            this.radioButtonTrue.Name = "radioButtonTrue";
-            this.radioButtonTrue.Size = new System.Drawing.Size(372, 17);
-            this.radioButtonTrue.TabIndex = 0;
-            this.radioButtonTrue.TabStop = true;
-            this.radioButtonTrue.Text = "radioButtonTrue";
-            this.radioButtonTrue.UseVisualStyleBackColor = true;
-            // 
             // radioButtonFalse
             // 
             this.radioButtonFalse.AutoSize = true;
@@ -135,6 +112,29 @@ namespace OutOfPhase
             this.radioButtonFalse.TabStop = true;
             this.radioButtonFalse.Text = "radioButtonFalse";
             this.radioButtonFalse.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonTrue
+            // 
+            this.radioButtonTrue.AutoSize = true;
+            this.radioButtonTrue.Dock = System.Windows.Forms.DockStyle.Top;
+            this.radioButtonTrue.Location = new System.Drawing.Point(3, 16);
+            this.radioButtonTrue.Name = "radioButtonTrue";
+            this.radioButtonTrue.Size = new System.Drawing.Size(372, 17);
+            this.radioButtonTrue.TabIndex = 0;
+            this.radioButtonTrue.TabStop = true;
+            this.radioButtonTrue.Text = "radioButtonTrue";
+            this.radioButtonTrue.UseVisualStyleBackColor = true;
+            // 
+            // labelPrompt
+            // 
+            this.labelPrompt.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelPrompt.AutoSize = true;
+            this.tableLayoutPanel1.SetColumnSpan(this.labelPrompt, 2);
+            this.labelPrompt.Location = new System.Drawing.Point(13, 15);
+            this.labelPrompt.Name = "labelPrompt";
+            this.labelPrompt.Size = new System.Drawing.Size(398, 13);
+            this.labelPrompt.TabIndex = 0;
+            this.labelPrompt.Text = "prompt";
             // 
             // flowLayoutPanel1
             // 
@@ -189,8 +189,9 @@ namespace OutOfPhase
             this.MaximizeBox = false;
             this.MaximumSize = new System.Drawing.Size(450, 800);
             this.MinimizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(450, 0);
+            this.MinimumSize = new System.Drawing.Size(450, 39);
             this.Name = "CmdDlgOneBinaryChoice";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Edit Command Parameters";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();

@@ -158,7 +158,7 @@ namespace OutOfPhase
 
                 /* two initialization loops, one for the optimized ones, then for the nonoptimized */
                 iNextStmtPos = 0;
-                for (int i = 0; i < Template.NumStmts; i += 1)
+                for (int i = 0; i < Template.NumStmts; i++)
                 {
                     if (FMSynthStmtCanBeOptimized(FMSynthSpec, i))
                     {
@@ -170,7 +170,7 @@ namespace OutOfPhase
                             Stmt,
                             SynthParams);
 
-                        iNextStmtPos += 1;
+                        iNextStmtPos++;
                     }
                 }
 #if DEBUG
@@ -181,7 +181,7 @@ namespace OutOfPhase
                     throw new InvalidOperationException();
                 }
 #endif
-                for (int i = 0; i < Template.NumStmts; i += 1)
+                for (int i = 0; i < Template.NumStmts; i++)
                 {
                     if (!FMSynthStmtCanBeOptimized(FMSynthSpec, i))
                     {
@@ -193,7 +193,7 @@ namespace OutOfPhase
                             Stmt,
                             SynthParams);
 
-                        iNextStmtPos += 1;
+                        iNextStmtPos++;
                     }
                 }
 #if DEBUG
@@ -331,7 +331,7 @@ namespace OutOfPhase
                     MaxPreOrigin = -State.PreStartCountdown;
                 }
 
-                for (int i = 0; i < Template.NumStmts; i += 1)
+                for (int i = 0; i < Template.NumStmts; i++)
                 {
                     FMSynthOneTemplateRec TmplStmt = Template.Stmts[i];
                     FMSynthOneStateRec StateStmt = State.Stmts[i];
@@ -680,10 +680,11 @@ namespace OutOfPhase
 
             /* perform one envelope update cycle, and set a new frequency for a wave table */
             /* state object.  used for portamento and modulation of frequency (vibrato) */
-            public void UpdateEnvelopes(
+            public SynthErrorCodes UpdateEnvelopes(
                 double NewFrequencyHertz,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 FMSynthStateRec State = this;
 
                 float FloatTemp;
@@ -699,11 +700,17 @@ namespace OutOfPhase
                 else
                 {
                     /* do some pitch stuff */
+                    error = SynthErrorCodes.eSynthDone;
                     NewFrequencyHertz = LFOGenUpdateCycle(
                         State.PitchLFO,
                         NewFrequencyHertz,
                         NewFrequencyHertz,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier + State.Template.FrequencyAdder;
 
@@ -714,7 +721,7 @@ namespace OutOfPhase
                     State.PreStartCountdown -= 1;
                 }
 
-                for (int i = 0; i < State.Template.NumStmts; i += 1)
+                for (int i = 0; i < State.Template.NumStmts; i++)
                 {
                     FMSynthOneStateRec Stmt = State.Stmts[i];
 
@@ -736,15 +743,22 @@ namespace OutOfPhase
                                 Wave.WaveTableSamplePositionDifferential = NewFrequencyHertzJustThisWave
                                     * Wave.FramesPerTableOverFinalOutputSamplingRate;
 
+                                error = SynthErrorCodes.eSynthDone;
                                 DoubleTemp = Wave.NumberOfTablesMinus1 *
                                     LFOGenUpdateCycle(
                                         Wave.IndexLFOGenerator,
                                         EnvelopeUpdate(
                                             Wave.IndexEnvelope,
                                             NewFrequencyHertzJustThisWave,
-                                            SynthParams),
+                                            SynthParams,
+                                            ref error),
                                         NewFrequencyHertzJustThisWave,
-                                        SynthParams);
+                                        SynthParams,
+                                        ref error);
+                                if (error != SynthErrorCodes.eSynthDone)
+                                {
+                                    return error;
+                                }
                                 if (DoubleTemp < 0)
                                 {
                                     DoubleTemp = 0;
@@ -764,30 +778,44 @@ namespace OutOfPhase
                             {
                                 FMSynthOneStateRec_Env Env = (FMSynthOneStateRec_Env)Stmt.u;
 
+                                error = SynthErrorCodes.eSynthDone;
                                 Env.CurrentValue =
                                     LFOGenUpdateCycle(
                                         Env.LFOGenerator,
                                         EnvelopeUpdate(
                                             Env.Envelope,
                                             NewFrequencyHertz,
-                                            SynthParams),
+                                            SynthParams,
+                                            ref error),
                                         NewFrequencyHertz,
-                                        SynthParams);
+                                        SynthParams,
+                                        ref error);
+                                if (error != SynthErrorCodes.eSynthDone)
+                                {
+                                    return error;
+                                }
                             }
                             break;
                     }
                 }
 
 
+                error = SynthErrorCodes.eSynthDone;
                 FloatTemp = (float)(State.NoteLoudnessScaling *
                     LFOGenUpdateCycle(
                         State.LoudnessLFOGenerator,
                         EnvelopeUpdate(
                             State.LoudnessEnvelope,
                             NewFrequencyHertz,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         NewFrequencyHertz,
-                        SynthParams));
+                        SynthParams,
+                        ref error));
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 /* left = FloatTemp * .5 * (1 - State.Panning) */
                 /* right = FloatTemp * .5 * (1 + State.Panning) */
                 OneHalfVol = .5f * FloatTemp;
@@ -798,11 +826,17 @@ namespace OutOfPhase
 
                 if (State.OscEffectGenerator != null)
                 {
-                    OscEffectGeneratorUpdateEnvelopes(
+                    error = OscEffectGeneratorUpdateEnvelopes(
                         State.OscEffectGenerator,
                         NewFrequencyHertz,
                         SynthParams);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* fix up pre-origin time for the wave table state object */
@@ -811,7 +845,7 @@ namespace OutOfPhase
             {
                 FMSynthStateRec State = this;
 
-                for (int i = 0; i < State.Template.NumStmts; i += 1)
+                for (int i = 0; i < State.Template.NumStmts; i++)
                 {
                     FMSynthOneStateRec Stmt = State.Stmts[i];
 
@@ -872,7 +906,7 @@ namespace OutOfPhase
             {
                 FMSynthStateRec State = this;
 
-                for (int i = 0; i < State.Template.NumStmts; i += 1)
+                for (int i = 0; i < State.Template.NumStmts; i++)
                 {
                     FMSynthOneStateRec Stmt = State.Stmts[i];
 
@@ -923,7 +957,7 @@ namespace OutOfPhase
             {
                 FMSynthStateRec State = this;
 
-                for (int i = 0; i < State.Template.NumStmts; i += 1)
+                for (int i = 0; i < State.Template.NumStmts; i++)
                 {
                     FMSynthOneStateRec Stmt = State.Stmts[i];
 
@@ -974,7 +1008,7 @@ namespace OutOfPhase
             {
                 FMSynthStateRec State = this;
 
-                for (int i = 0; i < State.Template.NumStmts; i += 1)
+                for (int i = 0; i < State.Template.NumStmts; i++)
                 {
                     FMSynthOneStateRec Stmt = State.Stmts[i];
 
@@ -1048,7 +1082,7 @@ namespace OutOfPhase
 
                 State.NoteLoudnessScaling = NewLoudness * State.Template.OverallOscillatorLoudness;
 
-                for (int i = 0; i < State.Template.NumStmts; i += 1)
+                for (int i = 0; i < State.Template.NumStmts; i++)
                 {
                     FMSynthOneStateRec Stmt = State.Stmts[i];
 
@@ -1238,7 +1272,7 @@ namespace OutOfPhase
                 double[] Vars = State.Vars;
 
                 /* evaluate just the optimized statements once here at the beginning */
-                for (int j = 0; j < State.Template.NumStmtsOptimizable; j += 1)
+                for (int j = 0; j < State.Template.NumStmtsOptimizable; j++)
                 {
                     double Result;
 
@@ -1282,14 +1316,14 @@ namespace OutOfPhase
                 }
 
                 /* evaluate each sample frame */
-                for (int i = 0; i < nActualFrames; i += 1)
+                for (int i = 0; i < nActualFrames; i++)
                 {
                     /* reset output points */
                     Vars[FMSYNTH_LEFT] = 0;
                     Vars[FMSYNTH_RIGHT] = 0;
 
                     /* evaluate just the nonoptimized statements */
-                    for (int j = State.Template.NumStmtsOptimizable; j < State.Template.NumStmts; j += 1)
+                    for (int j = State.Template.NumStmtsOptimizable; j < State.Template.NumStmts; j++)
                     {
                         double Result;
 
@@ -1311,64 +1345,47 @@ namespace OutOfPhase
                             Result = 0;
                             if (Wave.WaveTableWasDefined)
                             {
-                                int LocalSamplePositionMask;
-                                double AdjustedPhase2;
-                                double AdjustedPhase;
-                                int IntegerAdjustedPhase;
-                                double RightWeight;
-                                int ArraySubscript;
-                                int IntegerWaveTableIndex;
-                                float[] WaveData0;
-                                float Left0Value;
-                                float Right0Value;
-
-                                LocalSamplePositionMask = Wave.FramesPerTableMinus1;
+                                int LocalSamplePositionMask = Wave.FramesPerTableMinus1;
 
                                 /* compute adjusted phase */
-                                AdjustedPhase = Wave.WaveTableSamplePosition
+                                double AdjustedPhase = Wave.WaveTableSamplePosition
                                     + Wave.FloatFramesPerTable * Vars[Wave.PhaseSource] * Vars[Wave.PhaseGainSource];
 
                                 /* compute weighting and subscript */
-                                AdjustedPhase2 = AdjustedPhase;
+                                double AdjustedPhase2 = AdjustedPhase;
                                 if (AdjustedPhase2 < 0)
                                 {
                                     /* defeat round-toward-zero, we want always round-toward-lower */
                                     AdjustedPhase2 -= 1;
                                 }
-                                IntegerAdjustedPhase = (int)AdjustedPhase2;
-                                RightWeight = AdjustedPhase - IntegerAdjustedPhase; /* fraction */
-                                ArraySubscript = IntegerAdjustedPhase & LocalSamplePositionMask;
-                                IntegerWaveTableIndex = (int)(Wave.WaveTableIndex);
+                                int IntegerAdjustedPhase = (int)AdjustedPhase2;
+                                double RightWeight = AdjustedPhase - IntegerAdjustedPhase; /* fraction */
+                                int ArraySubscript = IntegerAdjustedPhase & LocalSamplePositionMask;
+                                int IntegerWaveTableIndex = (int)Wave.WaveTableIndex;
 
                                 /* increment pitch differential */
                                 Wave.WaveTableSamplePosition +=
                                     Wave.WaveTableSamplePositionDifferential;
                                 Wave.WaveTableSamplePosition -=
-                                    ((int)(Wave.WaveTableSamplePosition) & ~LocalSamplePositionMask);
+                                    ((int)Wave.WaveTableSamplePosition & ~LocalSamplePositionMask);
 
                                 /* 2-d table lookup */
                                 /* first, left wavetable interpolation  L+F(R-L) */
-                                WaveData0 = Wave.WaveTableMatrix[IntegerWaveTableIndex];
-                                Left0Value = WaveData0[ArraySubscript];
-                                Right0Value = WaveData0[ArraySubscript + 1];
+                                float[] WaveData0 = Wave.WaveTableMatrix[IntegerWaveTableIndex];
+                                float Left0Value = WaveData0[ArraySubscript];
+                                float Right0Value = WaveData0[ArraySubscript + 1];
                                 Result = Left0Value + (RightWeight * (Right0Value - Left0Value));
                                 if (Wave.WaveTableIndex != Wave.NumberOfTablesMinus1)
                                 {
-                                    float[] WaveData1;
-                                    double Wave1Weight;
-                                    float Left1Value;
-                                    float Right1Value;
-                                    double Wave0Temp;
-
                                     /* full-interpolating processing */
 
-                                    WaveData1 = Wave.WaveTableMatrix[IntegerWaveTableIndex + 1];
-                                    Wave1Weight = Wave.WaveTableIndex - IntegerWaveTableIndex;
+                                    float[] WaveData1 = Wave.WaveTableMatrix[IntegerWaveTableIndex + 1];
+                                    double Wave1Weight = Wave.WaveTableIndex - IntegerWaveTableIndex;
 
                                     /* right wavetable interpolation and cross interpolation */
-                                    Left1Value = WaveData1[ArraySubscript];
-                                    Right1Value = WaveData1[ArraySubscript + 1];
-                                    Wave0Temp = Result;
+                                    float Left1Value = WaveData1[ArraySubscript];
+                                    float Right1Value = WaveData1[ArraySubscript + 1];
+                                    double Wave0Temp = Result;
                                     Result = Wave0Temp + (Wave1Weight * (Left1Value + (RightWeight
                                         * (Right1Value - Left1Value)) - Wave0Temp));
                                 }

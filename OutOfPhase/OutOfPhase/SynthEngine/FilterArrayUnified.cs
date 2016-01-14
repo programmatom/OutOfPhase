@@ -629,61 +629,90 @@ namespace OutOfPhase
             }
 
             /* update filter state with accent information */
-            public void OscUpdateEnvelopes(
+            public SynthErrorCodes OscUpdateEnvelopes(
                 double OscillatorFrequency,
                 SynthParamRec SynthParams)
             {
                 for (int i = 0; i < this.NumFilters; i += 1)
                 {
+                    SynthErrorCodes error;
                     double Cutoff = Double.NaN;
                     double BandwidthOrSlope = Double.NaN;
                     double Gain = Double.NaN;
 
                     FilterRec Scan = this.FilterVector[i];
 
+                    error = SynthErrorCodes.eSynthDone;
                     Scan.CurrentMultiplier = (float)LFOGenUpdateCycle(
                         Scan.OscFilter.OutputMultiplierLFO,
                         EnvelopeUpdate(
                             Scan.OscFilter.OutputMultiplierEnvelope,
                             OscillatorFrequency,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         OscillatorFrequency,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
 
                     if (Scan.OscFilter.CutoffEnvelope != null)
                     {
+                        error = SynthErrorCodes.eSynthDone;
                         Cutoff = LFOGenUpdateCycle(
                             Scan.OscFilter.CutoffLFO,
                             EnvelopeUpdate(
                                 Scan.OscFilter.CutoffEnvelope,
                                 OscillatorFrequency,
-                                SynthParams),
+                                SynthParams,
+                                ref error),
                             OscillatorFrequency,
-                            SynthParams);
+                            SynthParams,
+                            ref error);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                     }
 
                     if (Scan.OscFilter.BandwidthOrSlopeEnvelope != null)
                     {
+                        error = SynthErrorCodes.eSynthDone;
                         BandwidthOrSlope = LFOGenUpdateCycle(
                             Scan.OscFilter.BandwidthOrSlopeLFO,
                             EnvelopeUpdate(
                                 Scan.OscFilter.BandwidthOrSlopeEnvelope,
                                 OscillatorFrequency,
-                                SynthParams),
+                                SynthParams,
+                                ref error),
                             OscillatorFrequency,
-                            SynthParams);
+                            SynthParams,
+                            ref error);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                     }
 
                     if (Scan.OscFilter.GainEnvelope != null)
                     {
+                        error = SynthErrorCodes.eSynthDone;
                         Gain = LFOGenUpdateCycle(
                             Scan.OscFilter.GainLFO,
                             EnvelopeUpdate(
                                 Scan.OscFilter.GainEnvelope,
                                 OscillatorFrequency,
-                                SynthParams),
+                                SynthParams,
+                                ref error),
                             OscillatorFrequency,
-                            SynthParams);
+                            SynthParams,
+                            ref error);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                     }
 
                     switch (Scan.FilterType)
@@ -1059,6 +1088,8 @@ namespace OutOfPhase
                             break;
                     }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void OscKeyUpSustain1()
@@ -1272,12 +1303,13 @@ namespace OutOfPhase
             }
 
             /* update filter state with accent information */
-            public void TrackUpdateState(
+            public SynthErrorCodes TrackUpdateState(
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
                 for (int i = 0; i < this.NumFilters; i += 1)
                 {
+                    SynthErrorCodes error;
                     double Cutoff = Double.NaN;
                     double BandwidthOrSlope = Double.NaN;
 #if DEBUG
@@ -1291,18 +1323,26 @@ namespace OutOfPhase
 
                     FilterRec Scan = this.FilterVector[i];
 
-                    ScalarParamEval(
+                    error = ScalarParamEval(
                         Scan.TrackFilter.OutputMultiplier,
                         ref Accents,
                         SynthParams,
                         out DoubleTemp);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                     Scan.CurrentMultiplier = (float)DoubleTemp;
 
-                    ScalarParamEval(
+                    error = ScalarParamEval(
                         Scan.TrackFilter.Cutoff,
                         ref Accents,
                         SynthParams,
                         out Cutoff);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
 
                     switch (Scan.FilterType)
                     {
@@ -1321,11 +1361,15 @@ namespace OutOfPhase
                         case FilterTypes.eFilterSecondOrderZero:
                         case FilterTypes.eFilterButterworthBandpass:
                         case FilterTypes.eFilterButterworthBandreject:
-                            ScalarParamEval(
+                            error = ScalarParamEval(
                                 Scan.TrackFilter.BandwidthOrSlope,
                                 ref Accents,
                                 SynthParams,
                                 out BandwidthOrSlope);
+                            if (error != SynthErrorCodes.eSynthDone)
+                            {
+                                return error;
+                            }
 #if DEBUG
                             BandwidthOrSlopeSet = true;
 #endif
@@ -1336,11 +1380,15 @@ namespace OutOfPhase
                         case FilterTypes.eFilterLowShelfEQ:
                         case FilterTypes.eFilterHighShelfEQ:
                         case FilterTypes.eFilterResonantLowpass:
-                            ScalarParamEval(
+                            error = ScalarParamEval(
                                 Scan.TrackFilter.BandwidthOrSlope,
                                 ref Accents,
                                 SynthParams,
                                 out BandwidthOrSlope);
+                            if (error != SynthErrorCodes.eSynthDone)
+                            {
+                                return error;
+                            }
 #if DEBUG
                             BandwidthOrSlopeSet = true;
 #endif
@@ -1349,11 +1397,15 @@ namespace OutOfPhase
 
                         case FilterTypes.eFilterResonantLowpass2: /* just gain for him */
                         Next:
-                            ScalarParamEval(
+                            error = ScalarParamEval(
                                 Scan.TrackFilter.Gain,
                                 ref Accents,
                                 SynthParams,
                                 out Gain);
+                            if (error != SynthErrorCodes.eSynthDone)
+                            {
+                                return error;
+                            }
 #if DEBUG
                             GainSet = true;
 #endif
@@ -1837,6 +1889,8 @@ namespace OutOfPhase
                             break;
                     }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* apply filter processing to some stuff */

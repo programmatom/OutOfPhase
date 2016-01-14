@@ -21,6 +21,7 @@
 */
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace OutOfPhase
@@ -44,6 +45,9 @@ namespace OutOfPhase
             eLFOSignedLinearFuzzSquare,
             eLFOPositiveLinearFuzzSquare,
             eLFOWaveTable,
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            eLFOLoopedEnvelope,
+#endif
         }
 
         /* ways the LFO can be used to modulate the signal */
@@ -114,6 +118,11 @@ namespace OutOfPhase
 
             /* flag remembering whether sample & hold has been specified */
             public bool SampleHoldSpecified;
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            // envelope segment definition for looped envelope generator
+            public EnvelopeRec LoopedEnvelope;
+#endif
         }
 
         /* create a new LFO specification record */
@@ -138,6 +147,9 @@ namespace OutOfPhase
             LFOSpec.ExtraValue = 1;
             LFOSpec.FilterSpecified = false;
             LFOSpec.SampleHoldSpecified = false;
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            LFOSpec.LoopedEnvelope = NewEnvelope();
+#endif
 
             return LFOSpec;
         }
@@ -279,5 +291,12 @@ namespace OutOfPhase
         {
             return LFOSpec.SampleHoldSpecified;
         }
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+        public static EnvelopeRec GetLFOSpecLoopedEnvelope(LFOSpecRec LFOSpec)
+        {
+            return LFOSpec.LoopedEnvelope;
+        }
+#endif
     }
 }

@@ -45,6 +45,9 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            // By default make new tracks take up most of the horizontal screen width.
+            SetDesktopBounds(DesktopBounds.X, DesktopBounds.Y, Screen.PrimaryScreen.Bounds.Width - DesktopBounds.X - 100, DesktopBounds.Height);
+
             menuStripManager.SetGlobalHandler(mainWindow);
 
             trackViewControl.NoteView = noteViewControl;
@@ -104,12 +107,14 @@ namespace OutOfPhase
             SetButton(toolStripButtonDiv5, Bitmaps.gdiDiv5ButtonBits, Bitmaps.gdiDiv5ButtonSelectedBits, group, null);
             SetButton(toolStripButtonDiv7, Bitmaps.gdiDiv7ButtonBits, Bitmaps.gdiDiv7ButtonSelectedBits, group, null);
             toolStripButtonDiv1.Checked = true;
+
+            trackViewControl.Focus();
         }
 
         private void SetButton(ToolStripButton button, Image unselected, Image selected, ToolStripButton[] group, ToolStripButton[] auxSet)
         {
             button.Image = unselected;
-            button.Click += new EventHandler(delegate(object sender, EventArgs e)
+            button.Click += new EventHandler(delegate (object sender, EventArgs e)
             {
                 ToolStripButton b = ((ToolStripButton)sender);
                 if (!b.Checked)
@@ -131,7 +136,7 @@ namespace OutOfPhase
                     }
                 }
             });
-            button.CheckStateChanged += new EventHandler(delegate(object sender, EventArgs e)
+            button.CheckStateChanged += new EventHandler(delegate (object sender, EventArgs e)
             {
                 ToolStripButton b = ((ToolStripButton)sender);
                 b.Image = b.Checked ? selected : unselected;
@@ -498,6 +503,7 @@ namespace OutOfPhase
                 if (result == DialogResult.OK)
                 {
                     trackObject.CopyPropertiesFrom(copy);
+                    GlobalNameChanged();
                 }
             }
         }

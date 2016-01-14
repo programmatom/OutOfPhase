@@ -292,7 +292,7 @@ namespace OutOfPhase
             // textBoxName
             // 
             this.textBoxName.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.textBoxName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sampleObjectRecBindingSource, "Name", true));
+            this.textBoxName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sampleObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxName.Location = new System.Drawing.Point(106, 33);
             this.textBoxName.Name = "textBoxName";
             this.textBoxName.Size = new System.Drawing.Size(165, 20);
@@ -346,7 +346,7 @@ namespace OutOfPhase
             this.textBoxFunction.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.tableLayoutPanel2.SetColumnSpan(this.textBoxFunction, 10);
             this.textBoxFunction.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textBoxFunction.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sampleObjectRecBindingSource, "SampleFormula", true));
+            this.textBoxFunction.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sampleObjectRecBindingSource, "SampleFormula", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxFunction.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxFunction.Location = new System.Drawing.Point(3, 355);
             this.textBoxFunction.Name = "textBoxFunction";

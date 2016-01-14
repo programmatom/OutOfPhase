@@ -76,6 +76,16 @@ namespace OutOfPhase
             textBoxNumTables.Validated += new EventHandler(textBoxNumTables_TextChanged);
             comboBoxNumFrames.TextChanged += new EventHandler(comboBoxNumFrames_TextChanged);
 
+            tabControlWave.SelectedIndexChanged += TabControlWave_SelectedIndexChanged;
+            //
+            dataGridViewWave.CellValueNeeded += DataGridViewWave_CellValueNeeded;
+            dataGridViewWave.CellValuePushed += DataGridViewWave_CellValuePushed;
+            RebuildDataGrid();
+            //
+            labelScale.Visible = false;
+            comboBoxScale.Visible = false;
+            comboBoxScale.SelectedIndex = 0;
+
             registration.Register(waveTableObject, this);
         }
 
@@ -218,6 +228,8 @@ namespace OutOfPhase
             undo.Push(waveTableObject.WaveTableData);
             redo.Clear();
             waveTableObject.WaveTableData = NewTable;
+
+            RebuildDataGrid();
         }
 
         private void textBoxNumTables_TextChanged(object sender, EventArgs e)
@@ -290,6 +302,8 @@ namespace OutOfPhase
                 undo.Push(waveTableObject.WaveTableData);
                 redo.Clear();
                 waveTableObject.WaveTableData = NewTable;
+
+                RebuildDataGrid();
             }
         }
 
@@ -307,11 +321,11 @@ namespace OutOfPhase
             CompileErrors CompileError = Compiler.CompileSpecialFunction(
                 mainWindow.Document.CodeCenter,
                 new FunctionParamRec[]
-	            {
+                {
                     new FunctionParamRec("frames", DataTypes.eInteger),
-		            new FunctionParamRec("tables", DataTypes.eInteger),
-		            new FunctionParamRec("data", DataTypes.eArrayOfFloat),
-	            },
+                    new FunctionParamRec("tables", DataTypes.eInteger),
+                    new FunctionParamRec("data", DataTypes.eArrayOfFloat),
+                },
                 out ErrorLineNumberCompilation,
                 out ReturnType,
                 textBoxFormula.Text,
@@ -404,6 +418,8 @@ namespace OutOfPhase
                 WaveTableStorageRec w = undo.Pop();
                 redo.Push(waveTableObject.WaveTableData);
                 waveTableObject.WaveTableData = w;
+
+                RebuildDataGrid();
             }
             finally
             {
@@ -419,11 +435,104 @@ namespace OutOfPhase
                 WaveTableStorageRec w = redo.Pop();
                 undo.Push(waveTableObject.WaveTableData);
                 waveTableObject.WaveTableData = w;
+
+                RebuildDataGrid();
             }
             finally
             {
                 suppressTableOrFrameChange = false;
             }
+        }
+
+
+        // Data grid stuff
+
+        private void RebuildDataGrid()
+        {
+            dataGridViewWave.Columns.Clear();
+            dataGridViewWave.Columns.Add("i", "Index");
+            dataGridViewWave.Columns[0].ReadOnly = true;
+            for (int j = 0; j < waveTableObject.WaveTableData.NumTables; j++)
+            {
+                dataGridViewWave.Columns.Add(j.ToString(), j.ToString());
+            }
+            dataGridViewWave.RowCount = waveTableObject.WaveTableData.NumFrames;
+        }
+
+        private void DataGridViewWave_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
+        {
+            if (e.ColumnIndex == 0)
+            {
+                e.Value = e.RowIndex;
+            }
+            else
+            {
+                Debug.Assert(e.ColumnIndex - 1 < waveTableObject.WaveTableData.NumTables);
+                e.Value = GridScale(waveTableObject.WaveTableData.ListOfTables[e.ColumnIndex - 1][e.RowIndex]);
+            }
+        }
+
+        private void DataGridViewWave_CellValuePushed(object sender, DataGridViewCellValueEventArgs e)
+        {
+            Debug.Assert(e.ColumnIndex > 0);
+            Debug.Assert(e.ColumnIndex - 1 < waveTableObject.WaveTableData.NumTables);
+            float v;
+            if (Single.TryParse(e.Value.ToString(), out v))
+            {
+                undo.Push(waveTableObject.WaveTableData);
+                redo.Clear();
+                WaveTableStorageRec storage = new WaveTableStorageRec(waveTableObject.WaveTableData);
+                storage.ListOfTables[e.ColumnIndex - 1][e.RowIndex] = GridUnscale(v);
+                waveTableObject.WaveTableData = storage;
+            }
+        }
+
+        private float GridScale(float f)
+        {
+            switch (comboBoxScale.SelectedIndex)
+            {
+                default:
+                    Debug.Assert(false);
+                    throw new InvalidOperationException();
+                case 0:
+                    return f;
+                case 1:
+                    return f * SampConv.FLOATFACTOR8BIT;
+                case 2:
+                    return f * SampConv.FLOATFACTOR16BIT;
+                case 3:
+                    return f * SampConv.FLOATFACTOR24BIT;
+            }
+        }
+
+        private float GridUnscale(float f)
+        {
+            switch (comboBoxScale.SelectedIndex)
+            {
+                default:
+                    Debug.Assert(false);
+                    throw new InvalidOperationException();
+                case 0:
+                    return f;
+                case 1:
+                    return f * (1f / SampConv.FLOATFACTOR8BIT);
+                case 2:
+                    return f * (1f / SampConv.FLOATFACTOR16BIT);
+                case 3:
+                    return f * (1f / SampConv.FLOATFACTOR24BIT);
+            }
+        }
+
+        private void comboBoxScale_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            RebuildDataGrid();
+        }
+
+        private void TabControlWave_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            bool grid = tabControlWave.Controls[tabControlWave.SelectedIndex] == tabPageWaveGrid;
+            labelScale.Visible = grid;
+            comboBoxScale.Visible = grid;
         }
 
 

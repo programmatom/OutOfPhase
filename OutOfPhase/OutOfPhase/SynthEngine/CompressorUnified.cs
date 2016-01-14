@@ -623,68 +623,105 @@ namespace OutOfPhase
             }
 
             /* update compressor state with accent information */
-            public void TrackUpdateState(
+            public SynthErrorCodes TrackUpdateState(
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 double CurrentFilterCutoff;
                 double CurrentDecayRate;
                 double CurrentAttackRate;
                 double Temp;
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.InputGain,
                     ref Accents,
                     SynthParams,
                     out this.CurrentInputGain);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.OutputGain,
                     ref Accents,
                     SynthParams,
                     out this.CurrentOutputGain);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.NormalPower,
                     ref Accents,
                     SynthParams,
                     out this.CurrentNormalPower);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.ThreshPower,
                     ref Accents,
                     SynthParams,
                     out this.CurrentThreshPower);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.Ratio,
                     ref Accents,
                     SynthParams,
                     out this.CurrentRatio);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.FilterCutoff,
                     ref Accents,
                     SynthParams,
                     out CurrentFilterCutoff);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.DecayRate,
                     ref Accents,
                     SynthParams,
                     out CurrentDecayRate);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.AttackRate,
                     ref Accents,
                     SynthParams,
                     out CurrentAttackRate);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.LimitingExcess,
                     ref Accents,
                     SynthParams,
                     out this.CurrentLimitingExcess);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
                 FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
                     this.LeftLowpass,
@@ -704,98 +741,165 @@ namespace OutOfPhase
                     Temp = MINRATERECIPEXP;
                 }
                 this.CurrentAttackFactor = Math.Pow(2, 1d / Temp);
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* update compressor state with accent information */
-            public void OscUpdateEnvelopes(
+            public SynthErrorCodes OscUpdateEnvelopes(
                 double OscillatorFrequency,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
+
                 double CurrentFilterCutoff;
                 double CurrentDecayRate;
                 double CurrentAttackRate;
                 double Temp;
 
+                error = SynthErrorCodes.eSynthDone;
                 this.CurrentInputGain = LFOGenUpdateCycle(
                     this.Oscillator.InputGainLFOs,
                     EnvelopeUpdate(
                         this.Oscillator.InputGainEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 this.CurrentOutputGain = LFOGenUpdateCycle(
                     this.Oscillator.OutputGainLFOs,
                     EnvelopeUpdate(
                         this.Oscillator.OutputGainEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 this.CurrentNormalPower = LFOGenUpdateCycle(
                     this.Oscillator.NormalPowerLFOs,
                     EnvelopeUpdate(
                         this.Oscillator.NormalPowerEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 this.CurrentThreshPower = LFOGenUpdateCycle(
                     this.Oscillator.ThreshPowerLFOs,
                     EnvelopeUpdate(
                         this.Oscillator.ThreshPowerEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 this.CurrentRatio = LFOGenUpdateCycle(
                     this.Oscillator.RatioLFOs,
                     EnvelopeUpdate(
                         this.Oscillator.RatioEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 CurrentFilterCutoff = LFOGenUpdateCycle(
                     this.Oscillator.FilterCutoffLFOs,
                     EnvelopeUpdate(
                         this.Oscillator.FilterCutoffEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 CurrentDecayRate = LFOGenUpdateCycle(
                     this.Oscillator.DecayRateLFOs,
                     EnvelopeUpdate(
                         this.Oscillator.DecayRateEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 CurrentAttackRate = LFOGenUpdateCycle(
                     this.Oscillator.AttackRateLFOs,
                     EnvelopeUpdate(
                         this.Oscillator.AttackRateEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 this.CurrentLimitingExcess = LFOGenUpdateCycle(
                     this.Oscillator.LimitingExcessLFOs,
                     EnvelopeUpdate(
                         this.Oscillator.LimitingExcessEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
                 FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
                     this.LeftLowpass,
@@ -815,6 +919,8 @@ namespace OutOfPhase
                     Temp = MINRATERECIPEXP;
                 }
                 this.CurrentAttackFactor = Math.Pow(2, 1d / Temp);
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void OscKeyUpSustain1()

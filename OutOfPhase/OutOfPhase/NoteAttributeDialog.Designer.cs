@@ -60,7 +60,6 @@ namespace OutOfPhase
             this.label8 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
             this.textBoxAccent1 = new System.Windows.Forms.TextBox();
-            this.noteNoteObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.textBoxAccent2 = new System.Windows.Forms.TextBox();
             this.textBoxAccent3 = new System.Windows.Forms.TextBox();
             this.textBoxAccent4 = new System.Windows.Forms.TextBox();
@@ -74,9 +73,9 @@ namespace OutOfPhase
             this.comboBoxRelease1Origin = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
-            this.button1 = new System.Windows.Forms.Button();
+            this.buttonCancel = new System.Windows.Forms.Button();
             this.label12 = new System.Windows.Forms.Label();
-            this.button2 = new System.Windows.Forms.Button();
+            this.buttonOK = new System.Windows.Forms.Button();
             this.label13 = new System.Windows.Forms.Label();
             this.label14 = new System.Windows.Forms.Label();
             this.textBox1 = new System.Windows.Forms.TextBox();
@@ -125,9 +124,10 @@ namespace OutOfPhase
             this.label30 = new System.Windows.Forms.Label();
             this.label36 = new System.Windows.Forms.Label();
             this.textBoxDuration = new System.Windows.Forms.TextBox();
+            this.noteNoteObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.tableLayoutPanel1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.noteNoteObjectRecBindingSource)).BeginInit();
             this.flowLayoutPanel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.noteNoteObjectRecBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -324,10 +324,6 @@ namespace OutOfPhase
             this.textBoxAccent1.Size = new System.Drawing.Size(94, 20);
             this.textBoxAccent1.TabIndex = 9;
             // 
-            // noteNoteObjectRecBindingSource
-            // 
-            this.noteNoteObjectRecBindingSource.DataSource = typeof(OutOfPhase.NoteNoteObjectRec);
-            // 
             // textBoxAccent2
             // 
             this.textBoxAccent2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
@@ -447,24 +443,25 @@ namespace OutOfPhase
             this.flowLayoutPanel1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.flowLayoutPanel1.AutoSize = true;
             this.tableLayoutPanel1.SetColumnSpan(this.flowLayoutPanel1, 10);
-            this.flowLayoutPanel1.Controls.Add(this.button1);
+            this.flowLayoutPanel1.Controls.Add(this.buttonCancel);
             this.flowLayoutPanel1.Controls.Add(this.label12);
-            this.flowLayoutPanel1.Controls.Add(this.button2);
+            this.flowLayoutPanel1.Controls.Add(this.buttonOK);
             this.flowLayoutPanel1.Location = new System.Drawing.Point(446, 354);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Padding = new System.Windows.Forms.Padding(0, 0, 50, 0);
             this.flowLayoutPanel1.Size = new System.Drawing.Size(318, 29);
             this.flowLayoutPanel1.TabIndex = 21;
             // 
-            // button1
+            // buttonCancel
             // 
-            this.button1.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.button1.Location = new System.Drawing.Point(3, 3);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(100, 23);
-            this.button1.TabIndex = 0;
-            this.button1.Text = "Cancel";
-            this.button1.UseVisualStyleBackColor = true;
+            this.buttonCancel.CausesValidation = false;
+            this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+            this.buttonCancel.Location = new System.Drawing.Point(3, 3);
+            this.buttonCancel.Name = "buttonCancel";
+            this.buttonCancel.Size = new System.Drawing.Size(100, 23);
+            this.buttonCancel.TabIndex = 0;
+            this.buttonCancel.Text = "Cancel";
+            this.buttonCancel.UseVisualStyleBackColor = true;
             // 
             // label12
             // 
@@ -473,15 +470,15 @@ namespace OutOfPhase
             this.label12.Size = new System.Drawing.Size(50, 23);
             this.label12.TabIndex = 2;
             // 
-            // button2
+            // buttonOK
             // 
-            this.button2.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.button2.Location = new System.Drawing.Point(165, 3);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(100, 23);
-            this.button2.TabIndex = 1;
-            this.button2.Text = "OK";
-            this.button2.UseVisualStyleBackColor = true;
+            this.buttonOK.Location = new System.Drawing.Point(165, 3);
+            this.buttonOK.Name = "buttonOK";
+            this.buttonOK.Size = new System.Drawing.Size(100, 23);
+            this.buttonOK.TabIndex = 1;
+            this.buttonOK.Text = "OK";
+            this.buttonOK.UseVisualStyleBackColor = true;
+            this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
             // 
             // label13
             // 
@@ -957,18 +954,28 @@ namespace OutOfPhase
             this.textBoxDuration.Size = new System.Drawing.Size(94, 20);
             this.textBoxDuration.TabIndex = 72;
             // 
+            // noteNoteObjectRecBindingSource
+            // 
+            this.noteNoteObjectRecBindingSource.DataSource = typeof(OutOfPhase.NoteNoteObjectRec);
+            // 
             // NoteAttributeDialog
             // 
+            this.AcceptButton = this.buttonOK;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoValidate = System.Windows.Forms.AutoValidate.EnableAllowFocusChange;
+            this.CancelButton = this.buttonCancel;
             this.ClientSize = new System.Drawing.Size(767, 394);
             this.Controls.Add(this.tableLayoutPanel1);
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
             this.Name = "NoteAttributeDialog";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Edit Note Attributes";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.noteNoteObjectRecBindingSource)).EndInit();
             this.flowLayoutPanel1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.noteNoteObjectRecBindingSource)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -999,9 +1006,9 @@ namespace OutOfPhase
         private System.Windows.Forms.ComboBox comboBoxRelease1Origin;
         private System.Windows.Forms.BindingSource noteNoteObjectRecBindingSource;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
-        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Button buttonCancel;
         private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.Button button2;
+        private System.Windows.Forms.Button buttonOK;
         private System.Windows.Forms.Label label13;
         private System.Windows.Forms.Label label14;
         private System.Windows.Forms.TextBox textBox1;

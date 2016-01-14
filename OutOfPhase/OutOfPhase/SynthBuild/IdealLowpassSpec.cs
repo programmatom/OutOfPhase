@@ -35,6 +35,9 @@ namespace OutOfPhase
 
             /* cutoff frequency for the ideal lowpass filter */
             public double Cutoff;
+
+            // effect is disabled below this rate
+            public int MinSamplingRate;
         }
 
         /* create anew ideal lowpass filter specification */
@@ -60,6 +63,16 @@ namespace OutOfPhase
         public static int IdealLowpassSpecGetOrder(IdealLPSpecRec IdealLPSpec)
         {
             return IdealLPSpec.Order;
+        }
+
+        public static void SetIdealLowpassMinSamplingRate(IdealLPSpecRec IdealLPSpec, int minSamplingRate)
+        {
+            IdealLPSpec.MinSamplingRate = minSamplingRate;
+        }
+
+        public static int GetIdealLowpassMinSamplingRate(IdealLPSpecRec IdealLPSpec)
+        {
+            return IdealLPSpec.MinSamplingRate;
         }
     }
 }

@@ -607,12 +607,7 @@ namespace OutOfPhase
     {
         [FieldOffset(0)]
         private short vt;
-        [FieldOffset(2)]
-        private short wReserved1;
-        [FieldOffset(4)]
-        private short wReserved2;
-        [FieldOffset(6)]
-        private short wReserved3;
+
         [FieldOffset(8)]
         private sbyte cVal;
         [FieldOffset(8)]
@@ -656,12 +651,19 @@ namespace OutOfPhase
             public IntPtr data;
         }
 
-        [DllImport("ole32.dll")]
-        private extern static int PropVariantClear(ref PropVariant pvar);
+        [DllImport("ole32.dll", PreserveSig = false)]
+        private extern static void PropVariantClear(ref PropVariant pvar);
 
         public void Clear()
         {
-            PropVariantClear(ref this);
+            // TODO: find out why this started throwing exceptions on .NET 4.61 (worked fine on .NET 2.0)
+            try
+            {
+                PropVariantClear(ref this);
+            }
+            catch (OverflowException)
+            {
+            }
         }
 
         public object Value

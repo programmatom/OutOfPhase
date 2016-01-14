@@ -104,16 +104,18 @@ namespace OutOfPhase
                 return Histogram;
             }
 
-            public void TrackUpdateState(ref AccentRec Accents, SynthParamRec SynthParams)
+            public SynthErrorCodes TrackUpdateState(ref AccentRec Accents, SynthParamRec SynthParams)
             {
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void OscFixEnvelopeOrigins(int ActualPreOriginTime)
             {
             }
 
-            public void OscUpdateEnvelopes(double OscillatorFrequency, SynthParamRec SynthParams)
+            public SynthErrorCodes OscUpdateEnvelopes(double OscillatorFrequency, SynthParamRec SynthParams)
             {
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void OscKeyUpSustain1()

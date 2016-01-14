@@ -64,6 +64,8 @@ namespace OutOfPhase
             public double CurrentOutputScaling;
             public double CurrentWaveTableIndex; /* 0..NumTables - 1 */
 
+            public bool clampOverflow;
+
             /* variant stuff */
             // exactly one of these is not null
             public NLOscRec Oscillator;
@@ -90,6 +92,8 @@ namespace OutOfPhase
                     throw new InvalidOperationException();
                 }
                 NLProc.NumberOfTablesMinus1 = NLProc.NumberOfTables - 1;
+
+                NLProc.clampOverflow = GetNLProcOverflowMode(Template) == NonlinProcOverflowMode.Clamp;
 
                 return NLProc;
             }
@@ -269,29 +273,42 @@ namespace OutOfPhase
             }
 
             /* update nonlinear state with accent information */
-            public void TrackUpdateState(
+            public SynthErrorCodes TrackUpdateState(
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 double DoubleTemp;
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.InputScaling,
                     ref Accents,
                     SynthParams,
                     out this.CurrentInputScaling);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.OutputScaling,
                     ref Accents,
                     SynthParams,
                     out this.CurrentOutputScaling);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.WaveTableIndex,
                     ref Accents,
                     SynthParams,
                     out DoubleTemp);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 DoubleTemp = DoubleTemp * this.NumberOfTablesMinus1;
                 if (DoubleTemp < 0)
                 {
@@ -302,42 +319,66 @@ namespace OutOfPhase
                     DoubleTemp = this.NumberOfTablesMinus1;
                 }
                 this.CurrentWaveTableIndex = DoubleTemp;
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* update nonlinear state with accent information */
-            public void OscUpdateEnvelopes(
+            public SynthErrorCodes OscUpdateEnvelopes(
                 double OscillatorFrequency,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 double DoubleTemp;
 
+                error = SynthErrorCodes.eSynthDone;
                 this.CurrentInputScaling = LFOGenUpdateCycle(
                     this.Oscillator.InputScalingLFO,
                     EnvelopeUpdate(
                         this.Oscillator.InputScalingEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 this.CurrentOutputScaling = LFOGenUpdateCycle(
                     this.Oscillator.OutputScalingLFO,
                     EnvelopeUpdate(
                         this.Oscillator.OutputScalingEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 DoubleTemp = this.NumberOfTablesMinus1 *
                     LFOGenUpdateCycle(
                         this.Oscillator.WaveTableIndexLFO,
                         EnvelopeUpdate(
                             this.Oscillator.WaveTableIndexEnvelope,
                             OscillatorFrequency,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         OscillatorFrequency,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 if (DoubleTemp < 0)
                 {
                     DoubleTemp = 0;
@@ -347,6 +388,8 @@ namespace OutOfPhase
                     DoubleTemp = this.NumberOfTablesMinus1;
                 }
                 this.CurrentWaveTableIndex = DoubleTemp;
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void OscKeyUpSustain1()
@@ -444,6 +487,26 @@ namespace OutOfPhase
                     SynthParams);
             }
 
+            private static void Clamp(
+                Fixed64[] FrameIndexBufferBase,
+                int FrameIndexBufferOffset,
+                int FramesPerTable,
+                int nActualFrames)
+            {
+                // TODO: optimize
+                for (int i = 0; i < nActualFrames; i++)
+                {
+                    if (FrameIndexBufferBase[i + FrameIndexBufferOffset].Int > FramesPerTable)
+                    {
+                        FrameIndexBufferBase[i + FrameIndexBufferOffset] = new Fixed64(((long)FramesPerTable << 32) - 1);
+                    }
+                    else if (FrameIndexBufferBase[i + FrameIndexBufferOffset].Int < 0)
+                    {
+                        FrameIndexBufferBase[i + FrameIndexBufferOffset] = new Fixed64(0x0000000000000000);
+                    }
+                }
+            }
+
             /* apply processor to stream */
             private static void ApplyUnifiedNLProcHelper(
                 float[] Data,
@@ -489,6 +552,15 @@ namespace OutOfPhase
                     nActualFrames,
                     (float)WaveIndexScalingTimesInputScaling/*factor */,
                     (float)WaveIndexScaling/*addend*/);
+
+                if (NLProc.clampOverflow)
+                {
+                    Clamp(
+                        FrameIndexBufferBase,
+                        FrameIndexBufferOffset,
+                        NLProc.FramesPerTable,
+                        nActualFrames);
+                }
 
                 VectorWaveIndex(
                     NLProc.CurrentWaveTableIndex,

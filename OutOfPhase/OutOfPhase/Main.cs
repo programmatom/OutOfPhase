@@ -68,6 +68,12 @@ namespace OutOfPhase
             }
         }
 
+        public static void ReferenceRecentDocument(string path)
+        {
+            Program.Config.ReferenceRecentDocument(path);
+            Program.SaveSettings();
+        }
+
         private const string LocalApplicationDirectoryName = "OutOfPhase";
         private static string GetLocalAppDataPath(bool create, bool roaming)
         {
@@ -358,7 +364,7 @@ namespace OutOfPhase
                                         {
                                             sorted[i] = new KeyValuePair<int, float>(i, leftComposite.Base[i + leftComposite.Offset]);
                                         }
-                                        Array.Sort(sorted, delegate(KeyValuePair<int, float> ll, KeyValuePair<int, float> rr) { return -ll.Value.CompareTo(rr.Value); });
+                                        Array.Sort(sorted, delegate (KeyValuePair<int, float> ll, KeyValuePair<int, float> rr) { return -ll.Value.CompareTo(rr.Value); });
                                         int maxIndex = sorted[0].Key;
 
                                         const float ThreshholdOfSignificance = .99f;
@@ -884,7 +890,7 @@ namespace OutOfPhase
                 OutputGeneric<OutputSelectableFileDestination, SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>, OutputSelectableFileArguments> state;
                 state = SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.Do(
                     mainWindow.DisplayName,
-                    delegate(out OutputSelectableFileDestination destination)
+                    delegate (out OutputSelectableFileDestination destination)
                     {
                         destination = new OutputSelectableFileDestination();
                         destination.path = target;
@@ -1108,8 +1114,7 @@ namespace OutOfPhase
                         if (firstTime && File.Exists(Environment.ExpandEnvironmentVariables(DecodePathUnicodeHack(pathUnicodeHack, args[0]))))
                         {
                             string path = Path.GetFullPath(Environment.ExpandEnvironmentVariables(DecodePathUnicodeHack(pathUnicodeHack, args[0])));
-                            Document document = new Document(path);
-                            new MainWindow(document, path).Show();
+                            MainWindow.TryOpenFilePath(path);
                             used = 1;
                         }
                         else
@@ -1461,7 +1466,7 @@ namespace OutOfPhase
             else
             {
                 Document document = new Document();
-                new MainWindow(document, null).Show();
+                new MainWindow(document, null, true/*firstWindow*/).Show();
             }
 
             Application.Idle += new EventHandler(Application_Idle);

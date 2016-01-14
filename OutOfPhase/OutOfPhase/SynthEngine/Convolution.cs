@@ -79,12 +79,12 @@ namespace OutOfPhase
 
         public class ConvolveStreamExplicitLatency : IConvolution
         {
-#if false
+#if ELCONV
 #else
             public const bool Available = false;
 #endif
 
-#if false
+#if ELCONV
 #endif
 
 
@@ -97,7 +97,7 @@ namespace OutOfPhase
                 int Latency,
                 int lOversampling)
             {
-#if false
+#if ELCONV
 #else
                 return null;
 #endif
@@ -113,14 +113,13 @@ namespace OutOfPhase
                 float DirectGain,
                 float ProcessedGain)
             {
-#if false
+#if ELCONV
 #endif
             }
 
             public void Dispose()
             {
-#if false
-#else
+#if ELCONV
 #endif
 
                 GC.SuppressFinalize(this);

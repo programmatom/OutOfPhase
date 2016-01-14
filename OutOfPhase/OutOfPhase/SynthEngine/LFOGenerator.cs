@@ -43,7 +43,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams);
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef);
 
         public delegate float LFOWaveIndexerMethod(
             double Phase,
@@ -129,6 +130,11 @@ namespace OutOfPhase
             public double SampleHoldPhase;
             /* current hold value */
             public double CurrentSampleHold;
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+            // envelope generator for oscillator mode that loops repeatedly through the points of an envelope
+            public EvalEnvelopeRec LoopEnvelope;
+#endif
         }
 
         public class LFOGenRec
@@ -572,6 +578,47 @@ namespace OutOfPhase
                             MaxPreOrigin = PreOriginTime;
                         }
                         break;
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+                    case LFOOscTypes.eLFOLoopedEnvelope:
+                        {
+                            switch (ListNode.ModulationMethod)
+                            {
+                                default:
+                                    Debug.Assert(false);
+                                    throw new ArgumentException();
+                                case LFOModulationTypes.eLFOAdditive:
+                                    ListNode.GenFunction = AddLoopedEnvelope;
+                                    break;
+                                case LFOModulationTypes.eLFOMultiplicative:
+                                    ListNode.GenFunction = MultLoopedEnvelope;
+                                    break;
+                                case LFOModulationTypes.eLFOInverseMultiplicative:
+                                    ListNode.GenFunction = InvMultLoopedEnvelope;
+                                    break;
+                            }
+
+                            // TODO: Because of the context in which the envelope is evaluated it is not parameterized
+                            // by any of the usual values. It would be interesting to permit that.
+                            int discardedPreOriginTime; // not used for this case
+                            ListNode.LoopEnvelope = NewEnvelopeStateRecord(
+                                GetLFOSpecLoopedEnvelope(OneLFOSpec),
+                                ref Accents,
+                                Constants.MIDDLEC/*FrequencyHertz*/,
+                                1/*Loudness*/,
+                                1/*HurryUp*/,
+                                out discardedPreOriginTime,
+                                delegate(object Context, out AccentRec NoteAccents, out AccentRec TrackAccents)
+                                {
+                                    NoteAccents = new AccentRec();
+                                    TrackAccents = new AccentRec();
+                                }/*ParamGetter*/,
+                                null/*ParamGetterContext*/,
+                                SynthParams);
+                            ListNode.CurrentPhase = SynthParams.dEnvelopeRate;
+                        }
+                        break;
+#endif
                 }
 
                 /* set up special values */
@@ -680,9 +727,11 @@ namespace OutOfPhase
                 LFOOneStateRec Scan = LFOGen.LFOVector[i];
 
                 EnvelopeStateFixUpInitialDelay(
-                    Scan.LFOAmplitudeEnvelope, ActualPreOriginTime);
+                    Scan.LFOAmplitudeEnvelope,
+                    ActualPreOriginTime);
                 EnvelopeStateFixUpInitialDelay(
-                    Scan.LFOFrequencyEnvelope, ActualPreOriginTime);
+                    Scan.LFOFrequencyEnvelope,
+                    ActualPreOriginTime);
                 LFOGeneratorFixEnvelopeOrigins(
                     Scan.LFOAmplitudeLFOGenerator,
                     ActualPreOriginTime);
@@ -716,6 +765,29 @@ namespace OutOfPhase
                         Scan.LFOSampleHoldLFOGenerator,
                         ActualPreOriginTime);
                 }
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+                if (Scan.LoopEnvelope != null)
+                {
+                    // TODO:review
+
+                    // This is a bit of a hack - if using looped-envelope oscillator, adjust the phase of the lfo generator
+                    // so that the envelope is starting at the overall event origin - so sequenced rhythmic effeccts that
+                    // match tempo will work right. (For other cases alignment wouldn't matter.)
+                    // Note that it won't work unless the frequency envelope is a constant.
+
+                    double envelopeRate = Scan.CurrentPhase; // initialized to that value in the constructor
+                    Scan.CurrentPhase = -EnvelopeInitialValue(Scan.LFOFrequencyEnvelope) * ActualPreOriginTime / envelopeRate;
+                    Scan.CurrentPhase = Scan.CurrentPhase - Math.Floor(Scan.CurrentPhase);
+
+                    // prevent envelope generator from running before event origin.
+                    EnvelopeStateFixUpInitialDelay(
+                        Scan.LoopEnvelope,
+                        ActualPreOriginTime);
+
+                    // TODO: ought to advance the phase of the envelope generator to the right spot
+                }
+#endif
             }
         }
 
@@ -725,21 +797,35 @@ namespace OutOfPhase
             LFOGenRec LFOGen,
             double OriginalValue,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
+            if (ErrorRef != SynthErrorCodes.eSynthDone)
+            {
+                return 0;
+            }
+
             for (int i = 0; i < LFOGen.NumLFOs; i += 1)
             {
                 LFOOneStateRec Scan = LFOGen.LFOVector[i];
 
                 /* compute amplitude envelope/lfo thing */
+                SynthErrorCodes error = SynthErrorCodes.eSynthDone;
                 double VariantAmplitude = LFOGenUpdateCycle(
-                        Scan.LFOAmplitudeLFOGenerator,
-                        EnvelopeUpdate(
-                            Scan.LFOAmplitudeEnvelope,
-                            OscillatorFrequency,
-                            SynthParams),
+                    Scan.LFOAmplitudeLFOGenerator,
+                    EnvelopeUpdate(
+                        Scan.LFOAmplitudeEnvelope,
                         OscillatorFrequency,
-                        SynthParams);
+                        SynthParams,
+                        ref error),
+                    OscillatorFrequency,
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    ErrorRef = error;
+                    return 0;
+                }
 
                 /* perform the calculations */
 #if DEBUG
@@ -753,12 +839,19 @@ namespace OutOfPhase
 #endif
                 if (Scan.ModulationMode == LFOArithSelect.eLFOArithAdditive)
                 {
+                    error = SynthErrorCodes.eSynthDone;
                     OriginalValue = Scan.GenFunction(
                         Scan,
                         OriginalValue,
                         VariantAmplitude,
                         OscillatorFrequency,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        ErrorRef = error;
+                        return 0;
+                    }
                 }
                 else
                 {
@@ -782,13 +875,20 @@ namespace OutOfPhase
                             /* this one means 1 is a halfstep */
                             ScalingConstant = Constants.LOG2 / 12;
                         }
+                        error = SynthErrorCodes.eSynthDone;
                         OriginalValue = Math.Exp(
                             Scan.GenFunction(
                                 Scan,
                                 Math.Log(OriginalValue),
                                 VariantAmplitude * ScalingConstant,
                                 OscillatorFrequency,
-                                SynthParams));
+                                SynthParams,
+                                ref error));
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            ErrorRef = error;
+                            return 0;
+                        }
                     }
                     if (Sign)
                     {
@@ -802,6 +902,7 @@ namespace OutOfPhase
                     double SampleHoldPhase;
 
                     /* update sample/hold phase generator */
+                    error = SynthErrorCodes.eSynthDone;
                     SampleHoldPhase = Scan.SampleHoldPhase;
                     SampleHoldPhase = SampleHoldPhase +
                         LFOGenUpdateCycle(
@@ -809,10 +910,17 @@ namespace OutOfPhase
                             EnvelopeUpdate(
                                 Scan.LFOSampleHoldEnvelope,
                                 OscillatorFrequency,
-                                SynthParams),
+                                SynthParams,
+                                ref error),
                             OscillatorFrequency,
-                            SynthParams)
+                            SynthParams,
+                            ref error)
                         / SynthParams.dEnvelopeRate;
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        ErrorRef = error;
+                        return 0;
+                    }
                     /* if phase exceeds limit, then update held value to current */
                     if (SampleHoldPhase >= 1)
                     {
@@ -827,6 +935,7 @@ namespace OutOfPhase
                 /* apply lowpass filter */
                 if (Scan.LowpassFilterEnabled)
                 {
+                    error = SynthErrorCodes.eSynthDone;
                     FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
                         Scan.LowpassFilter,
                         LFOGenUpdateCycle(
@@ -834,26 +943,41 @@ namespace OutOfPhase
                             EnvelopeUpdate(
                                 Scan.LFOFilterCutoffEnvelope,
                                 OscillatorFrequency,
-                                SynthParams),
+                                SynthParams,
+                                ref error),
                             OscillatorFrequency,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         SynthParams.dEnvelopeRate);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        ErrorRef = error;
+                        return 0;
+                    }
                     OriginalValue = FirstOrderLowpassRec.ApplyFirstOrderLowpass(
                         Scan.LowpassFilter,
                         (float)OriginalValue);
                 }
 
                 /* update phase of oscillator */
+                error = SynthErrorCodes.eSynthDone;
                 Scan.CurrentPhase = Scan.CurrentPhase +
                     LFOGenUpdateCycle(
                         Scan.LFOFrequencyLFOGenerator,
                         EnvelopeUpdate(
                             Scan.LFOFrequencyEnvelope,
                             OscillatorFrequency,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         OscillatorFrequency,
-                        SynthParams)
+                        SynthParams,
+                        ref error)
                     / SynthParams.dEnvelopeRate;
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    ErrorRef = error;
+                    return 0;
+                }
 
                 /* generate next random point for fuzz lfos */
 #if DEBUG
@@ -884,6 +1008,29 @@ namespace OutOfPhase
                         Scan.RightNoise = ParkAndMiller.Double0Through1(Scan.Seed.Random());
                     }
                 }
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+                if (Scan.LoopEnvelope != null)
+                {
+                    // For looped envelopes, retriggering is keyed off of the phase, which requires the user to specify
+                    // the period for the oscillator. This complication avoids needing to implement a high-precision envelope
+                    // generator that can stay in sync with the note event clock over long periods of time.
+                    if (Scan.CurrentPhase >= 1)
+                    {
+                        // TODO: Because of the context in which the envelope is evaluated it is not parameterized
+                        // by any of the usual values. It would be interesting to permit that.
+                        AccentRec zero = new AccentRec();
+                        EnvelopeRetriggerFromOrigin(
+                            Scan.LoopEnvelope,
+                            ref zero,
+                            Constants.MIDDLEC/*FrequencyHertz*/,
+                            1/*Loudness*/,
+                            1/*HurryUp*/,
+                            true/*ActuallyRetrigger*/,
+                            SynthParams);
+                    }
+                }
+#endif
 
                 /* wrap phase */
                 Scan.CurrentPhase = Scan.CurrentPhase - Math.Floor(Scan.CurrentPhase);
@@ -1190,12 +1337,19 @@ namespace OutOfPhase
             return false;
         }
 
+        // Used by envelope smoothing feature to determine if lfo gen discretization should be preserved
+        public static bool IsLFOSampleAndHold(LFOGenRec LFOGen)
+        {
+            return (LFOGen.NumLFOs > 0) && LFOGen.LFOVector[LFOGen.NumLFOs - 1].SampleAndHoldEnabled;
+        }
+
         private static double AddConst(
             LFOOneStateRec State,
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             return OriginalValue + Amplitude;
         }
@@ -1205,7 +1359,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             return OriginalValue + Amplitude * Math.Sin(State.CurrentPhase * 2 * Math.PI);
         }
@@ -1215,7 +1370,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             return OriginalValue + Amplitude * 0.5 * (1 + Math.Sin(State.CurrentPhase * 2 * Math.PI));
         }
@@ -1225,7 +1381,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Temp;
 
@@ -1249,7 +1406,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Temp;
 
@@ -1273,7 +1431,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Peak1;
             double Peak2;
@@ -1308,7 +1467,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Peak1;
             double Peak2;
@@ -1343,7 +1503,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             if (State.CurrentPhase < State.ExtraValue)
             {
@@ -1360,7 +1521,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             if (State.CurrentPhase < State.ExtraValue)
             {
@@ -1377,7 +1539,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise * (1 - State.CurrentPhase) + State.RightNoise * State.CurrentPhase;
             return OriginalValue + (2 * ReturnValue - 1) * Amplitude;
@@ -1388,7 +1551,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise;
             return OriginalValue + (2 * ReturnValue - 1) * Amplitude;
@@ -1399,7 +1563,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise * (1 - State.CurrentPhase) + State.RightNoise * State.CurrentPhase;
             return OriginalValue + ReturnValue * Amplitude;
@@ -1410,7 +1575,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise;
             return OriginalValue + ReturnValue * Amplitude;
@@ -1421,7 +1587,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             return OriginalValue * Amplitude;
         }
@@ -1431,7 +1598,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             return OriginalValue * Amplitude * Math.Sin(State.CurrentPhase * 2 * Math.PI);
         }
@@ -1441,7 +1609,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             return OriginalValue * Amplitude * 0.5 * (1 + Math.Sin(State.CurrentPhase * 2 * Math.PI));
         }
@@ -1451,7 +1620,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Temp;
 
@@ -1475,7 +1645,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Temp;
 
@@ -1499,7 +1670,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Peak1;
             double Peak2;
@@ -1534,7 +1706,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Peak1;
             double Peak2;
@@ -1569,7 +1742,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             if (State.CurrentPhase < State.ExtraValue)
             {
@@ -1586,7 +1760,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             if (State.CurrentPhase < State.ExtraValue)
             {
@@ -1603,7 +1778,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise * (1 - State.CurrentPhase) + State.RightNoise * State.CurrentPhase;
             return OriginalValue * (2 * ReturnValue - 1) * Amplitude;
@@ -1614,7 +1790,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise;
             return OriginalValue * (2 * ReturnValue - 1) * Amplitude;
@@ -1625,7 +1802,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise * (1 - State.CurrentPhase) + State.RightNoise * State.CurrentPhase;
             return OriginalValue * ReturnValue * Amplitude;
@@ -1636,7 +1814,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise;
             return OriginalValue * ReturnValue * Amplitude;
@@ -1647,7 +1826,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             return OriginalValue * (1 - Amplitude);
         }
@@ -1657,7 +1837,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             return OriginalValue * (1 - Amplitude * Math.Sin(State.CurrentPhase * 2 * Math.PI));
         }
@@ -1667,7 +1848,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             return OriginalValue * (1 - Amplitude * 0.5 * (1 + Math.Sin(State.CurrentPhase * 2 * Math.PI)));
         }
@@ -1677,7 +1859,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Temp;
 
@@ -1701,7 +1884,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Temp;
 
@@ -1725,7 +1909,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Peak1;
             double Peak2;
@@ -1760,7 +1945,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double Peak1;
             double Peak2;
@@ -1795,7 +1981,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             if (State.CurrentPhase < State.ExtraValue)
             {
@@ -1812,7 +1999,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             if (State.CurrentPhase < State.ExtraValue)
             {
@@ -1829,7 +2017,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise * (1 - State.CurrentPhase) + State.RightNoise * State.CurrentPhase;
             return OriginalValue * (1 - (2 * ReturnValue - 1) * Amplitude);
@@ -1840,7 +2029,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise;
             return OriginalValue * (1 - (2 * ReturnValue - 1) * Amplitude);
@@ -1851,7 +2041,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise * (1 - State.CurrentPhase) + State.RightNoise * State.CurrentPhase;
             return OriginalValue * (1 - ReturnValue * Amplitude);
@@ -1862,7 +2053,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             double ReturnValue = State.LeftNoise;
             return OriginalValue * (1 - ReturnValue * Amplitude);
@@ -1873,7 +2065,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             if (State.WaveTableWasDefined)
             {
@@ -1881,15 +2074,23 @@ namespace OutOfPhase
                 double LFOResult;
                 float WaveIndexerResult;
 
+                SynthErrorCodes error = SynthErrorCodes.eSynthDone;
                 EnvelopeResult = EnvelopeUpdate(
                     State.WaveTableIndexEnvelope,
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
                 LFOResult = LFOGenUpdateCycle(
                     State.WaveTableLFOGenerator,
                     EnvelopeResult,
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    ErrorRef = error;
+                    return 0;
+                }
                 WaveIndexerResult = State.WaveIndexer(
                     State.FramesPerTable * State.CurrentPhase,
                     LFOResult * (State.NumberOfTables - 1),
@@ -1909,7 +2110,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             if (State.WaveTableWasDefined)
             {
@@ -1917,15 +2119,23 @@ namespace OutOfPhase
                 double LFOResult;
                 float WaveIndexerResult;
 
+                SynthErrorCodes error = SynthErrorCodes.eSynthDone;
                 EnvelopeResult = EnvelopeUpdate(
                     State.WaveTableIndexEnvelope,
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
                 LFOResult = LFOGenUpdateCycle(
                     State.WaveTableLFOGenerator,
                     EnvelopeResult,
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    ErrorRef = error;
+                    return 0;
+                }
                 WaveIndexerResult = State.WaveIndexer(
                     State.FramesPerTable * State.CurrentPhase,
                     LFOResult * (State.NumberOfTables - 1),
@@ -1945,7 +2155,8 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
             if (State.WaveTableWasDefined)
             {
@@ -1953,15 +2164,23 @@ namespace OutOfPhase
                 double LFOResult;
                 float WaveIndexerResult;
 
+                SynthErrorCodes error = SynthErrorCodes.eSynthDone;
                 EnvelopeResult = EnvelopeUpdate(
                     State.WaveTableIndexEnvelope,
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
                 LFOResult = LFOGenUpdateCycle(
                     State.WaveTableLFOGenerator,
                     EnvelopeResult,
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    ErrorRef = error;
+                    return 0;
+                }
                 WaveIndexerResult = State.WaveIndexer(
                     State.FramesPerTable * State.CurrentPhase,
                     LFOResult * (State.NumberOfTables - 1),
@@ -1975,5 +2194,75 @@ namespace OutOfPhase
                 return OriginalValue;
             }
         }
+
+#if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
+        private static double LoopedEnvelopeHelper(
+            LFOOneStateRec State,
+            double OscillatorFrequency,
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
+        {
+            SynthErrorCodes error = SynthErrorCodes.eSynthDone;
+            double result = EnvelopeUpdate(
+                State.LoopEnvelope,
+                OscillatorFrequency,
+                SynthParams,
+                ref error);
+            if (error != SynthErrorCodes.eSynthDone)
+            {
+                ErrorRef = error;
+                return 0;
+            }
+            return result;
+        }
+
+        private static double AddLoopedEnvelope(
+            LFOOneStateRec State,
+            double OriginalValue,
+            double Amplitude,
+            double OscillatorFrequency,
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
+        {
+            double Temp = LoopedEnvelopeHelper(
+                State,
+                OscillatorFrequency,
+                SynthParams,
+                ref ErrorRef);
+            return OriginalValue + Amplitude * Temp;
+        }
+
+        private static double MultLoopedEnvelope(
+            LFOOneStateRec State,
+            double OriginalValue,
+            double Amplitude,
+            double OscillatorFrequency,
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
+        {
+            double Temp = LoopedEnvelopeHelper(
+                State,
+                OscillatorFrequency,
+                SynthParams,
+                ref ErrorRef);
+            return OriginalValue * Amplitude * Temp;
+        }
+
+        private static double InvMultLoopedEnvelope(
+            LFOOneStateRec State,
+            double OriginalValue,
+            double Amplitude,
+            double OscillatorFrequency,
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
+        {
+            double Temp = LoopedEnvelopeHelper(
+                State,
+                OscillatorFrequency,
+                SynthParams,
+                ref ErrorRef);
+            return (1 - Amplitude * Temp) * OriginalValue;
+        }
+#endif
     }
 }

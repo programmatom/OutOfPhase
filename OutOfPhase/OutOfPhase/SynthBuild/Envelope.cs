@@ -72,7 +72,14 @@ namespace OutOfPhase
             public AccentRec AccentRate;
             public double FrequencyRateRolloff;
             public double FrequencyRateNormalization;
+
+            // alternative initializers
+            public PcodeRec DurationFunction; // null == constant (above - old behavior), signature for EnvelopeInitParamEval()
+            public PcodeRec EndPointFunction; // null == constant (above - old behavior), signature for EnvelopeInitParamEval()
         }
+
+        // multiple threads may init the field, so for safety, the type is 'int' to take up a machine word (in case of non-Intel memory models)
+        public enum EnvelopeContainsFormulaType : int { NotInitialized = 0, No, Yes };
 
         public class EnvelopeRec
         {
@@ -113,6 +120,9 @@ namespace OutOfPhase
             /* constant envelope value */
             public bool ConstantShortcut;
             public double ConstantShortcutValue;
+
+            // used for optimizing formula evaluation
+            public EnvelopeContainsFormulaType containsFormula;
         }
 
         /* create a new envelope record with nothing in it */
@@ -449,6 +459,21 @@ namespace OutOfPhase
             Envelope.PhaseArray[Index].Duration = Duration;
         }
 
+        public static void EnvelopeSetPhaseDurationFormula(
+            EnvelopeRec Envelope,
+            int Index,
+            PcodeRec DurationFunction)
+        {
+#if DEBUG
+            if ((Index < 0) || (Index > Envelope.NumPhases))
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+#endif
+            Envelope.PhaseArray[Index].DurationFunction = DurationFunction;
+        }
+
         /* get the duration from the specified envelope position */
         public static double GetEnvelopePhaseDuration(
             EnvelopeRec Envelope,
@@ -462,6 +487,20 @@ namespace OutOfPhase
             }
 #endif
             return Envelope.PhaseArray[Index].Duration;
+        }
+
+        public static PcodeRec GetEnvelopePhaseDurationFormula(
+            EnvelopeRec Envelope,
+            int Index)
+        {
+#if DEBUG
+            if ((Index < 0) || (Index > Envelope.NumPhases))
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+#endif
+            return Envelope.PhaseArray[Index].DurationFunction;
         }
 
         /* set a new value for the specified phase's ultimate value */
@@ -480,6 +519,21 @@ namespace OutOfPhase
             Envelope.PhaseArray[Index].EndPoint = FinalValue;
         }
 
+        public static void EnvelopeSetPhaseFinalValueFormula(
+            EnvelopeRec Envelope,
+            int Index,
+            PcodeRec FinalValueFunction)
+        {
+#if DEBUG
+            if ((Index < 0) || (Index > Envelope.NumPhases))
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+#endif
+            Envelope.PhaseArray[Index].EndPointFunction = FinalValueFunction;
+        }
+
         /* get the phase's ultimate value */
         public static double GetEnvelopePhaseFinalValue(
             EnvelopeRec Envelope,
@@ -493,6 +547,20 @@ namespace OutOfPhase
             }
 #endif
             return Envelope.PhaseArray[Index].EndPoint;
+        }
+
+        public static PcodeRec GetEnvelopePhaseFinalValueFormula(
+            EnvelopeRec Envelope,
+            int Index)
+        {
+#if DEBUG
+            if ((Index < 0) || (Index > Envelope.NumPhases))
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+#endif
+            return Envelope.PhaseArray[Index].EndPointFunction;
         }
 
         /* set the value for a phase's transition type */
@@ -602,6 +670,28 @@ namespace OutOfPhase
                 throw new ArgumentException();
             }
             return Envelope.ConstantShortcutValue;
+        }
+
+        public static bool EnvelopeContainsFormula(EnvelopeRec Envelope)
+        {
+            if (Envelope.containsFormula == EnvelopeContainsFormulaType.NotInitialized)
+            {
+                Envelope.containsFormula = EnvelopeContainsFormulaType.No;
+                if (Envelope.Formula != null)
+                {
+                    Envelope.containsFormula = EnvelopeContainsFormulaType.Yes;
+                }
+                for (int i = 0; i < Envelope.PhaseArray.Length; i++)
+                {
+                    if ((Envelope.PhaseArray[i].DurationFunction != null)
+                        || (Envelope.PhaseArray[i].EndPointFunction != null))
+                    {
+                        Envelope.containsFormula = EnvelopeContainsFormulaType.Yes;
+                        break;
+                    }
+                }
+            }
+            return Envelope.containsFormula != EnvelopeContainsFormulaType.No;
         }
     }
 }

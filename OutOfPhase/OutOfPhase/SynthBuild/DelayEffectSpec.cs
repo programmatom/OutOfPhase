@@ -74,6 +74,7 @@ namespace OutOfPhase
         {
             /* maximum delay */
             public double MaxDelayTime;
+            public PcodeRec MaxDelayTimeFormula;
 
             /* tap list */
             public DelayTapRec[] List;
@@ -85,12 +86,11 @@ namespace OutOfPhase
             DelayEffectRec DelaySpec = new DelayEffectRec();
 
             DelaySpec.List = new DelayTapRec[0];
-            DelaySpec.MaxDelayTime = 0;
+            //DelaySpec.MaxDelayTime = 0;
 
             return DelaySpec;
         }
 
-        /* set max delay time */
         public static void SetDelayMaxTime(
             DelayEffectRec DelaySpec,
             double MaxTime)
@@ -98,10 +98,21 @@ namespace OutOfPhase
             DelaySpec.MaxDelayTime = MaxTime;
         }
 
-        /* get max delay time */
+        public static void SetDelayMaxTimeFormula(
+            DelayEffectRec DelaySpec,
+            PcodeRec MaxTimeFormula)
+        {
+            DelaySpec.MaxDelayTimeFormula = MaxTimeFormula;
+        }
+
         public static double GetDelayMaxTime(DelayEffectRec DelaySpec)
         {
             return DelaySpec.MaxDelayTime;
+        }
+
+        public static PcodeRec GetDelayMaxTimeFormula(DelayEffectRec DelaySpec)
+        {
+            return DelaySpec.MaxDelayTimeFormula;
         }
 
         /* create a new tap record */

@@ -192,7 +192,7 @@ namespace OutOfPhase
         {
             string name = sampleName.strings;
             SampleObjectRec sample = mainWindow.Document.SampleList.Find(
-                delegate(SampleObjectRec candidate) { return String.Equals(name, candidate.Name); });
+                delegate (SampleObjectRec candidate) { return String.Equals(name, candidate.Name); });
             if (sample == null)
             {
                 throw new EvalErrorException(EvalErrors.eEvalGetSampleNotDefined);
@@ -209,7 +209,7 @@ namespace OutOfPhase
         {
             string name = sampleName.strings;
             SampleObjectRec sample = mainWindow.Document.SampleList.Find(
-                delegate(SampleObjectRec candidate) { return String.Equals(name, candidate.Name); });
+                delegate (SampleObjectRec candidate) { return String.Equals(name, candidate.Name); });
             if (sample == null)
             {
                 throw new EvalErrorException(EvalErrors.eEvalGetSampleNotDefined);
@@ -226,7 +226,7 @@ namespace OutOfPhase
         {
             string name = sampleName.strings;
             SampleObjectRec sample = mainWindow.Document.SampleList.Find(
-                delegate(SampleObjectRec candidate) { return String.Equals(name, candidate.Name); });
+                delegate (SampleObjectRec candidate) { return String.Equals(name, candidate.Name); });
             if (sample == null)
             {
                 throw new EvalErrorException(EvalErrors.eEvalGetSampleNotDefined);
@@ -244,7 +244,7 @@ namespace OutOfPhase
         {
             string name = waveTableName.strings;
             WaveTableObjectRec waveTable = mainWindow.Document.WaveTableList.Find(
-                delegate(WaveTableObjectRec candidate) { return String.Equals(name, candidate.Name); });
+                delegate (WaveTableObjectRec candidate) { return String.Equals(name, candidate.Name); });
             if (waveTable == null)
             {
                 throw new EvalErrorException(EvalErrors.eEvalGetSampleNotDefined);
@@ -257,7 +257,7 @@ namespace OutOfPhase
         {
             string name = waveTableName.strings;
             WaveTableObjectRec waveTable = mainWindow.Document.WaveTableList.Find(
-                delegate(WaveTableObjectRec candidate) { return String.Equals(name, candidate.Name); });
+                delegate (WaveTableObjectRec candidate) { return String.Equals(name, candidate.Name); });
             if (waveTable == null)
             {
                 throw new EvalErrorException(EvalErrors.eEvalGetSampleNotDefined);
@@ -270,7 +270,7 @@ namespace OutOfPhase
         {
             string name = waveTableName.strings;
             WaveTableObjectRec waveTable = mainWindow.Document.WaveTableList.Find(
-                delegate(WaveTableObjectRec candidate) { return String.Equals(name, candidate.Name); });
+                delegate (WaveTableObjectRec candidate) { return String.Equals(name, candidate.Name); });
             if (waveTable == null)
             {
                 throw new EvalErrorException(EvalErrors.eEvalGetSampleNotDefined);
@@ -286,7 +286,7 @@ namespace OutOfPhase
         {
             for (int i = 0; i < length; i++)
             {
-                vector.floats[i] = vector.floats[i] * vector.floats[i];
+                vector.floats[i + start] = vector.floats[i + start] * vector.floats[i + start];
             }
             return vector;
         }
@@ -298,7 +298,7 @@ namespace OutOfPhase
         {
             for (int i = 0; i < length; i++)
             {
-                vector.floats[i] = (float)Math.Sqrt(vector.floats[i]);
+                vector.floats[i + start] = (float)Math.Sqrt(vector.floats[i + start]);
             }
             return vector;
         }
@@ -318,11 +318,17 @@ namespace OutOfPhase
                 cutoff,
                 samplingRate);
 
-            Synthesizer.FirstOrderLowpassRec.ApplyFirstOrderLowpassVectorModify(
-                Filter,
-                vector.floats,
-                start,
-                length);
+            // this is not a performance-critical code path but the filter function requires vector alignment.
+            using (Synthesizer.AlignedWorkspace aligned = new Synthesizer.AlignedWorkspace(length))
+            {
+                Array.Copy(vector.floats, start, aligned.Base, aligned.Offset, length);
+                Synthesizer.FirstOrderLowpassRec.ApplyFirstOrderLowpassVectorModify(
+                    Filter,
+                    aligned.Base,
+                    aligned.Offset,
+                    length);
+                Array.Copy(aligned.Base, aligned.Offset, vector.floats, start, length);
+            }
 
             return vector;
         }
@@ -343,15 +349,45 @@ namespace OutOfPhase
                 bandwidth,
                 samplingRate);
 
-            Synthesizer.ButterworthBandpassRec.ApplyButterworthBandpassVectorModify(
-                Filter,
-                vector.floats,
-                start,
-                length);
+            // this is not a performance-critical code path but the filter function requires vector alignment.
+            using (Synthesizer.AlignedWorkspace aligned = new Synthesizer.AlignedWorkspace(length))
+            {
+                Array.Copy(vector.floats, start, aligned.Base, aligned.Offset, length);
+                Synthesizer.ButterworthBandpassRec.ApplyButterworthBandpassVectorModify(
+                    Filter,
+                    aligned.Base,
+                    aligned.Offset,
+                    length);
+                Array.Copy(aligned.Base, aligned.Offset, vector.floats, start, length);
+            }
 
             return vector;
         }
 
+
+        private static bool SecurePathCombine(string prefix, string partial, out string result)
+        {
+            result = null;
+            // treat all filesystem separator characters as equivalent, for document portability
+            foreach (string part in partial.Split(new char[] { '\\', '/', ':' }))
+            {
+                string[] entries = Directory.GetDirectories(prefix);
+                foreach (string entry in entries)
+                {
+                    string entryName = Path.GetFileName(entry);
+                    if (String.Equals(entryName, part))
+                    {
+                        prefix = Path.Combine(prefix, entryName);
+                        goto Next;
+                    }
+                }
+                return false;
+            Next:
+                ;
+            }
+            result = prefix;
+            return true;
+        }
 
         private ArrayHandleFloat LoadSampleHelper(
             ChannelType channel,
@@ -365,19 +401,23 @@ namespace OutOfPhase
                 throw new EvalErrorException(EvalErrors.eEvalUnableToImportFile);
             }
 
+            // SECURITY: ensure navigation to user-provided path does not escape from the permitted root directories
+
             string path = null;
             if (mainWindow.SavePath != null)
             {
-                string path2 = Path.Combine(Path.GetDirectoryName(mainWindow.SavePath), name);
-                if (File.Exists(path2))
+                string path2;
+                if (SecurePathCombine(Path.GetDirectoryName(mainWindow.SavePath), name, out path2)
+                    && File.Exists(path2))
                 {
                     path = path2;
                 }
             }
             if (path == null)
             {
-                string path2 = Path.Combine(Program.ConfigDirectory, name);
-                if (File.Exists(path2))
+                string path2;
+                if (SecurePathCombine(Program.ConfigDirectory, name, out path2)
+                    && File.Exists(path2))
                 {
                     path = path2;
                 }

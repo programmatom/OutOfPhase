@@ -177,7 +177,7 @@ namespace OutOfPhase
 
                     Thread thread = new Thread(
                         new ThreadStart(
-                            delegate()
+                            delegate ()
                             {
                                 ThreadMain();
                             }));
@@ -240,6 +240,8 @@ namespace OutOfPhase
                 return this.Result;
             }
 
+            // The entire purpose of this method is to cancel runaway execution in user-provided functions. If not
+            // for that, synchronization primmitives would suffice entirely.
             public static void SafeCancel(
                 Thread thread,
                 ref PcodeThreadContext threadContext)
@@ -249,8 +251,23 @@ namespace OutOfPhase
                 {
                     threadContext.GlobalCancelPending = 1;
 
-                    // if thread has just stopped, this may throw:
+                    // First, give the thread some time to exit normally. This covers the 90% case (cancelling the synth engine)
+                    // where user functions will finish very quickly.
+                    if (thread.Join(250))
+                    {
+                        return;
+                    }
+
+                    // What follows is somewhat unstable. It works most of the time but deadlocks or leaves orphaned threads
+                    // often enough. Well, there's always auto-save...
+
+                    // if thread has already stopped, this may throw:
                     thread.Suspend();
+                    while ((thread.ThreadState == System.Threading.ThreadState.Running)
+                        || (thread.ThreadState == System.Threading.ThreadState.SuspendRequested))
+                    {
+                        thread.Join(0);
+                    }
                     suspended = true;
 
                     // check thread if it's in pcodesystem execution. eventually timeout if not.
@@ -263,7 +280,7 @@ namespace OutOfPhase
                     // could be one of:
                     // 1. A program bug (infinite loop) elsewhere
                     // 2. Very slow program algorithm, or program invoking pcode eval in a long-running
-                    //    loop, even each individual though pcode eval may be quick. This case is mitigated
+                    //    loop, even though each individual pcode eval may be quick. This case is mitigated
                     //    by the GlobalCancelPending field of the thread context.
                 }
                 catch (ThreadStateException)
@@ -356,112 +373,10 @@ namespace OutOfPhase
                         CodeCenter.ManagedFunctionLinker.FunctionSignatures);
                     try
                     {
-                        object[] managedArgs = new object[Pcode.cilObject.argsTypes.Length];
-                        for (int i = 0; i < managedArgs.Length; i++)
-                        {
-                            switch (Pcode.cilObject.argsTypes[i])
-                            {
-                                default:
-                                    Debug.Assert(false);
-                                    throw new ArgumentException();
-                                case DataTypes.eBoolean:
-#if DEBUG
-                                    Stack[i].AssertScalar();
-#endif
-                                    managedArgs[i] = Stack[i].Data.Integer != 0 ? true : false;
-                                    break;
-                                case DataTypes.eInteger:
-#if DEBUG
-                                    Stack[i].AssertScalar();
-#endif
-                                    managedArgs[i] = Stack[i].Data.Integer;
-                                    break;
-                                case DataTypes.eFloat:
-#if DEBUG
-                                    Stack[i].AssertScalar();
-#endif
-                                    managedArgs[i] = Stack[i].Data.Float;
-                                    break;
-                                case DataTypes.eDouble:
-#if DEBUG
-                                    Stack[i].AssertScalar();
-#endif
-                                    managedArgs[i] = Stack[i].Data.Double;
-                                    break;
-                                case DataTypes.eArrayOfBoolean:
-                                case DataTypes.eArrayOfByte:
-#if DEBUG
-                                    Stack[i].AssertByteArray();
-#endif
-                                    managedArgs[i] = Stack[i].reference.arrayHandleByte;
-                                    break;
-                                case DataTypes.eArrayOfInteger:
-#if DEBUG
-                                    Stack[i].AssertIntegerArray();
-#endif
-                                    managedArgs[i] = Stack[i].reference.arrayHandleInt32;
-                                    break;
-                                case DataTypes.eArrayOfFloat:
-#if DEBUG
-                                    Stack[i].AssertFloatArray();
-#endif
-                                    managedArgs[i] = Stack[i].reference.arrayHandleFloat;
-                                    break;
-                                case DataTypes.eArrayOfDouble:
-#if DEBUG
-                                    Stack[i].AssertDoubleArray();
-#endif
-                                    managedArgs[i] = Stack[i].reference.arrayHandleDouble;
-                                    break;
-                            }
-                            Stack[i].Clear();
-                        }
-                        StackPtr -= managedArgs.Length + 1/*retaddr*/;
-                        object returnValue;
-                        ErrorCode = Pcode.cilObject.Invoke(managedArgs, out returnValue);
+                        ErrorCode = Pcode.cilObject.InvokeShim(Stack, ref StackPtr);
                         if (ErrorCode != EvalErrors.eEvalNoError)
                         {
                             goto ExceptionPoint; // TODO: need more error handling
-                        }
-                        StackPtr++;
-                        switch (Pcode.cilObject.returnType)
-                        {
-                            default:
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            case DataTypes.eBoolean:
-                                Debug.Assert(returnValue is Boolean);
-                                Stack[StackPtr].Data.Integer = (Boolean)returnValue ? 1 : 0;
-                                break;
-                            case DataTypes.eInteger:
-                                Debug.Assert(returnValue is Int32);
-                                Stack[StackPtr].Data.Integer = (Int32)returnValue;
-                                break;
-                            case DataTypes.eFloat:
-                                Debug.Assert(returnValue is Single);
-                                Stack[StackPtr].Data.Float = (Single)returnValue;
-                                break;
-                            case DataTypes.eDouble:
-                                Debug.Assert(returnValue is Double);
-                                Stack[StackPtr].Data.Double = (Double)returnValue;
-                                break;
-                            case DataTypes.eArrayOfBoolean:
-                            case DataTypes.eArrayOfByte:
-                                Debug.Assert(returnValue is ArrayHandleByte);
-                                Stack[StackPtr].reference.arrayHandleByte = (ArrayHandleByte)returnValue;
-                                break;
-                            case DataTypes.eArrayOfInteger:
-                                Debug.Assert(returnValue is ArrayHandleInt32);
-                                Stack[StackPtr].reference.arrayHandleInt32 = (ArrayHandleInt32)returnValue;
-                                break;
-                            case DataTypes.eArrayOfFloat:
-                                Debug.Assert(returnValue is ArrayHandleFloat);
-                                Stack[StackPtr].reference.arrayHandleFloat = (ArrayHandleFloat)returnValue;
-                                break;
-                            case DataTypes.eArrayOfDouble:
-                                Debug.Assert(returnValue is ArrayHandleDouble);
-                                Stack[StackPtr].reference.arrayHandleDouble = (ArrayHandleDouble)returnValue;
-                                break;
                         }
                     }
                     finally

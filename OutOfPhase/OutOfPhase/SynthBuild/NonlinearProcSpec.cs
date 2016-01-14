@@ -28,10 +28,14 @@ namespace OutOfPhase
 {
     public static partial class Synthesizer
     {
+        public enum NonlinProcOverflowMode { Wrap = 0/*default*/, Clamp };
+
         public class NonlinProcSpecRec
         {
             /* wave table name */
             public string WaveTableName;
+
+            public NonlinProcOverflowMode OverflowMode;
 
             /* these controls only apply to the track effect, not the oscillator effect */
             public double InputScaling;
@@ -219,6 +223,16 @@ namespace OutOfPhase
         public static LFOListSpecRec GetNLProcIndexLFO(NonlinProcSpecRec NLProc)
         {
             return NLProc.IndexLFO;
+        }
+
+        public static void SetNLProcOverflowMode(NonlinProcSpecRec NLProc, NonlinProcOverflowMode OverflowMode)
+        {
+            NLProc.OverflowMode = OverflowMode;
+        }
+
+        public static NonlinProcOverflowMode GetNLProcOverflowMode(NonlinProcSpecRec NLProc)
+        {
+            return NLProc.OverflowMode;
         }
     }
 }

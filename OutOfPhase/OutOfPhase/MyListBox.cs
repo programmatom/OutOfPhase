@@ -39,13 +39,18 @@ namespace OutOfPhase
         private readonly Dictionary<object, bool> selected = new Dictionary<object, bool>();
         private GetDisplayNameMethod getDisplayNameMethod;
         private int cursor = -1;
+        private bool showBlankItemsDifferently;
 
         private Brush backBrush;
         private Brush foreBrush;
         private Brush selectBackBrush;
         private Brush selectForeBrush;
+        private Brush selectBackInactiveBrush;
+        private Brush selectForeInactiveBrush;
         private Color selectedBackColor = SystemColors.Highlight;
         private Color selectedForeColor = SystemColors.HighlightText;
+        private Color selectedBackInactiveColor = SystemColors.GradientInactiveCaption;
+        private Color selectedForeInactiveColor = SystemColors.ControlText;
         private Brush cursorBrush;
         private Pen cursorPen;
         private Image offscreenStrip;
@@ -112,6 +117,14 @@ namespace OutOfPhase
         [Category("Appearance"), DefaultValue(typeof(Color), "HighlightText")]
         public Color SelectedForeColor { get { return selectedForeColor; } set { selectedForeColor = value; } }
 
+        [Category("Appearance"), DefaultValue(typeof(Color), "GradientInactiveCaption")]
+        public Color SelectedBackColorInactive { get { return selectedBackInactiveColor; } set { selectedBackInactiveColor = value; } }
+        [Category("Appearance"), DefaultValue(typeof(Color), "ControlText")]
+        public Color SelectedForeColorInactive { get { return selectedForeInactiveColor; } set { selectedForeInactiveColor = value; } }
+
+        [Category("Appearance"), DefaultValue(false)]
+        public bool ShowBlankItemsDifferently { get { return showBlankItemsDifferently; } set { showBlankItemsDifferently = value; } }
+
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
@@ -177,6 +190,11 @@ namespace OutOfPhase
                 selectBackBrush.Dispose();
                 selectBackBrush = null;
             }
+            if (selectBackInactiveBrush != null)
+            {
+                selectBackInactiveBrush.Dispose();
+                selectBackInactiveBrush = null;
+            }
             if (foreBrush != null)
             {
                 foreBrush.Dispose();
@@ -186,6 +204,11 @@ namespace OutOfPhase
             {
                 selectForeBrush.Dispose();
                 selectForeBrush = null;
+            }
+            if (selectForeInactiveBrush != null)
+            {
+                selectForeInactiveBrush.Dispose();
+                selectForeInactiveBrush = null;
             }
             if (cursorBrush != null)
             {
@@ -222,6 +245,14 @@ namespace OutOfPhase
             {
                 selectForeBrush = new SolidBrush(selectedForeColor);
             }
+            if (selectBackInactiveBrush == null)
+            {
+                selectBackInactiveBrush = new SolidBrush(selectedBackInactiveColor);
+            }
+            if (selectForeInactiveBrush == null)
+            {
+                selectForeInactiveBrush = new SolidBrush(selectedForeInactiveColor);
+            }
             if (cursorBrush == null)
             {
                 cursorBrush = new HatchBrush(HatchStyle.Percent50, selectedForeColor, selectedBackColor);
@@ -253,10 +284,10 @@ namespace OutOfPhase
                 }
                 else
                 {
-                    foreground = selectForeBrush;
-                    background = selectBackBrush;
-                    foregroundColor = selectedForeColor;
-                    backgroundColor = selectedBackColor;
+                    foreground = Focused ? selectForeBrush : selectForeInactiveBrush;
+                    background = Focused ? selectBackBrush : selectBackInactiveBrush;
+                    foregroundColor = Focused ? selectedForeColor : selectedForeInactiveColor;
+                    backgroundColor = Focused ? selectedBackColor : selectedBackInactiveColor;
                 }
                 using (Graphics graphics2 = Graphics.FromImage(offscreenStrip))
                 {
@@ -266,8 +297,18 @@ namespace OutOfPhase
                     graphics2.FillRectangle(background, rect2);
                     if (i < underlying.Count)
                     {
-                        TextRenderer.DrawText(graphics2, getDisplayNameMethod(item), Font, rect2.Location, foregroundColor, backgroundColor);
-                        //graphics2.DrawString(getDisplayNameMethod(item), Font, foreground, rect2);
+                        string text = getDisplayNameMethod(item);
+                        if (showBlankItemsDifferently && String.IsNullOrEmpty(text))
+                        {
+                            text = "(no name)";
+                        }
+                        TextRenderer.DrawText(
+                            graphics2,
+                            text,
+                            Font,
+                            rect2.Location,
+                            foregroundColor,
+                            backgroundColor);
                     }
 
                     if ((cursor == i) && Focused)

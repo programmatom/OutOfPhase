@@ -41,6 +41,10 @@ namespace OutOfPhase
             public double Default;
         }
 
+        // TODO: if perf becomes an issue here, convert these to indexable entities and keep a worklist of objects that
+        // are undergoing transitions, to avoid updating all of them every time (most of them are inactivate most of the
+        // time). See ExecuteParamUpdate().
+
         public class IncrParamUpdateRec
         {
             public IncrParamOneRec StereoPosition;
@@ -65,7 +69,11 @@ namespace OutOfPhase
             public IncrParamOneRec Portamento;
 
             /* table of normalized frequencies, [0] = 1 */
-            public double[] FrequencyTable; // Length == 12
+#if false // TODO:remove
+            //public double[] FrequencyTable; // Length == 12
+#endif
+            public IncrParamOneRec[] FrequencyTable; // Length == 12
+            public double[] FrequencyTableLastLoaded; // Length == 12
 
             public TempoControlRec TempoControl;
 
@@ -111,21 +119,34 @@ namespace OutOfPhase
         {
             IncrParamUpdateRec Updator = new IncrParamUpdateRec();
 
+#if false // TODO:remove
             Updator.FrequencyTable = new double[12];
+#endif
+            Updator.FrequencyTable = new IncrParamOneRec[12];
+            Updator.FrequencyTableLastLoaded = new double[12];
+            for (int i_enum = 0; i_enum < 12; i_enum++)
+            {
+                int i = i_enum;
+                Updator.FrequencyTableLastLoaded[i] = Math.Pow(2, i / 12d);
+                InitTrackerHelper(
+                    Template,
+                    delegate (TrackObjectRec track) { return Updator.FrequencyTableLastLoaded[i]; },
+                    ref Updator.FrequencyTable[i]);
+            }
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultStereoPositioning; },
+                delegate (TrackObjectRec track) { return track.DefaultStereoPositioning; },
                 ref Updator.StereoPosition);
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultOverallLoudness; },
+                delegate (TrackObjectRec track) { return track.DefaultOverallLoudness; },
                 ref Updator.Volume);
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultReleasePoint1; },
+                delegate (TrackObjectRec track) { return track.DefaultReleasePoint1; },
                 ref Updator.ReleasePoint1);
 #if DEBUG
             if ((Template.DefaultReleasePoint1ModeFlag != NoteFlags.eRelease1FromStart)
@@ -139,7 +160,7 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultReleasePoint2; },
+                delegate (TrackObjectRec track) { return track.DefaultReleasePoint2; },
                 ref Updator.ReleasePoint2);
 #if DEBUG
             if ((Template.DefaultReleasePoint2ModeFlag != NoteFlags.eRelease2FromStart)
@@ -153,50 +174,50 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultAccent1; },
+                delegate (TrackObjectRec track) { return track.DefaultAccent1; },
                 ref Updator.Accent1);
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultAccent2; },
+                delegate (TrackObjectRec track) { return track.DefaultAccent2; },
                 ref Updator.Accent2);
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultAccent3; },
+                delegate (TrackObjectRec track) { return track.DefaultAccent3; },
                 ref Updator.Accent3);
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultAccent4; },
+                delegate (TrackObjectRec track) { return track.DefaultAccent4; },
                 ref Updator.Accent4);
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultAccent5; },
+                delegate (TrackObjectRec track) { return track.DefaultAccent5; },
                 ref Updator.Accent5);
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultAccent6; },
+                delegate (TrackObjectRec track) { return track.DefaultAccent6; },
                 ref Updator.Accent6);
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultAccent7; },
+                delegate (TrackObjectRec track) { return track.DefaultAccent7; },
                 ref Updator.Accent7);
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultAccent8; },
+                delegate (TrackObjectRec track) { return track.DefaultAccent8; },
                 ref Updator.Accent8);
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultPitchDisplacementDepthAdjust; },
+                delegate (TrackObjectRec track) { return track.DefaultPitchDisplacementDepthAdjust; },
                 ref Updator.PitchDisplacementDepthLimit);
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultPitchDisplacementRateAdjust; },
+                delegate (TrackObjectRec track) { return track.DefaultPitchDisplacementRateAdjust; },
                 ref Updator.PitchDisplacementRateLimit);
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultPitchDisplacementStartPoint; },
+                delegate (TrackObjectRec track) { return track.DefaultPitchDisplacementStartPoint; },
                 ref Updator.PitchDisplacementStartPoint);
 #if DEBUG
             if ((Template.DefaultPitchDisplacementStartPointModeFlag != NoteFlags.ePitchDisplacementStartFromStart)
@@ -210,12 +231,12 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultHurryUpFactor; },
+                delegate (TrackObjectRec track) { return track.DefaultHurryUpFactor; },
                 ref Updator.HurryUp);
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultDetune; },
+                delegate (TrackObjectRec track) { return track.DefaultDetune; },
                 ref Updator.Detune);
 #if DEBUG
             if ((Template.DefaultDetuneModeFlag != NoteFlags.eDetuningModeHalfSteps)
@@ -229,12 +250,12 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultEarlyLateAdjust; },
+                delegate (TrackObjectRec track) { return track.DefaultEarlyLateAdjust; },
                 ref Updator.EarlyLateAdjust);
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultDuration; },
+                delegate (TrackObjectRec track) { return track.DefaultDuration; },
                 ref Updator.DurationAdjust);
 #if DEBUG
             if ((Template.DefaultDurationModeFlag != NoteFlags.eDurationAdjustAdditive)
@@ -248,12 +269,14 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate(TrackObjectRec track) { return track.DefaultDuration; },
+                delegate (TrackObjectRec track) { return track.DefaultDuration; },
                 ref Updator.Portamento);
 
             Updator.TempoControl = TempoControl;
             Updator.TransposeHalfsteps = 0;
+#if false
             ParamUpdatorInitFreqTable(Updator);
+#endif
 
             return Updator;
         }
@@ -289,6 +312,12 @@ namespace OutOfPhase
             IncrParamUpdateRec Updator,
             int NumTicks)
         {
+            for (int i = 0; i < Updator.FrequencyTable.Length; i++)
+            {
+                UpdateOne(
+                    ref Updator.FrequencyTable[i].nd,
+                    NumTicks);
+            }
             UpdateOne(
                 ref Updator.StereoPosition.nd,
                 NumTicks);
@@ -414,6 +443,7 @@ namespace OutOfPhase
             }
         }
 
+#if false // TODO:remove
         /* reinitialize frequency table */
         public static void ParamUpdatorInitFreqTable(IncrParamUpdateRec Updator)
         {
@@ -422,11 +452,248 @@ namespace OutOfPhase
                 Updator.FrequencyTable[Scan] = Math.Pow(2, Scan / 12d);
             }
         }
+#endif
+
+        // TODO: figure out how to support enharmonics in non-et tunings
+
+        private enum PitchMode
+        {
+            CentsRelative,
+            CentsAbsolute,
+        }
+
+        private class PitchEntry
+        {
+            public readonly string Name;
+            public readonly PitchMode Mode;
+            public readonly double[] Table;
+
+            public PitchEntry(
+                string Name,
+                PitchMode Mode,
+                double[] Table)
+            {
+                Debug.Assert(Table.Length == 12);
+                this.Name = Name;
+                this.Mode = Mode;
+                this.Table = Table;
+                // Normalize all tables for constant C for consistency
+                switch (Mode)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case PitchMode.CentsAbsolute:
+                    case PitchMode.CentsRelative:
+                        {
+                            // Note, if choosing other than C for normalization point, CentsAbsolute case would need a different
+                            // loop, with correction calculated as (e.g. for A): double correction = 900 - Table[9];
+                            double correction = -Table[0];
+                            for (int i = 0; i < 12; i++)
+                            {
+                                Table[i] = Table[i] + correction;
+                            }
+                        }
+                        break;
+                }
+            }
+
+            public PitchEntry(
+                string Name)
+            {
+                this.Name = Name;
+            }
+        }
+
+        private static readonly PitchEntry[] PitchTables = new PitchEntry[]
+        {
+            //      C        C#/Db      D        D#/Eb      E         F        F#/Gb      G        G#/Ab      A        A#/Bb      B
+
+            new PitchEntry("1/3 syntonic comma meantone", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    63.50,   189.57,   315.64,   379.14,   505.21,   568.72,   694.79,   758.29,   884.36,  1010.43,  1073.93  }),
+            new PitchEntry("1/4 syntonic comma meantone", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    76.05,   193.16,   310.26,   386.31,   503.42,   579.47,   696.58,   772.63,   889.74,  1006.84,  1082.89  }),
+            new PitchEntry("1/5 syntonic comma meantone", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    83.58,   195.31,   307.04,   390.61,   502.35,   585.92,   697.65,   781.23,   892.96,  1004.69,  1088.27  }),
+            new PitchEntry("1/6 Pythagorean comma", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    86.31,   196.09,   305.87,   392.18,   501.96,   588.27,   698.04,   784.36,   894.13,  1003.91,  1090.22  }),
+            new PitchEntry("1/6 syntonic comma meantone", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    88.59,   196.74,   304.89,   393.48,   501.63,   590.22,   698.37,   786.96,   895.11,  1003.26,  1091.85  }),
+            new PitchEntry("Bach 1722", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    98.04,   196.09,   298.04,   392.18,   501.96,   596.09,   698.04,   798.04,   894.13,   998.04,  1094.13  }),
+            new PitchEntry("equal temperament", PitchMode.CentsRelative, new double[]
+                {   0,        0,        0,        0,        0,        0,        0,        0,        0,        0,        0,        0     }),
+            new PitchEntry("just", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,   111.73,   203.91,   315.64,   386.31,   498.04,   590.22,   701.96,   813.69,   884.36,  1017.60,  1088.27  }),
+            new PitchEntry("Kirnberger 2", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    92.18,   203.91,   294.13,   386.31,   498.04,   590.22,   701.96,   794.13,   895.11,   996.09,  1088.27  }),
+            new PitchEntry("Kirnberger 3", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    90.22,   193.16,   294.13,   386.31,   498.04,   588.27,   696.58,   792.18,   889.74,   996.09,  1088.27  }),
+            new PitchEntry("Pythagorean", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    90.22,   203.91,   294.13,   407.82,   498.04,   588.27,   701.96,   792.18,   905.87,   996.09,  1109.78  }),
+            new PitchEntry("temperament ordinaire", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    86.80,   193.16,   296.09,   386.31,   503.42,   584.85,   696.58,   788.76,   889.74,  1005.21,  1082.89  }),
+            new PitchEntry("Vallotti", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html - similar to "Young 2"
+                {   0.00,    94.13,   196.09,   298.04,   392.18,   501.96,   592.18,   698.04,   796.09,   894.13,  1000.00,  1090.22  }),
+            new PitchEntry("Werckmeister III", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    90.22,   192.18,   294.13,   390.22,   498.04,   588.27,   696.09,   792.18,   888.27,   996.09,  1092.18  }),
+            new PitchEntry("Werckmeister IV", PitchMode.CentsAbsolute, new double[] // https://en.wikipedia.org/wiki/Werckmeister_temperament
+                {   0,       82,      196,      294,      392,      498,      588,      694,      784,      890,     1004,     1086     }),
+            new PitchEntry("Werckmeister IV monochord", PitchMode.CentsAbsolute, new double[] // https://en.wikipedia.org/wiki/Werckmeister_temperament
+                {   0,       85.8,    195.3,    295.0,    393.5,    498.0,    590.2,    693.3,    787.7,    891.6,   1003.8,   1088.3   }),
+            new PitchEntry("Werckmeister V", PitchMode.CentsAbsolute, new double[] // https://en.wikipedia.org/wiki/Werckmeister_temperament
+                {   0,       96,      204,      300,      396,      504,      600,      702,      792,      900,     1002,     1098     }),
+            new PitchEntry("Werckmeister VI", PitchMode.CentsAbsolute, new double[] // https://en.wikipedia.org/wiki/Werckmeister_temperament
+                {   0,       91,      196,      298,      395,      498,      595,      698,      793,      893,     1000,     1097     }),
+            //                        ^^^ corrected (monochord length 175 instead of 176 - use 186 cents for latter)
+            new PitchEntry("Young 1", PitchMode.CentsRelative, new double[] // https://en.wikipedia.org/wiki/Young_temperament
+                {   6.2,      0.1,      2.1,      4.0,     -2.1,      6.1,     -1.8,      4.2,      2.1,      0,        6.0,     -2.0   }),
+            new PitchEntry("Young 2", PitchMode.CentsAbsolute, new double[] // http://www-personal.umich.edu/~bpl/temper.html
+                {   0.00,    90.22,   196.09,   294.13,   392.18,   498.04,   588.27,   698.04,   792.18,   894.13,   996.09,  1090.22  }),
+        };
+
+        private class PitchTableComparer : IComparer<PitchEntry>
+        {
+            public int Compare(PitchEntry x, PitchEntry y)
+            {
+                return String.Compare(x.Name, y.Name, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        private static SynthErrorCodes LoadPitchTable(
+            string tableName,
+            int tonicOffset,
+            bool relative,
+            IncrParamOneRec[] freqTable,
+            double[] freqTableLastLoaded,
+            SynthParamRec SynthParams)
+        {
+#if DEBUG
+            PitchTableComparer debug_comparer = new PitchTableComparer();
+            for (int i = 1; i < PitchTables.Length; i++)
+            {
+                Debug.Assert(debug_comparer.Compare(PitchTables[i - 1], PitchTables[i]) < 0, "static sorted table invariant");
+            }
+#endif
+
+            PitchMode mode;
+            double[] table;
+            int modelIndex = Array.BinarySearch(
+                PitchTables,
+                new PitchEntry(tableName),
+                new PitchTableComparer());
+            if (modelIndex >= 0)
+            {
+                mode = PitchTables[modelIndex].Mode;
+                table = PitchTables[modelIndex].Table;
+            }
+            else
+            {
+                // user-provided
+
+                mode = PitchMode.CentsAbsolute;
+                if (tableName.StartsWith("+"))
+                {
+                    mode = PitchMode.CentsRelative;
+                    tableName = tableName.Substring(1);
+                }
+
+                FuncCodeRec userFunction = SynthParams.CodeCenter.ObtainFunctionHandle(tableName);
+                if (userFunction == null)
+                {
+                    SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
+                    SynthParams.ErrorInfo.userEvalErrorCode = EvalErrors.eEvalUndefinedFunction;
+                    SynthParams.ErrorInfo.userEvalErrorInfo = new EvalErrInfoRec();
+                    return SynthErrorCodes.eSynthErrorEx;
+                }
+                if ((userFunction.GetFunctionReturnType() != DataTypes.eArrayOfDouble)
+                    || (userFunction.GetFunctionParameterTypeList().Length != 0))
+                {
+                    SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
+                    SynthParams.ErrorInfo.userEvalErrorCode = EvalErrors.eEvalFunctionSignatureMismatch;
+                    SynthParams.ErrorInfo.userEvalErrorInfo = new EvalErrInfoRec();
+                    return SynthErrorCodes.eSynthErrorEx;
+                }
+
+                SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
+                    1/*retval*/);
+
+                StackElement[] Stack;
+                int StackNumElements;
+                SynthParams.FormulaEvalContext.GetRawStack(out Stack, out StackNumElements);
+
+                StackNumElements++; /* return address placeholder */
+
+                SynthParams.FormulaEvalContext.UpdateRawStack(Stack, StackNumElements);
+
+                EvalErrInfoRec ErrorInfo;
+                EvalErrors Error = PcodeSystem.EvaluatePcode(
+                    SynthParams.FormulaEvalContext,
+                    userFunction.GetFunctionPcode(),
+                    SynthParams.CodeCenter,
+                    out ErrorInfo,
+                    null/*EvaluateContext*/,
+                    ref SynthParams.pcodeThreadContext);
+                if (Error != EvalErrors.eEvalNoError)
+                {
+                    SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
+                    SynthParams.ErrorInfo.userEvalErrorCode = Error;
+                    SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
+                    return SynthErrorCodes.eSynthErrorEx;
+                }
+                Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
+
+                table = (double[])SynthParams.FormulaEvalContext.GetStackArray(0);
+                if (table == null)
+                {
+                    SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
+                    SynthParams.ErrorInfo.userEvalErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
+                    SynthParams.ErrorInfo.userEvalErrorInfo = new EvalErrInfoRec();
+                    return SynthErrorCodes.eSynthErrorEx;
+                }
+                if (table.Length != 12)
+                {
+                    SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
+                    SynthParams.ErrorInfo.userEvalErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
+                    SynthParams.ErrorInfo.userEvalErrorInfo = new EvalErrInfoRec();
+                    return SynthErrorCodes.eSynthErrorEx;
+                }
+            }
+
+            double factor = 1;
+            if (relative)
+            {
+                // preserve ratio of current tonic to that tonic's concert pitch equal temperament value
+                factor = freqTable[tonicOffset].nd.Current / Math.Pow(2, tonicOffset / 12d);
+            }
+
+            for (int n = 0; n < 12; n++)
+            {
+                int i = (n + tonicOffset) % 12;
+                switch (mode)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case PitchMode.CentsRelative:
+                        freqTable[i].nd.Current = factor * Math.Pow(2, (100 * i + table[n]) / 1200d);
+                        break;
+                    case PitchMode.CentsAbsolute:
+                        freqTable[i].nd.Current = factor * Math.Pow(2, (table[n] + 100 * (i - n)) / 1200d);
+                        break;
+                }
+                freqTableLastLoaded[i] = freqTable[i].nd.Current;
+                freqTable[i].nd.ChangeCountdown = 0;
+            }
+
+            return SynthErrorCodes.eSynthDone;
+        }
 
         /* evaluate a command frame & set any parameters accordingly */
-        public static void ExecuteParamCommandFrame(
+        public static SynthErrorCodes ExecuteParamCommandFrame(
             IncrParamUpdateRec Updator,
-            CommandNoteObjectRec Note)
+            CommandNoteObjectRec Note,
+            SynthParamRec SynthParams)
         {
             switch ((NoteCommands)(Note.Flags & ~NoteFlags.eCommandFlag))
             {
@@ -981,39 +1248,124 @@ namespace OutOfPhase
                     Updator.TransposeHalfsteps += Note._Argument1;
                     break;
 
-                case NoteCommands.eCmdSetFrequencyValue: /* <1i> = 0..11 index, <2xs> = normal freq * 1000 */
+                case NoteCommands.eCmdSetFrequencyValue: /* <1i> = 0..11 index, <2xs> = cents */
                     {
-                        int Index;
-
-                        Index = Note._Argument1;
+                        int Index = Note._Argument1;
                         if ((Index >= 0) && (Index < 12))
                         {
-                            Updator.FrequencyTable[Index]
-                                = (double)0.001 * (double)LargeBCDType.FromRawInt32(Note._Argument2);
+                            double cents = (double)LargeBCDType.FromRawInt32(Note._Argument2);
+                            Updator.FrequencyTable[Index].nd.Current = Math.Pow(2, cents / 1200d);
+                            Updator.FrequencyTable[Index].nd.ChangeCountdown = 0;
                         }
                     }
                     break;
-                case NoteCommands.eCmdAdjustFrequencyValue: /* <1i> = 0..11 index, <2xs> = scale factor * 1000 */
+                case NoteCommands.eCmdAdjustFrequencyValue: /* <1i> = 0..11 index, <2xs> = cents adjust */
                     {
-                        int Index;
-
-                        Index = Note._Argument1;
+                        int Index = Note._Argument1;
                         if ((Index >= 0) && (Index < 12))
                         {
-                            Updator.FrequencyTable[Index]
-                                *= ((double)0.001 * (double)LargeBCDType.FromRawInt32(Note._Argument2));
+                            double cents = (double)LargeBCDType.FromRawInt32(Note._Argument2);
+                            Updator.FrequencyTable[Index].nd.Current *= Math.Pow(2, cents / 1200d);
+                            Updator.FrequencyTable[Index].nd.ChangeCountdown = 0;
+                        }
+                    }
+                    break;
+                case NoteCommands.eCmdSetFrequencyValueLegacy: /* <1i> = 0..11 index, <2xs> = normal freq * 1000 */
+                    {
+                        int Index = Note._Argument1;
+                        if ((Index >= 0) && (Index < 12))
+                        {
+                            double refVal = (double)0.001 * (double)LargeBCDType.FromRawInt32(Note._Argument2);
+                            Updator.FrequencyTable[Index].nd.Current = refVal;
+                            Updator.FrequencyTable[Index].nd.ChangeCountdown = 0;
+                        }
+                    }
+                    break;
+                case NoteCommands.eCmdAdjustFrequencyValueLegacy: /* <1i> = 0..11 index, <2xs> = scale factor * 1000 */
+                    {
+                        int Index = Note._Argument1;
+                        if ((Index >= 0) && (Index < 12))
+                        {
+                            double refVal = (double)0.001 * (double)LargeBCDType.FromRawInt32(Note._Argument2);
+                            Updator.FrequencyTable[Index].nd.Current *= refVal;
+                            Updator.FrequencyTable[Index].nd.ChangeCountdown = 0;
                         }
                     }
                     break;
                 case NoteCommands.eCmdResetFrequencyValue: /* <1i> = 0..11 index */
                     {
-                        int Index;
-
-                        Index = Note._Argument1;
+                        int Index = Note._Argument1;
                         if ((Index >= 0) && (Index < 12))
                         {
-                            Updator.FrequencyTable[Index] = Math.Pow(2, (double)Index / 12);
+                            Updator.FrequencyTable[Index].nd.Current = Updator.FrequencyTableLastLoaded[Index];
+                            Updator.FrequencyTable[Index].nd.ChangeCountdown = 0;
                         }
+                    }
+                    break;
+                case NoteCommands.eCmdLoadFrequencyModel: // <1s> = model name, <1l> = tonic offset (integer 0..11)
+                    {
+                        // <1l> arg:
+                        //  - tonic offset (absolute magnitude, integer part, 0..11 modulo 12)
+                        //  - sign: negative: relative to existing tonic; non-neg: reset relative to standard concert pitch
+                        //    (use -12 to specify for tonic C since 0 can't be made negative)
+                        LargeBCDType arg = LargeBCDType.FromRawInt32(Note._Argument1);
+                        int tonicOffset = (int)Math.Abs((double)arg) % 12;
+                        bool relativeToCurrent = (double)arg < 0;
+                        SynthErrorCodes error = LoadPitchTable(
+                            Note._StringArgument1,
+                            tonicOffset,
+                            relativeToCurrent,
+                            Updator.FrequencyTable,
+                            Updator.FrequencyTableLastLoaded,
+                            SynthParams);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
+                    }
+                    break;
+                case NoteCommands.eCmdSweepFrequencyValue0Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue1Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue2Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue3Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue4Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue5Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue6Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue7Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue8Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue9Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue10Absolute: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue11Absolute: /* <1l> <2xs> */
+                    {
+                        int Index = (NoteCommands)(Note.Flags & ~NoteFlags.eCommandFlag) - NoteCommands.eCmdSweepFrequencyValue0Absolute;
+                        Debug.Assert((Index >= 0) && (Index < 12));
+                        double cents = (double)LargeBCDType.FromRawInt32(Note._Argument1);
+                        SweepToNewValue(
+                            ref Updator.FrequencyTable[Index].nd,
+                            (LargeBCDType)Math.Pow(2, cents / 1200d),
+                            SmallExtBCDType.FromRawInt32(Note._Argument2));
+                    }
+                    break;
+                case NoteCommands.eCmdSweepFrequencyValue0Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue1Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue2Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue3Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue4Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue5Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue6Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue7Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue8Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue9Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue10Relative: /* <1l> <2xs> */
+                case NoteCommands.eCmdSweepFrequencyValue11Relative: /* <1l> <2xs> */
+                    {
+                        int Index = (NoteCommands)(Note.Flags & ~NoteFlags.eCommandFlag) - NoteCommands.eCmdSweepFrequencyValue0Relative;
+                        Debug.Assert((Index >= 0) && (Index < 12));
+                        double cents = (double)LargeBCDType.FromRawInt32(Note._Argument1);
+                        SweepToAdjustedValueMultiplicatively(
+                            ref Updator.FrequencyTable[Index].nd,
+                            (LargeBCDType)Math.Pow(2, cents / 1200d),
+                            SmallExtBCDType.FromRawInt32(Note._Argument2));
                     }
                     break;
 
@@ -1062,6 +1414,8 @@ namespace OutOfPhase
                         SmallExtBCDType.FromRawInt32(Note._Argument2));
                     break;
             }
+
+            return SynthErrorCodes.eSynthDone;
         }
     }
 }

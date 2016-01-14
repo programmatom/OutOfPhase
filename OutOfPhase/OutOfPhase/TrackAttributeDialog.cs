@@ -63,5 +63,15 @@ namespace OutOfPhase
 
             trackObjectRecBindingSource.Add(track);
         }
+
+        private void buttonOK_Click(object sender, EventArgs e)
+        {
+            if (!ValidateChildren())
+            {
+                return;
+            }
+            DialogResult = DialogResult.OK;
+            Close();
+        }
     }
 }

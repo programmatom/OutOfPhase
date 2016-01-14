@@ -161,7 +161,7 @@ namespace OutOfPhase
                     Form form = formsForObject[0];
 
                     bool closed = false;
-                    FormClosedEventHandler handler = delegate(object sender, FormClosedEventArgs e) { closed = true; };
+                    FormClosedEventHandler handler = delegate (object sender, FormClosedEventArgs e) { closed = true; };
                     form.FormClosed += handler;
                     form.Close();
                     if (!closed)
@@ -251,6 +251,25 @@ namespace OutOfPhase
                 NotifyGlobalNameChanged(dataSource);
             }
         }
+
+#if false // TODO: later, if needed (untested)
+        public delegate bool SelectionMethod(FormRegistrationToken token);
+        public FormRegistrationToken Find(SelectionMethod selector)
+        {
+            foreach (KeyValuePair<object, List<Form>> dataObject in allForms)
+            {
+                foreach (Form editor in dataObject.Value)
+                {
+                    FormRegistrationToken token = new FormRegistrationToken(this, dataObject.Key, editor);
+                    if (selector(token))
+                    {
+                        return token;
+                    }
+                }
+            }
+            return null;
+        }
+#endif
     }
 
     public class FormRegistrationToken

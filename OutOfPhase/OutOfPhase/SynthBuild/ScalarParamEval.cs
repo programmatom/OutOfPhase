@@ -49,42 +49,65 @@ namespace OutOfPhase
 
         /* compiler's template for arguments available to effect paramters */
         public static readonly FunctionParamRec[] TrackEffectFormulaArgsDefs = new FunctionParamRec[]
-	    {
-		    new FunctionParamRec("trackaccent1", DataTypes.eDouble),
-		    new FunctionParamRec("trackaccent2", DataTypes.eDouble),
-		    new FunctionParamRec("trackaccent3", DataTypes.eDouble),
-		    new FunctionParamRec("trackaccent4", DataTypes.eDouble),
-		    new FunctionParamRec("trackaccent5", DataTypes.eDouble),
-		    new FunctionParamRec("trackaccent6", DataTypes.eDouble),
-		    new FunctionParamRec("trackaccent7", DataTypes.eDouble),
-		    new FunctionParamRec("trackaccent8", DataTypes.eDouble),
-		    new FunctionParamRec("t", DataTypes.eDouble),
-		    new FunctionParamRec("x", DataTypes.eDouble),
-		    new FunctionParamRec("bpm", DataTypes.eDouble),
-	    };
+        {
+            new FunctionParamRec("trackaccent1", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent2", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent3", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent4", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent5", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent6", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent7", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent8", DataTypes.eDouble),
+            new FunctionParamRec("t", DataTypes.eDouble),
+            new FunctionParamRec("x", DataTypes.eDouble),
+            new FunctionParamRec("bpm", DataTypes.eDouble),
+        };
 
         /* compiler's template for arguments available to envelope paramters */
         public static readonly FunctionParamRec[] EnvelopeFormulaArgsDefs = new FunctionParamRec[]
         {
-	        new FunctionParamRec("accent1", DataTypes.eDouble),
-	        new FunctionParamRec("accent2", DataTypes.eDouble),
-	        new FunctionParamRec("accent3", DataTypes.eDouble),
-	        new FunctionParamRec("accent4", DataTypes.eDouble),
-	        new FunctionParamRec("accent5", DataTypes.eDouble),
-	        new FunctionParamRec("accent6", DataTypes.eDouble),
-	        new FunctionParamRec("accent7", DataTypes.eDouble),
-	        new FunctionParamRec("accent8", DataTypes.eDouble),
-	        new FunctionParamRec("trackaccent1", DataTypes.eDouble),
-	        new FunctionParamRec("trackaccent2", DataTypes.eDouble),
-	        new FunctionParamRec("trackaccent3", DataTypes.eDouble),
-	        new FunctionParamRec("trackaccent4", DataTypes.eDouble),
-	        new FunctionParamRec("trackaccent5", DataTypes.eDouble),
-	        new FunctionParamRec("trackaccent6", DataTypes.eDouble),
-	        new FunctionParamRec("trackaccent7", DataTypes.eDouble),
-	        new FunctionParamRec("trackaccent8", DataTypes.eDouble),
-	        new FunctionParamRec("t", DataTypes.eDouble),
-	        new FunctionParamRec("x", DataTypes.eDouble),
-	        new FunctionParamRec("bpm", DataTypes.eDouble),
+            new FunctionParamRec("accent1", DataTypes.eDouble),
+            new FunctionParamRec("accent2", DataTypes.eDouble),
+            new FunctionParamRec("accent3", DataTypes.eDouble),
+            new FunctionParamRec("accent4", DataTypes.eDouble),
+            new FunctionParamRec("accent5", DataTypes.eDouble),
+            new FunctionParamRec("accent6", DataTypes.eDouble),
+            new FunctionParamRec("accent7", DataTypes.eDouble),
+            new FunctionParamRec("accent8", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent1", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent2", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent3", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent4", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent5", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent6", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent7", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent8", DataTypes.eDouble),
+            new FunctionParamRec("t", DataTypes.eDouble),
+            new FunctionParamRec("x", DataTypes.eDouble),
+            new FunctionParamRec("bpm", DataTypes.eDouble),
+        };
+
+        /* compiler's template for arguments available to envelope paramters */
+        public static readonly FunctionParamRec[] EnvelopeInitFormulaArgsDefs = new FunctionParamRec[]
+        {
+            new FunctionParamRec("accent1", DataTypes.eDouble),
+            new FunctionParamRec("accent2", DataTypes.eDouble),
+            new FunctionParamRec("accent3", DataTypes.eDouble),
+            new FunctionParamRec("accent4", DataTypes.eDouble),
+            new FunctionParamRec("accent5", DataTypes.eDouble),
+            new FunctionParamRec("accent6", DataTypes.eDouble),
+            new FunctionParamRec("accent7", DataTypes.eDouble),
+            new FunctionParamRec("accent8", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent1", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent2", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent3", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent4", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent5", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent6", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent7", DataTypes.eDouble),
+            new FunctionParamRec("trackaccent8", DataTypes.eDouble),
+            new FunctionParamRec("t", DataTypes.eDouble),
+            new FunctionParamRec("bpm", DataTypes.eDouble),
         };
 
         /* initialize the scalar parameter evaluator */
@@ -123,54 +146,77 @@ namespace OutOfPhase
             /* compute formula second. */
             if (Eval.SpecifiedFormula != null)
             {
-                SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
-                    1/*retval*/ + 8 + 1/*t*/ + 1/*x*/ + 1/*bpm*/);
-
-                StackElement[] Stack;
-                int StackNumElements;
-                SynthParams.FormulaEvalContext.GetRawStack(out Stack, out StackNumElements);
-
-                Stack[StackNumElements++].Data.Double = CurrentParameters.Accent0;
-                Stack[StackNumElements++].Data.Double = CurrentParameters.Accent1;
-                Stack[StackNumElements++].Data.Double = CurrentParameters.Accent2;
-                Stack[StackNumElements++].Data.Double = CurrentParameters.Accent3;
-                Stack[StackNumElements++].Data.Double = CurrentParameters.Accent4;
-                Stack[StackNumElements++].Data.Double = CurrentParameters.Accent5;
-                Stack[StackNumElements++].Data.Double = CurrentParameters.Accent6;
-                Stack[StackNumElements++].Data.Double = CurrentParameters.Accent7;
-
-                Stack[StackNumElements++].Data.Double = SynthParams.dElapsedTimeInSeconds; /* t */
-
-                Stack[StackNumElements++].Data.Double = Temp; /* x */
-
-                Stack[StackNumElements++].Data.Double = SynthParams.dCurrentBeatsPerMinute; /* bpm */
-
-                StackNumElements++; /* return address placeholder */
-
-                SynthParams.FormulaEvalContext.UpdateRawStack(Stack, StackNumElements);
-
-                EvalErrInfoRec ErrorInfo;
-                EvalErrors Error = PcodeSystem.EvaluatePcode(
-                    SynthParams.FormulaEvalContext,
+                SynthErrorCodes Error = StaticEval(
+                    Temp,
                     Eval.SpecifiedFormula,
-                    SynthParams.CodeCenter,
-                    out ErrorInfo,
-                    null/*EvaluateContext*/,
-                    ref SynthParams.pcodeThreadContext);
-                if (Error != EvalErrors.eEvalNoError)
+                    ref CurrentParameters,
+                    SynthParams,
+                    out Temp);
+                if (Error != SynthErrorCodes.eSynthDone)
                 {
-                    SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
-                    SynthParams.ErrorInfo.userEvalErrorCode = Error;
-                    SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
-                    return SynthErrorCodes.eSynthErrorEx;
+                    return Error;
                 }
-                Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
-
-                /* get result */
-                Temp = SynthParams.FormulaEvalContext.GetStackDouble(0);
             }
 
             ResultOut = Temp;
+
+            return SynthErrorCodes.eSynthDone;
+        }
+
+        /* do a scalar param evaluation */
+        public static SynthErrorCodes StaticEval(
+            double X,
+            PcodeRec SpecifiedFormula,
+            ref AccentRec CurrentParameters,
+            SynthParamRec SynthParams,
+            out double ResultOut)
+        {
+            ResultOut = 0;
+
+            SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
+                1/*retval*/ + 8 + 1/*t*/ + 1/*x*/ + 1/*bpm*/);
+
+            StackElement[] Stack;
+            int StackNumElements;
+            SynthParams.FormulaEvalContext.GetRawStack(out Stack, out StackNumElements);
+
+            Stack[StackNumElements++].Data.Double = CurrentParameters.Accent0;
+            Stack[StackNumElements++].Data.Double = CurrentParameters.Accent1;
+            Stack[StackNumElements++].Data.Double = CurrentParameters.Accent2;
+            Stack[StackNumElements++].Data.Double = CurrentParameters.Accent3;
+            Stack[StackNumElements++].Data.Double = CurrentParameters.Accent4;
+            Stack[StackNumElements++].Data.Double = CurrentParameters.Accent5;
+            Stack[StackNumElements++].Data.Double = CurrentParameters.Accent6;
+            Stack[StackNumElements++].Data.Double = CurrentParameters.Accent7;
+
+            Stack[StackNumElements++].Data.Double = SynthParams.dElapsedTimeInSeconds; /* t */
+
+            Stack[StackNumElements++].Data.Double = X; /* x */
+
+            Stack[StackNumElements++].Data.Double = SynthParams.dCurrentBeatsPerMinute; /* bpm */
+
+            StackNumElements++; /* return address placeholder */
+
+            SynthParams.FormulaEvalContext.UpdateRawStack(Stack, StackNumElements);
+
+            EvalErrInfoRec ErrorInfo;
+            EvalErrors Error = PcodeSystem.EvaluatePcode(
+                SynthParams.FormulaEvalContext,
+                SpecifiedFormula,
+                SynthParams.CodeCenter,
+                out ErrorInfo,
+                null/*EvaluateContext*/,
+                ref SynthParams.pcodeThreadContext);
+            if (Error != EvalErrors.eEvalNoError)
+            {
+                SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
+                SynthParams.ErrorInfo.userEvalErrorCode = Error;
+                SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
+                return SynthErrorCodes.eSynthErrorEx;
+            }
+            Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
+
+            ResultOut = SynthParams.FormulaEvalContext.GetStackDouble(0);
 
             return SynthErrorCodes.eSynthDone;
         }
@@ -214,6 +260,72 @@ namespace OutOfPhase
             Stack[StackNumElements++].Data.Double = SynthParams.dElapsedTimeInSeconds; /* t */
 
             Stack[StackNumElements++].Data.Double = X; /* x */
+
+            Stack[StackNumElements++].Data.Double = SynthParams.dCurrentBeatsPerMinute; /* bpm */
+
+            StackNumElements++; /* return address placeholder */
+
+            SynthParams.FormulaEvalContext.UpdateRawStack(Stack, StackNumElements);
+
+            EvalErrInfoRec ErrorInfo;
+            EvalErrors Error = PcodeSystem.EvaluatePcode(
+                SynthParams.FormulaEvalContext,
+                Formula,
+                SynthParams.CodeCenter,
+                out ErrorInfo,
+                null/*EvaluateContext*/,
+                ref SynthParams.pcodeThreadContext);
+            if (Error != EvalErrors.eEvalNoError)
+            {
+                SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
+                SynthParams.ErrorInfo.userEvalErrorCode = Error;
+                SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
+                return SynthErrorCodes.eSynthErrorEx;
+            }
+            Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
+
+            /* get result */
+            ResultOut = SynthParams.FormulaEvalContext.GetStackDouble(0);
+
+            return SynthErrorCodes.eSynthDone;
+        }
+
+        // this non-X-param evaluator is used for envelope segment initializers
+        public static SynthErrorCodes EnvelopeInitParamEval(
+            PcodeRec Formula,
+            ref AccentRec NoteAccents,
+            ref AccentRec TrackAccents,
+            SynthParamRec SynthParams,
+            out double ResultOut)
+        {
+            ResultOut = 0;
+
+            SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
+                1/*retval*/ + 8 + 8 + 1/*t*/ + 1/*bpm*/);
+
+            StackElement[] Stack;
+            int StackNumElements;
+            SynthParams.FormulaEvalContext.GetRawStack(out Stack, out StackNumElements);
+
+            Stack[StackNumElements++].Data.Double = NoteAccents.Accent0;
+            Stack[StackNumElements++].Data.Double = NoteAccents.Accent1;
+            Stack[StackNumElements++].Data.Double = NoteAccents.Accent2;
+            Stack[StackNumElements++].Data.Double = NoteAccents.Accent3;
+            Stack[StackNumElements++].Data.Double = NoteAccents.Accent4;
+            Stack[StackNumElements++].Data.Double = NoteAccents.Accent5;
+            Stack[StackNumElements++].Data.Double = NoteAccents.Accent6;
+            Stack[StackNumElements++].Data.Double = NoteAccents.Accent7;
+
+            Stack[StackNumElements++].Data.Double = TrackAccents.Accent0;
+            Stack[StackNumElements++].Data.Double = TrackAccents.Accent1;
+            Stack[StackNumElements++].Data.Double = TrackAccents.Accent2;
+            Stack[StackNumElements++].Data.Double = TrackAccents.Accent3;
+            Stack[StackNumElements++].Data.Double = TrackAccents.Accent4;
+            Stack[StackNumElements++].Data.Double = TrackAccents.Accent5;
+            Stack[StackNumElements++].Data.Double = TrackAccents.Accent6;
+            Stack[StackNumElements++].Data.Double = TrackAccents.Accent7;
+
+            Stack[StackNumElements++].Data.Double = SynthParams.dElapsedTimeInSeconds; /* t */
 
             Stack[StackNumElements++].Data.Double = SynthParams.dCurrentBeatsPerMinute; /* bpm */
 

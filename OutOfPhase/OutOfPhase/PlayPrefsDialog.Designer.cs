@@ -195,7 +195,7 @@ namespace OutOfPhase
             this.label11.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label11.AutoSize = true;
             this.tableLayoutPanel1.SetColumnSpan(this.label11, 3);
-            this.label11.Location = new System.Drawing.Point(372, 6);
+            this.label11.Location = new System.Drawing.Point(371, 6);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(276, 13);
             this.label11.TabIndex = 23;
@@ -207,7 +207,7 @@ namespace OutOfPhase
             this.label10.AutoSize = true;
             this.label10.Location = new System.Drawing.Point(13, 6);
             this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(341, 13);
+            this.label10.Size = new System.Drawing.Size(340, 13);
             this.label10.TabIndex = 22;
             this.label10.Text = "Tracks to include in playback:";
             // 
@@ -216,7 +216,7 @@ namespace OutOfPhase
             this.checkBoxClipWarning.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.checkBoxClipWarning.AutoSize = true;
             this.checkBoxClipWarning.DataBindings.Add(new System.Windows.Forms.Binding("CheckState", this.sourceBindingSource, "ClipWarning", true));
-            this.checkBoxClipWarning.Location = new System.Drawing.Point(519, 266);
+            this.checkBoxClipWarning.Location = new System.Drawing.Point(518, 266);
             this.checkBoxClipWarning.Name = "checkBoxClipWarning";
             this.checkBoxClipWarning.Size = new System.Drawing.Size(129, 17);
             this.checkBoxClipWarning.TabIndex = 21;
@@ -229,7 +229,7 @@ namespace OutOfPhase
             this.comboBoxNumChannels.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "NumChannelsAsString", true));
             this.comboBoxNumChannels.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxNumChannels.FormattingEnabled = true;
-            this.comboBoxNumChannels.Location = new System.Drawing.Point(519, 238);
+            this.comboBoxNumChannels.Location = new System.Drawing.Point(518, 238);
             this.comboBoxNumChannels.Name = "comboBoxNumChannels";
             this.comboBoxNumChannels.Size = new System.Drawing.Size(129, 21);
             this.comboBoxNumChannels.TabIndex = 20;
@@ -238,7 +238,7 @@ namespace OutOfPhase
             // 
             this.label9.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(372, 242);
+            this.label9.Location = new System.Drawing.Point(371, 242);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(129, 13);
             this.label9.TabIndex = 19;
@@ -250,7 +250,7 @@ namespace OutOfPhase
             this.comboBoxBitDepth.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "OutputNumBitsAsString", true));
             this.comboBoxBitDepth.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxBitDepth.FormattingEnabled = true;
-            this.comboBoxBitDepth.Location = new System.Drawing.Point(519, 211);
+            this.comboBoxBitDepth.Location = new System.Drawing.Point(518, 211);
             this.comboBoxBitDepth.Name = "comboBoxBitDepth";
             this.comboBoxBitDepth.Size = new System.Drawing.Size(129, 21);
             this.comboBoxBitDepth.TabIndex = 18;
@@ -259,7 +259,7 @@ namespace OutOfPhase
             // 
             this.label8.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(372, 215);
+            this.label8.Location = new System.Drawing.Point(371, 215);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(129, 13);
             this.label8.TabIndex = 17;
@@ -269,7 +269,7 @@ namespace OutOfPhase
             // 
             this.textBoxOversampling.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxOversampling.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "Oversampling", true));
-            this.textBoxOversampling.Location = new System.Drawing.Point(519, 185);
+            this.textBoxOversampling.Location = new System.Drawing.Point(518, 185);
             this.textBoxOversampling.Name = "textBoxOversampling";
             this.textBoxOversampling.Size = new System.Drawing.Size(129, 20);
             this.textBoxOversampling.TabIndex = 16;
@@ -278,7 +278,7 @@ namespace OutOfPhase
             // 
             this.label7.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(372, 188);
+            this.label7.Location = new System.Drawing.Point(371, 188);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(129, 13);
             this.label7.TabIndex = 15;
@@ -288,7 +288,7 @@ namespace OutOfPhase
             // 
             this.textBoxBufferSeconds.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxBufferSeconds.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "BufferDuration", true));
-            this.textBoxBufferSeconds.Location = new System.Drawing.Point(519, 159);
+            this.textBoxBufferSeconds.Location = new System.Drawing.Point(518, 159);
             this.textBoxBufferSeconds.Name = "textBoxBufferSeconds";
             this.textBoxBufferSeconds.Size = new System.Drawing.Size(129, 20);
             this.textBoxBufferSeconds.TabIndex = 14;
@@ -297,7 +297,7 @@ namespace OutOfPhase
             // 
             this.label6.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(372, 162);
+            this.label6.Location = new System.Drawing.Point(371, 162);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(129, 13);
             this.label6.TabIndex = 13;
@@ -307,7 +307,7 @@ namespace OutOfPhase
             // 
             this.textBoxScanningGapSeconds.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxScanningGapSeconds.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "ScanningGap", true));
-            this.textBoxScanningGapSeconds.Location = new System.Drawing.Point(519, 133);
+            this.textBoxScanningGapSeconds.Location = new System.Drawing.Point(518, 133);
             this.textBoxScanningGapSeconds.Name = "textBoxScanningGapSeconds";
             this.textBoxScanningGapSeconds.Size = new System.Drawing.Size(129, 20);
             this.textBoxScanningGapSeconds.TabIndex = 12;
@@ -316,7 +316,7 @@ namespace OutOfPhase
             // 
             this.label5.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(372, 136);
+            this.label5.Location = new System.Drawing.Point(371, 136);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(129, 13);
             this.label5.TabIndex = 11;
@@ -326,7 +326,7 @@ namespace OutOfPhase
             // 
             this.textBoxInverseVolume.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxInverseVolume.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "OverallVolumeScalingFactor", true));
-            this.textBoxInverseVolume.Location = new System.Drawing.Point(519, 107);
+            this.textBoxInverseVolume.Location = new System.Drawing.Point(518, 107);
             this.textBoxInverseVolume.Name = "textBoxInverseVolume";
             this.textBoxInverseVolume.Size = new System.Drawing.Size(129, 20);
             this.textBoxInverseVolume.TabIndex = 10;
@@ -335,7 +335,7 @@ namespace OutOfPhase
             // 
             this.label4.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(372, 110);
+            this.label4.Location = new System.Drawing.Point(371, 110);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(129, 13);
             this.label4.TabIndex = 9;
@@ -345,7 +345,7 @@ namespace OutOfPhase
             // 
             this.textBoxBeatsPerMinute.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxBeatsPerMinute.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "DefaultBeatsPerMinute", true));
-            this.textBoxBeatsPerMinute.Location = new System.Drawing.Point(519, 81);
+            this.textBoxBeatsPerMinute.Location = new System.Drawing.Point(518, 81);
             this.textBoxBeatsPerMinute.Name = "textBoxBeatsPerMinute";
             this.textBoxBeatsPerMinute.Size = new System.Drawing.Size(129, 20);
             this.textBoxBeatsPerMinute.TabIndex = 8;
@@ -354,7 +354,7 @@ namespace OutOfPhase
             // 
             this.label3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(372, 84);
+            this.label3.Location = new System.Drawing.Point(371, 84);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(129, 13);
             this.label3.TabIndex = 7;
@@ -364,7 +364,7 @@ namespace OutOfPhase
             // 
             this.textBoxEnvelopeRate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxEnvelopeRate.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "EnvelopeUpdateRate", true));
-            this.textBoxEnvelopeRate.Location = new System.Drawing.Point(519, 55);
+            this.textBoxEnvelopeRate.Location = new System.Drawing.Point(518, 55);
             this.textBoxEnvelopeRate.Name = "textBoxEnvelopeRate";
             this.textBoxEnvelopeRate.Size = new System.Drawing.Size(129, 20);
             this.textBoxEnvelopeRate.TabIndex = 6;
@@ -373,7 +373,7 @@ namespace OutOfPhase
             // 
             this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(372, 58);
+            this.label2.Location = new System.Drawing.Point(371, 58);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(129, 13);
             this.label2.TabIndex = 5;
@@ -383,7 +383,7 @@ namespace OutOfPhase
             // 
             this.textBoxSamplingRate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxSamplingRate.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "SamplingRate", true));
-            this.textBoxSamplingRate.Location = new System.Drawing.Point(519, 29);
+            this.textBoxSamplingRate.Location = new System.Drawing.Point(518, 29);
             this.textBoxSamplingRate.Name = "textBoxSamplingRate";
             this.textBoxSamplingRate.Size = new System.Drawing.Size(129, 20);
             this.textBoxSamplingRate.TabIndex = 4;
@@ -392,7 +392,7 @@ namespace OutOfPhase
             // 
             this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(372, 32);
+            this.label1.Location = new System.Drawing.Point(371, 32);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(129, 13);
             this.label1.TabIndex = 3;
@@ -407,7 +407,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 21.89781F));
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 12F));
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 21.89781F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 12F));
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 14F));
             this.tableLayoutPanel1.Controls.Add(this.label1, 3, 1);
             this.tableLayoutPanel1.Controls.Add(this.textBoxSamplingRate, 5, 1);
             this.tableLayoutPanel1.Controls.Add(this.label2, 3, 2);
@@ -467,7 +467,7 @@ namespace OutOfPhase
             this.listBoxIncludedTracks.Multiselect = true;
             this.listBoxIncludedTracks.Name = "listBoxIncludedTracks";
             this.tableLayoutPanel1.SetRowSpan(this.listBoxIncludedTracks, 13);
-            this.listBoxIncludedTracks.Size = new System.Drawing.Size(341, 313);
+            this.listBoxIncludedTracks.Size = new System.Drawing.Size(340, 313);
             this.listBoxIncludedTracks.TabIndex = 26;
             // 
             // checkBoxShowSummary
@@ -475,7 +475,7 @@ namespace OutOfPhase
             this.checkBoxShowSummary.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.checkBoxShowSummary.AutoSize = true;
             this.checkBoxShowSummary.DataBindings.Add(new System.Windows.Forms.Binding("CheckState", this.sourceBindingSource, "ShowSummary", true));
-            this.checkBoxShowSummary.Location = new System.Drawing.Point(372, 266);
+            this.checkBoxShowSummary.Location = new System.Drawing.Point(371, 266);
             this.checkBoxShowSummary.Name = "checkBoxShowSummary";
             this.checkBoxShowSummary.Size = new System.Drawing.Size(129, 17);
             this.checkBoxShowSummary.TabIndex = 28;
@@ -487,7 +487,7 @@ namespace OutOfPhase
             this.checkBoxDeterministic.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.checkBoxDeterministic.AutoSize = true;
             this.checkBoxDeterministic.DataBindings.Add(new System.Windows.Forms.Binding("CheckState", this.sourceBindingSource, "Deterministic", true));
-            this.checkBoxDeterministic.Location = new System.Drawing.Point(372, 292);
+            this.checkBoxDeterministic.Location = new System.Drawing.Point(371, 292);
             this.checkBoxDeterministic.Name = "checkBoxDeterministic";
             this.checkBoxDeterministic.Size = new System.Drawing.Size(129, 17);
             this.checkBoxDeterministic.TabIndex = 29;
@@ -499,7 +499,7 @@ namespace OutOfPhase
             this.textBoxSeed.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxSeed.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "Seed", true));
             this.textBoxSeed.Enabled = false;
-            this.textBoxSeed.Location = new System.Drawing.Point(519, 317);
+            this.textBoxSeed.Location = new System.Drawing.Point(518, 317);
             this.textBoxSeed.Name = "textBoxSeed";
             this.textBoxSeed.Size = new System.Drawing.Size(129, 20);
             this.textBoxSeed.TabIndex = 30;
@@ -508,7 +508,7 @@ namespace OutOfPhase
             // 
             this.label12.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(372, 320);
+            this.label12.Location = new System.Drawing.Point(371, 320);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(129, 13);
             this.label12.TabIndex = 31;
@@ -522,6 +522,7 @@ namespace OutOfPhase
             this.CancelButton = this.buttonCancel;
             this.ClientSize = new System.Drawing.Size(665, 385);
             this.Controls.Add(this.tableLayoutPanel1);
+            this.MaximizeBox = false;
             this.Name = "PlayPrefsDialog";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             ((System.ComponentModel.ISupportInitialize)(this.includedTracksBindingSource)).EndInit();

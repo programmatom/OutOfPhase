@@ -173,6 +173,7 @@ namespace OutOfPhase
             this.myListBoxTracks.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxTracks.Location = new System.Drawing.Point(3, 16);
             this.myListBoxTracks.Name = "myListBoxTracks";
+            this.myListBoxTracks.ShowBlankItemsDifferently = true;
             this.myListBoxTracks.Size = new System.Drawing.Size(216, 104);
             this.myListBoxTracks.TabIndex = 1;
             // 
@@ -183,6 +184,7 @@ namespace OutOfPhase
             this.myListBoxWaveTables.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxWaveTables.Location = new System.Drawing.Point(225, 16);
             this.myListBoxWaveTables.Name = "myListBoxWaveTables";
+            this.myListBoxWaveTables.ShowBlankItemsDifferently = true;
             this.myListBoxWaveTables.Size = new System.Drawing.Size(216, 104);
             this.myListBoxWaveTables.TabIndex = 2;
             // 
@@ -193,6 +195,7 @@ namespace OutOfPhase
             this.myListBoxSamples.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxSamples.Location = new System.Drawing.Point(447, 16);
             this.myListBoxSamples.Name = "myListBoxSamples";
+            this.myListBoxSamples.ShowBlankItemsDifferently = true;
             this.myListBoxSamples.Size = new System.Drawing.Size(217, 104);
             this.myListBoxSamples.TabIndex = 3;
             // 
@@ -254,6 +257,7 @@ namespace OutOfPhase
             this.myListBoxInstruments.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxInstruments.Location = new System.Drawing.Point(3, 16);
             this.myListBoxInstruments.Name = "myListBoxInstruments";
+            this.myListBoxInstruments.ShowBlankItemsDifferently = true;
             this.myListBoxInstruments.Size = new System.Drawing.Size(216, 104);
             this.myListBoxInstruments.TabIndex = 4;
             // 
@@ -264,6 +268,7 @@ namespace OutOfPhase
             this.myListBoxAlgoWaveTables.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxAlgoWaveTables.Location = new System.Drawing.Point(225, 16);
             this.myListBoxAlgoWaveTables.Name = "myListBoxAlgoWaveTables";
+            this.myListBoxAlgoWaveTables.ShowBlankItemsDifferently = true;
             this.myListBoxAlgoWaveTables.Size = new System.Drawing.Size(216, 104);
             this.myListBoxAlgoWaveTables.TabIndex = 5;
             // 
@@ -274,6 +279,7 @@ namespace OutOfPhase
             this.myListBoxAlgoSamples.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxAlgoSamples.Location = new System.Drawing.Point(447, 16);
             this.myListBoxAlgoSamples.Name = "myListBoxAlgoSamples";
+            this.myListBoxAlgoSamples.ShowBlankItemsDifferently = true;
             this.myListBoxAlgoSamples.Size = new System.Drawing.Size(217, 104);
             this.myListBoxAlgoSamples.TabIndex = 6;
             // 
@@ -322,6 +328,7 @@ namespace OutOfPhase
             this.myListBoxFunctions.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxFunctions.Location = new System.Drawing.Point(3, 16);
             this.myListBoxFunctions.Name = "myListBoxFunctions";
+            this.myListBoxFunctions.ShowBlankItemsDifferently = true;
             this.myListBoxFunctions.Size = new System.Drawing.Size(216, 106);
             this.myListBoxFunctions.TabIndex = 7;
             // 
@@ -332,13 +339,12 @@ namespace OutOfPhase
             this.textEditComment.BackColor = System.Drawing.SystemColors.ControlLightLight;
             this.textEditComment.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textEditComment.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textEditComment.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.documentBindingSource, "CommentInfo", true));
+            this.textEditComment.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.documentBindingSource, "CommentInfo", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textEditComment.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textEditComment.Location = new System.Drawing.Point(225, 16);
             this.textEditComment.Name = "textEditComment";
             this.textEditComment.Size = new System.Drawing.Size(439, 106);
             this.textEditComment.TabIndex = 8;
-            this.textEditComment.TextService = TextEditor.TextService.Uniscribe;
             this.textEditComment.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
@@ -395,6 +401,7 @@ namespace OutOfPhase
             this.textEditorWindowHelper.ConvertTabsToSpacesToolStripMenuItem = null;
             this.textEditorWindowHelper.CopyToolStripMenuItem = null;
             this.textEditorWindowHelper.CutToolStripMenuItem = null;
+            this.textEditorWindowHelper.DelegatedMode = true;
             this.textEditorWindowHelper.EnterSelectionToolStripMenuItem = null;
             this.textEditorWindowHelper.FindAgainToolStripMenuItem = null;
             this.textEditorWindowHelper.FindToolStripMenuItem = null;

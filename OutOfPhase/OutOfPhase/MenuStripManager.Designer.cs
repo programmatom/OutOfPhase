@@ -144,6 +144,8 @@ namespace OutOfPhase
             this.globalSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem21 = new System.Windows.Forms.ToolStripSeparator();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem22 = new System.Windows.Forms.ToolStripSeparator();
+            this.recentDocumentsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -188,6 +190,8 @@ namespace OutOfPhase
             this.playAudioFileToolStripMenuItem,
             this.playAudioFileWithEffectsToolStripMenuItem,
             this.toolStripMenuItem5,
+            this.recentDocumentsToolStripMenuItem,
+            this.toolStripMenuItem22,
             this.closeDocumentToolStripMenuItem,
             this.toolStripMenuItem2,
             this.exitToolStripMenuItem});
@@ -294,8 +298,8 @@ namespace OutOfPhase
             // playAllFromHereToolStripMenuItem
             // 
             this.playAllFromHereToolStripMenuItem.Name = "playAllFromHereToolStripMenuItem";
-            this.playAllFromHereToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift)
-                        | System.Windows.Forms.Keys.T)));
+            this.playAllFromHereToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
+            | System.Windows.Forms.Keys.T)));
             this.playAllFromHereToolStripMenuItem.Size = new System.Drawing.Size(245, 22);
             this.playAllFromHereToolStripMenuItem.Text = "Play All From Here";
             // 
@@ -823,6 +827,17 @@ namespace OutOfPhase
             this.aboutToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
             this.aboutToolStripMenuItem.Text = "About";
             // 
+            // toolStripMenuItem22
+            // 
+            this.toolStripMenuItem22.Name = "toolStripMenuItem22";
+            this.toolStripMenuItem22.Size = new System.Drawing.Size(242, 6);
+            // 
+            // recentDocumentsToolStripMenuItem
+            // 
+            this.recentDocumentsToolStripMenuItem.Name = "recentDocumentsToolStripMenuItem";
+            this.recentDocumentsToolStripMenuItem.Size = new System.Drawing.Size(245, 22);
+            this.recentDocumentsToolStripMenuItem.Text = "Recent Documents";
+            // 
             // MenuStripManager
             // 
             this.AutoSize = true;
@@ -933,5 +948,7 @@ namespace OutOfPhase
         public System.Windows.Forms.ToolStripMenuItem playAudioFileWithEffectsToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem21;
         public System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripMenuItem22;
+        public System.Windows.Forms.ToolStripMenuItem recentDocumentsToolStripMenuItem;
     }
 }

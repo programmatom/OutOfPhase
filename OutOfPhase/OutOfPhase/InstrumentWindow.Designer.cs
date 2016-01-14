@@ -99,7 +99,7 @@ namespace OutOfPhase
             // 
             // textBoxInstrumentName
             // 
-            this.textBoxInstrumentName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.instrObjectRecBindingSource, "Name", true));
+            this.textBoxInstrumentName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.instrObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxInstrumentName.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxInstrumentName.Location = new System.Drawing.Point(3, 46);
             this.textBoxInstrumentName.Name = "textBoxInstrumentName";
@@ -135,7 +135,7 @@ namespace OutOfPhase
             this.textBoxInstrumentBody.BackColor = System.Drawing.SystemColors.ControlLightLight;
             this.textBoxInstrumentBody.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBoxInstrumentBody.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textBoxInstrumentBody.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.instrObjectRecBindingSource, "InstrDefinition", true));
+            this.textBoxInstrumentBody.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.instrObjectRecBindingSource, "InstrDefinition", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxInstrumentBody.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxInstrumentBody.Location = new System.Drawing.Point(3, 85);
             this.textBoxInstrumentBody.Name = "textBoxInstrumentBody";

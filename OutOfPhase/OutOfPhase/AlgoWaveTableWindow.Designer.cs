@@ -130,7 +130,7 @@ namespace OutOfPhase
             // 
             // textBoxName
             // 
-            this.textBoxName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.algoWaveTableObjectRecBindingSource, "Name", true));
+            this.textBoxName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.algoWaveTableObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxName.Location = new System.Drawing.Point(47, 3);
             this.textBoxName.Name = "textBoxName";
             this.textBoxName.Size = new System.Drawing.Size(160, 20);
@@ -195,7 +195,7 @@ namespace OutOfPhase
             this.textBoxFunction.BackColor = System.Drawing.SystemColors.ControlLightLight;
             this.textBoxFunction.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBoxFunction.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textBoxFunction.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.algoWaveTableObjectRecBindingSource, "AlgoWaveTableFormula", true));
+            this.textBoxFunction.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.algoWaveTableObjectRecBindingSource, "AlgoWaveTableFormula", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxFunction.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxFunction.Location = new System.Drawing.Point(3, 79);
             this.textBoxFunction.Name = "textBoxFunction";

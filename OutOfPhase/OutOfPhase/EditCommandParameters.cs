@@ -778,1453 +778,1642 @@ namespace OutOfPhase
         {
             /* restore the tempo to the default for the score */
             new XZero(
-	            NoteCommands.eCmdRestoreTempo),
+                NoteCommands.eCmdRestoreTempo),
 
             /* set tempo to <1xs> number of beats per second */
             new XOneXS(
-	            NoteCommands.eCmdSetTempo,
-	            "Set Tempo: Enter a new tempo value.",
-	            "Beats per Minute:"),
+                NoteCommands.eCmdSetTempo,
+                "Set Tempo: Enter a new tempo value.",
+                "Beats per Minute:"),
 
             /* add <1xs> to the tempo control */
             new XOneXS(
-	            NoteCommands.eCmdIncTempo,
-	            "Increment Tempo: Enter the number of beats per minute to change the tempo by.",
-	            "BPM Adjustment:"),
+                NoteCommands.eCmdIncTempo,
+                "Increment Tempo: Enter the number of beats per minute to change the tempo by.",
+                "BPM Adjustment:"),
 
             /* <1xs> = target tempo, <2xs> = # of beats to reach it */
             new XTwoXS(
-	            NoteCommands.eCmdSweepTempoAbs,
-	            "Sweep Tempo Absolute: Enter new tempo destination value and the number of beats to spread the transition across.",
-	            "Final BPM:",
-	            LDuration),
+                NoteCommands.eCmdSweepTempoAbs,
+                "Sweep Tempo Absolute: Enter new tempo destination value and the number of beats to spread the transition across.",
+                "Final BPM:",
+                LDuration),
 
             /* <1xs> = target adjust (add to tempo), <2xs> = # beats */
             new XTwoXS(
-	            NoteCommands.eCmdSweepTempoRel,
-	            "Sweep Tempo Relative: Enter a tempo adjustment value and the number of beats to spread the transition across.",
-	            "Final BPM Adjustment:",
-	            LDuration),
+                NoteCommands.eCmdSweepTempoRel,
+                "Sweep Tempo Relative: Enter a tempo adjustment value and the number of beats to spread the transition across.",
+                "Final BPM Adjustment:",
+                LDuration),
 
             /* restore stereo position to channel's default */
             new XZero(
-	            NoteCommands.eCmdRestoreStereoPosition),
+                NoteCommands.eCmdRestoreStereoPosition),
 
             /* set position in channel <1l>: -1 = left, 1 = right */
             new XOneL(
-	            NoteCommands.eCmdSetStereoPosition,
-	            "Set Stereo Position: Enter a stereo position value (-1 = hard left ... 1 = hard right).",
-	            "Stereo Position:"),
+                NoteCommands.eCmdSetStereoPosition,
+                "Set Stereo Position: Enter a stereo position value (-1 = hard left ... 1 = hard right).",
+                "Stereo Position:"),
 
             /* adjust stereo position by adding <1l> */
             new XOneL(
-	            NoteCommands.eCmdIncStereoPosition,
-	            "Adjust Stereo Position: Enter an adjustment value for the stereo position (negative values move the channel left; positive values move the channel right).",
-	            "Stereo Position Adjustment:"),
+                NoteCommands.eCmdIncStereoPosition,
+                "Adjust Stereo Position: Enter an adjustment value for the stereo position (negative values move the channel left; positive values move the channel right).",
+                "Stereo Position Adjustment:"),
 
             /* <1l> = new pos, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepStereoAbs,
-	            "Sweep Stereo Absolute: Enter a destination value for the stereo position and the number of beats to spread the transition across.",
-	            "Final Stereo Position:",
-	            LDuration),
+                NoteCommands.eCmdSweepStereoAbs,
+                "Sweep Stereo Absolute: Enter a destination value for the stereo position and the number of beats to spread the transition across.",
+                "Final Stereo Position:",
+                LDuration),
 
             /* <1l> = pos adjust, <2xs> = # beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepStereoRel,
-	            "Sweep Stereo Relative: Enter a stereo position adjustment value and the number of beats to spread the transition across.",
-	            "Final Position Adjustment:",
-	            LDuration),
+                NoteCommands.eCmdSweepStereoRel,
+                "Sweep Stereo Relative: Enter a stereo position adjustment value and the number of beats to spread the transition across.",
+                "Final Position Adjustment:",
+                LDuration),
 
             /* restore surround position to channel's default */
             new XZero(
-	            NoteCommands.eCmdRestoreSurroundPosition),
+                NoteCommands.eCmdRestoreSurroundPosition),
 
             /* set surround position in channel <1l>: 1 = front, -1 = rear */
             new XOneL(
-	            NoteCommands.eCmdSetSurroundPosition,
-	            "Set Surround Position: Enter a surround position value (1 = front ... -1 = rear).",
-	            "Surround Position:"),
+                NoteCommands.eCmdSetSurroundPosition,
+                "Set Surround Position: Enter a surround position value (1 = front ... -1 = rear).",
+                "Surround Position:"),
 
             /* adjust surround position by adding <1l> */
             new XOneL(
-	            NoteCommands.eCmdIncSurroundPosition,
-	            "Adjust Surround Position: Enter an adjustment value for the surround position (positive values move the channel forward; negative values move the channel backward).",
-	            "Surround Position Adjustment:"),
+                NoteCommands.eCmdIncSurroundPosition,
+                "Adjust Surround Position: Enter an adjustment value for the surround position (positive values move the channel forward; negative values move the channel backward).",
+                "Surround Position Adjustment:"),
 
             /* <1l> = new pos, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSurroundAbs,
-	            "Sweep Surround Absolute: Enter a destination value for the surround position and the number of beats to spread the transition across.",
-	            "Final Surround Position:",
-	            LDuration),
+                NoteCommands.eCmdSweepSurroundAbs,
+                "Sweep Surround Absolute: Enter a destination value for the surround position and the number of beats to spread the transition across.",
+                "Final Surround Position:",
+                LDuration),
 
             /* <1l> = pos adjust, <2xs> = # beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSurroundRel,
-	            "Sweep Surround Relative: Enter a surround position adjustment value and the number of beats to spread the transition across.",
-	            "Final Position Adjustment:",
-	            LDuration),
+                NoteCommands.eCmdSweepSurroundRel,
+                "Sweep Surround Relative: Enter a surround position adjustment value and the number of beats to spread the transition across.",
+                "Final Position Adjustment:",
+                LDuration),
 
             /* restore the volume to the default for the channel */
             new XZero(
-	            NoteCommands.eCmdRestoreVolume),
+                NoteCommands.eCmdRestoreVolume),
 
             /* set the volume to the specified level (0..1) in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetVolume,
-	            "Set Volume: Enter an overall volume level value (0 = silent ... 1 = full volume).",
-	            "Volume:"),
+                NoteCommands.eCmdSetVolume,
+                "Set Volume: Enter an overall volume level value (0 = silent ... 1 = full volume).",
+                "Volume:"),
 
             /* add <1l> to the volume control */
             new XOneL(
-	            NoteCommands.eCmdIncVolume,
-	            "Adjust Volume: Enter a volume adjustment value (values less than 1 make sound quieter, values greater than 1 make sound louder).",
-	            "Volume Adjustment:"),
+                NoteCommands.eCmdIncVolume,
+                "Adjust Volume: Enter a volume adjustment value (values less than 1 make sound quieter, values greater than 1 make sound louder).",
+                "Volume Adjustment:"),
 
             /* <1l> = new volume, <2xs> = # of beats to reach it */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepVolumeAbs,
-	            "Sweep Volume Absolute: Enter a new volume value and the number of beats to spread the transition across.",
-	            "Final Volume:",
-	            LDuration),
+                NoteCommands.eCmdSweepVolumeAbs,
+                "Sweep Volume Absolute: Enter a new volume value and the number of beats to spread the transition across.",
+                "Final Volume:",
+                LDuration),
 
             /* <1l> = volume adjust, <2xs> = # of beats to reach it */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepVolumeRel,
-	            "Sweep Volume Relative: Enter a volume adjustment value and the number of beats to spread the transition across.",
-	            "Final Volume Adjustment:",
-	            LDuration),
+                NoteCommands.eCmdSweepVolumeRel,
+                "Sweep Volume Relative: Enter a volume adjustment value and the number of beats to spread the transition across.",
+                "Final Volume Adjustment:",
+                LDuration),
 
             /* restore release point to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreReleasePoint1),
+                NoteCommands.eCmdRestoreReleasePoint1),
 
             /* set the default release point to new value <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetReleasePoint1,
-	            "Set Release Point 1: Enter the first release point location (0 = start of note; 1 = end of note; values beyond range are allowed).",
-	            "Release Point 1:"),
+                NoteCommands.eCmdSetReleasePoint1,
+                "Set Release Point 1: Enter the first release point location (0 = start of note; 1 = end of note; values beyond range are allowed).",
+                "Release Point 1:"),
 
             /* add <1l> to default release point for adjustment */
             new XOneL(
-	            NoteCommands.eCmdIncReleasePoint1,
-	            "Adjust Release Point 1: Enter an adjustment value for the first release point (negative values move the release earlier; positive values move it later).",
-	            "Release Point 1 Adjust:"),
+                NoteCommands.eCmdIncReleasePoint1,
+                "Adjust Release Point 1: Enter an adjustment value for the first release point (negative values move the release earlier; positive values move it later).",
+                "Release Point 1 Adjust:"),
 
             /* if <1i> is < 0, then from start, else from end of note */
             new XOneBool(
-	            NoteCommands.eCmdReleasePointOrigin1,
-	            "Release Point 1 Origin: Choose where the first release point should be measured from.",
-	            "From Start of Note",
-	            "From End of Note"),
+                NoteCommands.eCmdReleasePointOrigin1,
+                "Release Point 1 Origin: Choose where the first release point should be measured from.",
+                "From Start of Note",
+                "From End of Note"),
 
             /* <1l> = new release, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepReleaseAbs1,
-	            "Sweep Release Point 1 Absolute: Enter a destination time for the first release point and the number of beats to spread the transition across.",
-	            "Release Point 1:",
-	            LDuration),
+                NoteCommands.eCmdSweepReleaseAbs1,
+                "Sweep Release Point 1 Absolute: Enter a destination time for the first release point and the number of beats to spread the transition across.",
+                "Release Point 1:",
+                LDuration),
 
             /* <1l> = release adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepReleaseRel1,
-	            "Sweep Release Point 1 Relative: Enter an adjustment value for the first release point and the number of beats to spread the transition across.",
-	            "Release Point 1 Adjust:",
-	            LDuration),
+                NoteCommands.eCmdSweepReleaseRel1,
+                "Sweep Release Point 1 Relative: Enter an adjustment value for the first release point and the number of beats to spread the transition across.",
+                "Release Point 1 Adjust:",
+                LDuration),
 
             /* restore release point to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreReleasePoint2),
+                NoteCommands.eCmdRestoreReleasePoint2),
 
             /* set the default release point to new value <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetReleasePoint2,
-	            "Set Release Point 2: Enter the second release point location (0 = start of note; 1 = end of note; values beyond range are allowed).",
-	            "Release Point 2:"),
+                NoteCommands.eCmdSetReleasePoint2,
+                "Set Release Point 2: Enter the second release point location (0 = start of note; 1 = end of note; values beyond range are allowed).",
+                "Release Point 2:"),
 
             /* add <1l> to default release point for adjustment */
             new XOneL(
-	            NoteCommands.eCmdIncReleasePoint2,
-	            "Adjust Release Point 2: Enter an adjustment value for the second release point (negative values move the release earlier; positive values move it later).",
-	            "Release Point 2 Adjust:"),
+                NoteCommands.eCmdIncReleasePoint2,
+                "Adjust Release Point 2: Enter an adjustment value for the second release point (negative values move the release earlier; positive values move it later).",
+                "Release Point 2 Adjust:"),
 
             /* if <1i> is < 0, then from start, else from end of note */
             new XOneBool(
-	            NoteCommands.eCmdReleasePointOrigin2,
-	            "Release Point 2 Origin: Choose where the second release point should be measured from.",
-	            "From Start of Note",
-	            "From End of Note"),
+                NoteCommands.eCmdReleasePointOrigin2,
+                "Release Point 2 Origin: Choose where the second release point should be measured from.",
+                "From Start of Note",
+                "From End of Note"),
 
             /* <1l> = new release, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepReleaseAbs2,
-	            "Sweep Release Point 2 Absolute: Enter a destination time for the second release point and the number of beats to spread the transition across.",
-	            "Release Point 2:",
-	            LDuration),
+                NoteCommands.eCmdSweepReleaseAbs2,
+                "Sweep Release Point 2 Absolute: Enter a destination time for the second release point and the number of beats to spread the transition across.",
+                "Release Point 2:",
+                LDuration),
 
             /* <1l> = release adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepReleaseRel2,
-	            "Sweep Release Point 2 Relative: Enter an adjustment value for the second release point and the number of beats to spread the transition across.",
-	            "Release Point 2 Adjust:",
-	            LDuration),
+                NoteCommands.eCmdSweepReleaseRel2,
+                "Sweep Release Point 2 Relative: Enter an adjustment value for the second release point and the number of beats to spread the transition across.",
+                "Release Point 2 Adjust:",
+                LDuration),
 
             /* restore accent value to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreAccent1),
+                NoteCommands.eCmdRestoreAccent1),
 
             /* specify the new default accent in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetAccent1,
-	            "Set Accent 1: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetAccent1,
+                "Set Accent 1: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default accent */
             new XOneL(
-	            NoteCommands.eCmdIncAccent1,
-	            "Adjust Accent 1: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncAccent1,
+                "Adjust Accent 1: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new accent, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentAbs1,
-	            "Sweep Accent 1 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentAbs1,
+                "Sweep Accent 1 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = accent adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentRel1,
-	            "Sweep Accent 1 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentRel1,
+                "Sweep Accent 1 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* restore accent value to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreAccent2),
+                NoteCommands.eCmdRestoreAccent2),
 
             /* specify the new default accent in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetAccent2,
-	            "Set Accent 2: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetAccent2,
+                "Set Accent 2: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default accent */
             new XOneL(
-	            NoteCommands.eCmdIncAccent2,
-	            "Adjust Accent 2: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncAccent2,
+                "Adjust Accent 2: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new accent, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentAbs2,
-	            "Sweep Accent 2 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentAbs2,
+                "Sweep Accent 2 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = accent adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentRel2,
-	            "Sweep Accent 2 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentRel2,
+                "Sweep Accent 2 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* restore accent value to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreAccent3),
+                NoteCommands.eCmdRestoreAccent3),
 
             /* specify the new default accent in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetAccent3,
-	            "Set Accent 3: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetAccent3,
+                "Set Accent 3: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default accent */
             new XOneL(
-	            NoteCommands.eCmdIncAccent3,
-	            "Adjust Accent 3: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncAccent3,
+                "Adjust Accent 3: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new accent, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentAbs3,
-	            "Sweep Accent 3 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentAbs3,
+                "Sweep Accent 3 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = accent adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentRel3,
-	            "Sweep Accent 3 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentRel3,
+                "Sweep Accent 3 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* restore accent value to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreAccent4),
+                NoteCommands.eCmdRestoreAccent4),
 
             /* specify the new default accent in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetAccent4,
-	            "Set Accent 4: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetAccent4,
+                "Set Accent 4: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default accent */
             new XOneL(
-	            NoteCommands.eCmdIncAccent4,
-	            "Adjust Accent 4: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncAccent4,
+                "Adjust Accent 4: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new accent, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentAbs4,
-	            "Sweep Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentAbs4,
+                "Sweep Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = accent adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentRel4,
-	            "Sweep Accent 4 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentRel4,
+                "Sweep Accent 4 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* restore accent value to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreAccent5),
+                NoteCommands.eCmdRestoreAccent5),
 
             /* specify the new default accent in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetAccent5,
-	            "Set Accent 5: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetAccent5,
+                "Set Accent 5: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default accent */
             new XOneL(
-	            NoteCommands.eCmdIncAccent5,
-	            "Adjust Accent 5: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncAccent5,
+                "Adjust Accent 5: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new accent, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentAbs5,
-	            "Sweep Accent 5 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentAbs5,
+                "Sweep Accent 5 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = accent adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentRel5,
-	            "Sweep Accent 5 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentRel5,
+                "Sweep Accent 5 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* restore accent value to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreAccent6),
+                NoteCommands.eCmdRestoreAccent6),
 
             /* specify the new default accent in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetAccent6,
-	            "Set Accent 6: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetAccent6,
+                "Set Accent 6: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default accent */
             new XOneL(
-	            NoteCommands.eCmdIncAccent6,
-	            "Adjust Accent 6: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncAccent6,
+                "Adjust Accent 6: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new accent, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentAbs6,
-	            "Sweep Accent 6 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentAbs6,
+                "Sweep Accent 6 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = accent adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentRel6,
-	            "Sweep Accent 6 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentRel6,
+                "Sweep Accent 6 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* restore accent value to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreAccent7),
+                NoteCommands.eCmdRestoreAccent7),
 
             /* specify the new default accent in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetAccent7,
-	            "Set Accent 7: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetAccent7,
+                "Set Accent 7: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default accent */
             new XOneL(
-	            NoteCommands.eCmdIncAccent7,
-	            "Adjust Accent 7: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncAccent7,
+                "Adjust Accent 7: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new accent, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentAbs7,
-	            "Sweep Accent 7 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentAbs7,
+                "Sweep Accent 7 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = accent adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentRel7,
-	            "Sweep Accent 7 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentRel7,
+                "Sweep Accent 7 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* restore accent value to master default */
             new XZero(
-	            NoteCommands.eCmdRestoreAccent8),
+                NoteCommands.eCmdRestoreAccent8),
 
             /* specify the new default accent in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetAccent8,
-	            "Set Accent 8: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetAccent8,
+                "Set Accent 8: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default accent */
             new XOneL(
-	            NoteCommands.eCmdIncAccent8,
-	            "Adjust Accent 8: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncAccent8,
+                "Adjust Accent 8: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new accent, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentAbs8,
-	            "Sweep Accent 8 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentAbs8,
+                "Sweep Accent 8 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = accent adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepAccentRel8,
-	            "Sweep Accent 8 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepAccentRel8,
+                "Sweep Accent 8 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* restore max pitch disp depth value to default */
             new XZero(
-	            NoteCommands.eCmdRestorePitchDispDepth),
+                NoteCommands.eCmdRestorePitchDispDepth),
 
             /* set new max pitch disp depth <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetPitchDispDepth,
-	            "Set Pitch Displacement Depth: Enter a new maximum pitch displacement depth.",
-	            "Pitch Disp. Depth:"),
+                NoteCommands.eCmdSetPitchDispDepth,
+                "Set Pitch Displacement Depth: Enter a new maximum pitch displacement depth.",
+                "Pitch Disp. Depth:"),
 
             /* add <1l> to the default pitch disp depth */
             new XOneL(
-	            NoteCommands.eCmdIncPitchDispDepth,
-	            "Adjust Pitch Displacement Depth: Enter an adjustment for the maximum pitch displacement depth.",
-	            "Pitch Disp. Depth Adjust:"),
+                NoteCommands.eCmdIncPitchDispDepth,
+                "Adjust Pitch Displacement Depth: Enter an adjustment for the maximum pitch displacement depth.",
+                "Pitch Disp. Depth Adjust:"),
 
             /* <1l> = new depth, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepPitchDispDepthAbs,
-	            "Sweep Pitch Displacement Depth Absolute: Enter the target pitch displacement depth and the number of beats to spread the transition across.",
-	            "Dest. Pitch Disp. Depth:",
-	            LDuration),
+                NoteCommands.eCmdSweepPitchDispDepthAbs,
+                "Sweep Pitch Displacement Depth Absolute: Enter the target pitch displacement depth and the number of beats to spread the transition across.",
+                "Dest. Pitch Disp. Depth:",
+                LDuration),
 
             /* <1l> = depth adjust, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepPitchDispDepthRel,
-	            "Sweep Pitch Displacement Depth Relative: Enter an adjustment pitch displacement depth value and the number of beats to spread the transition across.",
-	            "Pitch Disp. Depth Adjust:",
-	            LDuration),
+                NoteCommands.eCmdSweepPitchDispDepthRel,
+                "Sweep Pitch Displacement Depth Relative: Enter an adjustment pitch displacement depth value and the number of beats to spread the transition across.",
+                "Pitch Disp. Depth Adjust:",
+                LDuration),
 
             /* restore max pitch disp rate to the master default */
             new XZero(
-	            NoteCommands.eCmdRestorePitchDispRate),
+                NoteCommands.eCmdRestorePitchDispRate),
 
             /* set new max pitch disp rate in seconds to <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetPitchDispRate,
-	            "Set Pitch Displacement Rate: Enter the maximum number of oscillations per second.",
-	            "Pitch Displacement Rate:"),
+                NoteCommands.eCmdSetPitchDispRate,
+                "Set Pitch Displacement Rate: Enter the maximum number of oscillations per second.",
+                "Pitch Displacement Rate:"),
 
             /* add <1l> to the default max pitch disp rate */
             new XOneL(
-	            NoteCommands.eCmdIncPitchDispRate,
-	            "Adjust Pitch Displacement Rate: Enter an adjustment pitch displacement rate value.",
-	            "Pitch Disp. Rate Adjust:"),
+                NoteCommands.eCmdIncPitchDispRate,
+                "Adjust Pitch Displacement Rate: Enter an adjustment pitch displacement rate value.",
+                "Pitch Disp. Rate Adjust:"),
 
             /* <1l> = new rate, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepPitchDispRateAbs,
-	            "Sweep Pitch Displacement Rate Absolute: Enter a destination pitch displacement rate and the number of beats to spread the transition across.",
-	            "Dest. Pitch Disp. Rate:",
-	            LDuration),
+                NoteCommands.eCmdSweepPitchDispRateAbs,
+                "Sweep Pitch Displacement Rate Absolute: Enter a destination pitch displacement rate and the number of beats to spread the transition across.",
+                "Dest. Pitch Disp. Rate:",
+                LDuration),
 
             /* <1l> = rate adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepPitchDispRateRel,
-	            "Sweep Pitch Displacement Rate Relative: Enter an adjustment pitch displacement rate value and the number of beats to spread the transition across.",
-	            "Pitch Disp. Rate Adjust:",
-	            LDuration),
+                NoteCommands.eCmdSweepPitchDispRateRel,
+                "Sweep Pitch Displacement Rate Relative: Enter an adjustment pitch displacement rate value and the number of beats to spread the transition across.",
+                "Pitch Disp. Rate Adjust:",
+                LDuration),
 
             /* restore pitch disp start point to default */
             new XZero(
-	            NoteCommands.eCmdRestorePitchDispStart),
+                NoteCommands.eCmdRestorePitchDispStart),
 
             /* set the start point to <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetPitchDispStart,
-	            "Set Pitch Displacement Start: Enter a new start point for the pitch displacement envelope (0 = note start; 1 = note end; values out of range are allowed).",
-	            "Pitch Disp. Start:"),
+                NoteCommands.eCmdSetPitchDispStart,
+                "Set Pitch Displacement Start: Enter a new start point for the pitch displacement envelope (0 = note start; 1 = note end; values out of range are allowed).",
+                "Pitch Disp. Start:"),
 
             /* add <1l> to the pitch disp start point */
             new XOneL(
-	            NoteCommands.eCmdIncPitchDispStart,
-	            "Adjust Pitch Displacement Start: Enter an adjustment for the pitch displacement start point.",
-	            "Pitch Disp. Start Adjust:"),
+                NoteCommands.eCmdIncPitchDispStart,
+                "Adjust Pitch Displacement Start: Enter an adjustment for the pitch displacement start point.",
+                "Pitch Disp. Start Adjust:"),
 
             /* specify the origin, same as for release point <1i> */
             new XOneBool(
-	            NoteCommands.eCmdPitchDispStartOrigin,
-	            "Pitch Displacement Origin: Choose where the pitch displacement start point should be measured from.",
-	            "From Start of Note",
-	            "From End of Note"),
+                NoteCommands.eCmdPitchDispStartOrigin,
+                "Pitch Displacement Origin: Choose where the pitch displacement start point should be measured from.",
+                "From Start of Note",
+                "From End of Note"),
 
             /* <1l> = new vib start, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepPitchDispStartAbs,
-	            "Sweep Pitch Displacement Start Absolute: Enter a pitch displacement start point and the number of beats to spread the transition across.",
-	            "Dest. Pitch Disp. Start:",
-	            LDuration),
+                NoteCommands.eCmdSweepPitchDispStartAbs,
+                "Sweep Pitch Displacement Start Absolute: Enter a pitch displacement start point and the number of beats to spread the transition across.",
+                "Dest. Pitch Disp. Start:",
+                LDuration),
 
             /* <1l> = vib adjust, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepPitchDispStartRel,
-	            "Sweep Pitch Displacement Start Relative: Enter an adjustment pitch displacement start point value and the number of beats to spread the transition across.",
-	            "Pitch Disp. Start Adjust:",
-	            LDuration),
+                NoteCommands.eCmdSweepPitchDispStartRel,
+                "Sweep Pitch Displacement Start Relative: Enter an adjustment pitch displacement start point value and the number of beats to spread the transition across.",
+                "Pitch Disp. Start Adjust:",
+                LDuration),
 
             /* restore default hurryup factor */
             new XZero(
-	            NoteCommands.eCmdRestoreHurryUp),
+                NoteCommands.eCmdRestoreHurryUp),
 
             /* set the hurryup factor to <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetHurryUp,
-	            "Set Hurry-Up Factor: Enter a hurry-up factor (1 = normal; less than 1 = envelopes execute faster; greater than 1 = envelopes execute more slowly).",
-	            "Hurry-Up Factor:"),
+                NoteCommands.eCmdSetHurryUp,
+                "Set Hurry-Up Factor: Enter a hurry-up factor (1 = normal; less than 1 = envelopes execute faster; greater than 1 = envelopes execute more slowly).",
+                "Hurry-Up Factor:"),
 
             /* add <1l> to the hurryup factor */
             new XOneL(
-	            NoteCommands.eCmdIncHurryUp,
-	            "Adjust Hurry-Up Factor: Enter an adjustment hurry-up value (negative values make envelopes execute faster; positive values make envelopes execute more slowly).",
-	            "Hurry-Up Adjustment:"),
+                NoteCommands.eCmdIncHurryUp,
+                "Adjust Hurry-Up Factor: Enter an adjustment hurry-up value (negative values make envelopes execute faster; positive values make envelopes execute more slowly).",
+                "Hurry-Up Adjustment:"),
 
             /* <1l> = new hurryup factor, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepHurryUpAbs,
-	            "Sweep Hurry-Up Factor Absolute: Enter a hurry-up factor and the number of beats to spread the transition across.",
-	            "Destination Hurry-Up:",
-	            LDuration),
+                NoteCommands.eCmdSweepHurryUpAbs,
+                "Sweep Hurry-Up Factor Absolute: Enter a hurry-up factor and the number of beats to spread the transition across.",
+                "Destination Hurry-Up:",
+                LDuration),
 
             /* <1l> = hurryup adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepHurryUpRel,
-	            "Sweep Hurry-Up Factor Relative: Enter an adjustment hurry-up value and the number of beats to spread the transition across.",
-	            "Hurry-Up Adjustment:",
-	            LDuration),
+                NoteCommands.eCmdSweepHurryUpRel,
+                "Sweep Hurry-Up Factor Relative: Enter an adjustment hurry-up value and the number of beats to spread the transition across.",
+                "Hurry-Up Adjustment:",
+                LDuration),
 
             /* restore the default detune factor */
             new XZero(
-	            NoteCommands.eCmdRestoreDetune),
+                NoteCommands.eCmdRestoreDetune),
 
             /* set the detune factor to <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetDetune,
-	            "Set Detuning: Enter a detuning value (negative values decrease pitch; positive values increase pitch).",
-	            "Detuning:"),
+                NoteCommands.eCmdSetDetune,
+                "Set Detuning: Enter a detuning value (negative values decrease pitch; positive values increase pitch).",
+                "Detuning:"),
 
             /* add <1l> to current detune factor */
             new XOneL(
-	            NoteCommands.eCmdIncDetune,
-	            "Adjust Detuning: Enter an adjustment detuning value (negative values decrease pitch; positive values increase pitch).",
-	            "Detuning Adjustment:"),
+                NoteCommands.eCmdIncDetune,
+                "Adjust Detuning: Enter an adjustment detuning value (negative values decrease pitch; positive values increase pitch).",
+                "Detuning Adjustment:"),
 
             /* <1i>: <0: Hertz, >=0: half-steps */
             new XOneBool(
-	            NoteCommands.eCmdDetuneMode,
-	            "Detuning Mode: Choose whether the detuning value is in Hertz or halfsteps.",
-	            "Hertz",
-	            "Halfsteps"),
+                NoteCommands.eCmdDetuneMode,
+                "Detuning Mode: Choose whether the detuning value is in Hertz or halfsteps.",
+                "Hertz",
+                "Halfsteps"),
 
             /* <1l> = new detune, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepDetuneAbs,
-	            "Sweep Detuning Absolute: Enter a destination detuning value and the number of beats to spread the transition across.",
-	            "Destination Detuning:",
-	            LDuration),
+                NoteCommands.eCmdSweepDetuneAbs,
+                "Sweep Detuning Absolute: Enter a destination detuning value and the number of beats to spread the transition across.",
+                "Destination Detuning:",
+                LDuration),
 
             /* <1l> = detune adjust, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepDetuneRel,
-	            "Sweep Detuning Relative: Enter an adjustment detuning value and the number of beats to spread the transition across.",
-	            "Detuning Adjustment:",
-	            LDuration),
+                NoteCommands.eCmdSweepDetuneRel,
+                "Sweep Detuning Relative: Enter an adjustment detuning value and the number of beats to spread the transition across.",
+                "Detuning Adjustment:",
+                LDuration),
 
             /* restore the default early/late adjust value */
             new XZero(
-	            NoteCommands.eCmdRestoreEarlyLateAdjust),
+                NoteCommands.eCmdRestoreEarlyLateAdjust),
 
             /* set the early/late adjust value to <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetEarlyLateAdjust,
-	            "Set Early/Late Hit Adjust: Enter an early/late hit time adjustment (negative values make note hit earlier; positive values make note hit later).",
-	            "Early/Late Adjust:"),
+                NoteCommands.eCmdSetEarlyLateAdjust,
+                "Set Early/Late Hit Adjust: Enter an early/late hit time adjustment (negative values make note hit earlier; positive values make note hit later).",
+                "Early/Late Adjust:"),
 
             /* add <1l> to the current early/late adjust value */
             new XOneL(
-	            NoteCommands.eCmdIncEarlyLateAdjust,
-	            "Adjust Early/Late Hit Adjust: Enter an adjustment early/late hit time value (negative values make note hit earlier; positive values make note hit later).",
-	            "Early/Late Adjust:"),
+                NoteCommands.eCmdIncEarlyLateAdjust,
+                "Adjust Early/Late Hit Adjust: Enter an adjustment early/late hit time value (negative values make note hit earlier; positive values make note hit later).",
+                "Early/Late Adjust:"),
 
             /* <1l> = new early/late adjust, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEarlyLateAbs,
-	            "Sweep Early/Late Hit Adjust Absolute: Enter a destination early/late hit time adjustment and the number of beats to spread the transition across.",
-	            "Destination Early/Late Adjust:",
-	            LDuration),
+                NoteCommands.eCmdSweepEarlyLateAbs,
+                "Sweep Early/Late Hit Adjust Absolute: Enter a destination early/late hit time adjustment and the number of beats to spread the transition across.",
+                "Destination Early/Late Adjust:",
+                LDuration),
 
             /* <1l> = early/late delta, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEarlyLateRel,
-	            "Sweep Early/Late Hit Adjust Relative: Enter an adjustment early/late hit time value and the number of beats to spread the transition across",
-	            "Early/Late Adjust:",
-	            LDuration),
+                NoteCommands.eCmdSweepEarlyLateRel,
+                "Sweep Early/Late Hit Adjust Relative: Enter an adjustment early/late hit time value and the number of beats to spread the transition across",
+                "Early/Late Adjust:",
+                LDuration),
 
             /* restore the default duration adjust value */
             new XZero(
-	            NoteCommands.eCmdRestoreDurationAdjust),
+                NoteCommands.eCmdRestoreDurationAdjust),
 
             /* set duration adjust value to <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetDurationAdjust,
-	            "Set Duration Adjust: Enter a duration adjust factor.",
-	            "Duration Adjust:"),
+                NoteCommands.eCmdSetDurationAdjust,
+                "Set Duration Adjust: Enter a duration adjust factor.",
+                "Duration Adjust:"),
 
             /* add <1l> to the current duration adjust value */
             new XOneL(
-	            NoteCommands.eCmdIncDurationAdjust,
-	            "Adjust Duration Adjust: Enter an adjustment duration adjust factor (negative values make note shorter; positive values make note longer).",
-	            "Duration Adjust:"),
+                NoteCommands.eCmdIncDurationAdjust,
+                "Adjust Duration Adjust: Enter an adjustment duration adjust factor (negative values make note shorter; positive values make note longer).",
+                "Duration Adjust:"),
 
             /* <1l> = new duration adjust, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepDurationAbs,
-	            "Sweep Duration Adjust Absolute: Enter a destination duration adjust factor and the number of beats to spread the transition across.",
-	            "Dest. Duration Adjust:",
-	            LDuration),
+                NoteCommands.eCmdSweepDurationAbs,
+                "Sweep Duration Adjust Absolute: Enter a destination duration adjust factor and the number of beats to spread the transition across.",
+                "Dest. Duration Adjust:",
+                LDuration),
 
             /* <1l> = duration adjust delta, <2xs> = # of beats */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepDurationRel,
-	            "Sweep Duration Adjust Relative: Enter an adjustment duration adjust value and the number of beats to spread the transition across.",
-	            "Duration Adjust:",
-	            LDuration),
+                NoteCommands.eCmdSweepDurationRel,
+                "Sweep Duration Adjust Relative: Enter an adjustment duration adjust value and the number of beats to spread the transition across.",
+                "Duration Adjust:",
+                LDuration),
 
             /* <1i>: <0: Multiplicative, >=0: Additive */
             new XOneBool(
-	            NoteCommands.eCmdDurationAdjustMode,
-	            "Set Duration Adjust Mode: Choose whether the duration adjust scales the note's duration by multiplication or addition.",
-	            "Multiply note's duration by value",
-	            "Add note's duration and value"),
+                NoteCommands.eCmdDurationAdjustMode,
+                "Set Duration Adjust Mode: Choose whether the duration adjust scales the note's duration by multiplication or addition.",
+                "Multiply note's duration by value",
+                "Add note's duration and value"),
 
             /* <1i> = numerator, <2i> = denominator */
             new XTwoI(
-	            NoteCommands.eCmdSetMeter,
-	            "Set Meter: Enter the time signature for measure bar placement.",
-	            "Beats per Measure:",
-	            "Beat Reference Note:"),
+                NoteCommands.eCmdSetMeter,
+                "Set Meter: Enter the time signature for measure bar placement.",
+                "Beats per Measure:",
+                "Beat Reference Note:"),
 
             /* <1i> = new number */
             new XOneI(
-	            NoteCommands.eCmdSetMeasureNumber,
-	            "Set Measure Number: Enter the number for the next measure bar.",
-	            "Next Measure Number:"),
+                NoteCommands.eCmdSetMeasureNumber,
+                "Set Measure Number: Enter the number for the next measure bar.",
+                "Next Measure Number:"),
 
             /* <1i> = new transpose value */
             new XOneI(
-	            NoteCommands.eCmdSetTranspose,
-	            "Set Transpose: enter the number of half-steps to transpose by.",
-	            "Half-steps:"),
+                NoteCommands.eCmdSetTranspose,
+                "Set Transpose: enter the number of half-steps to transpose by.",
+                "Half-steps:"),
 
             /* <1i> = adjusting transpose value */
             new XOneI(
-	            NoteCommands.eCmdAdjustTranspose,
-	            "Adjust Transpose: enter the number of half-steps to adjust the current transpose value by.",
-	            "Half-steps:"),
+                NoteCommands.eCmdAdjustTranspose,
+                "Adjust Transpose: enter the number of half-steps to adjust the current transpose value by.",
+                "Half-steps:"),
 
             /* <1i> = 0..11 index, <2xs> = normal freq * 1000 */
             new XOneITwoL(
-	            NoteCommands.eCmdSetFrequencyValue,
-	            "Set Pitch Value: Enter target pitch (0..11) and normalized pitch (1..2) X 1000.",
-	            "Pitch Index:",
-	            "Normalized:"),
+                NoteCommands.eCmdSetFrequencyValue,
+                "Set Pitch Value: Enter target index (0..11) and cents.",
+                "Pitch Index:",
+                "Cents:"),
+
+            /* <1i> = 0..11 index, <2xs> = normal freq * 1000 */
+            new XOneITwoL(
+                NoteCommands.eCmdSetFrequencyValueLegacy,
+                "Set Pitch Value: Enter target pitch (0..11) and normalized pitch [1..2) X 1000.",
+                "Pitch Index:",
+                "Normalized:"),
 
             /* <1i> = 0..11 index, <2xs> = scale factor * 1000 */
             new XOneITwoL(
-	            NoteCommands.eCmdAdjustFrequencyValue,
-	            "Adjust Pitch Value: Enter target pitch (0..11) and scale factor X 1000.",
-	            "Pitch Index:",
-	            "Scale Factor:"),
+                NoteCommands.eCmdAdjustFrequencyValue,
+                "Adjust Pitch Value: Enter target index (0..11) and cents adjustment",
+                "Pitch Index:",
+                "Cents Adjust:"),
+
+            /* <1i> = 0..11 index, <2xs> = scale factor * 1000 */
+            new XOneITwoL(
+                NoteCommands.eCmdAdjustFrequencyValueLegacy,
+                "Adjust Pitch Value: Enter target pitch (0..11) and scale factor X 1000.",
+                "Pitch Index:",
+                "Scale Factor:"),
 
             /* <1i> = 0..11 index */
             new XOneI(
-	            NoteCommands.eCmdResetFrequencyValue,
-	            "Reset Pitch Value: Enter the target pitch (0..11) to reset.",
-	            "Pitch Index:"),
+                NoteCommands.eCmdResetFrequencyValue,
+                "Reset Pitch Value: Enter the target pitch (0..11) to reset.",
+                "Pitch Index:"),
+
+            // <1s> = model name, <1l> = tonic offset (integer 0..11)
+            new XOneStrTwoL(
+                NoteCommands.eCmdLoadFrequencyModel,
+                "Load Pitch Table: Enter the name of the pitch table to load.",
+                "Name:",
+                "Tonic Offset:"),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue0Absolute,
+                "Sweep Frequency 0 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue1Absolute,
+                "Sweep Frequency 1 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue2Absolute,
+                "Sweep Frequency 2 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue3Absolute,
+                "Sweep Frequency 3 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue4Absolute,
+                "Sweep Frequency 4 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue5Absolute,
+                "Sweep Frequency 5 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue6Absolute,
+                "Sweep Frequency 6 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue7Absolute,
+                "Sweep Frequency 7 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue8Absolute,
+                "Sweep Frequency 8 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue9Absolute,
+                "Sweep Frequency 9 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue10Absolute,
+                "Sweep Frequency 10 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = new frequency factor, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue11Absolute,
+                "Sweep Frequency 11 Absolute: Enter a frequency factor and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue0Relative,
+                "Sweep Frequency 0 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue1Relative,
+                "Sweep Frequency 1 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue2Relative,
+                "Sweep Frequency 2 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue3Relative,
+                "Sweep Frequency 3 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue4Relative,
+                "Sweep Frequency 4 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue5Relative,
+                "Sweep Frequency 5 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue6Relative,
+                "Sweep Frequency 6 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue7Relative,
+                "Sweep Frequency 7 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue8Relative,
+                "Sweep Frequency 8 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue9Relative,
+                "Sweep Frequency 9 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue10Relative,
+                "Sweep Frequency 10 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
+
+            // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+            new XOneLTwoXS(
+                NoteCommands.eCmdSweepFrequencyValue11Relative,
+                "Sweep Frequency 11 Relative: Enter a frequency factor adjustment and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetEffectParam1,
-	            "Set Effect Accent 1: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetEffectParam1,
+                "Set Effect Accent 1: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncEffectParam1,
-	            "Adjust Effect Accent 1: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncEffectParam1,
+                "Adjust Effect Accent 1: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamAbs1,
-	            "Sweep Effect Accent 1 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamAbs1,
+                "Sweep Effect Accent 1 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamRel1,
-	            "Sweep Effect Accent 1 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamRel1,
+                "Sweep Effect Accent 1 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetEffectParam2,
-	            "Set Effect Accent 2: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetEffectParam2,
+                "Set Effect Accent 2: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncEffectParam2,
-	            "Adjust Effect Accent 2: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncEffectParam2,
+                "Adjust Effect Accent 2: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamAbs2,
-	            "Sweep Effect Accent 2 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamAbs2,
+                "Sweep Effect Accent 2 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamRel2,
-	            "Sweep Effect Accent 2 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamRel2,
+                "Sweep Effect Accent 2 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetEffectParam3,
-	            "Set Effect Accent 3: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetEffectParam3,
+                "Set Effect Accent 3: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncEffectParam3,
-	            "Adjust Effect Accent 3: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncEffectParam3,
+                "Adjust Effect Accent 3: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamAbs3,
-	            "Sweep Effect Accent 3 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamAbs3,
+                "Sweep Effect Accent 3 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamRel3,
-	            "Sweep Effect Accent 3 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamRel3,
+                "Sweep Effect Accent 3 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetEffectParam4,
-	            "Set Effect Accent 4: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetEffectParam4,
+                "Set Effect Accent 4: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncEffectParam4,
-	            "Adjust Effect Accent 4: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncEffectParam4,
+                "Adjust Effect Accent 4: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamAbs4,
-	            "Sweep Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamAbs4,
+                "Sweep Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamRel4,
-	            "Sweep Effect Accent 4 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamRel4,
+                "Sweep Effect Accent 4 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetEffectParam5,
-	            "Set Effect Accent 5: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetEffectParam5,
+                "Set Effect Accent 5: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncEffectParam5,
-	            "Adjust Effect Accent 5: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncEffectParam5,
+                "Adjust Effect Accent 5: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamAbs5,
-	            "Sweep Effect Accent 5 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamAbs5,
+                "Sweep Effect Accent 5 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamRel5,
-	            "Sweep Effect Accent 5 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamRel5,
+                "Sweep Effect Accent 5 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetEffectParam6,
-	            "Set Effect Accent 6: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetEffectParam6,
+                "Set Effect Accent 6: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncEffectParam6,
-	            "Adjust Effect Accent 6: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncEffectParam6,
+                "Adjust Effect Accent 6: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamAbs6,
-	            "Sweep Effect Accent 6 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamAbs6,
+                "Sweep Effect Accent 6 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamRel6,
-	            "Sweep Effect Accent 6 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamRel6,
+                "Sweep Effect Accent 6 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetEffectParam7,
-	            "Set Effect Accent 7: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetEffectParam7,
+                "Set Effect Accent 7: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncEffectParam7,
-	            "Adjust Effect Accent 7: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncEffectParam7,
+                "Adjust Effect Accent 7: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamAbs7,
-	            "Sweep Effect Accent 7 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamAbs7,
+                "Sweep Effect Accent 7 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamRel7,
-	            "Sweep Effect Accent 7 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamRel7,
+                "Sweep Effect Accent 7 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetEffectParam8,
-	            "Set Effect Accent 8: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetEffectParam8,
+                "Set Effect Accent 8: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncEffectParam8,
-	            "Adjust Effect Accent 8: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncEffectParam8,
+                "Adjust Effect Accent 8: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamAbs8,
-	            "Sweep Effect Accent 8 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamAbs8,
+                "Sweep Effect Accent 8 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepEffectParamRel8,
-	            "Sweep Effect Accent 8 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepEffectParamRel8,
+                "Sweep Effect Accent 8 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* <1i>: -1 = enable, 0 = disable */
             new XOneBool(
-	            NoteCommands.eCmdTrackEffectEnable,
-	            "Track Effect Switch: Choose whether track effects are enabled or disabled.",
-	            "Enable",
-	            "Disable"),
+                NoteCommands.eCmdTrackEffectEnable,
+                "Track Effect Switch: Choose whether track effects are enabled or disabled.",
+                "Enable",
+                "Disable"),
 
             /* specify the new default score effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetScoreEffectParam1,
-	            "Set Global Score Effect Accent 1: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetScoreEffectParam1,
+                "Set Global Score Effect Accent 1: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default score effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncScoreEffectParam1,
-	            "Adjust Global Score Effect Accent 1: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncScoreEffectParam1,
+                "Adjust Global Score Effect Accent 1: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new score effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamAbs1,
-	            "Sweep Global Score Effect Accent 1 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamAbs1,
+                "Sweep Global Score Effect Accent 1 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = score effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamRel1,
-	            "Sweep Global Score Effect Accent 1 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamRel1,
+                "Sweep Global Score Effect Accent 1 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default score effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetScoreEffectParam2,
-	            "Set Global Score Effect Accent 2: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetScoreEffectParam2,
+                "Set Global Score Effect Accent 2: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default score effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncScoreEffectParam2,
-	            "Adjust Global Score Effect Accent 2: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncScoreEffectParam2,
+                "Adjust Global Score Effect Accent 2: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new score effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamAbs2,
-	            "Sweep Global Score Effect Accent 2 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamAbs2,
+                "Sweep Global Score Effect Accent 2 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = score effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamRel2,
-	            "Sweep Global Score Effect Accent 2 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamRel2,
+                "Sweep Global Score Effect Accent 2 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default score effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetScoreEffectParam3,
-	            "Set Global Score Effect Accent 3: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetScoreEffectParam3,
+                "Set Global Score Effect Accent 3: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default score effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncScoreEffectParam3,
-	            "Adjust Global Score Effect Accent 3: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncScoreEffectParam3,
+                "Adjust Global Score Effect Accent 3: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new score effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamAbs3,
-	            "Sweep Global Score Effect Accent 3 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamAbs3,
+                "Sweep Global Score Effect Accent 3 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = score effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamRel3,
-	            "Sweep Global Score Effect Accent 3 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamRel3,
+                "Sweep Global Score Effect Accent 3 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default score effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetScoreEffectParam4,
-	            "Set Global Score Effect Accent 4: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetScoreEffectParam4,
+                "Set Global Score Effect Accent 4: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default score effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncScoreEffectParam4,
-	            "Adjust Global Score Effect Accent 4: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncScoreEffectParam4,
+                "Adjust Global Score Effect Accent 4: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new score effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamAbs4,
-	            "Sweep Global Score Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamAbs4,
+                "Sweep Global Score Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = score effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamRel4,
-	            "Sweep Global Score Effect Accent 4 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamRel4,
+                "Sweep Global Score Effect Accent 4 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default score effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetScoreEffectParam5,
-	            "Set Global Score Effect Accent 5: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetScoreEffectParam5,
+                "Set Global Score Effect Accent 5: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default score effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncScoreEffectParam5,
-	            "Adjust Global Score Effect Accent 5: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncScoreEffectParam5,
+                "Adjust Global Score Effect Accent 5: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new score effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamAbs5,
-	            "Sweep Global Score Effect Accent 5 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamAbs5,
+                "Sweep Global Score Effect Accent 5 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = score effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamRel5,
-	            "Sweep Global Score Effect Accent 5 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamRel5,
+                "Sweep Global Score Effect Accent 5 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default score effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetScoreEffectParam6,
-	            "Set Global Score Effect Accent 6: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetScoreEffectParam6,
+                "Set Global Score Effect Accent 6: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default score effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncScoreEffectParam6,
-	            "Adjust Global Score Effect Accent 6: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncScoreEffectParam6,
+                "Adjust Global Score Effect Accent 6: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new score effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamAbs6,
-	            "Sweep Global Score Effect Accent 6 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamAbs6,
+                "Sweep Global Score Effect Accent 6 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = score effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamRel6,
-	            "Sweep Global Score Effect Accent 6 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamRel6,
+                "Sweep Global Score Effect Accent 6 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default score effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetScoreEffectParam7,
-	            "Set Global Score Effect Accent 7: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetScoreEffectParam7,
+                "Set Global Score Effect Accent 7: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default score effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncScoreEffectParam7,
-	            "Adjust Global Score Effect Accent 7: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncScoreEffectParam7,
+                "Adjust Global Score Effect Accent 7: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new score effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamAbs7,
-	            "Sweep Global Score Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamAbs7,
+                "Sweep Global Score Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = score effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamRel7,
-	            "Sweep Global Score Effect Accent 7 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamRel7,
+                "Sweep Global Score Effect Accent 7 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default score effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetScoreEffectParam8,
-	            "Set Global Score Effect Accent 8: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetScoreEffectParam8,
+                "Set Global Score Effect Accent 8: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default score effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncScoreEffectParam8,
-	            "Adjust Global Score Effect Accent 8: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncScoreEffectParam8,
+                "Adjust Global Score Effect Accent 8: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new score effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamAbs8,
-	            "Sweep Global Score Effect Accent 8 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamAbs8,
+                "Sweep Global Score Effect Accent 8 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = score effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepScoreEffectParamRel8,
-	            "Sweep Global Score Effect Accent 8 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepScoreEffectParamRel8,
+                "Sweep Global Score Effect Accent 8 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* <string> holds the text */
             new XOneStrLF(
-	            NoteCommands.eCmdMarker,
-	            "Comment: Enter a new comment.",
-	            "Comment:"),
+                NoteCommands.eCmdMarker,
+                "Comment: Enter a new comment.",
+                "Comment:"),
 
             /* <1i>: -1 = enable, 0 = disable */
             new XOneBool(
-	            NoteCommands.eCmdSectionEffectEnable,
-	            "Section Effect Switch: Choose whether section effects are enabled or disabled.",
-	            "Enable",
-	            "Disable"),
+                NoteCommands.eCmdSectionEffectEnable,
+                "Section Effect Switch: Choose whether section effects are enabled or disabled.",
+                "Enable",
+                "Disable"),
 
             /* <1i>: -1 = enable, 0 = disable */
             new XOneBool(
-	            NoteCommands.eCmdScoreEffectEnable,
-	            "Score Effect Switch: Choose whether score effects are enabled or disabled.",
-	            "Enable",
-	            "Disable"),
+                NoteCommands.eCmdScoreEffectEnable,
+                "Score Effect Switch: Choose whether score effects are enabled or disabled.",
+                "Enable",
+                "Disable"),
 
             /* specify the new default section effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetSectionEffectParam1,
-	            "Set Global Section Effect Accent 1: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetSectionEffectParam1,
+                "Set Global Section Effect Accent 1: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default section effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncSectionEffectParam1,
-	            "Adjust Global Section Effect Accent 1: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncSectionEffectParam1,
+                "Adjust Global Section Effect Accent 1: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new section effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamAbs1,
-	            "Sweep Global Section Effect Accent 1 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamAbs1,
+                "Sweep Global Section Effect Accent 1 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = section effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamRel1,
-	            "Sweep Global Section Effect Accent 1 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamRel1,
+                "Sweep Global Section Effect Accent 1 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default section effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetSectionEffectParam2,
-	            "Set Global Section Effect Accent 2: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetSectionEffectParam2,
+                "Set Global Section Effect Accent 2: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default section effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncSectionEffectParam2,
-	            "Adjust Global Section Effect Accent 2: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncSectionEffectParam2,
+                "Adjust Global Section Effect Accent 2: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new section effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamAbs2,
-	            "Sweep Global Section Effect Accent 2 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamAbs2,
+                "Sweep Global Section Effect Accent 2 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = section effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamRel2,
-	            "Sweep Global Section Effect Accent 2 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamRel2,
+                "Sweep Global Section Effect Accent 2 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default section effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetSectionEffectParam3,
-	            "Set Global Section Effect Accent 3: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetSectionEffectParam3,
+                "Set Global Section Effect Accent 3: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default section effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncSectionEffectParam3,
-	            "Adjust Global Section Effect Accent 3: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncSectionEffectParam3,
+                "Adjust Global Section Effect Accent 3: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new section effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamAbs3,
-	            "Sweep Global Section Effect Accent 3 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamAbs3,
+                "Sweep Global Section Effect Accent 3 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = section effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamRel3,
-	            "Sweep Global Section Effect Accent 3 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamRel3,
+                "Sweep Global Section Effect Accent 3 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default section effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetSectionEffectParam4,
-	            "Set Global Section Effect Accent 4: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetSectionEffectParam4,
+                "Set Global Section Effect Accent 4: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default section effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncSectionEffectParam4,
-	            "Adjust Global Section Effect Accent 4: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncSectionEffectParam4,
+                "Adjust Global Section Effect Accent 4: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new section effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamAbs4,
-	            "Sweep Global Section Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamAbs4,
+                "Sweep Global Section Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = section effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamRel4,
-	            "Sweep Global Section Effect Accent 4 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamRel4,
+                "Sweep Global Section Effect Accent 4 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default section effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetSectionEffectParam5,
-	            "Set Global Section Effect Accent 5: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetSectionEffectParam5,
+                "Set Global Section Effect Accent 5: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default section effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncSectionEffectParam5,
-	            "Adjust Global Section Effect Accent 5: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncSectionEffectParam5,
+                "Adjust Global Section Effect Accent 5: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new section effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamAbs5,
-	            "Sweep Global Section Effect Accent 5 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamAbs5,
+                "Sweep Global Section Effect Accent 5 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = section effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamRel5,
-	            "Sweep Global Section Effect Accent 5 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamRel5,
+                "Sweep Global Section Effect Accent 5 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default section effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetSectionEffectParam6,
-	            "Set Global Section Effect Accent 6: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetSectionEffectParam6,
+                "Set Global Section Effect Accent 6: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default section effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncSectionEffectParam6,
-	            "Adjust Global Section Effect Accent 6: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncSectionEffectParam6,
+                "Adjust Global Section Effect Accent 6: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new section effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamAbs6,
-	            "Sweep Global Section Effect Accent 6 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamAbs6,
+                "Sweep Global Section Effect Accent 6 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = section effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamRel6,
-	            "Sweep Global Section Effect Accent 6 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamRel6,
+                "Sweep Global Section Effect Accent 6 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default section effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetSectionEffectParam7,
-	            "Set Global Section Effect Accent 7: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetSectionEffectParam7,
+                "Set Global Section Effect Accent 7: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default section effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncSectionEffectParam7,
-	            "Adjust Global Section Effect Accent 7: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncSectionEffectParam7,
+                "Adjust Global Section Effect Accent 7: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new section effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamAbs7,
-	            "Sweep Global Section Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamAbs7,
+                "Sweep Global Section Effect Accent 4 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = section effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamRel7,
-	            "Sweep Global Section Effect Accent 7 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamRel7,
+                "Sweep Global Section Effect Accent 7 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* specify the new default section effect parameter in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetSectionEffectParam8,
-	            "Set Global Section Effect Accent 8: Enter a new accent value.",
-	            LAccentValue),
+                NoteCommands.eCmdSetSectionEffectParam8,
+                "Set Global Section Effect Accent 8: Enter a new accent value.",
+                LAccentValue),
 
             /* add <1l> to the default section effect parameter */
             new XOneL(
-	            NoteCommands.eCmdIncSectionEffectParam8,
-	            "Adjust Global Section Effect Accent 8: Enter an adjustment value.",
-	            LAccentAdjustment),
+                NoteCommands.eCmdIncSectionEffectParam8,
+                "Adjust Global Section Effect Accent 8: Enter an adjustment value.",
+                LAccentAdjustment),
 
             /* <1l> = new section effect parameter, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamAbs8,
-	            "Sweep Global Section Effect Accent 8 Absolute: Enter an accent value and the number of beats to spread the transition across.",
-	            LFinalValue,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamAbs8,
+                "Sweep Global Section Effect Accent 8 Absolute: Enter an accent value and the number of beats to spread the transition across.",
+                LFinalValue,
+                LDuration),
 
             /* <1l> = section effect parameter adjust, <2xs> = # of beats to get there */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepSectionEffectParamRel8,
-	            "Sweep Global Section Effect Accent 8 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
-	            LFinalAdjustment,
-	            LDuration),
+                NoteCommands.eCmdSweepSectionEffectParamRel8,
+                "Sweep Global Section Effect Accent 8 Relative: Enter an accent adjust value and the number of beats to spread the transition across.",
+                LFinalAdjustment,
+                LDuration),
 
             /* <string> holds sequence name */
             new XOneStr(
-	            NoteCommands.eCmdSequenceBegin,
-	            "Sequence Begin: Enter a new sequence name.",
-	            "Name:"),
+                NoteCommands.eCmdSequenceBegin,
+                "Sequence Begin: Enter a new sequence name.",
+                "Name:"),
 
             new XZero(
-	            NoteCommands.eCmdSequenceEnd),
+                NoteCommands.eCmdSequenceEnd),
 
             /* <string1> holds track/group name, <string2> hold sequence name */
             new XTwoStr(
-	            NoteCommands.eCmdSetSequence,
-	            "Set Sequence: Enter name of track or group to control and name of sequence to run.",
-	            "Track/Group Name:",
-	            "Sequence Name:"),
+                NoteCommands.eCmdSetSequence,
+                "Set Sequence: Enter name of track or group to control and name of sequence to run.",
+                "Track/Group Name:",
+                "Sequence Name:"),
 
             /* <string1> holds track/group name, <string2> hold sequence name */
             new XTwoStr(
-	            NoteCommands.eCmdSetSequenceDeferred,
-	            "Set Sequence On Next Loop: Enter name of track or group to control and name of sequence to run.",
-	            "Track/Group Name:",
-	            "Sequence Name:"),
+                NoteCommands.eCmdSetSequenceDeferred,
+                "Set Sequence On Next Loop: Enter name of track or group to control and name of sequence to run.",
+                "Track/Group Name:",
+                "Sequence Name:"),
 
             /* <string1> holds track/group name */
             new XOneStr(
-	            NoteCommands.eCmdEndSequencing,
-	            "End Sequencing: Enter name of track or group to halt.",
-	            "Name:"),
+                NoteCommands.eCmdEndSequencing,
+                "End Sequencing: Enter name of track or group to halt.",
+                "Name:"),
 
             /* <string1> holds track/group, <1l> holds beats */
             new XOneL(
-	            NoteCommands.eCmdSkip,
-	            "Skip: Enter number of beats to skip.",
-	            "Beats to Skip:"),
+                NoteCommands.eCmdSkip,
+                "Skip: Enter number of beats to skip.",
+                "Beats to Skip:"),
 
             /* <1l> = probability of ignoring next command */
             new XOneL(
-	            NoteCommands.eCmdIgnoreNextCmd,
-	            "Skip Next Command: Enter probability of skipping next command.",
-	            "Probability:"),
+                NoteCommands.eCmdIgnoreNextCmd,
+                "Skip Next Command: Enter probability of skipping next command.",
+                "Probability:"),
 
             /* <string> holds target track/group name */
             new XOneStr(
-	            NoteCommands.eCmdRedirect,
-	            "Redirect Begin: Enter name of track or group to control.",
-	            "Name:"),
+                NoteCommands.eCmdRedirect,
+                "Redirect Begin: Enter name of track or group to control.",
+                "Name:"),
 
             new XZero(
-	            NoteCommands.eCmdRedirectEnd),
+                NoteCommands.eCmdRedirectEnd),
 
             new XZero(
-	            NoteCommands.eCmdReleaseAll1),
+                NoteCommands.eCmdReleaseAll1),
 
             new XZero(
-	            NoteCommands.eCmdReleaseAll2),
+                NoteCommands.eCmdReleaseAll2),
 
             new XZero(
-	            NoteCommands.eCmdReleaseAll3),
+                NoteCommands.eCmdReleaseAll3),
 
             /* restore the portamento to the default for the channel */
             new XZero(
-	            NoteCommands.eCmdRestorePortamento),
+                NoteCommands.eCmdRestorePortamento),
 
             /* set the portamento to the specified level in <1l> */
             new XOneL(
-	            NoteCommands.eCmdSetPortamento,
-	            "Set Portamento: Enter an overall portamento level value.",
-	            "Portamento:"),
+                NoteCommands.eCmdSetPortamento,
+                "Set Portamento: Enter an overall portamento level value.",
+                "Portamento:"),
 
             /* add <1l> to the portamento control */
             new XOneL(
-	            NoteCommands.eCmdIncPortamento,
-	            "Adjust Portamento: Enter a portamento adjustment value.",
-	            "Portamento Adjustment:"),
+                NoteCommands.eCmdIncPortamento,
+                "Adjust Portamento: Enter a portamento adjustment value.",
+                "Portamento Adjustment:"),
 
             /* <1l> = new portamento, <2xs> = # of beats to reach it */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepPortamentoAbs,
-	            "Sweep Portamento Absolute: Enter a new portamento value and the number of beats to spread the transition across.",
-	            "Final Portamento:",
-	            LDuration),
+                NoteCommands.eCmdSweepPortamentoAbs,
+                "Sweep Portamento Absolute: Enter a new portamento value and the number of beats to spread the transition across.",
+                "Final Portamento:",
+                LDuration),
 
             /* <1l> = portamento adjust, <2xs> = # of beats to reach it */
             new XOneLTwoXS(
-	            NoteCommands.eCmdSweepPortamentoRel,
-	            "Sweep Portamento Relative: Enter a portamento adjustment value and the number of beats to spread the transition across.",
-	            "Final Portamento Adjustment:",
-	            LDuration),
+                NoteCommands.eCmdSweepPortamentoRel,
+                "Sweep Portamento Relative: Enter a portamento adjustment value and the number of beats to spread the transition across.",
+                "Final Portamento Adjustment:",
+                LDuration),
         };
     }
 }

@@ -124,7 +124,7 @@ namespace OutOfPhase
                 throw new ArgumentException();
             }
 #endif
-            DoubleTemp = GlobalParamSource.FrequencyTable[IntTemp % 12];
+            DoubleTemp = GlobalParamSource.FrequencyTable[IntTemp % 12].nd.Current;
             IntTemp = (IntTemp / 12) - (Constants.CENTERNOTE / 12);
             DoubleTemp = DoubleTemp * Math.Exp(IntTemp * Constants.LOG2) * Constants.MIDDLEC;
             /* apply detuning */
@@ -168,7 +168,7 @@ namespace OutOfPhase
                     throw new ArgumentException();
                 }
 #endif
-                DoubleTemp = GlobalParamSource.FrequencyTable[IntTemp % 12];
+                DoubleTemp = GlobalParamSource.FrequencyTable[IntTemp % 12].nd.Current;
                 IntTemp = (IntTemp / 12) - (Constants.CENTERNOTE / 12);
                 DoubleTemp = DoubleTemp * Math.Exp(IntTemp * Constants.LOG2) * Constants.MIDDLEC;
             }

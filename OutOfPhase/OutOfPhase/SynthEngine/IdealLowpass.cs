@@ -263,12 +263,17 @@ namespace OutOfPhase
                     IdealLP.Order,
                     IdealLP.Cutoff,
                     SynthParams.dSamplingRate);
+                if (SynthParams.iSamplingRate < GetIdealLowpassMinSamplingRate(Template))
+                {
+                    IdealLP.FilterEnabled = false;
+                }
 
                 return IdealLP;
             }
 
-            public void TrackUpdateState(ref AccentRec Accents, SynthParamRec SynthParams)
+            public SynthErrorCodes TrackUpdateState(ref AccentRec Accents, SynthParamRec SynthParams)
             {
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void Finalize(
@@ -284,8 +289,9 @@ namespace OutOfPhase
             {
             }
 
-            public void OscUpdateEnvelopes(double OscillatorFrequency, SynthParamRec SynthParams)
+            public SynthErrorCodes OscUpdateEnvelopes(double OscillatorFrequency, SynthParamRec SynthParams)
             {
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void OscKeyUpSustain1()

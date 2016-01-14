@@ -54,22 +54,22 @@ namespace OutOfPhase
                 }
             }
             private static readonly ConvRuleRec[] ConvMonoRule = new ConvRuleRec[]
-	        {
-		        new ConvRuleRec(ConvolverSpecGetImpulseResponseMono),
-		        new ConvRuleRec(ConvolverSpecGetImpulseResponseMono),
-	        };
+            {
+                new ConvRuleRec(ConvolverSpecGetImpulseResponseMono),
+                new ConvRuleRec(ConvolverSpecGetImpulseResponseMono),
+            };
             private static readonly ConvRuleRec[] ConvStereoRule = new ConvRuleRec[]
-	        {
-		        new ConvRuleRec(ConvolverSpecGetImpulseResponseStereoLeft),
-		        new ConvRuleRec(ConvolverSpecGetImpulseResponseStereoRight),
-	        };
+            {
+                new ConvRuleRec(ConvolverSpecGetImpulseResponseStereoLeft),
+                new ConvRuleRec(ConvolverSpecGetImpulseResponseStereoRight),
+            };
             private static readonly ConvRuleRec[] ConvBiStereoRule = new ConvRuleRec[]
-	        {
-		        new ConvRuleRec(ConvolverSpecGetImpulseResponseBiStereoLeftIntoLeft),
-		        new ConvRuleRec(ConvolverSpecGetImpulseResponseBiStereoRightIntoLeft),
-		        new ConvRuleRec(ConvolverSpecGetImpulseResponseBiStereoLeftIntoRight),
-		        new ConvRuleRec(ConvolverSpecGetImpulseResponseBiStereoRightIntoRight),
-	        };
+            {
+                new ConvRuleRec(ConvolverSpecGetImpulseResponseBiStereoLeftIntoLeft),
+                new ConvRuleRec(ConvolverSpecGetImpulseResponseBiStereoRightIntoLeft),
+                new ConvRuleRec(ConvolverSpecGetImpulseResponseBiStereoLeftIntoRight),
+                new ConvRuleRec(ConvolverSpecGetImpulseResponseBiStereoRightIntoRight),
+            };
 
             /* create a new convolver */
             public static SynthErrorCodes NewConvolver(
@@ -326,20 +326,33 @@ namespace OutOfPhase
             }
 
             /* update convolver state with accent information */
-            public void TrackUpdateState(
+            public SynthErrorCodes TrackUpdateState(
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
-                ScalarParamEval(
+                SynthErrorCodes error;
+
+                error = ScalarParamEval(
                     this.DirectGain,
                     ref Accents,
                     SynthParams,
                     out this.CurrentDirectGain);
-                ScalarParamEval(
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
+
+                error = ScalarParamEval(
                     this.ProcessedGain,
                     ref Accents,
                     SynthParams,
                     out this.CurrentProcessedGain);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void Finalize(

@@ -92,7 +92,7 @@ namespace OutOfPhase
             this.textBoxScoreEffectsText.BackColor = System.Drawing.SystemColors.ControlLightLight;
             this.textBoxScoreEffectsText.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBoxScoreEffectsText.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textBoxScoreEffectsText.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.scoreEffectsRecBindingSource, "Source", true));
+            this.textBoxScoreEffectsText.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.scoreEffectsRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxScoreEffectsText.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxScoreEffectsText.Location = new System.Drawing.Point(3, 33);
             this.textBoxScoreEffectsText.Name = "textBoxScoreEffectsText";

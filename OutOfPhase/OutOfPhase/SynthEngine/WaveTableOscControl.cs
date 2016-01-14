@@ -317,15 +317,15 @@ namespace OutOfPhase
 
             /* current index into table of waves.  0 = lowest wave table, NumberOfTables = highest */
             public double WaveTableIndex; /* 0..NumTables - 1 */
+            public double PreviousWaveTableIndex; /* 0..NumTables - 1 */
             /* envelope controlling wave table index */
             public EvalEnvelopeRec WaveTableIndexEnvelope;
             /* LFO generators modifying the output of the index envelope generator */
             public LFOGenRec IndexLFOGenerator;
 
-            /* left channel loudness */
-            public float LeftLoudness;
-            /* right channel loudness */
-            public float RightLoudness;
+            // loudness envelope
+            public float Loudness;
+            public float PreviousLoudness;
             /* panning position for splitting envelope generator into stereo channels */
             /* 0 = left channel, 0.5 = middle, 1 = right channel */
             public float Panning;
@@ -360,18 +360,15 @@ namespace OutOfPhase
 
             /* perform one envelope update cycle, and set a new frequency for a wave table */
             /* state object.  used for portamento and modulation of frequency (vibrato) */
-            public void UpdateEnvelopes(
+            public SynthErrorCodes UpdateEnvelopes(
                 double NewFrequencyHertz,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 WaveTableStateRec State = this;
 
-                float FloatTemp;
                 double DoubleTemp;
                 double Differential;
-                float OneHalfVol;
-                float LeftLoudness;
-                float RightLoudness;
 
                 if (State.PitchLFOStartCountdown > 0)
                 {
@@ -380,11 +377,17 @@ namespace OutOfPhase
                 else
                 {
                     /* do some pitch stuff */
+                    error = SynthErrorCodes.eSynthDone;
                     NewFrequencyHertz = LFOGenUpdateCycle(
                         State.PitchLFO,
                         NewFrequencyHertz,
                         NewFrequencyHertz,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier + State.Template.FrequencyAdder;
                 Differential = NewFrequencyHertz * State.FramesPerTableOverFinalOutputSamplingRate;
@@ -397,15 +400,22 @@ namespace OutOfPhase
                     State.PreStartCountdown -= 1;
                 }
 
+                error = SynthErrorCodes.eSynthDone;
                 DoubleTemp = State.NumberOfTablesMinus1 *
                     LFOGenUpdateCycle(
                         State.IndexLFOGenerator,
                         EnvelopeUpdate(
                             State.WaveTableIndexEnvelope,
                             NewFrequencyHertz,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         NewFrequencyHertz,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 if (DoubleTemp < 0)
                 {
                     DoubleTemp = 0;
@@ -414,32 +424,40 @@ namespace OutOfPhase
                 {
                     DoubleTemp = State.NumberOfTablesMinus1;
                 }
+                State.PreviousWaveTableIndex = State.WaveTableIndex;
                 State.WaveTableIndex = DoubleTemp;
 
-                FloatTemp = (float)(State.NoteLoudnessScaling *
+                error = SynthErrorCodes.eSynthDone;
+                State.PreviousLoudness = State.Loudness;
+                State.Loudness = (float)(State.NoteLoudnessScaling *
                     LFOGenUpdateCycle(
                         State.LoudnessLFOGenerator,
                         EnvelopeUpdate(
                             State.WaveTableLoudnessEnvelope,
                             NewFrequencyHertz,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         NewFrequencyHertz,
-                        SynthParams));
-                /* left = FloatTemp * .5 * (1 - State.Panning) */
-                /* right = FloatTemp * .5 * (1 + State.Panning) */
-                OneHalfVol = .5f * FloatTemp;
-                LeftLoudness = OneHalfVol - OneHalfVol * State.Panning;
-                RightLoudness = OneHalfVol + OneHalfVol * State.Panning;
-                State.LeftLoudness = LeftLoudness;
-                State.RightLoudness = RightLoudness;
+                        SynthParams,
+                        ref error));
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
                 if (State.OscEffectGenerator != null)
                 {
-                    OscEffectGeneratorUpdateEnvelopes(
+                    error = OscEffectGeneratorUpdateEnvelopes(
                         State.OscEffectGenerator,
                         NewFrequencyHertz,
                         SynthParams);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* fix up pre-origin time for the wave table state object */
@@ -634,7 +652,19 @@ namespace OutOfPhase
                 int PrivateWorkspaceROffset,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error = SynthErrorCodes.eSynthDone;
+
                 WaveTableStateRec State = this;
+
+#if DEBUG
+                Debug.Assert(!SynthParams.ScratchWorkspace1InUse);
+                SynthParams.ScratchWorkspace1InUse = true;
+                Debug.Assert(!SynthParams.ScratchWorkspace3InUse);
+                SynthParams.ScratchWorkspace3InUse = true;
+#endif
+                int loudnessWorkspaceOffset = SynthParams.ScratchWorkspace1LOffset;
+                int indexWorkspaceOffset = SynthParams.ScratchWorkspace3Offset;
+                double[] indexWorkspace = UnsafeArrayCastLong.AsDoubles(SynthParams.ScratchWorkspace3);
 
                 if (State.PreStartCountdown <= 0)
                 {
@@ -648,7 +678,10 @@ namespace OutOfPhase
                                 nActualFrames,
                                 workspace,
                                 RawBufferLOffset,
-                                RawBufferROffset);
+                                RawBufferROffset,
+                                loudnessWorkspaceOffset,
+                                indexWorkspace,
+                                indexWorkspaceOffset);
                         }
                     }
                     else
@@ -673,11 +706,19 @@ namespace OutOfPhase
                                 nActualFrames,
                                 workspace,
                                 PrivateWorkspaceLOffset,
-                                PrivateWorkspaceROffset);
+                                PrivateWorkspaceROffset,
+                                loudnessWorkspaceOffset,
+                                indexWorkspace,
+                                indexWorkspaceOffset);
                         }
 
+#if DEBUG
+                        SynthParams.ScratchWorkspace1InUse = false;
+                        SynthParams.ScratchWorkspace3InUse = false;
+#endif
+
                         /* apply processor to it */
-                        SynthErrorCodes error = ApplyOscEffectGenerator(
+                        error = ApplyOscEffectGenerator(
                             State.OscEffectGenerator,
                             workspace,
                             PrivateWorkspaceLOffset,
@@ -686,7 +727,7 @@ namespace OutOfPhase
                             SynthParams);
                         if (error != SynthErrorCodes.eSynthDone)
                         {
-                            return error;
+                            goto Error;
                         }
 
                         /* copy out data */
@@ -705,7 +746,15 @@ namespace OutOfPhase
                     }
                 }
 
-                return SynthErrorCodes.eSynthDone;
+
+            Error:
+
+#if DEBUG
+                SynthParams.ScratchWorkspace1InUse = false;
+                SynthParams.ScratchWorkspace3InUse = false;
+#endif
+
+                return error;
             }
 
             private static void Wave_Stereo(
@@ -713,14 +762,11 @@ namespace OutOfPhase
                 int nActualFrames,
                 float[] workspace,
                 int lOffset,
-                int rOffset)
+                int rOffset,
+                int loudnessWorkspaceOffset,
+                double[] indexWorkspace,
+                int indexWorkspaceOffset)
             {
-                Fixed64 LocalWaveTableSamplePosition;
-                Fixed64 LocalWaveTableSamplePositionDifferential;
-                int LocalSamplePositionMask;
-                float LocalLeftLoudness;
-                float LocalRightLoudness;
-
 #if DEBUG
                 if ((State.WaveTableIndex < 0) || (State.WaveTableIndex > State.NumberOfTablesMinus1))
                 {
@@ -731,101 +777,223 @@ namespace OutOfPhase
 #endif
 
                 /* load local values */
-                LocalLeftLoudness = State.LeftLoudness;
-                LocalRightLoudness = State.RightLoudness;
-                LocalWaveTableSamplePosition = State.WaveTableSamplePosition;
-                LocalWaveTableSamplePositionDifferential = State.WaveTableSamplePositionDifferential;
-                LocalSamplePositionMask = State.FramesPerTable - 1;
+                float LocalLoudness = State.Loudness;
+                float LeftPan = .5f - .5f * State.Panning; // (1 - State.Panning) / 2
+                float RightPan = .5f + .5f * State.Panning; // (1 + State.Panning) / 2
+                Fixed64 LocalWaveTableSamplePosition = State.WaveTableSamplePosition;
+                Fixed64 LocalWaveTableSamplePositionDifferential = State.WaveTableSamplePositionDifferential;
+                int LocalSamplePositionMask = State.FramesPerTable - 1;
 
-                /* select method */
-                if (State.WaveTableIndex == State.NumberOfTablesMinus1)
+#if true // TODO:experimental - smoothing
+                if (Program.Config.EnableEnvelopeSmoothing
+                    // case of no motion in either smoothed axes can use fast code path
+                    && ((State.Loudness != State.PreviousLoudness)
+                    || (State.WaveTableIndex != State.PreviousWaveTableIndex)))
                 {
-                    float[] WaveData;
+                    // envelope smoothing
 
-                    /* process at end of table, where there is no extra table for interpolation */
+                    float LocalPreviousLoudness = State.PreviousLoudness;
 
-                    /* load local values */
-                    WaveData = State.WaveTableMatrix[(int)(State.WaveTableIndex)];
-
-                    /* process */
-                    for (int i = 0; i < nActualFrames; i += 1)
+                    // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                    if (IsLFOSampleAndHold(State.LoudnessLFOGenerator))
                     {
-                        float RightWeight;
-                        int ArraySubscript;
-                        float LeftValue;
-                        float RightValue;
-                        float CombinedValue;
-                        float OrigLeft;
-                        float OrigRight;
+                        LocalPreviousLoudness = LocalLoudness;
+                    }
 
-                        /* load outside buffer values */
-                        OrigLeft = workspace[i + lOffset];
-                        OrigRight = workspace[i + rOffset];
+                    if (!EnvelopeCurrentSegmentExponential(State.WaveTableLoudnessEnvelope))
+                    {
+                        FloatVectorAdditiveRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+                    else
+                    {
+                        FloatVectorMultiplicativeRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
 
-                        /* compute weighting and subscript */
-                        RightWeight = LocalWaveTableSamplePosition.FracF;
-                        ArraySubscript = LocalWaveTableSamplePosition.Int & LocalSamplePositionMask;
+                    /* select method */
+                    if ((State.WaveTableIndex == State.NumberOfTablesMinus1)
+                        && (State.PreviousWaveTableIndex == State.NumberOfTablesMinus1))
+                    {
+                        /* process at end of table, where there is no extra table for interpolation */
 
-                        /* L+F(R-L) */
-                        LeftValue = WaveData[ArraySubscript];
-                        RightValue = WaveData[ArraySubscript + 1];
-                        CombinedValue = LeftValue + (RightWeight * (RightValue - LeftValue));
+                        /* load local values */
+                        float[] WaveData = State.WaveTableMatrix[(int)(State.WaveTableIndex)];
 
-                        /* increment pitch differential */
-                        LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
+                        /* process */
+                        for (int i = 0; i < nActualFrames; i++)
+                        {
+                            /* load outside buffer values */
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
 
-                        /* generate output */
-                        workspace[i + lOffset] = OrigLeft + LocalLeftLoudness * CombinedValue;
-                        workspace[i + rOffset] = OrigRight + LocalRightLoudness * CombinedValue;
+                            /* compute weighting and subscript */
+                            float RightWeight = LocalWaveTableSamplePosition.FracF;
+                            int ArraySubscript = LocalWaveTableSamplePosition.Int & LocalSamplePositionMask;
+
+                            /* L+F(R-L) */
+                            float LeftValue = WaveData[ArraySubscript];
+                            float RightValue = WaveData[ArraySubscript + 1];
+                            float CombinedValue = LeftValue + (RightWeight * (RightValue - LeftValue));
+
+                            /* increment pitch differential */
+                            LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
+
+                            /* generate output */
+                            LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                            workspace[i + lOffset] = OrigLeft + LeftPan * LocalLoudness * CombinedValue;
+                            workspace[i + rOffset] = OrigRight + RightPan * LocalLoudness * CombinedValue;
+                        }
+                    }
+                    else
+                    {
+                        double LocalPreviousWaveTableIndex = State.PreviousWaveTableIndex;
+                        double LocalWaveTableIndex = State.WaveTableIndex;
+
+                        // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                        if (IsLFOSampleAndHold(State.IndexLFOGenerator))
+                        {
+                            LocalPreviousWaveTableIndex = LocalWaveTableIndex;
+                        }
+
+                        if (!EnvelopeCurrentSegmentExponential(State.WaveTableLoudnessEnvelope))
+                        {
+                            FloatVectorAdditiveRecurrenceFixed(
+                                indexWorkspace,
+                                indexWorkspaceOffset,
+                                LocalPreviousWaveTableIndex,
+                                LocalWaveTableIndex,
+                                nActualFrames);
+                        }
+                        else
+                        {
+                            FloatVectorMultiplicativeRecurrenceFixed(
+                                indexWorkspace,
+                                indexWorkspaceOffset,
+                                LocalPreviousWaveTableIndex,
+                                LocalWaveTableIndex,
+                                nActualFrames);
+                        }
+
+                        /* process */
+                        for (int i = 0; i < nActualFrames; i++)
+                        {
+                            // unfortunately these are variant in this case
+                            LocalWaveTableIndex = indexWorkspace[indexWorkspaceOffset + i];
+                            float[] WaveData0 = State.WaveTableMatrix[(int)LocalWaveTableIndex];
+                            // wave index can reach max value during iterations, constrain (Wave1Weight becomes unimportant)
+                            float[] WaveData1 = State.WaveTableMatrix[(int)Math.Min(LocalWaveTableIndex + 1, State.NumberOfTablesMinus1)];
+                            float Wave1Weight = (float)(LocalWaveTableIndex - (int)LocalWaveTableIndex);
+
+                            /* load outside buffer values */
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
+
+                            /* compute weighting and subscript */
+                            float RightWeight = LocalWaveTableSamplePosition.FracF;
+                            int ArraySubscript = LocalWaveTableSamplePosition.Int & LocalSamplePositionMask;
+
+                            /* L+F(R-L) -- applied twice */
+                            float Left0Value = WaveData0[ArraySubscript];
+                            float Right0Value = WaveData0[ArraySubscript + 1];
+                            float Left1Value = WaveData1[ArraySubscript];
+                            float Right1Value = WaveData1[ArraySubscript + 1];
+                            float Wave0Temp = Left0Value + (RightWeight * (Right0Value - Left0Value));
+                            Wave0Temp = Wave0Temp + (Wave1Weight * (Left1Value + (RightWeight
+                                * (Right1Value - Left1Value)) - Wave0Temp));
+
+                            /* increment pitch differential */
+                            LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
+
+                            /* generate output */
+                            LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                            workspace[i + lOffset] = OrigLeft + LeftPan * LocalLoudness * Wave0Temp;
+                            workspace[i + rOffset] = OrigRight + RightPan * LocalLoudness * Wave0Temp;
+                        }
                     }
                 }
                 else
+#endif
                 {
-                    float[] WaveData0;
-                    float[] WaveData1;
-                    float Wave1Weight;
+                    // non-smoothing case
 
-                    /* load local values */
-                    WaveData0 = State.WaveTableMatrix[(int)(State.WaveTableIndex)];
-                    WaveData1 = State.WaveTableMatrix[(int)(State.WaveTableIndex) + 1];
-                    Wave1Weight = (float)(State.WaveTableIndex - (int)(State.WaveTableIndex));
+                    float LocalLeftLoudness = LocalLoudness * LeftPan;
+                    float LocalRightLoudness = LocalLoudness * RightPan;
 
-                    /* process */
-                    for (int i = 0; i < nActualFrames; i += 1)
+                    /* select method */
+                    if (State.WaveTableIndex == State.NumberOfTablesMinus1)
                     {
-                        float RightWeight;
-                        int ArraySubscript;
-                        float Left0Value;
-                        float Right0Value;
-                        float Left1Value;
-                        float Right1Value;
-                        float Wave0Temp;
-                        float OrigLeft;
-                        float OrigRight;
+                        /* process at end of table, where there is no extra table for interpolation */
 
-                        /* load outside buffer values */
-                        OrigLeft = workspace[i + lOffset];
-                        OrigRight = workspace[i + rOffset];
+                        /* load local values */
+                        float[] WaveData = State.WaveTableMatrix[(int)(State.WaveTableIndex)];
 
-                        /* compute weighting and subscript */
-                        RightWeight = LocalWaveTableSamplePosition.FracF;
-                        ArraySubscript = LocalWaveTableSamplePosition.Int & LocalSamplePositionMask;
+                        /* process */
+                        for (int i = 0; i < nActualFrames; i++)
+                        {
+                            /* load outside buffer values */
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
 
-                        /* L+F(R-L) -- applied twice */
-                        Left0Value = WaveData0[ArraySubscript];
-                        Right0Value = WaveData0[ArraySubscript + 1];
-                        Left1Value = WaveData1[ArraySubscript];
-                        Right1Value = WaveData1[ArraySubscript + 1];
-                        Wave0Temp = Left0Value + (RightWeight * (Right0Value - Left0Value));
-                        Wave0Temp = Wave0Temp + (Wave1Weight * (Left1Value + (RightWeight
-                            * (Right1Value - Left1Value)) - Wave0Temp));
+                            /* compute weighting and subscript */
+                            float RightWeight = LocalWaveTableSamplePosition.FracF;
+                            int ArraySubscript = LocalWaveTableSamplePosition.Int & LocalSamplePositionMask;
 
-                        /* increment pitch differential */
-                        LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
+                            /* L+F(R-L) */
+                            float LeftValue = WaveData[ArraySubscript];
+                            float RightValue = WaveData[ArraySubscript + 1];
+                            float CombinedValue = LeftValue + (RightWeight * (RightValue - LeftValue));
 
-                        /* generate output */
-                        workspace[i + lOffset] = OrigLeft + LocalLeftLoudness * Wave0Temp;
-                        workspace[i + rOffset] = OrigRight + LocalRightLoudness * Wave0Temp;
+                            /* increment pitch differential */
+                            LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
+
+                            /* generate output */
+                            workspace[i + lOffset] = OrigLeft + LocalLeftLoudness * CombinedValue;
+                            workspace[i + rOffset] = OrigRight + LocalRightLoudness * CombinedValue;
+                        }
+                    }
+                    else
+                    {
+                        /* load local values */
+                        float[] WaveData0 = State.WaveTableMatrix[(int)(State.WaveTableIndex)];
+                        float[] WaveData1 = State.WaveTableMatrix[(int)(State.WaveTableIndex) + 1];
+                        float Wave1Weight = (float)(State.WaveTableIndex - (int)(State.WaveTableIndex));
+
+                        /* process */
+                        for (int i = 0; i < nActualFrames; i++)
+                        {
+                            /* load outside buffer values */
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
+
+                            /* compute weighting and subscript */
+                            float RightWeight = LocalWaveTableSamplePosition.FracF;
+                            int ArraySubscript = LocalWaveTableSamplePosition.Int & LocalSamplePositionMask;
+
+                            /* L+F(R-L) -- applied twice */
+                            float Left0Value = WaveData0[ArraySubscript];
+                            float Right0Value = WaveData0[ArraySubscript + 1];
+                            float Left1Value = WaveData1[ArraySubscript];
+                            float Right1Value = WaveData1[ArraySubscript + 1];
+                            float Wave0Temp = Left0Value + (RightWeight * (Right0Value - Left0Value));
+                            Wave0Temp = Wave0Temp + (Wave1Weight * (Left1Value + (RightWeight
+                                * (Right1Value - Left1Value)) - Wave0Temp));
+
+                            /* increment pitch differential */
+                            LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
+
+                            /* generate output */
+                            workspace[i + lOffset] = OrigLeft + LocalLeftLoudness * Wave0Temp;
+                            workspace[i + rOffset] = OrigRight + LocalRightLoudness * Wave0Temp;
+                        }
                     }
                 }
 

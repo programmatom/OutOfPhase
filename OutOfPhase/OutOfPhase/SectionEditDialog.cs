@@ -48,11 +48,28 @@ namespace OutOfPhase
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
             myListBoxSections.SetUnderlying(displayList, DisplayNameOfListEntry);
-            myListBoxSections.SelectionChanged += new EventHandler(delegate(object sender, EventArgs e) { OnSelectionChanged(); });
+            myListBoxSections.SelectionChanged += new EventHandler(delegate (object sender, EventArgs e) { OnSelectionChanged(); });
             myListBoxSections.DoubleClick2 += new MyListBox.DoubleClick2EventHandler(myListBoxSections_DoubleClick2);
+
+            document.SectionList.ListChanged += SectionList_ListChanged;
 
             RebuildScrollingList();
             OnSelectionChanged();
+
+            Disposed += SectionEditDialog_Disposed;
+        }
+
+        private void SectionEditDialog_Disposed(object sender, EventArgs e)
+        {
+            document.SectionList.ListChanged -= SectionList_ListChanged;
+        }
+
+        private void SectionList_ListChanged(object sender, ListChangedEventArgs e)
+        {
+            if (String.Equals(e.PropertyDescriptor.Name, SectionObjectRec.Name_PropertyName))
+            {
+                RebuildScrollingList();
+            }
         }
 
         private static string DisplayNameOfListEntry(object obj)
@@ -92,7 +109,7 @@ namespace OutOfPhase
 
             Array.Sort(
                 tracks,
-                delegate(TrackObjectRec left, TrackObjectRec right)
+                delegate (TrackObjectRec left, TrackObjectRec right)
                 {
                     return Synthesizer.SynthStateRec.CompareTracksOnSection(left, right, document.SectionList);
                 });

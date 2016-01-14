@@ -98,7 +98,7 @@ namespace OutOfPhase
             // textBoxSectionName
             // 
             this.textBoxSectionName.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxSectionName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sectionObjectRecBindingSource, "Name", true));
+            this.textBoxSectionName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sectionObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxSectionName.Location = new System.Drawing.Point(106, 33);
             this.textBoxSectionName.Name = "textBoxSectionName";
             this.textBoxSectionName.Size = new System.Drawing.Size(518, 20);
@@ -116,7 +116,7 @@ namespace OutOfPhase
             this.textBoxSectionText.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.tableLayoutPanel1.SetColumnSpan(this.textBoxSectionText, 3);
             this.textBoxSectionText.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textBoxSectionText.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sectionObjectRecBindingSource, "Source", true));
+            this.textBoxSectionText.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sectionObjectRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxSectionText.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxSectionText.Location = new System.Drawing.Point(3, 59);
             this.textBoxSectionText.Name = "textBoxSectionText";

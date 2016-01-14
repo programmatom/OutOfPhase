@@ -119,7 +119,7 @@ namespace OutOfPhase
             // prerequisites 
 
             /* force an auto-save since play may take a long time */
-            mainWindow.DoAutosave();
+            MainWindow.DoAutosaveGlobally();
 
             /* make sure all objects are up to date */
             if (!mainWindow.MakeUpToDate())

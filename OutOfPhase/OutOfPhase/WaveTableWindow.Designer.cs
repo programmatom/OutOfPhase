@@ -73,10 +73,16 @@ namespace OutOfPhase
             this.textBoxTestFrequency = new System.Windows.Forms.TextBox();
             this.textBoxTestSamplingRate = new System.Windows.Forms.TextBox();
             this.buttonTest = new System.Windows.Forms.Button();
+            this.labelScale = new System.Windows.Forms.Label();
+            this.comboBoxScale = new System.Windows.Forms.ComboBox();
+            this.tabControlWave = new System.Windows.Forms.TabControl();
+            this.tabPageWaveVisual = new System.Windows.Forms.TabPage();
             this.tableLayoutPanel4 = new System.Windows.Forms.TableLayoutPanel();
             this.hScrollBarWaveTable = new System.Windows.Forms.HScrollBar();
             this.panelWaveTable = new System.Windows.Forms.Panel();
             this.waveTableControl = new OutOfPhase.WaveTableControl();
+            this.tabPageWaveGrid = new System.Windows.Forms.TabPage();
+            this.dataGridViewWave = new System.Windows.Forms.DataGridView();
             this.menuStripManager = new OutOfPhase.MenuStripManager();
             this.textBoxFormula = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
@@ -87,8 +93,12 @@ namespace OutOfPhase
             this.tableLayoutPanel2.SuspendLayout();
             this.tableLayoutPanel3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.waveTableObjectRecBindingSource)).BeginInit();
+            this.tabControlWave.SuspendLayout();
+            this.tabPageWaveVisual.SuspendLayout();
             this.tableLayoutPanel4.SuspendLayout();
             this.panelWaveTable.SuspendLayout();
+            this.tabPageWaveGrid.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridViewWave)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
@@ -127,7 +137,7 @@ namespace OutOfPhase
             this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel2.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 350F));
             this.tableLayoutPanel2.Controls.Add(this.tableLayoutPanel3, 1, 0);
-            this.tableLayoutPanel2.Controls.Add(this.tableLayoutPanel4, 0, 0);
+            this.tableLayoutPanel2.Controls.Add(this.tabControlWave, 0, 0);
             this.tableLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel2.Location = new System.Drawing.Point(3, 33);
             this.tableLayoutPanel2.Name = "tableLayoutPanel2";
@@ -163,6 +173,8 @@ namespace OutOfPhase
             this.tableLayoutPanel3.Controls.Add(this.textBoxTestFrequency, 4, 3);
             this.tableLayoutPanel3.Controls.Add(this.textBoxTestSamplingRate, 4, 4);
             this.tableLayoutPanel3.Controls.Add(this.buttonTest, 4, 5);
+            this.tableLayoutPanel3.Controls.Add(this.labelScale, 0, 5);
+            this.tableLayoutPanel3.Controls.Add(this.comboBoxScale, 1, 5);
             this.tableLayoutPanel3.Dock = System.Windows.Forms.DockStyle.Top;
             this.tableLayoutPanel3.Location = new System.Drawing.Point(348, 3);
             this.tableLayoutPanel3.Name = "tableLayoutPanel3";
@@ -189,7 +201,7 @@ namespace OutOfPhase
             // textBoxName
             // 
             this.textBoxName.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.waveTableObjectRecBindingSource, "Name", true));
+            this.textBoxName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.waveTableObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxName.Location = new System.Drawing.Point(53, 3);
             this.textBoxName.Name = "textBoxName";
             this.textBoxName.Size = new System.Drawing.Size(86, 20);
@@ -356,6 +368,55 @@ namespace OutOfPhase
             this.buttonTest.Text = "Test";
             this.buttonTest.UseVisualStyleBackColor = true;
             // 
+            // labelScale
+            // 
+            this.labelScale.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelScale.AutoSize = true;
+            this.labelScale.Location = new System.Drawing.Point(3, 140);
+            this.labelScale.Name = "labelScale";
+            this.labelScale.Size = new System.Drawing.Size(44, 13);
+            this.labelScale.TabIndex = 18;
+            this.labelScale.Text = "Scale:";
+            // 
+            // comboBoxScale
+            // 
+            this.comboBoxScale.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.comboBoxScale.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBoxScale.FormattingEnabled = true;
+            this.comboBoxScale.Items.AddRange(new object[] {
+            "Unity",
+            "8-Bit",
+            "16-Bit",
+            "24-Bit"});
+            this.comboBoxScale.Location = new System.Drawing.Point(53, 136);
+            this.comboBoxScale.Name = "comboBoxScale";
+            this.comboBoxScale.Size = new System.Drawing.Size(86, 21);
+            this.comboBoxScale.TabIndex = 19;
+            this.comboBoxScale.SelectedIndexChanged += new System.EventHandler(this.comboBoxScale_SelectedIndexChanged);
+            // 
+            // tabControlWave
+            // 
+            this.tabControlWave.Controls.Add(this.tabPageWaveVisual);
+            this.tabControlWave.Controls.Add(this.tabPageWaveGrid);
+            this.tabControlWave.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabControlWave.Location = new System.Drawing.Point(0, 0);
+            this.tabControlWave.Margin = new System.Windows.Forms.Padding(0);
+            this.tabControlWave.Name = "tabControlWave";
+            this.tabControlWave.SelectedIndex = 0;
+            this.tabControlWave.Size = new System.Drawing.Size(345, 239);
+            this.tabControlWave.TabIndex = 1;
+            // 
+            // tabPageWaveVisual
+            // 
+            this.tabPageWaveVisual.Controls.Add(this.tableLayoutPanel4);
+            this.tabPageWaveVisual.Location = new System.Drawing.Point(4, 22);
+            this.tabPageWaveVisual.Margin = new System.Windows.Forms.Padding(0);
+            this.tabPageWaveVisual.Name = "tabPageWaveVisual";
+            this.tabPageWaveVisual.Size = new System.Drawing.Size(337, 213);
+            this.tabPageWaveVisual.TabIndex = 0;
+            this.tabPageWaveVisual.Text = "Wave";
+            this.tabPageWaveVisual.UseVisualStyleBackColor = true;
+            // 
             // tableLayoutPanel4
             // 
             this.tableLayoutPanel4.ColumnCount = 1;
@@ -363,12 +424,13 @@ namespace OutOfPhase
             this.tableLayoutPanel4.Controls.Add(this.hScrollBarWaveTable, 0, 1);
             this.tableLayoutPanel4.Controls.Add(this.panelWaveTable, 0, 0);
             this.tableLayoutPanel4.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel4.Location = new System.Drawing.Point(3, 3);
+            this.tableLayoutPanel4.Location = new System.Drawing.Point(0, 0);
+            this.tableLayoutPanel4.Margin = new System.Windows.Forms.Padding(0);
             this.tableLayoutPanel4.Name = "tableLayoutPanel4";
             this.tableLayoutPanel4.RowCount = 2;
             this.tableLayoutPanel4.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel4.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel4.Size = new System.Drawing.Size(339, 233);
+            this.tableLayoutPanel4.Size = new System.Drawing.Size(337, 213);
             this.tableLayoutPanel4.TabIndex = 1;
             // 
             // hScrollBarWaveTable
@@ -376,18 +438,19 @@ namespace OutOfPhase
             this.hScrollBarWaveTable.DataBindings.Add(new System.Windows.Forms.Binding("Maximum", this.waveTableObjectRecBindingSource, "NumTables", true));
             this.hScrollBarWaveTable.Dock = System.Windows.Forms.DockStyle.Fill;
             this.hScrollBarWaveTable.LargeChange = 1;
-            this.hScrollBarWaveTable.Location = new System.Drawing.Point(0, 216);
+            this.hScrollBarWaveTable.Location = new System.Drawing.Point(0, 196);
             this.hScrollBarWaveTable.Name = "hScrollBarWaveTable";
-            this.hScrollBarWaveTable.Size = new System.Drawing.Size(339, 17);
+            this.hScrollBarWaveTable.Size = new System.Drawing.Size(337, 17);
             this.hScrollBarWaveTable.TabIndex = 0;
             // 
             // panelWaveTable
             // 
             this.panelWaveTable.Controls.Add(this.waveTableControl);
             this.panelWaveTable.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelWaveTable.Location = new System.Drawing.Point(3, 3);
+            this.panelWaveTable.Location = new System.Drawing.Point(0, 0);
+            this.panelWaveTable.Margin = new System.Windows.Forms.Padding(0);
             this.panelWaveTable.Name = "panelWaveTable";
-            this.panelWaveTable.Size = new System.Drawing.Size(333, 210);
+            this.panelWaveTable.Size = new System.Drawing.Size(337, 196);
             this.panelWaveTable.TabIndex = 1;
             // 
             // waveTableControl
@@ -395,9 +458,33 @@ namespace OutOfPhase
             this.waveTableControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this.waveTableControl.Location = new System.Drawing.Point(0, 0);
             this.waveTableControl.Name = "waveTableControl";
-            this.waveTableControl.Size = new System.Drawing.Size(333, 210);
+            this.waveTableControl.Size = new System.Drawing.Size(337, 196);
             this.waveTableControl.TabIndex = 0;
             this.waveTableControl.WaveTableObject = null;
+            // 
+            // tabPageWaveGrid
+            // 
+            this.tabPageWaveGrid.Controls.Add(this.dataGridViewWave);
+            this.tabPageWaveGrid.Location = new System.Drawing.Point(4, 22);
+            this.tabPageWaveGrid.Name = "tabPageWaveGrid";
+            this.tabPageWaveGrid.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPageWaveGrid.Size = new System.Drawing.Size(337, 213);
+            this.tabPageWaveGrid.TabIndex = 1;
+            this.tabPageWaveGrid.Text = "Grid";
+            this.tabPageWaveGrid.UseVisualStyleBackColor = true;
+            // 
+            // dataGridViewWave
+            // 
+            this.dataGridViewWave.AllowUserToAddRows = false;
+            this.dataGridViewWave.AllowUserToDeleteRows = false;
+            this.dataGridViewWave.BackgroundColor = System.Drawing.SystemColors.ControlLight;
+            this.dataGridViewWave.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dataGridViewWave.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.dataGridViewWave.Location = new System.Drawing.Point(3, 3);
+            this.dataGridViewWave.Name = "dataGridViewWave";
+            this.dataGridViewWave.Size = new System.Drawing.Size(331, 207);
+            this.dataGridViewWave.TabIndex = 0;
+            this.dataGridViewWave.VirtualMode = true;
             // 
             // menuStripManager
             // 
@@ -414,7 +501,7 @@ namespace OutOfPhase
             this.textBoxFormula.BackColor = System.Drawing.SystemColors.ControlLightLight;
             this.textBoxFormula.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBoxFormula.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textBoxFormula.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.waveTableObjectRecBindingSource, "WaveTableFormula", true));
+            this.textBoxFormula.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.waveTableObjectRecBindingSource, "WaveTableFormula", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxFormula.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxFormula.Location = new System.Drawing.Point(3, 291);
             this.textBoxFormula.Name = "textBoxFormula";
@@ -472,8 +559,12 @@ namespace OutOfPhase
             this.tableLayoutPanel3.ResumeLayout(false);
             this.tableLayoutPanel3.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.waveTableObjectRecBindingSource)).EndInit();
+            this.tabControlWave.ResumeLayout(false);
+            this.tabPageWaveVisual.ResumeLayout(false);
             this.tableLayoutPanel4.ResumeLayout(false);
             this.panelWaveTable.ResumeLayout(false);
+            this.tabPageWaveGrid.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridViewWave)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).EndInit();
             this.ResumeLayout(false);
 
@@ -514,5 +605,11 @@ namespace OutOfPhase
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextBoxWindowHelper textBoxWindowHelper;
         private TextEditor.StringStorageFactory stringStorageFactory;
+        private System.Windows.Forms.TabControl tabControlWave;
+        private System.Windows.Forms.TabPage tabPageWaveGrid;
+        private System.Windows.Forms.TabPage tabPageWaveVisual;
+        private System.Windows.Forms.DataGridView dataGridViewWave;
+        private System.Windows.Forms.Label labelScale;
+        private System.Windows.Forms.ComboBox comboBoxScale;
     }
 }

@@ -87,6 +87,7 @@ namespace OutOfPhase
             Program.Config.Concurrency = concurrency;
 
             Program.Config.OutputDevice = devices[comboBoxOutputDevice.SelectedIndex].Key;
+            Program.Config.OutputDeviceFriendlyName = devices[comboBoxOutputDevice.SelectedIndex].Value;
 
             Program.SaveSettings();
 
@@ -159,8 +160,10 @@ namespace OutOfPhase
                     throw new InvalidOperationException();
                 case 0:
                 case 1:
-                    Debug.Assert(false);
-                    throw new InvalidOperationException();
+                    // TODO: figure out why
+                    //Debug.Assert(false);
+                    //throw new InvalidOperationException();
+                    break;
                 case 2:
                     {
                         int c;

@@ -62,7 +62,6 @@ namespace OutOfPhase
             this.label8 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
             this.textBoxDefaultAccent1 = new System.Windows.Forms.TextBox();
-            this.trackObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.textBoxDefaultAccent2 = new System.Windows.Forms.TextBox();
             this.textBoxDefaultAccent3 = new System.Windows.Forms.TextBox();
             this.textBoxDefaultAccent4 = new System.Windows.Forms.TextBox();
@@ -114,9 +113,10 @@ namespace OutOfPhase
             this.comboBoxDefaultDetuningModeFlags = new System.Windows.Forms.ComboBox();
             this.textBoxDefaultDetuning = new System.Windows.Forms.TextBox();
             this.label29 = new System.Windows.Forms.Label();
+            this.trackObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.tableLayoutPanel1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.trackObjectRecBindingSource)).BeginInit();
             this.flowLayoutPanel1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.trackObjectRecBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -325,10 +325,6 @@ namespace OutOfPhase
             this.textBoxDefaultAccent1.Size = new System.Drawing.Size(94, 20);
             this.textBoxDefaultAccent1.TabIndex = 9;
             // 
-            // trackObjectRecBindingSource
-            // 
-            this.trackObjectRecBindingSource.DataSource = typeof(OutOfPhase.TrackObjectRec);
-            // 
             // textBoxDefaultAccent2
             // 
             this.textBoxDefaultAccent2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
@@ -463,13 +459,13 @@ namespace OutOfPhase
             // 
             // buttonOK
             // 
-            this.buttonOK.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.buttonOK.Location = new System.Drawing.Point(190, 3);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(125, 23);
             this.buttonOK.TabIndex = 2;
             this.buttonOK.Text = "OK";
             this.buttonOK.UseVisualStyleBackColor = true;
+            this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
             // 
             // label13
             // 
@@ -824,18 +820,26 @@ namespace OutOfPhase
             this.label29.Size = new System.Drawing.Size(709, 1);
             this.label29.TabIndex = 69;
             // 
+            // trackObjectRecBindingSource
+            // 
+            this.trackObjectRecBindingSource.DataSource = typeof(OutOfPhase.TrackObjectRec);
+            // 
             // TrackAttributeDialog
             // 
+            this.AcceptButton = this.buttonOK;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoValidate = System.Windows.Forms.AutoValidate.EnableAllowFocusChange;
+            this.CancelButton = this.buttonCancel;
             this.ClientSize = new System.Drawing.Size(743, 422);
             this.Controls.Add(this.tableLayoutPanel1);
             this.Name = "TrackAttributeDialog";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Edit Track Attributes";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.trackObjectRecBindingSource)).EndInit();
             this.flowLayoutPanel1.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.trackObjectRecBindingSource)).EndInit();
             this.ResumeLayout(false);
 
         }

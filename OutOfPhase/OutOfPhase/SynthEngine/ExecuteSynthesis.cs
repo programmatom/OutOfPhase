@@ -26,6 +26,7 @@ using System.IO;
 #if VECTOR
 using System.Numerics;
 #endif
+using System.Runtime;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -856,8 +857,11 @@ namespace OutOfPhase
 
                         if (Program.Config.Concurrency == 0)
                         {
-                            // default
-                            SynthState.concurrency = Environment.ProcessorCount;
+                            // default:
+                            // Use all processors up to 4. The program is seldom helped by more than 4 processors and most CPUs that
+                            // claim to have more than 4 are hyperthreaded which doesn't work well for this program. In special cases,
+                            // user can override through settings.
+                            SynthState.concurrency = Math.Min(Environment.ProcessorCount, 4);
                         }
                         else if (Program.Config.Concurrency == 1)
                         {
@@ -1296,7 +1300,7 @@ namespace OutOfPhase
                         ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExDontUseAsteriskAsTrackOrGroupName;
                         return SynthErrorCodes.eSynthErrorEx;
                     }
-                    TrackObjectRec TrackObject = TrackList.Find(delegate(TrackObjectRec candidate) { return String.Equals(candidate.Name, TrackName); });
+                    TrackObjectRec TrackObject = TrackList.Find(delegate (TrackObjectRec candidate) { return String.Equals(candidate.Name, TrackName); });
 
                     /* make sure the track exists */
                     if (TrackObject == null)
@@ -1427,7 +1431,7 @@ namespace OutOfPhase
                 TrackCount = SortedTrackList.Count; /* may be fewer tracks */
 
                 /* sort, to group all tracks together which share the same section */
-                SortedTrackList.Sort(delegate(TrackObjectRec left, TrackObjectRec right) { return CompareTracksOnSection(left, right, SynthParams.Document.SectionList); });
+                SortedTrackList.Sort(delegate (TrackObjectRec left, TrackObjectRec right) { return CompareTracksOnSection(left, right, SynthParams.Document.SectionList); });
 
                 /* build list of tracks that are being played */
                 /* NOTE: this loop iterates in the sorted order, so all tracks in a */
@@ -2350,63 +2354,66 @@ namespace OutOfPhase
                         // only main thread continues from here
 
                         // accumulate input to score effects to primary processor's buffer
-                        bool used = false;
-                        for (int p = 0; p < SynthState.SynthParamsPerProc.Length; p++)
+                        if (nActualFrames != 0)
                         {
-                            if (!SynthState.SynthParamsPerProc[p].SectionWorkspaceUsed[
-                                SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex])
+                            bool used = false;
+                            for (int p = 0; p < SynthState.SynthParamsPerProc.Length; p++)
                             {
-                                continue; // skip workspaces from processors that never worked on inputs for this section
+                                if (!SynthState.SynthParamsPerProc[p].SectionWorkspaceUsed[
+                                    SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex])
+                                {
+                                    continue; // skip workspaces from processors that never worked on inputs for this section
+                                }
+                                if (!used) // first one copies, subsequent ones accumulate
+                                {
+                                    used = true;
+                                    FloatVectorCopy(
+                                        SynthState.SynthParamsPerProc[p].workspace,
+                                        SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
+                                            2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 0],
+                                        SynthState.SynthParamsPerProc[0].workspace,
+                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset,
+                                        nActualFrames);
+                                    FloatVectorCopy(
+                                        SynthState.SynthParamsPerProc[p].workspace,
+                                        SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
+                                            2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 1],
+                                        SynthState.SynthParamsPerProc[0].workspace,
+                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset,
+                                        nActualFrames);
+                                    // early warning of uninitialized buffer use
+                                    Debug.Assert((nActualFrames == 0)
+                                        || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
+                                        && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
+                                }
+                                else
+                                {
+                                    FloatVectorAcc(
+                                        SynthState.SynthParamsPerProc[p].workspace,
+                                        SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
+                                            2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 0],
+                                        SynthState.SynthParamsPerProc[0].workspace,
+                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset,
+                                        nActualFrames);
+                                    FloatVectorAcc(
+                                        SynthState.SynthParamsPerProc[p].workspace,
+                                        SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
+                                            2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 1],
+                                        SynthState.SynthParamsPerProc[0].workspace,
+                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset,
+                                        nActualFrames);
+                                    // early warning of uninitialized buffer use
+                                    Debug.Assert((nActualFrames == 0)
+                                        || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
+                                        && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
+                                }
                             }
-                            if (!used) // first one copies, subsequent ones accumulate
-                            {
-                                used = true;
-                                FloatVectorCopy(
-                                    SynthState.SynthParamsPerProc[p].workspace,
-                                    SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
-                                        2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 0],
-                                    SynthState.SynthParamsPerProc[0].workspace,
-                                    SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset,
-                                    nActualFrames);
-                                FloatVectorCopy(
-                                    SynthState.SynthParamsPerProc[p].workspace,
-                                    SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
-                                        2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 1],
-                                    SynthState.SynthParamsPerProc[0].workspace,
-                                    SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset,
-                                    nActualFrames);
-                                // early warning of uninitialized buffer use
-                                Debug.Assert((nActualFrames == 0)
-                                    || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
-                                    && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
-                            }
-                            else
-                            {
-                                FloatVectorAcc(
-                                    SynthState.SynthParamsPerProc[p].workspace,
-                                    SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
-                                        2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 0],
-                                    SynthState.SynthParamsPerProc[0].workspace,
-                                    SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset,
-                                    nActualFrames);
-                                FloatVectorAcc(
-                                    SynthState.SynthParamsPerProc[p].workspace,
-                                    SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
-                                        2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 1],
-                                    SynthState.SynthParamsPerProc[0].workspace,
-                                    SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset,
-                                    nActualFrames);
-                                // early warning of uninitialized buffer use
-                                Debug.Assert((nActualFrames == 0)
-                                    || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
-                                    && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
-                            }
+                            Debug.Assert(used); // by definition, at least one input must have been prepared somewhere
                         }
-                        Debug.Assert(used); // by definition, at least one input must have been prepared somewhere
                         // early warning of uninitialized buffer use
                         Debug.Assert((nActualFrames == 0)
                             || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
@@ -2432,9 +2439,13 @@ namespace OutOfPhase
                         if (!AreWeStillFastForwarding && !fScheduledSkip)
                         {
                             /* control-update cycle */
-                            UpdateStateTrackEffectGenerator(
+                            Result = UpdateStateTrackEffectGenerator(
                                 SynthState.ScoreEffectProcessor,
                                 SynthState.SynthParams0);
+                            if (Result != SynthErrorCodes.eSynthDone)
+                            {
+                                goto Error;
+                            }
 
                             /* generate wave */
                             Result = ApplyTrackEffectGenerator(
@@ -2929,13 +2940,19 @@ namespace OutOfPhase
 
                     if (!SynthState.control.AreWeStillFastForwarding)
                     {
+                        SynthErrorCodes error;
+
                         /* control-update cycle */
-                        UpdateStateTrackEffectGenerator(
+                        error = UpdateStateTrackEffectGenerator(
                             CurrentEffectHandle.SectionEffect,
                             SynthParamsP);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
 
                         /* generate wave */
-                        SynthErrorCodes error = ApplyTrackEffectGenerator(
+                        error = ApplyTrackEffectGenerator(
                             CurrentEffectHandle.SectionEffect,
                             SynthParamsP.workspace,
                             nActualFrames,
@@ -3196,9 +3213,17 @@ namespace OutOfPhase
                 Debug.Assert(processor > 0);
                 SynthStateRec SynthState = context.SynthState;
 
-                Thread.BeginThreadAffinity(); // tie to OS thread
-                AuxThreadLoop(processor, SynthState);
-                Thread.EndThreadAffinity();
+                ThreadPriorityBoostEncapsulator priorityBoost = new ThreadPriorityBoostEncapsulator();
+                try
+                {
+                    priorityBoost.Boost(false/*mainThread*/);
+
+                    AuxThreadLoop(processor, SynthState);
+                }
+                finally
+                {
+                    priorityBoost.Revert(false/*mainThread*/);
+                }
             }
         }
 
@@ -3341,6 +3366,7 @@ namespace OutOfPhase
 
 
                             /* construct the synthesizer */
+
                             {
                                 SynthErrorInfoRec InitErrorInfo;
                                 Error = SynthStateRec.InitializeSynthesizer(
@@ -3376,37 +3402,11 @@ namespace OutOfPhase
 
                             /* enter main play loop */
 
-                            // TODO: when moving to .NET 4 or 4.5, enable low latency mode to reduce impact
-                            // of garbage collections.
-                            // See: http://blogs.msdn.com/b/dotnet/archive/2012/07/20/the-net-framework-4-5-includes-new-garbage-collector-enhancements-for-client-and-server-apps.aspx
-
-                            // TODO: when implementing real-time synthesis, boost thread priority (not as simple as
-                            // it sounds); see this:
-                            // https://social.msdn.microsoft.com/Forums/vstudio/en-US/73860618-21cb-459f-af6d-6ecb77c9c5f1/latency-for-realtime-audio-in-clr?forum=clr
-                            // In case it disappears, basically:
-                            // System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.LowLatency; -- anything better on later versions?
-                            // System.Threading.Thread.BeginThreadAffinity()
-                            // HANDLE = hThread = GetCurrentThread();
-                            // int priority = ::GetThreadPriority(hThread); -- save for restore later
-                            // ::SetThreadPriority(hThread,THREAD_PRIORITY_TIME_CRITICAL); -- "Native highest priority is higher than .net highest priority."
-                            // DwmEnableMMCSS(TRUE); -- Prevent Dwm from pre-empting audio thread.
-                            // System.Diagnostics.Process.GetCurrentProcess().PriorityClass = System.Diagnostics.ProcessPriorityClass.RealTime; -- boost the whole process.
-                            // DWORD taskIndex = 0;
-                            // HANDLE hAvTask = 0;
-                            // hAvTask = AvSetMmThreadCharacteristics(TEXT("Pro Audio"), &taskIndex); -- Ask MMCSS to boost the thread priority
-                            // ... start and service audio client ...
-                            // revert with
-                            // if (hAvTask != 0) { ::AvRevertMmThreadCharacteristics(hAvTask); }
-                            // System.Diagnostics.Process.GetCurrentProcess().PriorityClass = System.Diagnostics.ProcessPriorityClass.Normal;
-                            // System.Runtime.GCSettings.LatencyMode = defaultLatencyMode;
-                            // ::SetThreadPriority(hThread,THREAD_PRIORITY_NORMAL);
-                            // System.Threading.Thread.EndThreadAffinity();
-
                             {
                                 SynthErrorInfoRec ErrorInfo;
 
                                 // this ensures that pcode evals that get stuck in infinite loops can be cancelled.
-                                EventHandler onStopHandler = new EventHandler(delegate(object sender, EventArgs e)
+                                EventHandler onStopHandler = new EventHandler(delegate (object sender, EventArgs e)
                                 {
 #if true // TODO: eventually hope to remove legacy loop
                                     if (SynthState.SynthParamsPerProc != null)
@@ -3428,10 +3428,11 @@ namespace OutOfPhase
 #endif
                                 });
                                 Stopper.OnStop += onStopHandler; // this will be executed on UI thread
+                                ThreadPriorityBoostEncapsulator priorityBoost = new ThreadPriorityBoostEncapsulator();
                                 try
                                 {
+                                    priorityBoost.Boost(true/*mainThread*/);
 
-                                    Thread.BeginThreadAffinity(); // tie to OS thread
                                     StartTime = DateTime.UtcNow;
                                     Error = SynthesizerMainLoop(
                                         SynthState,
@@ -3440,12 +3441,13 @@ namespace OutOfPhase
                                         Stopper,
                                         out ErrorInfo);
                                     EndTime = DateTime.UtcNow;
-                                    Thread.EndThreadAffinity();
 
                                 }
                                 finally
                                 {
                                     Stopper.OnStop -= onStopHandler;
+
+                                    priorityBoost.Revert(true/*mainThread*/);
                                 }
 
                                 if (Error != SynthErrorCodes.eSynthDone)
@@ -3578,6 +3580,93 @@ namespace OutOfPhase
                 }
             }
             throw new Exception("Could not find performance counter instance name for current process. This is truly strange ...");
+        }
+
+        // Taken from: https://social.msdn.microsoft.com/Forums/vstudio/en-US/73860618-21cb-459f-af6d-6ecb77c9c5f1/latency-for-realtime-audio-in-clr?forum=clr
+        private struct ThreadPriorityBoostEncapsulator
+        {
+            private bool boosted;
+            private IntPtr hThread;
+            private int savedPriority;
+            private ProcessPriorityClass savedProcessPriorityClass;
+            private int taskIndex;
+            private IntPtr hAVTask;
+
+            public void Boost(bool mainThread)
+            {
+                bool f;
+                int r;
+
+                savedProcessPriorityClass = Process.GetCurrentProcess().PriorityClass;
+                if ((savedProcessPriorityClass != ProcessPriorityClass.BelowNormal) // don't boost in batch/test mode
+                    && (savedProcessPriorityClass != ProcessPriorityClass.Idle))
+                {
+                    boosted = true;
+
+                    Thread.BeginThreadAffinity(); // tie to .NET thread to OS thread
+
+                    hThread = GetCurrentThread();
+                    savedPriority = GetThreadPriority(hThread);
+                    f = SetThreadPriority(hThread, THREAD_PRIORITY_TIME_CRITICAL); // Native highest priority is higher than .net highest priority
+                    if (mainThread)
+                    {
+                        // DwmEnableMMCSS: https://social.msdn.microsoft.com/Forums/windowsdesktop/en-US/6d4429db-1cc1-4d79-a7c3-53a828198ce0/dwmenablemmcss?forum=windowsuidevelopment
+                        // (not strictly necessary - has to do with expedient rendering of visuals)
+                        r = DwmEnableMMCSS(true);
+                        Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.RealTime; // boost whole process priority
+
+#if NETNEW
+                        // Enable low latency mode to reduce impact of garbage collections.
+                        // http://blogs.msdn.com/b/dotnet/archive/2012/07/20/the-net-framework-4-5-includes-new-garbage-collector-enhancements-for-client-and-server-apps.aspx
+                        GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
+#endif
+                    }
+                    hAVTask = AvSetMmThreadCharacteristics("Pro Audio", ref taskIndex); // Ask MMCSS to boost the thread priority
+                }
+            }
+
+            public void Revert(bool mainThread)
+            {
+                bool f;
+
+                if (boosted)
+                {
+                    if (hAVTask != IntPtr.Zero)
+                    {
+                        f = AvRevertMmThreadCharacteristics(hAVTask);
+                    }
+                    if (mainThread)
+                    {
+                        GCSettings.LatencyMode = GCLatencyMode.Interactive;
+
+                        Process.GetCurrentProcess().PriorityClass = savedProcessPriorityClass;
+                        DwmEnableMMCSS(false);
+                    }
+                    f = SetThreadPriority(hThread, savedPriority);
+
+                    Thread.EndThreadAffinity();
+                }
+            }
+
+            [DllImport("kernel32.dll", EntryPoint = "GetCurrentThread")]
+            private static extern IntPtr GetCurrentThread();
+
+            [DllImport("kernel32.dll", EntryPoint = "GetThreadPriority", SetLastError = true)]
+            private static extern int GetThreadPriority(IntPtr hThread);
+
+            [DllImport("kernel32.dll", EntryPoint = "SetThreadPriority", SetLastError = true)]
+            private static extern bool SetThreadPriority(IntPtr hThread, int nPriority);
+
+            private const int THREAD_PRIORITY_TIME_CRITICAL = 15;
+
+            [DllImport("dwmapi.dll", EntryPoint = "DwmEnableMMCSS")]
+            private static extern int/*HRESULT*/ DwmEnableMMCSS(bool fEnableMMCSS);
+
+            [DllImport("avrt.dll", EntryPoint = "AvSetMmThreadCharacteristics", SetLastError = true)]
+            private static extern IntPtr AvSetMmThreadCharacteristics(string TaskName, ref int TaskIndex);
+
+            [DllImport("avrt.dll", EntryPoint = "AvRevertMmThreadCharacteristics", SetLastError = true)]
+            private static extern bool AvRevertMmThreadCharacteristics(IntPtr AvrtHandle);
         }
 
         private struct SERec

@@ -422,10 +422,11 @@ namespace OutOfPhase
 
             /* perform one envelope update cycle, and set a new frequency for an FOF */
             /* state object.  used for portamento and modulation of frequency (vibrato) */
-            public void UpdateEnvelopes(
+            public SynthErrorCodes UpdateEnvelopes(
                 double NewFrequencyHertz,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 FOFStateRec State = this;
 
                 float FloatTemp;
@@ -442,11 +443,17 @@ namespace OutOfPhase
                 else
                 {
                     /* do some pitch stuff */
+                    error = SynthErrorCodes.eSynthDone;
                     NewFrequencyHertz = LFOGenUpdateCycle(
                         State.PitchLFO,
                         NewFrequencyHertz,
                         NewFrequencyHertz,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier + State.Template.FrequencyAdder;
                 Differential = NewFrequencyHertz / SynthParams.dSamplingRate * State.FramesPerTable;
@@ -459,15 +466,22 @@ namespace OutOfPhase
                     State.PreStartCountdown -= 1;
                 }
 
+                error = SynthErrorCodes.eSynthDone;
                 DoubleTemp = State.NumberOfTablesMinus1 *
                     LFOGenUpdateCycle(
                         State.IndexLFOGenerator,
                         EnvelopeUpdate(
                             State.WaveTableIndexEnvelope,
                             NewFrequencyHertz,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         NewFrequencyHertz,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 if (DoubleTemp < 0)
                 {
                     DoubleTemp = 0;
@@ -478,23 +492,37 @@ namespace OutOfPhase
                 }
                 State.WaveTableIndex = DoubleTemp;
 
+                error = SynthErrorCodes.eSynthDone;
                 State.FOFSamplingRateContour = LFOGenUpdateCycle(
                     State.FOFSamplingRateLFOGenerator,
                     EnvelopeUpdate(
                         State.FOFSamplingRateEnvelope,
                         NewFrequencyHertz,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     NewFrequencyHertz,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 FloatTemp = (float)(State.NoteLoudnessScaling * LFOGenUpdateCycle(
                     State.LoudnessLFOGenerator,
                     EnvelopeUpdate(
                         State.WaveTableLoudnessEnvelope,
                         NewFrequencyHertz,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     NewFrequencyHertz,
-                    SynthParams));
+                    SynthParams,
+                    ref error));
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 /* left = FloatTemp * .5 * (1 - State.Panning) */
                 /* right = FloatTemp * .5 * (1 + State.Panning) */
                 OneHalfVol = .5f * FloatTemp;
@@ -505,11 +533,17 @@ namespace OutOfPhase
 
                 if (State.OscEffectGenerator != null)
                 {
-                    OscEffectGeneratorUpdateEnvelopes(
+                    error = OscEffectGeneratorUpdateEnvelopes(
                         State.OscEffectGenerator,
                         NewFrequencyHertz,
                         SynthParams);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* fix up pre-origin time for the FOF state object */
@@ -948,7 +982,7 @@ namespace OutOfPhase
                 int LocalSamplePositionMask = State.FramesPerTable - 1;
 
                 /* iterate over samples */
-                for (int Scan = 0; Scan < nActualFrames; Scan += 1)
+                for (int Scan = 0; Scan < nActualFrames; Scan++)
                 {
                     FOFGrainRec GrainScan;
                     FOFGrainRec GrainLag;
@@ -970,34 +1004,22 @@ namespace OutOfPhase
                     GrainLag = null;
                     while (GrainScan != null)
                     {
-                        bool Advance;
-                        float RightWeight;
-                        int ArraySubscript;
-                        float CombinedValue;
-                        float Left0Value;
-                        float Right0Value;
-
-
                         /* wave generation */
 
-                        RightWeight = GrainScan.FOFSamplePosition.FracF;
-                        ArraySubscript = GrainScan.FOFSamplePosition.Int & LocalSamplePositionMask;
+                        float RightWeight = GrainScan.FOFSamplePosition.FracF;
+                        int ArraySubscript = GrainScan.FOFSamplePosition.Int & LocalSamplePositionMask;
 
                         /* L+F(R-L) */
-                        Left0Value = GrainScan.WaveData0[ArraySubscript];
-                        Right0Value = GrainScan.WaveData0[ArraySubscript + 1];
-                        CombinedValue = Left0Value + (RightWeight * (Right0Value - Left0Value));
+                        float Left0Value = GrainScan.WaveData0[ArraySubscript];
+                        float Right0Value = GrainScan.WaveData0[ArraySubscript + 1];
+                        float CombinedValue = Left0Value + (RightWeight * (Right0Value - Left0Value));
 
                         if (GrainScan.WaveData1 != null)
                         {
-                            float Left1Value;
-                            float Right1Value;
-                            float Wave0Temp;
-
                             /* L+F(R-L) -- applied twice */
-                            Left1Value = GrainScan.WaveData1[ArraySubscript];
-                            Right1Value = GrainScan.WaveData1[ArraySubscript + 1];
-                            Wave0Temp = CombinedValue;
+                            float Left1Value = GrainScan.WaveData1[ArraySubscript];
+                            float Right1Value = GrainScan.WaveData1[ArraySubscript + 1];
+                            float Wave0Temp = CombinedValue;
                             CombinedValue = Wave0Temp + (GrainScan.Wave1Weight * (Left1Value
                                 + (RightWeight * (Right1Value - Left1Value)) - Wave0Temp));
                         }
@@ -1009,7 +1031,7 @@ namespace OutOfPhase
 
                         /* increment phase */
 
-                        Advance = true;
+                        bool Advance = true;
                         GrainScan.FOFSamplePosition += GrainScan.FOFSamplePositionDifferential;
                         if (GrainScan.FOFSamplePosition.Int >= State.FramesPerTable)
                         {

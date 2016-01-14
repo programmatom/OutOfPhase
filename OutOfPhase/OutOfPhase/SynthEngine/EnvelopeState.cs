@@ -168,6 +168,36 @@ namespace OutOfPhase
 
             State.Template = Template;
 
+            // A note about accents to follow:
+            // - The "Accents" parameter to this function comes from the FrozenNote - so they are the accent values in effect
+            //   at the time the note was "frozen" (i.e. the accent defaults added to the individual note's adjustments).
+            // - The "LiveAccents" parameter is the current accent defaults at time t (which should be equal to "Accents", at the
+            //   the a note is initiated, but not necessarily before or after), since this event is occurring at time t.
+            // - The "LiveTrackAccents" parameter is the current track effect accent values.
+            // There is some redundancy here, but it is not being changed in case this is wrong and there are legacy
+            // interactions that need to be preserved.
+            AccentRec LiveAccents;
+            AccentRec LiveTrackAccents;
+#if DEBUG
+            bool liveAccentInit = false;
+#endif
+            if (EnvelopeContainsFormula(Template)) // an optimization
+            {
+                /* get current live accents that do not contain any info from the note */
+                ParamGetter(
+                    ParamGetterContext,
+                    out LiveAccents,
+                    out LiveTrackAccents);
+#if DEBUG
+                liveAccentInit = true;
+#endif
+            }
+            else
+            {
+                LiveAccents = new AccentRec();
+                LiveTrackAccents = new AccentRec();
+            }
+
             /* build list of nodes */
             if (Template.ConstantShortcut)
             {
@@ -179,6 +209,7 @@ namespace OutOfPhase
             }
             else
             {
+                double accumulatedError = 0;
                 for (int i = 0; i < State.NumPhases; i++)
                 {
                     EnvStepRec PhaseTemplate = Template.PhaseArray[i];
@@ -196,16 +227,60 @@ namespace OutOfPhase
                     /*    determines how much the signal will decrease with each octave.  0 */
                     /*    removes effect, 1 halfs signal with each octave.  normalization point */
                     /*    determines what pitch will be the invariant point. */
-                    Phase.Duration = (int)(SynthParams.dEnvelopeRate
+                    double Temp;
+                    if (PhaseTemplate.DurationFunction == null)
+                    {
+                        Temp = PhaseTemplate.Duration;
+                    }
+                    else
+                    {
+#if DEBUG
+                        Debug.Assert(liveAccentInit);
+#endif
+                        SynthErrorCodes error = EnvelopeInitParamEval(
+                            PhaseTemplate.DurationFunction,
+                            ref Accents,
+                            ref LiveTrackAccents,
+                            SynthParams,
+                            out Temp);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            // TODO:
+                        }
+                    }
+                    double preciseDuration = SynthParams.dEnvelopeRate
                         * HurryUp
-                        * PhaseTemplate.Duration
+                        * Temp
                         * Math.Pow(2, -(AccentProduct(ref Accents, ref PhaseTemplate.AccentRate)
                             + (Math.Log(FrequencyHertz
                                 / PhaseTemplate.FrequencyRateNormalization)
-                            * Constants.INVLOG2) * PhaseTemplate.FrequencyRateRolloff)));
+                            * Constants.INVLOG2) * PhaseTemplate.FrequencyRateRolloff))
+                        + accumulatedError;
+                    Phase.Duration = (int)Math.Round(preciseDuration);
+                    accumulatedError = preciseDuration - Phase.Duration;
                     /* the final amplitude scaling values are computed similarly to the rate */
                     /* scaling values. */
-                    Phase.FinalAmplitude = PhaseTemplate.EndPoint
+                    if (PhaseTemplate.EndPointFunction == null)
+                    {
+                        Temp = PhaseTemplate.EndPoint;
+                    }
+                    else
+                    {
+#if DEBUG
+                        Debug.Assert(liveAccentInit);
+#endif
+                        SynthErrorCodes error = EnvelopeInitParamEval(
+                            PhaseTemplate.EndPointFunction,
+                            ref Accents,
+                            ref LiveTrackAccents,
+                            SynthParams,
+                            out Temp);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            // TODO:
+                        }
+                    }
+                    Phase.FinalAmplitude = Temp
                         * Template.OverallScalingFactor * Loudness
                         * Math.Pow(2, -(AccentProduct(ref Accents, ref PhaseTemplate.AccentAmp)
                             + (Math.Log(FrequencyHertz
@@ -225,14 +300,9 @@ namespace OutOfPhase
             /* compute accent differentials */
             if (State.Template.Formula != null)
             {
-                AccentRec LiveAccents;
-                AccentRec notUsed;
-
-                /* get current live accents that do not contain any info from the note */
-                ParamGetter(
-                    ParamGetterContext,
-                    out LiveAccents,
-                    out notUsed);
+#if DEBUG
+                Debug.Assert(liveAccentInit);
+#endif
 
                 /* subtract composite accents ("Accents") from current live accents */
                 AccentAdd(
@@ -261,8 +331,14 @@ namespace OutOfPhase
         public static double EnvelopeUpdate(
             EvalEnvelopeRec State,
             double OscillatorPitch,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            ref SynthErrorCodes ErrorRef)
         {
+            if (ErrorRef != SynthErrorCodes.eSynthDone)
+            {
+                return 0;
+            }
+
             /* evaluate the segment generator */
             double Temp = State.EnvelopeUpdate(State);
 
@@ -294,13 +370,18 @@ namespace OutOfPhase
                     ref Accents);
 
                 /* evaluate */
-                EnvelopeParamEval(
+                SynthErrorCodes error = EnvelopeParamEval(
                     Temp,
                     State.Template.Formula,
                     ref Accents,
                     ref TrackAccents,
                     SynthParams,
                     out Temp);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    ErrorRef = error;
+                    return 0;
+                }
             }
 
             return Temp;
@@ -497,6 +578,21 @@ namespace OutOfPhase
             return State.LastOutputtedValue;
         }
 
+        // used by loop-envelope lfo initialization (kind of a hack)
+        private static double EnvelopeInitialValue(EvalEnvelopeRec State)
+        {
+            double v = 0;
+            for (int i = 0; i < State.PhaseVector.Length; i++)
+            {
+                if (State.PhaseVector[i].Duration != 0)
+                {
+                    break;
+                }
+                v = State.PhaseVector[i].FinalAmplitude;
+            }
+            return v;
+        }
+
 
         /* routine to step to the next non-zero width interval */
         private static void EnvStepToNextInterval(EvalEnvelopeRec State)
@@ -681,7 +777,38 @@ namespace OutOfPhase
                 State.EnvelopeUpdate = _EnvUpdateLinearAbsolute;
             }
 
+            // A note about accents to follow:
+            // - The "Accents" parameter to this function comes from the FrozenNote - so they are the accent values in effect
+            //   at the time the note was "frozen" (i.e. the accent defaults added to the individual note's adjustments).
+            // - The "LiveAccents" parameter is the current accent defaults at time t (which should be equal to "Accents", at the
+            //   the a note is initiated, but not necessarily before or after), since this event is occurring at time t.
+            // - The "LiveTrackAccents" parameter is the current track effect accent values.
+            // There is some redundancy here, but it is not being changed in case this is wrong and there are legacy
+            // interactions that need to be preserved.
+            AccentRec LiveAccents;
+            AccentRec LiveTrackAccents;
+#if DEBUG
+            bool liveAccentInit = false;
+#endif
+            if (EnvelopeContainsFormula(State.Template)) // an optimization
+            {
+                /* get current live accents that do not contain any info from the note */
+                State.ParamGetter(
+                    State.ParamGetterContext,
+                    out LiveAccents,
+                    out LiveTrackAccents);
+#if DEBUG
+                liveAccentInit = true;
+#endif
+            }
+            else
+            {
+                LiveAccents = new AccentRec();
+                LiveTrackAccents = new AccentRec();
+            }
+
             /* no matter what, refill the parameters */
+            double accumulatedError = 0;
             for (int i = 0; i < State.NumPhases; i++)
             {
                 EnvStepRec PhaseTemplate = State.Template.PhaseArray[i];
@@ -697,16 +824,60 @@ namespace OutOfPhase
                 /*    determines how much the signal will decrease with each octave.  0 */
                 /*    removes effect, 1 halfs signal with each octave.  normalization point */
                 /*    determines what pitch will be the invariant point. */
-                Phase.Duration = (int)(SynthParams.dEnvelopeRate
+                double Temp;
+                if (PhaseTemplate.DurationFunction == null)
+                {
+                    Temp = PhaseTemplate.Duration;
+                }
+                else
+                {
+#if DEBUG
+                    Debug.Assert(liveAccentInit);
+#endif
+                    SynthErrorCodes error = EnvelopeInitParamEval(
+                        PhaseTemplate.DurationFunction,
+                        ref Accents,
+                        ref LiveTrackAccents,
+                        SynthParams,
+                        out Temp);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        // TODO:
+                    }
+                }
+                double preciseDuration = SynthParams.dEnvelopeRate
                     * HurryUp
-                    * PhaseTemplate.Duration
+                    * Temp
                     * Math.Pow(2, -(AccentProduct(ref Accents, ref PhaseTemplate.AccentRate)
                         + (Math.Log(FrequencyHertz
                             / PhaseTemplate.FrequencyRateNormalization)
-                        * Constants.INVLOG2) * PhaseTemplate.FrequencyRateRolloff)));
+                        * Constants.INVLOG2) * PhaseTemplate.FrequencyRateRolloff))
+                    + accumulatedError;
+                Phase.Duration = (int)Math.Round(preciseDuration);
+                accumulatedError = preciseDuration - Phase.Duration;
                 /* the final amplitude scaling values are computed similarly to the rate */
                 /* scaling values. */
-                Phase.FinalAmplitude = PhaseTemplate.EndPoint
+                if (PhaseTemplate.EndPointFunction == null)
+                {
+                    Temp = PhaseTemplate.EndPoint;
+                }
+                else
+                {
+#if DEBUG
+                    Debug.Assert(liveAccentInit);
+#endif
+                    SynthErrorCodes error = EnvelopeInitParamEval(
+                        PhaseTemplate.EndPointFunction,
+                        ref Accents,
+                        ref LiveTrackAccents,
+                        SynthParams,
+                        out Temp);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        // TODO:
+                    }
+                }
+                Phase.FinalAmplitude = Temp
                     * State.Template.OverallScalingFactor * Loudness
                     * Math.Pow(2, -(AccentProduct(ref Accents, ref PhaseTemplate.AccentAmp)
                         + (Math.Log(FrequencyHertz
@@ -717,14 +888,9 @@ namespace OutOfPhase
             /* recompute accent differentials incorporating new note's info */
             if (State.Template.Formula != null)
             {
-                AccentRec LiveAccents;
-                AccentRec notUsed;
-
-                /* get current live accents that do not contain any info from the note */
-                State.ParamGetter(
-                    State.ParamGetterContext,
-                    out LiveAccents,
-                    out notUsed);
+#if DEBUG
+                Debug.Assert(liveAccentInit);
+#endif
 
                 /* subtract composite accents ("Accents") from current live accents */
                 AccentAdd(
@@ -739,6 +905,27 @@ namespace OutOfPhase
         public static bool HasEnvelopeStartedYet(EvalEnvelopeRec State)
         {
             return State.CurrentPhase >= 0;
+        }
+
+        public static bool EnvelopeCurrentSegmentExponential(EvalEnvelopeRec State)
+        {
+            if ((State.CurrentPhase < 0) || (State.PhaseVector.Length == 0))
+            {
+                return false;
+            }
+            else if (State.CurrentPhase < State.PhaseVector.Length)
+            {
+                Debug.Assert((State.PhaseVector[State.CurrentPhase].TransitionType == EnvTransTypes.eEnvelopeLinearInDecibels)
+                    || (State.PhaseVector[State.CurrentPhase].TransitionType == EnvTransTypes.eEnvelopeLinearInAmplitude));
+                return State.PhaseVector[State.CurrentPhase].TransitionType == EnvTransTypes.eEnvelopeLinearInDecibels;
+            }
+            else
+            {
+                int n = State.PhaseVector.Length;
+                Debug.Assert((State.PhaseVector[n - 1].TransitionType == EnvTransTypes.eEnvelopeLinearInDecibels)
+                    || (State.PhaseVector[n - 1].TransitionType == EnvTransTypes.eEnvelopeLinearInAmplitude));
+                return State.PhaseVector[n - 1].TransitionType == EnvTransTypes.eEnvelopeLinearInDecibels;
+            }
         }
     }
 }

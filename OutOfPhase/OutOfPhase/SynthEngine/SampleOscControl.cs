@@ -151,8 +151,7 @@ namespace OutOfPhase
                 /* State.SamplePositionDifferential is specified in a separate call */
 
                 State.NoteLoudnessScaling = Loudness * Template.OverallOscillatorLoudness;
-                State.LeftLoudness = 0;
-                State.RightLoudness = 0;
+                //State.Loudness = 0;
 
                 State.SampleWasDefined = GetMultiSampleReference(
                     Template.SampleSourceSelector,
@@ -449,7 +448,8 @@ namespace OutOfPhase
             int nActualFrames,
             float[] workspace,
             int lOffset,
-            int rOffset);
+            int rOffset,
+            int loudnessWorkspaceOffset);
 
         /* sample oscillator state record */
         public class SampleStateRec : IOscillator
@@ -497,10 +497,9 @@ namespace OutOfPhase
             public bool LoopIsReversing; /* is loop running backwards? */
             public LoopType EffectiveLoopState; /* used until loop starts to go forward */
 
-            /* left channel loudness */
-            public float LeftLoudness;
-            /* right channel loudness */
-            public float RightLoudness;
+            // loudness envelope
+            public float Loudness;
+            public float PreviousLoudness;
             /* panning position for splitting envelope generator into stereo channels */
             /* 0 = left channel, 0.5 = middle, 1 = right channel */
             public float Panning;
@@ -532,17 +531,14 @@ namespace OutOfPhase
 
             /* perform one envelope update cycle, and set a new frequency for a state */
             /* object.  used for portamento and modulation of frequency (vibrato) */
-            public void UpdateEnvelopes(
+            public SynthErrorCodes UpdateEnvelopes(
                 double NewFrequencyHertz,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 SampleStateRec State = this;
 
-                float FloatTemp;
                 double Differential;
-                float OneHalfVol;
-                float LeftLoudness;
-                float RightLoudness;
 
                 if (State.PitchLFOStartCountdown > 0)
                 {
@@ -551,11 +547,17 @@ namespace OutOfPhase
                 else
                 {
                     /* do some pitch stuff */
+                    error = SynthErrorCodes.eSynthDone;
                     NewFrequencyHertz = LFOGenUpdateCycle(
                         State.PitchLFO,
                         NewFrequencyHertz,
                         NewFrequencyHertz,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier
                     + State.Template.FrequencyAdder;
@@ -575,29 +577,36 @@ namespace OutOfPhase
                     State.PreStartCountdown -= 1;
                 }
 
-                FloatTemp = (float)(State.NoteLoudnessScaling * LFOGenUpdateCycle(
+                error = SynthErrorCodes.eSynthDone;
+                State.PreviousLoudness = State.Loudness;
+                State.Loudness = (float)(State.NoteLoudnessScaling * LFOGenUpdateCycle(
                     State.LoudnessLFOGenerator,
                     EnvelopeUpdate(
                         State.SampleLoudnessEnvelope,
                         NewFrequencyHertz,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     NewFrequencyHertz,
-                    SynthParams));
-                /* left = FloatTemp * .5 * (1 - State.Panning) */
-                /* right = FloatTemp * .5 * (1 + State.Panning) */
-                OneHalfVol = .5f * FloatTemp;
-                LeftLoudness = OneHalfVol - OneHalfVol * State.Panning;
-                RightLoudness = OneHalfVol + OneHalfVol * State.Panning;
-                State.LeftLoudness = LeftLoudness;
-                State.RightLoudness = RightLoudness;
+                    SynthParams,
+                    ref error));
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
                 if (State.OscEffectGenerator != null)
                 {
-                    OscEffectGeneratorUpdateEnvelopes(
+                    error = OscEffectGeneratorUpdateEnvelopes(
                         State.OscEffectGenerator,
                         NewFrequencyHertz,
                         SynthParams);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* fix up pre-origin time for the sample state object */
@@ -857,7 +866,15 @@ namespace OutOfPhase
                 int PrivateWorkspaceROffset,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error = SynthErrorCodes.eSynthDone;
+
                 SampleStateRec State = this;
+
+#if DEBUG
+                Debug.Assert(!SynthParams.ScratchWorkspace1InUse);
+                SynthParams.ScratchWorkspace1InUse = true;
+#endif
+                int loudnessWorkspaceOffset = SynthParams.ScratchWorkspace1LOffset;
 
                 if (State.PreStartCountdown <= 0)
                 {
@@ -871,7 +888,8 @@ namespace OutOfPhase
                                 nActualFrames,
                                 workspace,
                                 RawBufferLOffset,
-                                RawBufferROffset);
+                                RawBufferROffset,
+                                loudnessWorkspaceOffset);
                         }
                     }
                     else
@@ -896,11 +914,16 @@ namespace OutOfPhase
                                 nActualFrames,
                                 workspace,
                                 PrivateWorkspaceLOffset,
-                                PrivateWorkspaceROffset);
+                                PrivateWorkspaceROffset,
+                                loudnessWorkspaceOffset);
                         }
 
+#if DEBUG
+                        SynthParams.ScratchWorkspace1InUse = false;
+#endif
+
                         /* apply processor to it */
-                        SynthErrorCodes error = ApplyOscEffectGenerator(
+                        error = ApplyOscEffectGenerator(
                             State.OscEffectGenerator,
                             workspace,
                             PrivateWorkspaceLOffset,
@@ -909,7 +932,7 @@ namespace OutOfPhase
                             SynthParams);
                         if (error != SynthErrorCodes.eSynthDone)
                         {
-                            return error;
+                            goto Error;
                         }
 
                         /* copy out data */
@@ -928,7 +951,14 @@ namespace OutOfPhase
                     }
                 }
 
-                return SynthErrorCodes.eSynthDone;
+
+            Error:
+
+#if DEBUG
+                SynthParams.ScratchWorkspace1InUse = false;
+#endif
+
+                return error;
             }
 
             /* find out if the sample oscillator has finished */
@@ -950,9 +980,7 @@ namespace OutOfPhase
                 }
                 if (IsEnvelopeAtEnd(State.SampleLoudnessEnvelope))
                 {
-                    /* if mono, we still check RightLoudness, which is ok, since it's */
-                    /* initialized to zero. */
-                    if ((State.LeftLoudness == 0) && (State.RightLoudness == 0))
+                    if (State.Loudness == 0)
                     {
                         return true;
                     }
@@ -984,72 +1012,145 @@ namespace OutOfPhase
                 int nActualFrames,
                 float[] workspace,
                 int lOffset,
-                int rOffset)
+                int rOffset,
+                int loudnessWorkspaceOffset)
             {
-                Fixed64 LocalSamplePosition;
-                Fixed64 LocalSamplePositionDifferential;
-                int LocalCurrentLoopEnd;
-                float LocalLeftLoudness;
-                float LocalRightLoudness;
-                float[] SampleData;
-
                 /* load local values */
-                LocalLeftLoudness = State.LeftLoudness;
-                LocalRightLoudness = State.RightLoudness;
-                LocalSamplePosition = State.SamplePosition;
-                LocalSamplePositionDifferential = State.SamplePositionDifferential;
-                LocalCurrentLoopEnd = State.CurrentLoopEnd;
-                SampleData = State.Data;
+                float LeftPan = .5f - .5f * State.Panning; // (1 - State.Panning) / 2
+                float RightPan = .5f + .5f * State.Panning; // (1 + State.Panning) / 2
+                float LocalLoudness = State.Loudness;
+                Fixed64 LocalSamplePosition = State.SamplePosition;
+                Fixed64 LocalSamplePositionDifferential = State.SamplePositionDifferential;
+                int LocalCurrentLoopEnd = State.CurrentLoopEnd;
+                float[] SampleData = State.Data;
 
-                /* process */
-                for (int i = 0; i < nActualFrames; i += 1)
+#if true // TODO:experimental - smoothing
+                if (Program.Config.EnableEnvelopeSmoothing
+                    // case of no motion in any smoothed axis, can use fast code path
+                    && (State.Loudness != State.PreviousLoudness))
                 {
-                    float RightWeight;
-                    int ArraySubscript;
-                    float LeftValue;
-                    float RightValue;
-                    float CombinedValue;
-                    float OrigLeft;
-                    float OrigRight;
+                    // envelope smoothing
 
-                    /* load outside buffer values */
-                    OrigLeft = workspace[i + lOffset];
-                    OrigRight = workspace[i + rOffset];
+                    float LocalPreviousLoudness = State.PreviousLoudness;
 
-                    /* compute weighting and subscript */
-                    RightWeight = LocalSamplePosition.FracF;
-                    ArraySubscript = LocalSamplePosition.Int;
-
-                    /* L+F(R-L) */
-                    LeftValue = SampleData[ArraySubscript];
-                    RightValue = SampleData[ArraySubscript + 1];
-                    CombinedValue = LeftValue + (RightWeight * (RightValue - LeftValue));
-
-                    /* generate output */
-                    workspace[i + lOffset] = OrigLeft + LocalLeftLoudness * CombinedValue;
-                    workspace[i + rOffset] = OrigRight + LocalRightLoudness * CombinedValue;
-
-                    /* increment pitch differential */
-                    LocalSamplePosition += LocalSamplePositionDifferential;
-
-                CheapDoLoop:
-                    if (LocalSamplePosition.Int >= LocalCurrentLoopEnd)
+                    // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                    if (IsLFOSampleAndHold(State.LoudnessLFOGenerator))
                     {
-                        if (State.LoopState != LoopType.eNoLoop)
+                        LocalPreviousLoudness = LocalLoudness;
+                    }
+
+                    if (!EnvelopeCurrentSegmentExponential(State.SampleLoudnessEnvelope))
+                    {
+                        FloatVectorAdditiveRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+                    else
+                    {
+                        FloatVectorMultiplicativeRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+
+                    for (int i = 0; i < nActualFrames; i++)
+                    {
+                        /* load outside buffer values */
+                        float OrigLeft = workspace[i + lOffset];
+                        float OrigRight = workspace[i + rOffset];
+
+                        /* compute weighting and subscript */
+                        float RightWeight = LocalSamplePosition.FracF;
+                        int ArraySubscript = LocalSamplePosition.Int;
+
+                        /* L+F(R-L) */
+                        float LeftValue = SampleData[ArraySubscript];
+                        float RightValue = SampleData[ArraySubscript + 1];
+                        float CombinedValue = LeftValue + (RightWeight * (RightValue - LeftValue));
+
+                        /* generate output */
+                        LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                        workspace[i + lOffset] = OrigLeft + LeftPan * LocalLoudness * CombinedValue;
+                        workspace[i + rOffset] = OrigRight + RightPan * LocalLoudness * CombinedValue;
+
+                        /* increment pitch differential */
+                        LocalSamplePosition += LocalSamplePositionDifferential;
+
+                    CheapDoLoop:
+                        if (LocalSamplePosition.Int >= LocalCurrentLoopEnd)
                         {
-                            /* handle loop */
-                            LocalSamplePosition.SetInt64HighHalf(LocalSamplePosition.Int - State.CurrentLoopLength);
-                            goto CheapDoLoop;
-                        }
-                        else
-                        {
-                            /* end of sample -- terminate */
-                            State.LoopState = LoopType.eSampleFinished;
-                            State.EffectiveLoopState = State.LoopState;
-                            goto BreakLoopPoint;
+                            if (State.LoopState != LoopType.eNoLoop)
+                            {
+                                /* handle loop */
+                                LocalSamplePosition.SetInt64HighHalf(LocalSamplePosition.Int - State.CurrentLoopLength);
+                                goto CheapDoLoop;
+                            }
+                            else
+                            {
+                                /* end of sample -- terminate */
+                                State.LoopState = LoopType.eSampleFinished;
+                                State.EffectiveLoopState = State.LoopState;
+                                goto BreakLoopPoint;
+                            }
                         }
                     }
                 }
+                else
+#endif
+                {
+                    // non-smoothing case
+
+                    float LeftLoudness = LocalLoudness * LeftPan;
+                    float RightLoudness = LocalLoudness * RightPan;
+
+                    /* process */
+                    for (int i = 0; i < nActualFrames; i++)
+                    {
+                        /* load outside buffer values */
+                        float OrigLeft = workspace[i + lOffset];
+                        float OrigRight = workspace[i + rOffset];
+
+                        /* compute weighting and subscript */
+                        float RightWeight = LocalSamplePosition.FracF;
+                        int ArraySubscript = LocalSamplePosition.Int;
+
+                        /* L+F(R-L) */
+                        float LeftValue = SampleData[ArraySubscript];
+                        float RightValue = SampleData[ArraySubscript + 1];
+                        float CombinedValue = LeftValue + (RightWeight * (RightValue - LeftValue));
+
+                        /* generate output */
+                        workspace[i + lOffset] = OrigLeft + LeftLoudness * CombinedValue;
+                        workspace[i + rOffset] = OrigRight + RightLoudness * CombinedValue;
+
+                        /* increment pitch differential */
+                        LocalSamplePosition += LocalSamplePositionDifferential;
+
+                    CheapDoLoop:
+                        if (LocalSamplePosition.Int >= LocalCurrentLoopEnd)
+                        {
+                            if (State.LoopState != LoopType.eNoLoop)
+                            {
+                                /* handle loop */
+                                LocalSamplePosition.SetInt64HighHalf(LocalSamplePosition.Int - State.CurrentLoopLength);
+                                goto CheapDoLoop;
+                            }
+                            else
+                            {
+                                /* end of sample -- terminate */
+                                State.LoopState = LoopType.eSampleFinished;
+                                State.EffectiveLoopState = State.LoopState;
+                                goto BreakLoopPoint;
+                            }
+                        }
+                    }
+                }
+
             BreakLoopPoint:
                 ;
 
@@ -1062,78 +1163,156 @@ namespace OutOfPhase
                 int nActualFrames,
                 float[] workspace,
                 int lOffset,
-                int rOffset)
+                int rOffset,
+                int loudnessWorkspaceOffset)
             {
-                Fixed64 LocalSamplePosition;
-                Fixed64 LocalSamplePositionDifferential;
-                int LocalCurrentLoopEnd;
-                float LocalLeftLoudness;
-                float LocalRightLoudness;
-                float[] SampleData;
-
                 /* load local values */
-                LocalLeftLoudness = State.LeftLoudness;
-                LocalRightLoudness = State.RightLoudness;
-                LocalSamplePosition = State.SamplePosition;
-                LocalSamplePositionDifferential = State.SamplePositionDifferential;
-                LocalCurrentLoopEnd = State.CurrentLoopEnd;
-                SampleData = State.Data;
+                float LeftPan = .5f - .5f * State.Panning; // (1 - State.Panning) / 2
+                float RightPan = .5f + .5f * State.Panning; // (1 + State.Panning) / 2
+                float LocalLoudness = State.Loudness;
+                Fixed64 LocalSamplePosition = State.SamplePosition;
+                Fixed64 LocalSamplePositionDifferential = State.SamplePositionDifferential;
+                int LocalCurrentLoopEnd = State.CurrentLoopEnd;
+                float[] SampleData = State.Data;
 
-                /* process */
-                for (int i = 0; i < nActualFrames; i += 1)
+#if true // TODO:experimental - smoothing
+                if (Program.Config.EnableEnvelopeSmoothing
+                    // case of no motion in any smoothed axis, can use fast code path
+                    && (State.Loudness != State.PreviousLoudness))
                 {
-                    float RightWeight;
-                    int ArraySubscript;
-                    float LeftValue;
-                    float RightValue;
-                    float CombinedLeft;
-                    float CombinedRight;
-                    float OrigLeft;
-                    float OrigRight;
+                    // envelope smoothing
 
-                    /* load outside buffer values */
-                    OrigLeft = workspace[i + lOffset];
-                    OrigRight = workspace[i + rOffset];
+                    float LocalPreviousLoudness = State.PreviousLoudness;
 
-                    /* compute weighting and subscript */
-                    RightWeight = LocalSamplePosition.FracF;
-                    ArraySubscript = LocalSamplePosition.Int;
-
-                    /* L+F(R-L) */
-                    LeftValue = SampleData[2 * (ArraySubscript + 0)];
-                    RightValue = SampleData[2 * (ArraySubscript + 1)];
-                    CombinedLeft = LeftValue + (RightWeight * (RightValue - LeftValue));
-
-                    /* L+F(R-L) */
-                    LeftValue = SampleData[2 * (ArraySubscript + 0) + 1];
-                    RightValue = SampleData[2 * (ArraySubscript + 1) + 1];
-                    CombinedRight = LeftValue + (RightWeight * (RightValue - LeftValue));
-
-                    /* generate output */
-                    workspace[i + lOffset] = OrigLeft + LocalLeftLoudness * CombinedLeft;
-                    workspace[i + rOffset] = OrigRight + LocalRightLoudness * CombinedRight;
-
-                    /* increment pitch differential */
-                    LocalSamplePosition += LocalSamplePositionDifferential;
-
-                CheapDoLoop:
-                    if (LocalSamplePosition.Int >= LocalCurrentLoopEnd)
+                    // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                    if (IsLFOSampleAndHold(State.LoudnessLFOGenerator))
                     {
-                        if (State.LoopState != LoopType.eNoLoop)
+                        LocalPreviousLoudness = LocalLoudness;
+                    }
+
+                    if (!EnvelopeCurrentSegmentExponential(State.SampleLoudnessEnvelope))
+                    {
+                        FloatVectorAdditiveRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+                    else
+                    {
+                        FloatVectorMultiplicativeRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+
+                    /* process */
+                    for (int i = 0; i < nActualFrames; i++)
+                    {
+                        /* load outside buffer values */
+                        float OrigLeft = workspace[i + lOffset];
+                        float OrigRight = workspace[i + rOffset];
+
+                        /* compute weighting and subscript */
+                        float RightWeight = LocalSamplePosition.FracF;
+                        int ArraySubscript = LocalSamplePosition.Int;
+
+                        /* L+F(R-L) */
+                        float LeftValue = SampleData[2 * (ArraySubscript + 0)];
+                        float RightValue = SampleData[2 * (ArraySubscript + 1)];
+                        float CombinedLeft = LeftValue + (RightWeight * (RightValue - LeftValue));
+
+                        /* L+F(R-L) */
+                        LeftValue = SampleData[2 * (ArraySubscript + 0) + 1];
+                        RightValue = SampleData[2 * (ArraySubscript + 1) + 1];
+                        float CombinedRight = LeftValue + (RightWeight * (RightValue - LeftValue));
+
+                        /* generate output */
+                        LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                        workspace[i + lOffset] = OrigLeft + LeftPan * LocalLoudness * CombinedLeft;
+                        workspace[i + rOffset] = OrigRight + RightPan * LocalLoudness * CombinedRight;
+
+                        /* increment pitch differential */
+                        LocalSamplePosition += LocalSamplePositionDifferential;
+
+                    CheapDoLoop:
+                        if (LocalSamplePosition.Int >= LocalCurrentLoopEnd)
                         {
-                            /* handle loop */
-                            LocalSamplePosition.SetInt64HighHalf(LocalSamplePosition.Int - State.CurrentLoopLength);
-                            goto CheapDoLoop;
-                        }
-                        else
-                        {
-                            /* end of sample -- terminate */
-                            State.LoopState = LoopType.eSampleFinished;
-                            State.EffectiveLoopState = State.LoopState;
-                            goto BreakLoopPoint;
+                            if (State.LoopState != LoopType.eNoLoop)
+                            {
+                                /* handle loop */
+                                LocalSamplePosition.SetInt64HighHalf(LocalSamplePosition.Int - State.CurrentLoopLength);
+                                goto CheapDoLoop;
+                            }
+                            else
+                            {
+                                /* end of sample -- terminate */
+                                State.LoopState = LoopType.eSampleFinished;
+                                State.EffectiveLoopState = State.LoopState;
+                                goto BreakLoopPoint;
+                            }
                         }
                     }
                 }
+                else
+#endif
+                {
+                    // non-smoothing case
+
+                    float LeftLoudness = LocalLoudness * LeftPan;
+                    float RightLoudness = LocalLoudness * RightPan;
+
+                    /* process */
+                    for (int i = 0; i < nActualFrames; i++)
+                    {
+                        /* load outside buffer values */
+                        float OrigLeft = workspace[i + lOffset];
+                        float OrigRight = workspace[i + rOffset];
+
+                        /* compute weighting and subscript */
+                        float RightWeight = LocalSamplePosition.FracF;
+                        int ArraySubscript = LocalSamplePosition.Int;
+
+                        /* L+F(R-L) */
+                        float LeftValue = SampleData[2 * (ArraySubscript + 0)];
+                        float RightValue = SampleData[2 * (ArraySubscript + 1)];
+                        float CombinedLeft = LeftValue + (RightWeight * (RightValue - LeftValue));
+
+                        /* L+F(R-L) */
+                        LeftValue = SampleData[2 * (ArraySubscript + 0) + 1];
+                        RightValue = SampleData[2 * (ArraySubscript + 1) + 1];
+                        float CombinedRight = LeftValue + (RightWeight * (RightValue - LeftValue));
+
+                        /* generate output */
+                        workspace[i + lOffset] = OrigLeft + LeftLoudness * CombinedLeft;
+                        workspace[i + rOffset] = OrigRight + RightLoudness * CombinedRight;
+
+                        /* increment pitch differential */
+                        LocalSamplePosition += LocalSamplePositionDifferential;
+
+                    CheapDoLoop:
+                        if (LocalSamplePosition.Int >= LocalCurrentLoopEnd)
+                        {
+                            if (State.LoopState != LoopType.eNoLoop)
+                            {
+                                /* handle loop */
+                                LocalSamplePosition.SetInt64HighHalf(LocalSamplePosition.Int - State.CurrentLoopLength);
+                                goto CheapDoLoop;
+                            }
+                            else
+                            {
+                                /* end of sample -- terminate */
+                                State.LoopState = LoopType.eSampleFinished;
+                                State.EffectiveLoopState = State.LoopState;
+                                goto BreakLoopPoint;
+                            }
+                        }
+                    }
+                }
+
             BreakLoopPoint:
                 ;
 
@@ -1146,7 +1325,8 @@ namespace OutOfPhase
                 int nActualFrames,
                 float[] workspace,
                 int lOffset,
-                int rOffset)
+                int rOffset,
+                int loudnessWorkspaceOffset)
             {
             }
 
@@ -1157,52 +1337,90 @@ namespace OutOfPhase
                 int nActualFrames,
                 float[] workspace,
                 int lOffset,
-                int rOffset)
+                int rOffset,
+                int loudnessWorkspaceOffset)
             {
-                Fixed64 LocalSamplePosition;
-                Fixed64 LocalSamplePositionDifferential;
-                float LocalLeftLoudness;
-                float LocalRightLoudness;
-                float[] SampleData;
-
                 /* load local values */
-                LocalLeftLoudness = State.LeftLoudness;
-                LocalRightLoudness = State.RightLoudness;
-                LocalSamplePosition = State.SamplePosition;
-                LocalSamplePositionDifferential = State.SamplePositionDifferential;
+                float LeftPan = .5f - .5f * State.Panning; // (1 - State.Panning) / 2
+                float RightPan = .5f + .5f * State.Panning; // (1 + State.Panning) / 2
+                float LocalLoudness = State.Loudness;
+                Fixed64 LocalSamplePosition = State.SamplePosition;
+                Fixed64 LocalSamplePositionDifferential = State.SamplePositionDifferential;
                 if (State.LoopIsReversing)
                 {
                     LocalSamplePositionDifferential = -LocalSamplePositionDifferential;
                 }
-                SampleData = State.Data;
+                float[] SampleData = State.Data;
+
+#if true // TODO:experimental - smoothing
+                if (Program.Config.EnableEnvelopeSmoothing
+                    // case of no motion in any smoothed axis, can use faster code path
+                    && (State.Loudness != State.PreviousLoudness))
+                {
+                    // envelope smoothing
+
+                    float LocalPreviousLoudness = State.PreviousLoudness;
+
+                    // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                    if (IsLFOSampleAndHold(State.LoudnessLFOGenerator))
+                    {
+                        LocalPreviousLoudness = LocalLoudness;
+                    }
+
+                    if (!EnvelopeCurrentSegmentExponential(State.SampleLoudnessEnvelope))
+                    {
+                        FloatVectorAdditiveRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+                    else
+                    {
+                        FloatVectorMultiplicativeRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+                }
+                else
+#endif
+                {
+                    // no envelope smoothing
+
+                    FloatVectorSet(
+                        workspace,
+                        loudnessWorkspaceOffset,
+                        nActualFrames,
+                        LocalLoudness);
+                }
+
+                // Multiple loop bodies optimizing envelope smoothing are not provided since this version is already
+                // costly due to loop logic and is seldom used in practice.
 
                 /* process */
-                for (int i = 0; i < nActualFrames; i += 1)
+                for (int i = 0; i < nActualFrames; i++)
                 {
-                    float RightWeight;
-                    int ArraySubscript;
-                    float LeftValue;
-                    float RightValue;
-                    float CombinedValue;
-                    float OrigLeft;
-                    float OrigRight;
-
                     /* load outside buffer values */
-                    OrigLeft = workspace[i + lOffset];
-                    OrigRight = workspace[i + rOffset];
+                    float OrigLeft = workspace[i + lOffset];
+                    float OrigRight = workspace[i + rOffset];
 
                     /* compute weighting and subscript */
-                    RightWeight = LocalSamplePosition.FracF;
-                    ArraySubscript = LocalSamplePosition.Int;
+                    float RightWeight = LocalSamplePosition.FracF;
+                    int ArraySubscript = LocalSamplePosition.Int;
 
                     /* L+F(R-L) */
-                    LeftValue = SampleData[ArraySubscript];
-                    RightValue = SampleData[ArraySubscript + 1];
-                    CombinedValue = LeftValue + (RightWeight * (RightValue - LeftValue));
+                    float LeftValue = SampleData[ArraySubscript];
+                    float RightValue = SampleData[ArraySubscript + 1];
+                    float CombinedValue = LeftValue + (RightWeight * (RightValue - LeftValue));
 
                     /* generate output */
-                    workspace[i + lOffset] = OrigLeft + LocalLeftLoudness * CombinedValue;
-                    workspace[i + rOffset] = OrigRight + LocalRightLoudness * CombinedValue;
+                    LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                    workspace[i + lOffset] = OrigLeft + LeftPan * LocalLoudness * CombinedValue;
+                    workspace[i + rOffset] = OrigRight + RightPan * LocalLoudness * CombinedValue;
 
                     /* increment pitch differential */
                     LocalSamplePosition += LocalSamplePositionDifferential;
@@ -1307,58 +1525,95 @@ namespace OutOfPhase
                 int nActualFrames,
                 float[] workspace,
                 int lOffset,
-                int rOffset)
+                int rOffset,
+                int loudnessWorkspaceOffset)
             {
-                Fixed64 LocalSamplePosition;
-                Fixed64 LocalSamplePositionDifferential;
-                float LocalLeftLoudness;
-                float LocalRightLoudness;
-                float[] SampleData;
-
                 /* load local values */
-                LocalLeftLoudness = State.LeftLoudness;
-                LocalRightLoudness = State.RightLoudness;
-                LocalSamplePosition = State.SamplePosition;
-                LocalSamplePositionDifferential = State.SamplePositionDifferential;
+                float LeftPan = .5f - .5f * State.Panning; // (1 - State.Panning) / 2
+                float RightPan = .5f + .5f * State.Panning; // (1 + State.Panning) / 2
+                float LocalLoudness = State.Loudness;
+                Fixed64 LocalSamplePosition = State.SamplePosition;
+                Fixed64 LocalSamplePositionDifferential = State.SamplePositionDifferential;
                 if (State.LoopIsReversing)
                 {
                     LocalSamplePositionDifferential = -LocalSamplePositionDifferential;
                 }
-                SampleData = State.Data;
+                float[] SampleData = State.Data;
+
+#if true // TODO:experimental - smoothing
+                if (Program.Config.EnableEnvelopeSmoothing
+                    // case of no motion in any smoothed axis, can use faster code path
+                    && (State.Loudness != State.PreviousLoudness))
+                {
+                    // envelope smoothing
+
+                    float LocalPreviousLoudness = State.PreviousLoudness;
+
+                    // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                    if (IsLFOSampleAndHold(State.LoudnessLFOGenerator))
+                    {
+                        LocalPreviousLoudness = LocalLoudness;
+                    }
+
+                    if (!EnvelopeCurrentSegmentExponential(State.SampleLoudnessEnvelope))
+                    {
+                        FloatVectorAdditiveRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+                    else
+                    {
+                        FloatVectorMultiplicativeRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+                }
+                else
+#endif
+                {
+                    // no envelope smoothing
+
+                    FloatVectorSet(
+                        workspace,
+                        loudnessWorkspaceOffset,
+                        nActualFrames,
+                        LocalLoudness);
+                }
+
+                // Multiple loop bodies optimizing envelope smoothing are not provided since this version is already
+                // costly due to loop logic and is seldom used in practice.
 
                 /* process */
-                for (int i = 0; i < nActualFrames; i += 1)
+                for (int i = 0; i < nActualFrames; i++)
                 {
-                    float RightWeight;
-                    int ArraySubscript;
-                    float LeftValue;
-                    float RightValue;
-                    float CombinedLeft;
-                    float CombinedRight;
-                    float OrigLeft;
-                    float OrigRight;
-
                     /* load outside buffer values */
-                    OrigLeft = workspace[i + lOffset];
-                    OrigRight = workspace[i + rOffset];
+                    float OrigLeft = workspace[i + lOffset];
+                    float OrigRight = workspace[i + rOffset];
 
                     /* compute weighting and subscript */
-                    RightWeight = LocalSamplePosition.FracF;
-                    ArraySubscript = LocalSamplePosition.Int;
+                    float RightWeight = LocalSamplePosition.FracF;
+                    int ArraySubscript = LocalSamplePosition.Int;
 
                     /* L+F(R-L) */
-                    LeftValue = SampleData[2 * (ArraySubscript + 0)];
-                    RightValue = SampleData[2 * (ArraySubscript + 1)];
-                    CombinedLeft = LeftValue + (RightWeight * (RightValue - LeftValue));
+                    float LeftValue = SampleData[2 * (ArraySubscript + 0)];
+                    float RightValue = SampleData[2 * (ArraySubscript + 1)];
+                    float CombinedLeft = LeftValue + (RightWeight * (RightValue - LeftValue));
 
                     /* L+F(R-L) */
                     LeftValue = SampleData[2 * (ArraySubscript + 0) + 1];
                     RightValue = SampleData[2 * (ArraySubscript + 1) + 1];
-                    CombinedRight = LeftValue + (RightWeight * (RightValue - LeftValue));
+                    float CombinedRight = LeftValue + (RightWeight * (RightValue - LeftValue));
 
                     /* generate output */
-                    workspace[i + lOffset] = OrigLeft + LocalLeftLoudness * CombinedLeft;
-                    workspace[i + rOffset] = OrigRight + LocalRightLoudness * CombinedRight;
+                    LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                    workspace[i + lOffset] = OrigLeft + LeftPan * LocalLoudness * CombinedLeft;
+                    workspace[i + rOffset] = OrigRight + RightPan * LocalLoudness * CombinedRight;
 
                     /* increment pitch differential */
                     LocalSamplePosition += LocalSamplePositionDifferential;

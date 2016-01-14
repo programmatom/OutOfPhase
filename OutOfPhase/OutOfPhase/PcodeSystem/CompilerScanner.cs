@@ -177,6 +177,13 @@ namespace OutOfPhase
         {
             return type;
         }
+
+#if DEBUG
+        public override string ToString()
+        {
+            return String.Format("{0}", type);
+        }
+#endif
     }
 
     public class StringTokenRec<T> : TokenRec<T> where T : struct
@@ -197,6 +204,13 @@ namespace OutOfPhase
         {
             return literal;
         }
+
+#if DEBUG
+        public override string ToString()
+        {
+            return String.Format("\"{0}\"", literal);
+        }
+#endif
     }
 
     public class IdentifierTokenRec<T> : TokenRec<T> where T : struct
@@ -217,6 +231,13 @@ namespace OutOfPhase
         {
             return identifier;
         }
+
+#if DEBUG
+        public override string ToString()
+        {
+            return String.Format("identifier: {0}", identifier);
+        }
+#endif
     }
 
     public class IntegerTokenRec<T> : TokenRec<T> where T : struct
@@ -237,6 +258,13 @@ namespace OutOfPhase
         {
             return number;
         }
+
+#if DEBUG
+        public override string ToString()
+        {
+            return String.Format("{0}", number);
+        }
+#endif
     }
 
     public class SingleTokenRec<T> : TokenRec<T> where T : struct
@@ -257,6 +285,13 @@ namespace OutOfPhase
         {
             return number;
         }
+
+#if DEBUG
+        public override string ToString()
+        {
+            return String.Format("{0}f", number);
+        }
+#endif
     }
 
     public class DoubleTokenRec<T> : TokenRec<T> where T : struct
@@ -277,6 +312,13 @@ namespace OutOfPhase
         {
             return number;
         }
+
+#if DEBUG
+        public override string ToString()
+        {
+            return String.Format("{0}d", number);
+        }
+#endif
     }
 
     public class KeywordTokenRec<T> : TokenRec<T> where T : struct
@@ -297,6 +339,13 @@ namespace OutOfPhase
         {
             return keywordTag;
         }
+
+#if DEBUG
+        public override string ToString()
+        {
+            return String.Format("keyword: {0}", keywordTag);
+        }
+#endif
     }
 
     public class ErrorTokenRec<T> : TokenRec<T> where T : struct
@@ -317,6 +366,13 @@ namespace OutOfPhase
         {
             return error;
         }
+
+#if DEBUG
+        public override string ToString()
+        {
+            return String.Format("error: {0}", error);
+        }
+#endif
     }
 
     public class ScannerRec<T> where T : struct
@@ -597,7 +653,7 @@ namespace OutOfPhase
             /* integer or floating?  [0-9]+  [0-9]+"."[0-9]+([Ee][+-]?[0-9]+)?[sdf]?  */
             else if (((C >= '0') && (C <= '9'))
                 // TODO: C# 2.0 hack - convert to elegant lambda evaluation after upgrade
-                || ((C == '.') && Eval(delegate() { int CC = GetCharacter(); UngetCharacter(); return (CC >= '0') || (CC <= '9'); })))
+                || ((C == '.') && Eval(delegate () { int CC = GetCharacter(); UngetCharacter(); return (CC >= '0') || (CC <= '9'); })))
             {
                 NumFormType SpecifiedNumType = NumFormType.eTypeNotSpecified;
                 NumStateType NumberState = NumStateType.eIntegerPart;
@@ -718,7 +774,7 @@ namespace OutOfPhase
                         break;
                 }
 
-                /* this is the escape point for when a bad character is encountered. */
+            /* this is the escape point for when a bad character is encountered. */
             AbortNumberErrorPoint:
                 ;
             }

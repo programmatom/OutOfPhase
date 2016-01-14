@@ -36,6 +36,7 @@ namespace OutOfPhase
     public partial class MainWindow : Form, IMenuStripManagerHandler, IGlobalNameChange
     {
         private readonly Registration registration = new Registration();
+        private static readonly List<MainWindow> topLevelEditors = new List<MainWindow>();
 
         private readonly MainWindowLocalMenuHandler localMenuHandler;
 
@@ -54,6 +55,12 @@ namespace OutOfPhase
         private bool autosaveNeeded;
         private int autosaveNumber;
         private string autosaveLastPath;
+
+        // This is set only for the "Untitled" window that opens when the application opens with no arguments.
+        // It is used only to close an unused initial empty window when a file is subsequently opened.
+        private bool firstWindow;
+
+        public const string AutosaveFilenameTemplate = "{0}-Autosave-{1}.oop";
 
         public MainWindow(Document document, string path)
         {
@@ -88,13 +95,13 @@ namespace OutOfPhase
                 listBox.SelectionChanged += listBoxSelectionChanged;
             }
 
-            myListBoxFunctions.SetUnderlying(document.FunctionList, delegate(object obj) { return ((FunctionObjectRec)obj).Name; });
-            myListBoxAlgoWaveTables.SetUnderlying(document.AlgoWaveTableList, delegate(object obj) { return ((AlgoWaveTableObjectRec)obj).Name; });
-            myListBoxInstruments.SetUnderlying(document.InstrumentList, delegate(object obj) { return ((InstrObjectRec)obj).Name; });
-            myListBoxAlgoSamples.SetUnderlying(document.AlgoSampList, delegate(object obj) { return ((AlgoSampObjectRec)obj).Name; });
-            myListBoxSamples.SetUnderlying(document.SampleList, delegate(object obj) { return ((SampleObjectRec)obj).Name; });
-            myListBoxWaveTables.SetUnderlying(document.WaveTableList, delegate(object obj) { return ((WaveTableObjectRec)obj).Name; });
-            myListBoxTracks.SetUnderlying(document.TrackList, delegate(object obj) { return ((TrackObjectRec)obj).Name; });
+            myListBoxFunctions.SetUnderlying(document.FunctionList, delegate (object obj) { return ((FunctionObjectRec)obj).Name; });
+            myListBoxAlgoWaveTables.SetUnderlying(document.AlgoWaveTableList, delegate (object obj) { return ((AlgoWaveTableObjectRec)obj).Name; });
+            myListBoxInstruments.SetUnderlying(document.InstrumentList, delegate (object obj) { return ((InstrObjectRec)obj).Name; });
+            myListBoxAlgoSamples.SetUnderlying(document.AlgoSampList, delegate (object obj) { return ((AlgoSampObjectRec)obj).Name; });
+            myListBoxSamples.SetUnderlying(document.SampleList, delegate (object obj) { return ((SampleObjectRec)obj).Name; });
+            myListBoxWaveTables.SetUnderlying(document.WaveTableList, delegate (object obj) { return ((WaveTableObjectRec)obj).Name; });
+            myListBoxTracks.SetUnderlying(document.TrackList, delegate (object obj) { return ((TrackObjectRec)obj).Name; });
 
             myListBoxFunctions.DoubleClick2 += new MyListBox.DoubleClick2EventHandler(listBoxFunctions_DoubleClick);
             myListBoxAlgoWaveTables.DoubleClick2 += new MyListBox.DoubleClick2EventHandler(listBoxAlgoWaveTables_DoubleClick);
@@ -106,6 +113,13 @@ namespace OutOfPhase
 
             registration.Register(document, this);
             registration.NotifyGlobalNameChanged();
+            topLevelEditors.Add(this);
+        }
+
+        public MainWindow(Document document, string path, bool firstWindow)
+            : this(document, path)
+        {
+            this.firstWindow = firstWindow;
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
@@ -124,6 +138,7 @@ namespace OutOfPhase
             autosaveLastPath = null;
 
             //registration.Unregister(document, this); - done in OnFormClosing
+            //topLevelEditors.Remove(this); - done in OnFormClosing
 
             base.OnFormClosed(e);
         }
@@ -134,6 +149,7 @@ namespace OutOfPhase
             {
                 registration.Unregister(document, this);
                 registration.CloseAll();
+                topLevelEditors.Remove(this);
             }
             else
             {
@@ -154,8 +170,7 @@ namespace OutOfPhase
                 return true;
             }
 
-            string path = null; // TODO
-            using (UnsavedDialog dialog = new UnsavedDialog(path != null ? Path.GetFileName(path) : "Untitled"))
+            using (UnsavedDialog dialog = new UnsavedDialog(savePath != null ? Path.GetFileName(savePath) : "Untitled"))
             {
                 switch (dialog.ShowDialog())
                 {
@@ -369,7 +384,7 @@ namespace OutOfPhase
             return document.EnsureBuilt(
                 false/*force*/,
                 new PcodeExterns(this),
-                delegate(object sender, BuildErrorInfo errorInfo)
+                delegate (object sender, BuildErrorInfo errorInfo)
                 {
                     Form editor;
                     if (!registration.Activate(sender, out editor))
@@ -455,7 +470,7 @@ namespace OutOfPhase
 
         public IBindingList GetUnderlyingList(MyListBox listBox)
         {
-            int listBoxIndex = Array.FindIndex(lists, delegate(KeyValuePair<MyListBox, IBindingList> candidate) { return candidate.Key == listBox; });
+            int listBoxIndex = Array.FindIndex(lists, delegate (KeyValuePair<MyListBox, IBindingList> candidate) { return candidate.Key == listBox; });
             if (listBoxIndex < 0)
             {
                 Debug.Assert(false);
@@ -468,7 +483,7 @@ namespace OutOfPhase
         {
             int index;
 
-            index = Array.FindIndex(lists, delegate(KeyValuePair<MyListBox, IBindingList> candidate) { return candidate.Value == list; });
+            index = Array.FindIndex(lists, delegate (KeyValuePair<MyListBox, IBindingList> candidate) { return candidate.Value == list; });
             if (index < 0)
             {
                 Debug.Assert(false);
@@ -559,6 +574,7 @@ namespace OutOfPhase
                             object o = clipboard.Reconstitute(document);
                             document.FunctionList.Add((FunctionObjectRec)o);
                             myListBoxFunctions.SelectItem(document.FunctionList.Count - 1, true/*clearOther*/);
+                            myListBoxFunctions.ScrollToCursor();
                         }
                         return true;
                     case InstrumentClipboard.ClipboardIdentifer:
@@ -569,6 +585,7 @@ namespace OutOfPhase
                             object o = clipboard.Reconstitute(document);
                             document.InstrumentList.Add((InstrObjectRec)o);
                             myListBoxInstruments.SelectItem(document.InstrumentList.Count - 1, true/*clearOther*/);
+                            myListBoxInstruments.ScrollToCursor();
                         }
                         return true;
                     case TrackClipboard.ClipboardIdentifer:
@@ -579,6 +596,7 @@ namespace OutOfPhase
                             object o = clipboard.Reconstitute(document);
                             document.TrackList.Add((TrackObjectRec)o);
                             myListBoxTracks.SelectItem(document.TrackList.Count - 1, true/*clearOther*/);
+                            myListBoxTracks.ScrollToCursor();
                         }
                         return true;
                     case SampleClipboard.ClipboardIdentifer:
@@ -589,6 +607,7 @@ namespace OutOfPhase
                             object o = clipboard.Reconstitute(document);
                             document.SampleList.Add((SampleObjectRec)o);
                             myListBoxSamples.SelectItem(document.SampleList.Count - 1, true/*clearOther*/);
+                            myListBoxSamples.ScrollToCursor();
                         }
                         return true;
                     case WaveTableClipboard.ClipboardIdentifer:
@@ -599,6 +618,7 @@ namespace OutOfPhase
                             object o = clipboard.Reconstitute(document);
                             document.WaveTableList.Add((WaveTableObjectRec)o);
                             myListBoxWaveTables.SelectItem(document.WaveTableList.Count - 1, true/*clearOther*/);
+                            myListBoxWaveTables.ScrollToCursor();
                         }
                         return true;
                     case AlgoSampClipboard.ClipboardIdentifer:
@@ -609,6 +629,7 @@ namespace OutOfPhase
                             object o = clipboard.Reconstitute(document);
                             document.AlgoSampList.Add((AlgoSampObjectRec)o);
                             myListBoxAlgoSamples.SelectItem(document.AlgoSampList.Count - 1, true/*clearOther*/);
+                            myListBoxAlgoSamples.ScrollToCursor();
                         }
                         return true;
                     case AlgoWaveTableClipboard.ClipboardIdentifer:
@@ -619,6 +640,7 @@ namespace OutOfPhase
                             object o = clipboard.Reconstitute(document);
                             document.AlgoWaveTableList.Add((AlgoWaveTableObjectRec)o);
                             myListBoxAlgoWaveTables.SelectItem(document.AlgoWaveTableList.Count - 1, true/*clearOther*/);
+                            myListBoxAlgoWaveTables.ScrollToCursor();
                         }
                         return true;
                 }
@@ -635,6 +657,7 @@ namespace OutOfPhase
                     using (BinaryWriter writer = new BinaryWriter(stream))
                     {
                         document.Save(writer);
+                        Program.ReferenceRecentDocument(path);
                     }
                 }
 
@@ -715,6 +738,93 @@ namespace OutOfPhase
             SaveHelper(targetPath, false/*clearModified*/);
         }
 
+        public static bool TryOpenFilePath(string path)
+        {
+            bool warnAboutAutosave = false;
+            string lastAutosavePath = null;
+            string autosavePattern = String.Format(AutosaveFilenameTemplate, Path.GetFileNameWithoutExtension(path), "*");
+            int index = -1;
+            foreach (string autosaveCandidate in Directory.GetFiles(Path.GetDirectoryName(path), autosavePattern))
+            {
+                warnAboutAutosave = true;
+                if (lastAutosavePath == null)
+                {
+                    lastAutosavePath = autosaveCandidate;
+                }
+                else
+                {
+                    try
+                    {
+                        string s = Path.GetFileName(autosaveCandidate).Substring(autosavePattern.IndexOf('*'));
+                        s = s.Substring(0, s.IndexOf('.'));
+                        int index1 = Int32.Parse(s);
+                        if (index < index1)
+                        {
+                            index = index1;
+                            lastAutosavePath = autosaveCandidate;
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        // trying to be helpful, but don't crash program if our autosave string parsing logic is broken
+                        Debug.Assert(false, exception.ToString());
+                    }
+                }
+            }
+
+            // activate window if already open
+            foreach (MainWindow top in topLevelEditors)
+            {
+                if (String.Equals(top.savePath, path, StringComparison.OrdinalIgnoreCase))
+                {
+                    top.Activate();
+                    return true;
+                }
+            }
+
+            // find any initial blank windows
+            Rectangle? SavedDesktopBounds = null;
+            MainWindow initialBlankWindow = null;
+            for (int i = 0; i < topLevelEditors.Count; i++)
+            {
+                if (topLevelEditors[i].firstWindow && !topLevelEditors[i].document.Modified)
+                {
+                    initialBlankWindow = topLevelEditors[i];
+                    SavedDesktopBounds = initialBlankWindow.DesktopBounds;
+                    // there would only be one
+                    break;
+                }
+            }
+
+            Document newDoc;
+            if (Document.TryLoadDocument(path, out newDoc))
+            {
+                MainWindow newWindow = new MainWindow(newDoc, path);
+                if (SavedDesktopBounds.HasValue)
+                {
+                    // make it look like the initial blank window is being reused
+                    newWindow.StartPosition = FormStartPosition.Manual;
+                    newWindow.DesktopBounds = SavedDesktopBounds.Value;
+                }
+                newWindow.Show();
+                Program.ReferenceRecentDocument(path);
+
+                if (warnAboutAutosave)
+                {
+                    MessageBox.Show(String.Format("There is at least one autosave file that appears to be related to the document \"{0}\". If the program closed unexpectedly and you lost your unsaved changes, those changes may have been saved in the most recent autosave file. (\"{1}\")", path, lastAutosavePath), "Out Of Phase");
+                }
+
+                // close initial blank window (only if replacement succeeded)
+                if (initialBlankWindow != null)
+                {
+                    initialBlankWindow.Close();
+                }
+
+                return true;
+            }
+            return false;
+        }
+
 
         // MenuStripManager methods
 
@@ -745,7 +855,7 @@ namespace OutOfPhase
             if (ActiveControl is MyListBox)
             {
                 MyListBox listBox = (MyListBox)ActiveControl;
-                int listBoxIndex = Array.FindIndex(lists, delegate(KeyValuePair<MyListBox, IBindingList> candidate) { return candidate.Key == listBox; });
+                int listBoxIndex = Array.FindIndex(lists, delegate (KeyValuePair<MyListBox, IBindingList> candidate) { return candidate.Key == listBox; });
                 if (listBoxIndex < 0)
                 {
                     Debug.Assert(false);
@@ -791,6 +901,12 @@ namespace OutOfPhase
 
         bool ExecuteMenuItem_Local(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
         {
+            if (textEditorWindowHelper.ProcessMenuItemDelegate(menuItem))
+            {
+                // Be sure to set DelegatedMode on textEditorHelper to true
+                return true;
+            }
+
             if ((menuItem == menuStrip.moveUpToolStripMenuItem) || (menuItem == menuStrip.moveDownToolStripMenuItem))
             {
                 // TODO: fix bug: if using one arrow key, switching to the other key without releasing the
@@ -966,6 +1082,35 @@ namespace OutOfPhase
             menuStrip.tabSizeToolStripMenuItem.Text = String.Format("Tab Size ({0})...", document.TabSize);
             menuStrip.globalSettingsToolStripMenuItem.Enabled = true;
             menuStrip.aboutToolStripMenuItem.Enabled = true;
+
+            menuStrip.recentDocumentsToolStripMenuItem.Visible =
+                menuStrip.recentDocumentsToolStripMenuItem.Enabled = Program.Config.RecentDocuments.Count != 0;
+            menuStrip.recentDocumentsToolStripMenuItem.DropDownItems.Clear();
+            foreach (string recent in Program.Config.RecentDocuments)
+            {
+                menuStrip.recentDocumentsToolStripMenuItem.DropDownItems.Add(Path.GetFileName(recent));
+                ToolStripItem item = menuStrip.recentDocumentsToolStripMenuItem.DropDownItems[
+                    menuStrip.recentDocumentsToolStripMenuItem.DropDownItems.Count - 1];
+                item.Click += delegate (object sender, EventArgs e)
+                {
+                    for (int i = 0; i < menuStrip.recentDocumentsToolStripMenuItem.DropDownItems.Count; i++)
+                    {
+                        if (menuStrip.recentDocumentsToolStripMenuItem.DropDownItems[i] == sender)
+                        {
+                            string path = Program.Config.RecentDocuments[i];
+                            if (!TryOpenFilePath(path))
+                            {
+                                if (DialogResult.Yes == MessageBox.Show(String.Format("Unable to open the file \"{0}\". Remove from Recent Documents list?", path), "Out Of Phase", MessageBoxButtons.YesNo))
+                                {
+                                    Program.Config.RecentDocuments.RemoveAt(i);
+                                    Program.SaveSettings();
+                                }
+                            }
+                            return;
+                        }
+                    }
+                };
+            }
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -984,7 +1129,7 @@ namespace OutOfPhase
                     if (result == DialogResult.OK)
                     {
                         string path = dialog.FileName;
-                        new MainWindow(new Document(path), path).Show();
+                        TryOpenFilePath(path);
                     }
                 }
                 return true;
@@ -1430,8 +1575,16 @@ namespace OutOfPhase
             }
         }
 
-        // TODO: callers to this probably would want to save ALL open documents, not just theirs
-        public void DoAutosave()
+        public static void DoAutosaveGlobally()
+        {
+            MainWindow[] windows = topLevelEditors.ToArray();
+            for (int i = 0; i < windows.Length; i++)
+            {
+                windows[i].DoAutosave();
+            }
+        }
+
+        private void DoAutosave()
         {
             if (Program.Config.AutosaveEnabled && autosaveNeeded)
             {
@@ -1443,12 +1596,12 @@ namespace OutOfPhase
                 {
                     if (savePath != null)
                     {
-                        autosavePathTemplate = Path.Combine(Path.GetDirectoryName(savePath), Path.GetFileNameWithoutExtension(savePath) + "-Autosave-{0}.oop");
+                        autosavePathTemplate = Path.Combine(Path.GetDirectoryName(savePath), String.Format(AutosaveFilenameTemplate, Path.GetFileNameWithoutExtension(savePath), "{0}"));
                     }
                     else
                     {
                         fallback = true;
-                        autosavePathTemplate = Path.Combine(Environment.GetEnvironmentVariable("USERPROFILE"), @"Desktop\Untitled-Autosave-{0}.oop");
+                        autosavePathTemplate = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), String.Format(AutosaveFilenameTemplate, "Untitled", "{0}"));
                     }
                 }
 

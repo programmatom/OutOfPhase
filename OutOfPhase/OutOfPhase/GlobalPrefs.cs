@@ -25,18 +25,44 @@ using System.IO;
 using System.Text;
 using System.Xml;
 using System.Xml.XPath;
+using System.Windows.Forms;
 
 namespace OutOfPhase
 {
     public class GlobalPrefs
     {
+        // Publicly supported and advertized properties.
         public int TabSize = 4;
         public bool AutoIndent = true;
         public bool AutosaveEnabled = true;
         public int AutosaveInterval = 5 * 60; // seconds
         public string OutputDevice = ERole.eMultimedia.ToString();
+        public string OutputDeviceFriendlyName = String.Empty;
         public string FFTWWisdom = null;
         public int Concurrency = 0; // 0: default, 1: sequential, >1: use C procs, <0: use N-(-C) procs [i.e. reserve]
+        public int RecentDocumentsMax = 10;
+        public readonly List<string> RecentDocuments = new List<string>();
+
+        // Unadvertised properties used for diagnostics and controlling experimental features.
+        // As a rule, these properties are set at startup and must not change for the duration or broken behavior may occur.
+        private bool EnableCILSet;
+        public bool EnableCIL = true; // enable for .NET jitted code generation (disable for pcode)
+        private bool EnableEnvelopeSmoothingSet;
+        public bool EnableEnvelopeSmoothing = true; // enable for oscillator envelope smoothing (of loudness and index envelopes)
+
+        public void ReferenceRecentDocument(string path)
+        {
+            int i = RecentDocuments.IndexOf(path);
+            if (i >= 0)
+            {
+                RecentDocuments.RemoveAt(i);
+            }
+            RecentDocuments.Insert(0, path);
+            if (RecentDocuments.Count > RecentDocumentsMax)
+            {
+                RecentDocuments.RemoveRange(RecentDocumentsMax, RecentDocuments.Count - RecentDocumentsMax);
+            }
+        }
 
         public GlobalPrefs()
         {
@@ -45,20 +71,49 @@ namespace OutOfPhase
         public GlobalPrefs(string path)
             : this()
         {
-            XPathNavigator nav;
-
-            XmlDocument xml = new XmlDocument();
-            xml.Load(path);
-
-            TabSize = Math.Min(Math.Max(xml.CreateNavigator().SelectSingleNode("/settings/tabSize").ValueAsInt, Constants.MINTABCOUNT), Constants.MAXTABCOUNT);
-            AutoIndent = xml.CreateNavigator().SelectSingleNode("/settings/autoIndent").ValueAsBoolean;
-            AutosaveEnabled = xml.CreateNavigator().SelectSingleNode("/settings/autosave").ValueAsBoolean;
-            AutosaveInterval = Math.Min(Math.Max(xml.CreateNavigator().SelectSingleNode("/settings/autosaveInterval").ValueAsInt, Constants.MINAUTOSAVEINTERVAL), Constants.MAXAUTOSAVEINTERVAL);
-            OutputDevice = xml.CreateNavigator().SelectSingleNode("/settings/outputDevice").Value;
-            Concurrency = xml.CreateNavigator().SelectSingleNode("/settings/concurrency").ValueAsInt;
-            if ((nav = xml.CreateNavigator().SelectSingleNode("/settings/fftwfWisdom")) != null)
+            try
             {
-                FFTWWisdom = nav.Value;
+                XPathNavigator nav;
+
+                XmlDocument xml = new XmlDocument();
+                xml.Load(path);
+                XPathNavigator root = xml.CreateNavigator();
+
+                TabSize = Math.Min(Math.Max(root.SelectSingleNode("/settings/tabSize").ValueAsInt, Constants.MINTABCOUNT), Constants.MAXTABCOUNT);
+                AutoIndent = root.SelectSingleNode("/settings/autoIndent").ValueAsBoolean;
+                AutosaveEnabled = root.SelectSingleNode("/settings/autosave").ValueAsBoolean;
+                AutosaveInterval = Math.Min(Math.Max(root.SelectSingleNode("/settings/autosaveInterval").ValueAsInt, Constants.MINAUTOSAVEINTERVAL), Constants.MAXAUTOSAVEINTERVAL);
+                OutputDevice = root.SelectSingleNode("/settings/outputDevice").Value;
+                OutputDeviceFriendlyName = root.SelectSingleNode("/settings/outputDevice/@name").Value;
+                Concurrency = root.SelectSingleNode("/settings/concurrency").ValueAsInt;
+                if ((nav = root.SelectSingleNode("/settings/fftwfWisdom")) != null)
+                {
+                    FFTWWisdom = nav.Value;
+                }
+                nav = root.SelectSingleNode("/settings/recentDocuments/@max");
+                if (nav != null)
+                {
+                    RecentDocumentsMax = Math.Max(0, nav.ValueAsInt);
+                }
+                foreach (XPathNavigator recentNav in root.Select("/settings/recentDocuments/recentDocument"))
+                {
+                    RecentDocuments.Add(recentNav.Value);
+                }
+
+                if ((nav = root.SelectSingleNode("/settings/enableCIL")) != null)
+                {
+                    EnableCILSet = true;
+                    EnableCIL = nav.ValueAsBoolean;
+                }
+                if ((nav = root.SelectSingleNode("/settings/enableEnvelopeSmoothing")) != null)
+                {
+                    EnableEnvelopeSmoothingSet = true;
+                    EnableEnvelopeSmoothing = nav.ValueAsBoolean;
+                }
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(String.Format("An error ocurred parsing the application preferences; some preferences will be reset. {0}", exception), "Out Of Phase");
             }
         }
 
@@ -71,6 +126,9 @@ namespace OutOfPhase
                 using (XmlWriter writer = XmlWriter.Create(output, settings))
                 {
                     writer.WriteStartElement("settings");
+
+
+                    // advertised settings
 
                     writer.WriteStartElement("tabSize");
                     writer.WriteValue(TabSize);
@@ -89,6 +147,9 @@ namespace OutOfPhase
                     writer.WriteEndElement();
 
                     writer.WriteStartElement("outputDevice");
+                    writer.WriteStartAttribute("name", null);
+                    writer.WriteValue(OutputDeviceFriendlyName);
+                    writer.WriteEndAttribute();
                     writer.WriteValue(OutputDevice);
                     writer.WriteEndElement();
 
@@ -102,6 +163,36 @@ namespace OutOfPhase
                         writer.WriteValue(FFTWWisdom);
                         writer.WriteEndElement();
                     }
+
+                    writer.WriteStartElement("recentDocuments");
+                    writer.WriteStartAttribute("max");
+                    writer.WriteValue(RecentDocumentsMax);
+                    writer.WriteEndAttribute();
+                    foreach (string recent in RecentDocuments)
+                    {
+                        writer.WriteStartElement("recentDocument");
+                        writer.WriteValue(recent);
+                        writer.WriteEndElement();
+                    }
+                    writer.WriteEndElement();
+
+
+                    // unadvertised settings
+
+                    if (EnableCILSet)
+                    {
+                        writer.WriteStartElement("enableCIL");
+                        writer.WriteValue(EnableCIL);
+                        writer.WriteEndElement();
+                    }
+
+                    if (EnableEnvelopeSmoothingSet)
+                    {
+                        writer.WriteStartElement("enableEnvelopeSmoothing");
+                        writer.WriteValue(EnableEnvelopeSmoothing);
+                        writer.WriteEndElement();
+                    }
+
 
                     writer.WriteEndElement();
                 }

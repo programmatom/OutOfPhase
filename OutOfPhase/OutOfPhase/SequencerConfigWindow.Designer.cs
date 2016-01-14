@@ -105,7 +105,7 @@ namespace OutOfPhase
             this.textBoxSequencerConfig.BackColor = System.Drawing.SystemColors.ControlLightLight;
             this.textBoxSequencerConfig.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBoxSequencerConfig.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textBoxSequencerConfig.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sequencerRecBindingSource, "Source", true));
+            this.textBoxSequencerConfig.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sequencerRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxSequencerConfig.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxSequencerConfig.Location = new System.Drawing.Point(3, 56);
             this.textBoxSequencerConfig.Name = "textBoxSequencerConfig";

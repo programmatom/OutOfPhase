@@ -102,6 +102,42 @@ namespace OutOfPhase
             }
 #endif
         }
+
+        public static void AssertVectorAligned(
+            Fixed64[] vector,
+            int offset)
+        {
+#if VECTOR
+            GCHandle hVector = GCHandle.Alloc(vector, GCHandleType.Pinned);
+            try
+            {
+                int vectorLength = Vector<long>.Count;
+                Debug.Assert((hVector.AddrOfPinnedObject().ToInt64() + offset * sizeof(long)) % (vectorLength * sizeof(long)) == 0);
+            }
+            finally
+            {
+                hVector.Free();
+            }
+#endif
+        }
+
+        public static void AssertVectorAligned(
+            double[] vector,
+            int offset)
+        {
+#if VECTOR
+            GCHandle hVector = GCHandle.Alloc(vector, GCHandleType.Pinned);
+            try
+            {
+                int vectorLength = Vector<double>.Count;
+                Debug.Assert((hVector.AddrOfPinnedObject().ToInt64() + offset * sizeof(double)) % (vectorLength * sizeof(double)) == 0);
+            }
+            finally
+            {
+                hVector.Free();
+            }
+#endif
+        }
 #endif
 
         /* set a floating point vector to a constant */
@@ -317,6 +353,11 @@ namespace OutOfPhase
             float[] interleavedTarget,
             int interleavedTargetOffset)
         {
+#if DEBUG
+            AssertVectorAligned(leftSource, leftSourceOffset);
+            AssertVectorAligned(rightSource, rightSourceOffset);
+            AssertVectorAligned(interleavedTarget, interleavedTargetOffset);
+#endif
             for (int i = 0; i < frameCount; i++)
             {
                 interleavedTarget[2 * i + 0 + interleavedTargetOffset] = leftSource[i + leftSourceOffset];
@@ -334,6 +375,11 @@ namespace OutOfPhase
             int rightTargetOffset,
             int frameCount)
         {
+#if DEBUG
+            AssertVectorAligned(interleavedSource, interleavedSourceOffset);
+            AssertVectorAligned(leftTarget, leftTargetOffset);
+            AssertVectorAligned(rightTarget, rightTargetOffset);
+#endif
             for (int i = 0; i < frameCount; i++)
             {
                 leftTarget[i + leftTargetOffset] = interleavedSource[2 * i + 0 + interleavedSourceOffset];
@@ -1374,6 +1420,11 @@ namespace OutOfPhase
 
             int i = 0;
 
+#if DEBUG
+            AssertVectorAligned(xinVector, xinVectorOffset);
+            AssertVectorAligned(youtVector, youtVectorOffset);
+#endif
+
             /* unrolled to 4 */
             for (; i < count - 3; i += 4)
             {
@@ -1446,6 +1497,11 @@ namespace OutOfPhase
 
             int i = 0;
 
+#if DEBUG
+            AssertVectorAligned(xinVector, xinVectorOffset);
+            AssertVectorAligned(youtVector, youtVectorOffset);
+#endif
+
             /* unrolled to 4 */
             for (; i < count - 3; i += 4)
             {
@@ -1509,6 +1565,11 @@ namespace OutOfPhase
 
             int i;
 
+#if DEBUG
+            AssertVectorAligned(xinVector, xinVectorOffset);
+            AssertVectorAligned(youtVector, youtVectorOffset);
+#endif
+
             for (i = 0; i < count; i++)
             {
                 float X0 = xinVector[xinVectorOffset + i];
@@ -1540,6 +1601,11 @@ namespace OutOfPhase
 
             int i;
 
+#if DEBUG
+            AssertVectorAligned(xinVector, xinVectorOffset);
+            AssertVectorAligned(youtVector, youtVectorOffset);
+#endif
+
             for (i = 0; i < count; i++)
             {
                 float X0 = xinVector[xinVectorOffset + i];
@@ -1563,6 +1629,10 @@ namespace OutOfPhase
             float Factor,
             float Addend)
         {
+#if DEBUG
+            AssertVectorAligned(fixed64Out, fixed64OutOffset);
+            AssertVectorAligned(floatIn, floatInOffset);
+#endif
             for (int i = 0; i < len; i++)
             {
                 float f = floatIn[i + floatInOffset] * Factor + Addend;
@@ -1582,6 +1652,11 @@ namespace OutOfPhase
             int Count,
             float OutputScaling)
         {
+#if DEBUG
+            AssertVectorAligned(FrameIndexBufferBase, FrameIndexBufferOffset);
+            AssertVectorAligned(Data, Offset);
+#endif
+
             int FramesMask = NumFrames - 1;
             Debug.Assert((FramesMask & NumFrames) == 0);
 
@@ -1636,6 +1711,151 @@ namespace OutOfPhase
 
                     Data[i + Offset] = Result * OutputScaling;
                 }
+            }
+        }
+
+#if true // TODO:experimental - smoothing
+        public static void FloatVectorAdditiveRecurrence(
+            float[] target,
+            int targetOffset,
+            float initial,
+            float final,
+            int count)
+        {
+#if DEBUG
+            AssertVectorAligned(target, targetOffset);
+#endif
+
+            float increment = (final - initial) / count;
+
+            int i = 0;
+            float r = initial;
+
+            for (; i < count; i++)
+            {
+                r += increment;
+                target[targetOffset + i] = r;
+            }
+        }
+
+        public static void FloatVectorMultiplicativeRecurrence(
+            float[] target,
+            int targetOffset,
+            float initial,
+            float final,
+            int count)
+        {
+#if DEBUG
+            AssertVectorAligned(target, targetOffset);
+#endif
+
+            float sign = 1f;
+            if (initial < 0)
+            {
+                sign = -1f;
+            }
+#if DEBUG
+            float sign2 = 1f;
+            if (final < 0)
+            {
+                sign2 = -1f;
+            }
+            Debug.Assert(sign == sign2);
+#endif
+            float adjustedInitial = Math.Max(Math.Abs(initial), (float)DECIBELTHRESHHOLD) * sign;
+            float adjustedFinal = Math.Max(Math.Abs(final), (float)DECIBELTHRESHHOLD) * sign;
+            float differential = (float)Math.Pow(Math.Abs(adjustedFinal / adjustedInitial), 1f / count);
+            Debug.Assert(!Single.IsNaN(differential) && !Single.IsInfinity(differential));
+
+            int i = 0;
+            float r = adjustedInitial;
+
+            for (; i < count; i++)
+            {
+                r *= differential;
+                target[targetOffset + i] = r;
+            }
+        }
+
+        public static void FloatVectorAdditiveRecurrenceFixed(
+            double[] target,
+            int targetOffset,
+            double initial,
+            double final,
+            int count)
+        {
+#if DEBUG
+            AssertVectorAligned(target, targetOffset);
+#endif
+
+            double increment = (final - initial) / count;
+
+            int i = 0;
+            double r = initial;
+
+            for (; i < count; i++)
+            {
+                r += increment;
+                target[targetOffset + i] = r;
+            }
+        }
+
+        public static void FloatVectorMultiplicativeRecurrenceFixed(
+            double[] target,
+            int targetOffset,
+            double initial,
+            double final,
+            int count)
+        {
+#if DEBUG
+            AssertVectorAligned(target, targetOffset);
+#endif
+
+            double sign = 1;
+            if (initial < 0)
+            {
+                sign = -1f;
+            }
+#if DEBUG
+            double sign2 = 1;
+            if (final < 0)
+            {
+                sign2 = -1f;
+            }
+            Debug.Assert(sign == sign2);
+#endif
+            double adjustedInitial = Math.Max(Math.Abs(initial), (float)DECIBELTHRESHHOLD) * sign;
+            double adjustedFinal = Math.Max(Math.Abs(final), (float)DECIBELTHRESHHOLD) * sign;
+            double differential = (float)Math.Pow(Math.Abs(adjustedFinal / adjustedInitial), 1f / count);
+            Debug.Assert(!Double.IsNaN(differential) && !Double.IsInfinity(differential));
+
+            int i = 0;
+            double r = adjustedInitial;
+
+            for (; i < count; i++)
+            {
+                r *= differential;
+                target[targetOffset + i] = r;
+            }
+        }
+#endif
+
+        public static void FloatVectorClamp(
+            float[] vector,
+            int offset,
+            float min,
+            float max,
+            int count)
+        {
+#if DEBUG
+            AssertVectorAligned(vector, offset);
+#endif
+
+            int i = 0;
+
+            for (; i < count; i++)
+            {
+                vector[i + offset] = Math.Min(Math.Max(vector[i + offset], min), max);
             }
         }
     }

@@ -99,7 +99,7 @@ namespace OutOfPhase
             // 
             // textBoxFunctionName
             // 
-            this.textBoxFunctionName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.functionObjectRecBindingSource, "Name", true));
+            this.textBoxFunctionName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.functionObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxFunctionName.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxFunctionName.Location = new System.Drawing.Point(3, 46);
             this.textBoxFunctionName.Name = "textBoxFunctionName";
@@ -135,7 +135,7 @@ namespace OutOfPhase
             this.textBoxFunctionBody.BackColor = System.Drawing.SystemColors.ControlLightLight;
             this.textBoxFunctionBody.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBoxFunctionBody.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textBoxFunctionBody.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.functionObjectRecBindingSource, "Source", true));
+            this.textBoxFunctionBody.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.functionObjectRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxFunctionBody.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxFunctionBody.Location = new System.Drawing.Point(3, 85);
             this.textBoxFunctionBody.Name = "textBoxFunctionBody";

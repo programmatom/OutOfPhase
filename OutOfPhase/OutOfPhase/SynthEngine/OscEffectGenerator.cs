@@ -237,7 +237,7 @@ namespace OutOfPhase
         }
 
         /* update envelopes for effects */
-        public static void OscEffectGeneratorUpdateEnvelopes(
+        public static SynthErrorCodes OscEffectGeneratorUpdateEnvelopes(
             OscEffectGenRec Generator,
             double OscillatorFrequency,
             SynthParamRec SynthParams)
@@ -247,11 +247,17 @@ namespace OutOfPhase
             Scan = Generator.List;
             while (Scan != null)
             {
-                Scan.u.OscUpdateEnvelopes(
+                SynthErrorCodes error = Scan.u.OscUpdateEnvelopes(
                     OscillatorFrequency,
                     SynthParams);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 Scan = Scan.Next;
             }
+
+            return SynthErrorCodes.eSynthDone;
         }
 
         /* generate effect cycle.  this is called once per envelope tick to apply */

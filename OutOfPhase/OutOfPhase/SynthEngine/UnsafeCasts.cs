@@ -115,4 +115,100 @@ namespace OutOfPhase
             return cast._float;
         }
     }
+
+    [StructLayout(LayoutKind.Explicit)]
+    public struct UnsafeArrayCastLong
+    {
+        [FieldOffset(0)]
+        public double[] doubles;
+        [FieldOffset(0)]
+        public long[] longs;
+        [FieldOffset(0)]
+        public ulong[] ulongs;
+        [FieldOffset(0)]
+        public Synthesizer.Fixed64[] fixed64s;
+
+        public static long[] AsLongs(double[] a)
+        {
+            Debug.Assert(sizeof(long) == sizeof(double));
+            UnsafeArrayCastLong cast = new UnsafeArrayCastLong();
+            cast.doubles = a;
+            return cast.longs;
+        }
+
+        public static ulong[] AsUlongs(double[] a)
+        {
+            Debug.Assert(sizeof(ulong) == sizeof(double));
+            UnsafeArrayCastLong cast = new UnsafeArrayCastLong();
+            cast.doubles = a;
+            return cast.ulongs;
+        }
+
+        public static double[] AsDoubles(long[] a)
+        {
+            Debug.Assert(sizeof(long) == sizeof(double));
+            UnsafeArrayCastLong cast = new UnsafeArrayCastLong();
+            cast.longs = a;
+            return cast.doubles;
+        }
+
+        public static double[] AsDoubles(ulong[] a)
+        {
+            Debug.Assert(sizeof(ulong) == sizeof(double));
+            UnsafeArrayCastLong cast = new UnsafeArrayCastLong();
+            cast.ulongs = a;
+            return cast.doubles;
+        }
+
+        public static double[] AsDoubles(Synthesizer.Fixed64[] a)
+        {
+            //Debug.Assert(sizeof(Synthesizer.Fixed64) == sizeof(double));
+            UnsafeArrayCastLong cast = new UnsafeArrayCastLong();
+            cast.fixed64s = a;
+            return cast.doubles;
+        }
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    public struct UnsafeScalarCastLong
+    {
+        [FieldOffset(0)]
+        public double _double;
+        [FieldOffset(0)]
+        public long _long;
+        [FieldOffset(0)]
+        public ulong _ulong;
+
+        public static long AsLong(double a)
+        {
+            Debug.Assert(sizeof(long) == sizeof(double));
+            UnsafeScalarCastLong cast = new UnsafeScalarCastLong();
+            cast._double = a;
+            return cast._long;
+        }
+
+        public static ulong AsULong(double a)
+        {
+            Debug.Assert(sizeof(ulong) == sizeof(double));
+            UnsafeScalarCastLong cast = new UnsafeScalarCastLong();
+            cast._double = a;
+            return cast._ulong;
+        }
+
+        public static double AsDouble(long a)
+        {
+            Debug.Assert(sizeof(long) == sizeof(double));
+            UnsafeScalarCastLong cast = new UnsafeScalarCastLong();
+            cast._long = a;
+            return cast._double;
+        }
+
+        public static double AsDouble(ulong a)
+        {
+            Debug.Assert(sizeof(ulong) == sizeof(double));
+            UnsafeScalarCastLong cast = new UnsafeScalarCastLong();
+            cast._ulong = a;
+            return cast._double;
+        }
+    }
 }

@@ -39,6 +39,8 @@ namespace OutOfPhase
         private readonly IWaitFinished waitFinished; // us waiting for them to complete the stopping process
         private readonly ShowCompletionMethod showCompletion;
 
+        private static int lastX = -1, lastY = -1;
+
         public OutputProgressWindow(
             string baseName,
             bool showClipping,
@@ -67,6 +69,25 @@ namespace OutOfPhase
 
             UpdateValues();
             this.Text = String.Format("{0} - {1}", baseName, "Synthesis");
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            if ((lastX >= 0) && (lastY >= 0))
+            {
+                SetDesktopLocation(lastX, lastY);
+            }
+            base.OnShown(e);
+        }
+
+        protected override void OnMove(EventArgs e)
+        {
+            base.OnMove(e);
+            if (Visible)
+            {
+                lastX = DesktopLocation.X;
+                lastY = DesktopLocation.Y;
+            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)

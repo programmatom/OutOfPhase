@@ -374,7 +374,7 @@ namespace OutOfPhase
             // textBoxName
             // 
             this.textBoxName.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.algoSampObjectRecBindingSource, "Name", true));
+            this.textBoxName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.algoSampObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxName.Location = new System.Drawing.Point(88, 3);
             this.textBoxName.Name = "textBoxName";
             this.textBoxName.Size = new System.Drawing.Size(173, 20);
@@ -463,7 +463,7 @@ namespace OutOfPhase
             this.textBoxFormula.BackColor = System.Drawing.SystemColors.ControlLightLight;
             this.textBoxFormula.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBoxFormula.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
-            this.textBoxFormula.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.algoSampObjectRecBindingSource, "AlgoSampFormula", true));
+            this.textBoxFormula.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.algoSampObjectRecBindingSource, "AlgoSampFormula", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxFormula.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxFormula.Location = new System.Drawing.Point(3, 241);
             this.textBoxFormula.Name = "textBoxFormula";

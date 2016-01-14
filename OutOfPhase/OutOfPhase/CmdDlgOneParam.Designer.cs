@@ -172,6 +172,7 @@ namespace OutOfPhase
             this.MinimizeBox = false;
             this.MinimumSize = new System.Drawing.Size(450, 39);
             this.Name = "CmdDlgOneParam";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Edit Command Parameters";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();

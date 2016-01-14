@@ -60,7 +60,7 @@ namespace OutOfPhase
 
         public interface IOscillator
         {
-            void UpdateEnvelopes(
+            SynthErrorCodes UpdateEnvelopes(
                 double NewFrequencyHertz,
                 SynthParamRec SynthParams);
 
@@ -569,16 +569,18 @@ namespace OutOfPhase
             return State.TieToNote;
         }
 
-        /* perform one envelope clock cycle on a state bank.  this returns True when */
-        /* all oscillators are 'finished' (at end of loudness envelope cycle). */
-        public static bool OscStateBankGenerateEnvelopes(
+        // Perform one envelope clock cycle on a state bank. This returns False in OscillatorsRunning when
+        // all oscillators are 'finished' (at end of loudness envelope cycle).
+        public static SynthErrorCodes OscStateBankGenerateEnvelopes(
             OscStateBankRec State,
             bool fReleaseTimerOnly,
-            SynthParamRec SynthParams)
+            SynthParamRec SynthParams,
+            out bool OscillatorsRunning)
         {
+            SynthErrorCodes error;
             OscStateRec OneStateScan;
-            bool OscillatorsRunning;
-            double Frequency;
+
+            OscillatorsRunning = false;
 
             if (State.Release1Countdown >= 0)
             {
@@ -666,6 +668,7 @@ namespace OutOfPhase
                 }
 
                 /* update the pitch LFO modulation & figure out what the current pitch is */
+                double Frequency;
                 if (State.PitchLFOStartCountdown > 0)
                 {
                     State.PitchLFOStartCountdown -= 1;
@@ -674,11 +677,17 @@ namespace OutOfPhase
                 else
                 {
                     /* do some pitch stuff */
+                    error = SynthErrorCodes.eSynthDone;
                     Frequency = LFOGenUpdateCycle(
                         State.PitchLFO,
                         State.CurrentFrequency,
                         State.CurrentFrequency,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
 
                 /* perform a cycle of resampling */
@@ -696,10 +705,14 @@ namespace OutOfPhase
                 /* process combined effects */
                 if (State.CombinedOscEffectGenerator != null)
                 {
-                    OscEffectGeneratorUpdateEnvelopes(
+                    error = OscEffectGeneratorUpdateEnvelopes(
                         State.CombinedOscEffectGenerator,
                         State.CurrentFrequency,
                         SynthParams);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
             }
             else
@@ -710,7 +723,7 @@ namespace OutOfPhase
                 OscillatorsRunning = true;
             }
 
-            return !OscillatorsRunning;
+            return SynthErrorCodes.eSynthDone;
         }
 
         /* use the state of the object to generate a cycle of waveform. */

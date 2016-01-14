@@ -27,6 +27,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Windows.Forms;
 
 namespace OutOfPhase
 {
@@ -325,7 +326,7 @@ namespace OutOfPhase
 
         protected bool Patch<T>(T newValue, ref T storage, string propertyName, bool modified) where T : IEquatable<T>
         {
-            if (!newValue.Equals(storage))
+            if (!EqualityComparer<T>.Default.Equals(newValue, storage))
             {
                 storage = newValue;
                 Changed(propertyName, modified);
@@ -341,7 +342,7 @@ namespace OutOfPhase
 
         protected bool PatchObject<T>(object newValue, ref T storage, string propertyName, bool modified)
         {
-            if (((newValue == null) != (storage == null)) || !newValue.Equals(storage))
+            if (!object.Equals(newValue, storage))
             {
                 storage = (T)newValue;
                 Changed(propertyName, modified);
@@ -630,7 +631,7 @@ namespace OutOfPhase
         public NewSchoolRec NewSchool { get { return _NewSchool; } }
 
 
-        // TODO: These values are not persisted, but probably should be
+        // TODO: These values are not persisted, but perhaps should be
 
         private short _SavedWindowXLoc;
         public const string SavedWindowXLoc_PropertyName = "SavedWindowXLoc";
@@ -698,6 +699,28 @@ namespace OutOfPhase
             : this()
         {
             Load(reader);
+        }
+
+        public static bool TryLoadDocument(string path, out Document document)
+        {
+            document = null;
+            try
+            {
+                document = new Document(path);
+                return true;
+            }
+            catch (FileNotFoundException)
+            {
+            }
+            catch (InvalidDataException)
+            {
+                MessageBox.Show(String.Format("The file \"{0}\" does not appear to be an Out Of Phase document file.", path), "Out Of Phase");
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(String.Format("Something failed while trying to load the document \"{0}\": {1}", path, exception), "Out Of Phase");
+            }
+            return false;
         }
 
         private void Load(BinaryReader reader)
@@ -4063,8 +4086,35 @@ namespace OutOfPhase
 
         /* set 12-step frequency value, in cents */
         eCmdSetFrequencyValue, /* <1i> = 0..11 index, <2l> = normal freq * 1000 */
+        eCmdSetFrequencyValueLegacy, /* <1i> = 0..11 index, <2l> = normal freq * 1000 */
         eCmdAdjustFrequencyValue, /* <1i> = 0..11 index, <2l> = scale factor * 1000 */
+        eCmdAdjustFrequencyValueLegacy, /* <1i> = 0..11 index, <2l> = scale factor * 1000 */
         eCmdResetFrequencyValue, /* <1i> = 0..11 index */
+        eCmdLoadFrequencyModel, // <1s> = model name, <1l> = tonic offset (integer 0..11)
+        eCmdSweepFrequencyValue0Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue1Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue2Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue3Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue4Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue5Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue6Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue7Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue8Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue9Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue10Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue11Absolute, // <1l> = new frequency factor, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue0Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue1Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue2Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue3Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue4Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue5Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue6Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue7Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue8Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue9Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue10Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
+        eCmdSweepFrequencyValue11Relative, // <1l> = frequency factor adjust, <2xs> = # of beats to get there
 
         /* set and adjust effect control parameters */
         eCmdSetEffectParam1, /* specify the new default effect parameter in <1l> */
@@ -4270,7 +4320,7 @@ namespace OutOfPhase
         [Bindable(true)]
         public double DefaultReleasePoint1 { get { return _DefaultReleasePoint1; } set { Patch(value, ref _DefaultReleasePoint1, DefaultReleasePoint1_PropertyName); } }
 
-        private NoteFlags _DefaultReleasePoint1ModeFlag = NoteFlags.eRelease1FromStart;
+        private NoteFlags _DefaultReleasePoint1ModeFlag = NoteFlags.eRelease1FromEnd; // More generally useful to default to from-end
         public const string DefaultReleasePoint1ModeFlag_PropertyName = "DefaultReleasePoint1ModeFlag";
         public const string DefaultReleasePoint1ModeFlag_EnumCategoryName = NoteNoteObjectRec.ReleasePoint1Origin_EnumCategoryName;
         public static Enum[] DefaultReleasePoint1ModeFlagAllowedValues { get { return new Enum[] { NoteFlags.eRelease1FromStart, NoteFlags.eRelease1FromEnd, }; } }
@@ -4379,7 +4429,7 @@ namespace OutOfPhase
         [Bindable(true)]
         public double DefaultPitchDisplacementDepthAdjust { get { return _DefaultPitchDisplacementDepthAdjust; } set { Patch(value, ref _DefaultPitchDisplacementDepthAdjust, DefaultPitchDisplacementDepthAdjust_PropertyName); } }
 
-#if false // TODO: remove - apparently unused
+#if false // TODO: remove - apparently never implemented
         private NoteFlags _DefaultPitchDisplacementDepthAdjustModeFlag;
         public const string DefaultPitchDisplacementDepthAdjustModeFlag_PropertyName = "DefaultPitchDisplacementDepthAdjustModeFlag";
         [Bindable(true)]
@@ -4489,7 +4539,7 @@ namespace OutOfPhase
         public bool MultiInstrument { get { return _MultiInstrument; } set { Patch(value, ref _MultiInstrument, MultiInstrument_PropertyName); } }
 
 
-        private string _InstrumentName;
+        private string _InstrumentName = String.Empty;
         public const string InstrumentName_PropertyName = "InstrumentName";
         [Bindable(true)]
         public string InstrumentName { get { return _InstrumentName; } set { Patch(value, ref _InstrumentName, InstrumentName_PropertyName); } }

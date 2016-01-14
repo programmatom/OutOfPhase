@@ -134,7 +134,7 @@ namespace OutOfPhase
 
         private void buttonPlay_Click(object sender, EventArgs e)
         {
-            mainWindow.DoAutosave();
+            MainWindow.DoAutosaveGlobally();
 
             if (!mainWindow.MakeUpToDate())
             {

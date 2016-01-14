@@ -285,23 +285,32 @@ namespace OutOfPhase
             }
 
             /* update vocoder state with accent information */
-            public void TrackUpdateState(
+            public SynthErrorCodes TrackUpdateState(
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 double DoubleTemp;
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.OutputScaling,
                     ref Accents,
                     SynthParams,
                     out this.CurrentOutputScaling);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
-                ScalarParamEval(
+                error = ScalarParamEval(
                     this.Track.WaveTableIndex,
                     ref Accents,
                     SynthParams,
                     out DoubleTemp);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 DoubleTemp = DoubleTemp * this.NumberOfTablesMinus1;
                 if (DoubleTemp < 0)
                 {
@@ -312,33 +321,50 @@ namespace OutOfPhase
                     DoubleTemp = this.NumberOfTablesMinus1;
                 }
                 this.CurrentWaveTableIndex = DoubleTemp;
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* update vocoder state with accent information */
-            public void OscUpdateEnvelopes(
+            public SynthErrorCodes OscUpdateEnvelopes(
                 double OscillatorFrequency,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 double DoubleTemp;
 
+                error = SynthErrorCodes.eSynthDone;
                 this.CurrentOutputScaling = LFOGenUpdateCycle(
                     this.Oscillator.OutputScalingLFO,
                     EnvelopeUpdate(
                         this.Oscillator.OutputScalingEnvelope,
                         OscillatorFrequency,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     OscillatorFrequency,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
+                error = SynthErrorCodes.eSynthDone;
                 DoubleTemp = this.NumberOfTablesMinus1 *
                     LFOGenUpdateCycle(
                         this.Oscillator.WaveTableIndexLFO,
                         EnvelopeUpdate(
                             this.Oscillator.WaveTableIndexEnvelope,
                             OscillatorFrequency,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         OscillatorFrequency,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 if (DoubleTemp < 0)
                 {
                     DoubleTemp = 0;
@@ -348,6 +374,8 @@ namespace OutOfPhase
                     DoubleTemp = this.NumberOfTablesMinus1;
                 }
                 this.CurrentWaveTableIndex = DoubleTemp;
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void OscKeyUpSustain1()

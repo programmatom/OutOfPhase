@@ -44,7 +44,7 @@ namespace OutOfPhase
 
         public interface ITrackEffect : IEffect
         {
-            void TrackUpdateState(
+            SynthErrorCodes TrackUpdateState(
                 ref AccentRec Accents,
                 SynthParamRec SynthParams);
         }
@@ -54,7 +54,7 @@ namespace OutOfPhase
             void OscFixEnvelopeOrigins(
                 int ActualPreOriginTime);
 
-            void OscUpdateEnvelopes(
+            SynthErrorCodes OscUpdateEnvelopes(
                 double OscillatorFrequency,
                 SynthParamRec SynthParams);
 

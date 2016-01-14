@@ -298,6 +298,8 @@ namespace OutOfPhase
             float[] workspace,
             int lOffset,
             int rOffset,
+            int loudnessWorkspaceOffset,
+            int indexWorkspaceOffset,
             SynthParamRec SynthParams);
 
         /* algorithmic oscillator state record */
@@ -325,12 +327,11 @@ namespace OutOfPhase
 
             /* index */
             public double Index;
-            public Fixed64 Index64; /* 64-bit fixed point */
+            public double PreviousIndex;
 
-            /* left channel loudness */
-            public float LeftLoudness;
-            /* right channel loudness */
-            public float RightLoudness;
+            // loudness envelope
+            public float Loudness;
+            public float PreviousLoudness;
             /* panning position for splitting envelope generator into stereo channels */
             /* 0 = left channel, 0.5 = middle, 1 = right channel */
             public float Panning;
@@ -360,17 +361,14 @@ namespace OutOfPhase
 
             /* perform one envelope update cycle, and set a new frequency for an algorithmic */
             /* state object.  used for portamento and modulation of frequency (vibrato) */
-            public void UpdateEnvelopes(
+            public SynthErrorCodes UpdateEnvelopes(
                 double NewFrequencyHertz,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
                 AlgorithmicStateRec State = this;
 
-                float FloatTemp;
                 double Differential;
-                float OneHalfVol;
-                float LeftLoudness;
-                float RightLoudness;
 
                 if (State.PitchLFOStartCountdown > 0)
                 {
@@ -379,11 +377,17 @@ namespace OutOfPhase
                 else
                 {
                     /* do some pitch stuff */
+                    error = SynthErrorCodes.eSynthDone;
                     NewFrequencyHertz = LFOGenUpdateCycle(
                         State.PitchLFO,
                         NewFrequencyHertz,
                         NewFrequencyHertz,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier + State.Template.FrequencyAdder;
                 Differential = NewFrequencyHertz * State.OneOverFinalOutputSamplingRate;
@@ -399,14 +403,22 @@ namespace OutOfPhase
                     State.PreStartCountdown -= 1;
                 }
 
+                error = SynthErrorCodes.eSynthDone;
+                State.PreviousIndex = State.Index;
                 State.Index = LFOGenUpdateCycle(
                     State.IndexLFOGenerator,
                     EnvelopeUpdate(
                         State.AlgorithmicIndexEnvelope,
                         NewFrequencyHertz,
-                        SynthParams),
+                        SynthParams,
+                        ref error),
                     NewFrequencyHertz,
-                    SynthParams);
+                    SynthParams,
+                    ref error);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
                 if (State.Index < 0)
                 {
                     State.Index = 0;
@@ -415,32 +427,38 @@ namespace OutOfPhase
                 {
                     State.Index = 1;
                 }
-                State.Index64 = new Fixed64(State.Index);
 
-                FloatTemp = (float)(State.NoteLoudnessScaling *
+                error = SynthErrorCodes.eSynthDone;
+                State.PreviousLoudness = State.Loudness;
+                State.Loudness = (float)(State.NoteLoudnessScaling *
                     LFOGenUpdateCycle(
                         State.LoudnessLFOGenerator,
                         EnvelopeUpdate(
                             State.AlgorithmicLoudnessEnvelope,
                             NewFrequencyHertz,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         NewFrequencyHertz,
-                        SynthParams));
-                /* left = FloatTemp * .5 * (1 - State.Panning) */
-                /* right = FloatTemp * .5 * (1 + State.Panning) */
-                OneHalfVol = .5f * FloatTemp;
-                LeftLoudness = OneHalfVol - OneHalfVol * State.Panning;
-                RightLoudness = OneHalfVol + OneHalfVol * State.Panning;
-                State.LeftLoudness = LeftLoudness;
-                State.RightLoudness = RightLoudness;
+                        SynthParams,
+                        ref error));
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
                 if (State.OscEffectGenerator != null)
                 {
-                    OscEffectGeneratorUpdateEnvelopes(
+                    error = OscEffectGeneratorUpdateEnvelopes(
                         State.OscEffectGenerator,
                         NewFrequencyHertz,
                         SynthParams);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* fix up pre-origin time for the algorithmic state object */
@@ -635,7 +653,16 @@ namespace OutOfPhase
                 int PrivateWorkspaceROffset,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error = SynthErrorCodes.eSynthDone;
+
                 AlgorithmicStateRec State = this;
+
+#if DEBUG
+                Debug.Assert(!SynthParams.ScratchWorkspace1InUse);
+                SynthParams.ScratchWorkspace1InUse = true;
+#endif
+                int loudnessWorkspaceOffset = SynthParams.ScratchWorkspace1LOffset;
+                int indexWorkspaceOffset = SynthParams.ScratchWorkspace1ROffset;
 
                 if (State.PreStartCountdown <= 0)
                 {
@@ -648,6 +675,8 @@ namespace OutOfPhase
                             workspace,
                             RawBufferLOffset,
                             RawBufferROffset,
+                            loudnessWorkspaceOffset,
+                            indexWorkspaceOffset,
                             SynthParams);
                     }
                     else
@@ -671,10 +700,16 @@ namespace OutOfPhase
                             workspace,
                             PrivateWorkspaceLOffset,
                             PrivateWorkspaceROffset,
+                            loudnessWorkspaceOffset,
+                            indexWorkspaceOffset,
                             SynthParams);
 
+#if DEBUG
+                        SynthParams.ScratchWorkspace1InUse = false;
+#endif
+
                         /* apply processor to it */
-                        SynthErrorCodes error = ApplyOscEffectGenerator(
+                        error = ApplyOscEffectGenerator(
                             State.OscEffectGenerator,
                             workspace,
                             PrivateWorkspaceLOffset,
@@ -683,7 +718,7 @@ namespace OutOfPhase
                             SynthParams);
                         if (error != SynthErrorCodes.eSynthDone)
                         {
-                            return error;
+                            goto Error;
                         }
 
                         /* copy out data */
@@ -702,7 +737,14 @@ namespace OutOfPhase
                     }
                 }
 
-                return SynthErrorCodes.eSynthDone;
+
+            Error:
+
+#if DEBUG
+                SynthParams.ScratchWorkspace1InUse = false;
+#endif
+
+                return error;
             }
 
             public static void Wave_Ramp(
@@ -711,198 +753,234 @@ namespace OutOfPhase
                 float[] workspace,
                 int lOffset,
                 int rOffset,
+                int loudnessWorkspaceOffset,
+                int indexWorkspaceOffset,
                 SynthParamRec SynthParams)
             {
                 /* load local values */
-                float LocalLeftLoudness = State.LeftLoudness;
-                float LocalRightLoudness = State.RightLoudness;
+                float LocalLoudness = State.Loudness;
+                float LeftPan = .5f - .5f * State.Panning; // (1 - State.Panning) / 2
+                float RightPan = .5f + .5f * State.Panning; // (1 + State.Panning) / 2
                 //Fixed64 LocalWaveTableSamplePosition = State.WaveTableSamplePosition;
                 //Fixed64 LocalWaveTableSamplePositionDifferential = State.WaveTableSamplePositionDifferential;
-                //Fixed64 LocalIndex = State.Index64;
-                // strength reduction
-                uint LocalWaveTableSamplePosition_FracI = State.WaveTableSamplePosition_FracI;
-                uint LocalWaveTableSamplePositionDifferential_FracI = State.WaveTableSamplePositionDifferential_FracI;
-                uint LocalIndex_FracI = State.Index64.FracI;
-
-                /* eliminate need for 2nd compare for 1.0 case */
-                if (State.Index64.Int != 0)
-                {
-                    //LocalIndex = new Fixed64(0xffffffff00000000);
-                    LocalIndex_FracI = 0;
-                }
-
-                /* computed stuff */
-                float First = (float)State.Index;
-                float Second = 1 - First;
-                float TwoTimesFactorOverFirst = 0;
-                if (First > 0)
-                {
-                    TwoTimesFactorOverFirst = (float)(2 * (1d / (double)Fixed64.FIXED64_WHOLE) / First);
-                }
-                float TwoTimesFactorOverSecond = 0;
-                if (Second > 0)
-                {
-                    TwoTimesFactorOverSecond = (float)(2 * (1d / (double)Fixed64.FIXED64_WHOLE) / Second);
-                }
-                float NegTwoTimesFactorOverSecond = -TwoTimesFactorOverSecond;
-                float SecondOffset = 1 + LocalIndex_FracI * TwoTimesFactorOverSecond;
-
-                int i = 0;
-
-#if DEBUG
-                AssertVectorAligned(workspace, lOffset);
-                AssertVectorAligned(workspace, rOffset);
-#endif
-#if VECTOR
-                if (EnableVector && (nActualFrames >= 2 * Vector<float>.Count))
-                {
-                    // Vector API currently lacks uint==>float conversion, so to work around, the wave phase recurrence
-                    // is computed as float throughout. This has two problems:
-                    // 1. reduction of precision vs. historical implementation using 32-bit uint
-                    // 2. lack of robustness regarding wrap-around. The recurrence update checks for overflow and
-                    //    subtracts 1 (but it is sufficient for a well-behaved score).
-#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                    float[] fb = SynthParams.vectorWorkspace2.Base;
-                    int fOffset = SynthParams.vectorWorkspace2.Offset;
-#else
-                    uint[] uib = SynthParams.vectorWorkspace1.BaseUint;
-                    int uiOffset = SynthParams.vectorWorkspace1.Offset;
-#endif
-                    for (int j = 0; j < Vector<int>.Count; j++)
-                    {
-#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                        fb[j + fOffset] = LocalWaveTableSamplePosition_FracI;
-#else
-                        uib[j + uiOffset] = LocalWaveTableSamplePosition_FracI;
-#endif
-                        LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
-                            + LocalWaveTableSamplePositionDifferential_FracI);
-                    }
-#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                    Vector<float> vPosF = new Vector<float>(fb, fOffset);
-#else
-                    Vector<uint> vPos = new Vector<uint>(uib, uiOffset);
-#endif
-                    Vector<float> vFirstOffset = new Vector<float>(-1);
-                    Vector<float> vSecondOffset = new Vector<float>(SecondOffset);
-                    Vector<float> vTwoTimesFactorOverFirst = new Vector<float>(TwoTimesFactorOverFirst);
-                    Vector<float> vNegTwoTimesFactorOverSecond = new Vector<float>(NegTwoTimesFactorOverSecond);
-                    Vector<float> vLocalLeftLoudness = new Vector<float>(LocalLeftLoudness);
-                    Vector<float> vLocalRightLoudness = new Vector<float>(LocalRightLoudness);
-#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                    Vector<float> vLocalIndexFracF = new Vector<float>((float)LocalIndex_FracI);
-                    Vector<float> vDifferentialF = new Vector<float>((float)(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI));
-                    Vector<float> vRolloverLimit = new Vector<float>((float)4294967296);
-#else
-                    Vector<uint> vLocalIndexFracI = new Vector<uint>(LocalIndex_FracI);
-                    Vector<uint> vDifferential = new Vector<uint>(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI);
-#endif
-                    for (; i <= nActualFrames - Vector<float>.Count; i += Vector<float>.Count)
-                    {
-                        /* compute triangle function */
-#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                        Vector<int> selector = Vector.LessThan(vPosF, vLocalIndexFracF);
-#else
-                        Vector<int> selector = Vector.AsVectorInt32(Vector.LessThan(vPos, vLocalIndexFracI));
-#endif
-                        Vector<float> X =
-                            Vector.ConditionalSelect(
-                                selector,
-                                vFirstOffset,
-                                vSecondOffset)
-                            +
-                            Vector.ConditionalSelect(
-                                selector,
-                                vTwoTimesFactorOverFirst,
-                                vNegTwoTimesFactorOverSecond)
-                            // need uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                            *
-#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                            vPosF;
-#else
-                            vPos;
-#endif
-
-                        Vector<float> l = new Vector<float>(workspace, i + lOffset);
-                        Vector<float> r = new Vector<float>(workspace, i + rOffset);
-                        l = l + X * vLocalLeftLoudness;
-                        r = r + X * vLocalRightLoudness;
-                        l.CopyTo(workspace, i + lOffset);
-                        r.CopyTo(workspace, i + rOffset);
-
-#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                        vPosF = vPosF + vDifferentialF;
-                        vPosF = Vector.ConditionalSelect(
-                            Vector.GreaterThanOrEqual(vPosF, vRolloverLimit),
-                            vPosF - vRolloverLimit,
-                            vPosF);
-#else
-                        vPos = vPos + vDifferential;
-#endif
-                    }
-#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                    LocalWaveTableSamplePosition_FracI = unchecked((uint)vPosF[0]); // capture final-next recurrence value for cleanup loop
-#else
-                    LocalWaveTableSamplePosition_FracI = vPos[0]; // capture final-next recurrence value for cleanup loop
-#endif
-                }
-#endif
-
-                for (; i < nActualFrames; i++)
-                {
-                    float OrigLeft = workspace[i + lOffset];
-                    float OrigRight = workspace[i + rOffset];
-
-                    /* compute triangle function */
-                    float X;
-                    if (LocalWaveTableSamplePosition_FracI <= LocalIndex_FracI)
-                    {
-                        /* rising cycle */
-                        X = -1 + LocalWaveTableSamplePosition_FracI * TwoTimesFactorOverFirst;
-                    }
-                    else
-                    {
-                        /* falling cycle */
-                        // X = 1 - (LocalWaveTableSamplePosition.FracI - LocalIndex.FracI) * TwoTimesFactorOverSecond;
-                        // algebraically rewritten:
-                        X = SecondOffset + LocalWaveTableSamplePosition_FracI * NegTwoTimesFactorOverSecond;
-                    }
-
-                    workspace[i + lOffset] = OrigLeft + X * LocalLeftLoudness;
-                    workspace[i + rOffset] = OrigRight + X * LocalRightLoudness;
-
-                    //LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
-                    LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
-                        + LocalWaveTableSamplePositionDifferential_FracI);
-                }
-
-                /* save local state back to record */
-                //State.WaveTableSamplePosition = LocalWaveTableSamplePosition;
-                State.WaveTableSamplePosition_FracI = LocalWaveTableSamplePosition_FracI;
-            }
-
-            public static void Wave_Pulse(
-                AlgorithmicStateRec State,
-                int nActualFrames,
-                float[] workspace,
-                int lOffset,
-                int rOffset,
-                SynthParamRec SynthParams)
-            {
-                /* load local values */
-                float LocalLeftLoudness = State.LeftLoudness;
-                float LocalRightLoudness = State.RightLoudness;
-                //Fixed64 LocalWaveTableSamplePosition = State.WaveTableSamplePosition;
-                //Fixed64 LocalWaveTableSamplePositionDifferential = State.WaveTableSamplePositionDifferential;
-                Fixed64 LocalIndex = State.Index64;
                 // strength reduction:
                 uint LocalWaveTableSamplePosition_FracI = State.WaveTableSamplePosition_FracI;
                 uint LocalWaveTableSamplePositionDifferential_FracI = State.WaveTableSamplePositionDifferential_FracI;
-                uint LocalIndex_FracI = State.Index64.FracI;
 
-                if (State.Index64.Int == 0)
+#if true // TODO:experimental - smoothing
+                if (Program.Config.EnableEnvelopeSmoothing
+                    // case of no motion in either smoothed axes can use fast code path
+                    && ((State.Loudness != State.PreviousLoudness)
+                    || (State.Index != State.PreviousIndex)))
                 {
-                    /* everything except the 1.0 case */
+                    // envelope smoothing
+
+                    float LocalPreviousLoudness = State.PreviousLoudness;
+
+                    // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                    if (IsLFOSampleAndHold(State.LoudnessLFOGenerator))
+                    {
+                        LocalPreviousLoudness = LocalLoudness;
+                    }
+
+                    if (!EnvelopeCurrentSegmentExponential(State.AlgorithmicLoudnessEnvelope))
+                    {
+                        FloatVectorAdditiveRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+                    else
+                    {
+                        FloatVectorMultiplicativeRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+
+                    int i = 0;
+
+                    if (State.Index != State.PreviousIndex)
+                    {
+                        // loudness and index variant
+
+                        double LocalPreviousIndex = State.PreviousIndex;
+                        double LocalIndex = State.Index;
+
+                        // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                        if (IsLFOSampleAndHold(State.IndexLFOGenerator))
+                        {
+                            LocalPreviousIndex = LocalIndex;
+                        }
+
+                        if (!EnvelopeCurrentSegmentExponential(State.AlgorithmicIndexEnvelope))
+                        {
+                            FloatVectorAdditiveRecurrence(
+                                workspace,
+                                indexWorkspaceOffset,
+                                (float)LocalPreviousIndex * (float)Fixed64.FIXED64_WHOLE,
+                                (float)LocalIndex * (float)Fixed64.FIXED64_WHOLE,
+                                nActualFrames);
+                        }
+                        else
+                        {
+                            FloatVectorMultiplicativeRecurrence(
+                                workspace,
+                                indexWorkspaceOffset,
+                                (float)LocalPreviousIndex * (float)Fixed64.FIXED64_WHOLE,
+                                (float)LocalIndex * (float)Fixed64.FIXED64_WHOLE,
+                                nActualFrames);
+                        }
+
+                        const float MinFloatOverZero = 1; // in Fixed64 units
+                        float MaxFloatLessThan1 = UnsafeScalarCast.AsFloat(UnsafeScalarCast.AsInt((float)Fixed64.FIXED64_WHOLE) - 1);
+                        FloatVectorClamp(
+                            workspace,
+                            indexWorkspaceOffset,
+                            MinFloatOverZero,
+                            MaxFloatLessThan1,
+                            nActualFrames);
+
+                        // TODO: vectorize
+
+                        for (; i < nActualFrames; i++)
+                        {
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
+
+                            float LocalIndex_FracI = workspace[i + indexWorkspaceOffset];
+
+                            /* compute triangle function */
+                            float X;
+                            if (LocalWaveTableSamplePosition_FracI <= LocalIndex_FracI)
+                            {
+                                /* rising cycle */
+                                float First = LocalIndex_FracI;
+                                float TwoTimesFactorOverFirst = (float)(2 / First);
+                                X = -1 + LocalWaveTableSamplePosition_FracI * TwoTimesFactorOverFirst;
+                            }
+                            else
+                            {
+                                /* falling cycle */
+                                // X = 1 - (LocalWaveTableSamplePosition.FracI - LocalIndex.FracI) * TwoTimesFactorOverSecond;
+                                // algebraically rewritten:
+                                float Second = (float)Fixed64.FIXED64_WHOLE - LocalIndex_FracI;
+                                float TwoTimesFactorOverSecond = (float)(2 / Second);
+                                float NegTwoTimesFactorOverSecond = -TwoTimesFactorOverSecond;
+                                float SecondOffset = 1 + LocalIndex_FracI * TwoTimesFactorOverSecond;
+                                X = SecondOffset + LocalWaveTableSamplePosition_FracI * NegTwoTimesFactorOverSecond;
+                            }
+
+                            LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                            workspace[i + lOffset] = OrigLeft + X * LocalLoudness * LeftPan;
+                            workspace[i + rOffset] = OrigRight + X * LocalLoudness * RightPan;
+
+                            //LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
+                            LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
+                                + LocalWaveTableSamplePositionDifferential_FracI);
+                        }
+                    }
+                    else
+                    {
+                        // index invariant
+
+                        //Fixed64 LocalIndex = State.Index64;
+                        // strength reduction:
+                        Fixed64 LocalIndex64 = new Fixed64(State.Index);
+                        uint LocalIndex_FracI = LocalIndex64.FracI;
+
+                        /* eliminate need for 2nd compare for 1.0 case */
+                        if (LocalIndex64.Int != 0)
+                        {
+                            LocalIndex_FracI = 0xffffffff; // approximate by clamping at largest representable number
+                        }
+
+                        /* computed stuff */
+                        float First = (float)State.Index;
+                        float Second = 1 - First;
+                        float TwoTimesFactorOverFirst = 0;
+                        if (First > 0)
+                        {
+                            TwoTimesFactorOverFirst = (float)(2 * (1d / (double)Fixed64.FIXED64_WHOLE) / First);
+                        }
+                        float TwoTimesFactorOverSecond = 0;
+                        if (Second > 0)
+                        {
+                            TwoTimesFactorOverSecond = (float)(2 * (1d / (double)Fixed64.FIXED64_WHOLE) / Second);
+                        }
+                        float NegTwoTimesFactorOverSecond = -TwoTimesFactorOverSecond;
+                        float SecondOffset = 1 + LocalIndex_FracI * TwoTimesFactorOverSecond;
+
+                        // TODO: vectorize
+
+                        for (; i < nActualFrames; i++)
+                        {
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
+
+                            /* compute triangle function */
+                            float X;
+                            if (LocalWaveTableSamplePosition_FracI <= LocalIndex_FracI)
+                            {
+                                /* rising cycle */
+                                X = -1 + LocalWaveTableSamplePosition_FracI * TwoTimesFactorOverFirst;
+                            }
+                            else
+                            {
+                                /* falling cycle */
+                                // X = 1 - (LocalWaveTableSamplePosition.FracI - LocalIndex.FracI) * TwoTimesFactorOverSecond;
+                                // algebraically rewritten:
+                                X = SecondOffset + LocalWaveTableSamplePosition_FracI * NegTwoTimesFactorOverSecond;
+                            }
+
+                            LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                            workspace[i + lOffset] = OrigLeft + X * LocalLoudness * LeftPan;
+                            workspace[i + rOffset] = OrigRight + X * LocalLoudness * RightPan;
+
+                            //LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
+                            LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
+                                + LocalWaveTableSamplePositionDifferential_FracI);
+                        }
+                    }
+                }
+                else
+#endif
+                {
+                    // no envelope smoothing
+
+                    float LocalLeftLoudness = LeftPan * LocalLoudness;
+                    float LocalRightLoudness = RightPan * LocalLoudness;
+
+                    //Fixed64 LocalIndex = State.Index64;
+                    // strength reduction:
+                    Fixed64 LocalIndex64 = new Fixed64(State.Index);
+                    uint LocalIndex_FracI = LocalIndex64.FracI;
+
+                    /* eliminate need for 2nd compare for 1.0 case */
+                    if (LocalIndex64.Int != 0)
+                    {
+                        LocalIndex_FracI = 0xffffffff; // approximate by clamping at largest representable number
+                    }
+
+                    /* computed stuff */
+                    float First = (float)State.Index;
+                    float Second = 1 - First;
+                    float TwoTimesFactorOverFirst = 0;
+                    if (First > 0)
+                    {
+                        TwoTimesFactorOverFirst = (float)(2 * (1d / (double)Fixed64.FIXED64_WHOLE) / First);
+                    }
+                    float TwoTimesFactorOverSecond = 0;
+                    if (Second > 0)
+                    {
+                        TwoTimesFactorOverSecond = (float)(2 * (1d / (double)Fixed64.FIXED64_WHOLE) / Second);
+                    }
+                    float NegTwoTimesFactorOverSecond = -TwoTimesFactorOverSecond;
+                    float SecondOffset = 1 + LocalIndex_FracI * TwoTimesFactorOverSecond;
 
                     int i = 0;
 
@@ -940,27 +1018,45 @@ namespace OutOfPhase
 #else
                         Vector<uint> vPos = new Vector<uint>(uib, uiOffset);
 #endif
-                        Vector<float> vOne = new Vector<float>((float)1);
-                        Vector<uint> vSignBit = new Vector<uint>((uint)0x80000000);
+                        Vector<float> vFirstOffset = new Vector<float>(-1);
+                        Vector<float> vSecondOffset = new Vector<float>(SecondOffset);
+                        Vector<float> vTwoTimesFactorOverFirst = new Vector<float>(TwoTimesFactorOverFirst);
+                        Vector<float> vNegTwoTimesFactorOverSecond = new Vector<float>(NegTwoTimesFactorOverSecond);
                         Vector<float> vLocalLeftLoudness = new Vector<float>(LocalLeftLoudness);
                         Vector<float> vLocalRightLoudness = new Vector<float>(LocalRightLoudness);
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
                         Vector<float> vLocalIndexFracF = new Vector<float>((float)LocalIndex_FracI);
                         Vector<float> vDifferentialF = new Vector<float>((float)(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI));
-                        Vector<float> vRolloverLimit = new Vector<float>((float)4294967296);
+                        Vector<float> vRolloverLimit = new Vector<float>((float)Fixed64.FIXED64_WHOLE);
 #else
                         Vector<uint> vLocalIndexFracI = new Vector<uint>(LocalIndex_FracI);
                         Vector<uint> vDifferential = new Vector<uint>(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI);
 #endif
                         for (; i <= nActualFrames - Vector<float>.Count; i += Vector<float>.Count)
                         {
-                            /* compute variable pulse function */
+                            /* compute triangle function */
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                            Vector<int> selector = Vector.GreaterThanOrEqual(vPosF, vLocalIndexFracF);
+                            Vector<int> selector = Vector.LessThan(vPosF, vLocalIndexFracF);
 #else
                             Vector<int> selector = Vector.AsVectorInt32(Vector.LessThan(vPos, vLocalIndexFracI));
 #endif
-                            Vector<float> X = Vector.AsVectorSingle((Vector.AsVectorUInt32(selector) & vSignBit) ^ Vector.AsVectorUInt32(vOne));
+                            Vector<float> X =
+                                Vector.ConditionalSelect(
+                                    selector,
+                                    vFirstOffset,
+                                    vSecondOffset)
+                                +
+                                Vector.ConditionalSelect(
+                                    selector,
+                                    vTwoTimesFactorOverFirst,
+                                    vNegTwoTimesFactorOverSecond)
+                                // need uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
+                                *
+#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
+                                vPosF;
+#else
+                                vPos;
+#endif
 
                             Vector<float> l = new Vector<float>(workspace, i + lOffset);
                             Vector<float> r = new Vector<float>(workspace, i + rOffset);
@@ -992,37 +1088,324 @@ namespace OutOfPhase
                         float OrigLeft = workspace[i + lOffset];
                         float OrigRight = workspace[i + rOffset];
 
-                        /* compute variable pulse function */
-                        float X = 1;
-                        if (LocalWaveTableSamplePosition_FracI >= LocalIndex_FracI)
+                        /* compute triangle function */
+                        float X;
+                        if (LocalWaveTableSamplePosition_FracI <= LocalIndex_FracI)
                         {
-                            /* low cycle */
-                            X = -1;
+                            /* rising cycle */
+                            X = -1 + LocalWaveTableSamplePosition_FracI * TwoTimesFactorOverFirst;
+                        }
+                        else
+                        {
+                            /* falling cycle */
+                            // X = 1 - (LocalWaveTableSamplePosition.FracI - LocalIndex.FracI) * TwoTimesFactorOverSecond;
+                            // algebraically rewritten:
+                            X = SecondOffset + LocalWaveTableSamplePosition_FracI * NegTwoTimesFactorOverSecond;
                         }
 
                         workspace[i + lOffset] = OrigLeft + X * LocalLeftLoudness;
                         workspace[i + rOffset] = OrigRight + X * LocalRightLoudness;
 
+                        //LocalWaveTableSamplePosition += LocalWaveTableSamplePositionDifferential;
                         LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
                             + LocalWaveTableSamplePositionDifferential_FracI);
                     }
                 }
-                else
+
+                /* save local state back to record */
+                //State.WaveTableSamplePosition = LocalWaveTableSamplePosition;
+                State.WaveTableSamplePosition_FracI = LocalWaveTableSamplePosition_FracI;
+            }
+
+            public static void Wave_Pulse(
+                AlgorithmicStateRec State,
+                int nActualFrames,
+                float[] workspace,
+                int lOffset,
+                int rOffset,
+                int loudnessWorkspaceOffset,
+                int indexWorkspaceOffset,
+                SynthParamRec SynthParams)
+            {
+                /* load local values */
+                float LocalLoudness = State.Loudness;
+                float LeftPan = .5f - .5f * State.Panning; // (1 - State.Panning) / 2
+                float RightPan = .5f + .5f * State.Panning; // (1 + State.Panning) / 2
+                //Fixed64 LocalWaveTableSamplePosition = State.WaveTableSamplePosition;
+                //Fixed64 LocalWaveTableSamplePositionDifferential = State.WaveTableSamplePositionDifferential;
+                // strength reduction:
+                uint LocalWaveTableSamplePosition_FracI = State.WaveTableSamplePosition_FracI;
+                uint LocalWaveTableSamplePositionDifferential_FracI = State.WaveTableSamplePositionDifferential_FracI;
+
+#if true // TODO:experimental - smoothing
+                if (Program.Config.EnableEnvelopeSmoothing
+                    // case of no motion in either smoothed axes can use fast code path
+                    && ((State.Loudness != State.PreviousLoudness)
+                    || (State.Index != State.PreviousIndex)))
                 {
-                    /* the 1.0 case -- output constant 1 */
+                    // envelope smoothing
 
-                    int i = 0;
+                    float LocalPreviousLoudness = State.PreviousLoudness;
 
-                    for (; i < nActualFrames; i++)
+                    // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                    if (IsLFOSampleAndHold(State.LoudnessLFOGenerator))
                     {
-                        float OrigLeft = workspace[i + lOffset];
-                        float OrigRight = workspace[i + rOffset];
+                        LocalPreviousLoudness = LocalLoudness;
+                    }
 
-                        workspace[i + lOffset] = OrigLeft + LocalLeftLoudness;
-                        workspace[i + rOffset] = OrigRight + LocalRightLoudness;
+                    if (!EnvelopeCurrentSegmentExponential(State.AlgorithmicLoudnessEnvelope))
+                    {
+                        FloatVectorAdditiveRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
+                    else
+                    {
+                        FloatVectorMultiplicativeRecurrence(
+                            workspace,
+                            loudnessWorkspaceOffset,
+                            LocalPreviousLoudness,
+                            LocalLoudness,
+                            nActualFrames);
+                    }
 
-                        LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
-                            + LocalWaveTableSamplePositionDifferential_FracI);
+                    if (State.Index != State.PreviousIndex)
+                    {
+                        // loudness and index variant
+
+                        double LocalPreviousIndex = State.PreviousIndex;
+                        double LocalIndex = State.Index;
+
+                        // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                        if (IsLFOSampleAndHold(State.IndexLFOGenerator))
+                        {
+                            LocalPreviousIndex = LocalIndex;
+                        }
+
+                        if (!EnvelopeCurrentSegmentExponential(State.AlgorithmicIndexEnvelope))
+                        {
+                            FloatVectorAdditiveRecurrence(
+                                workspace,
+                                indexWorkspaceOffset,
+                                (float)LocalPreviousIndex * (float)Fixed64.FIXED64_WHOLE,
+                                (float)LocalIndex * (float)Fixed64.FIXED64_WHOLE,
+                                nActualFrames);
+                        }
+                        else
+                        {
+                            FloatVectorMultiplicativeRecurrence(
+                                workspace,
+                                indexWorkspaceOffset,
+                                (float)LocalPreviousIndex * (float)Fixed64.FIXED64_WHOLE,
+                                (float)LocalIndex * (float)Fixed64.FIXED64_WHOLE,
+                                nActualFrames);
+                        }
+
+                        int i = 0;
+
+                        // TODO: vectorize
+
+                        for (; i < nActualFrames; i++)
+                        {
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
+
+                            // in this variant, using a long, LocalIndex_FracI can be 1.0 (fixed), eliminating the index==1.0
+                            // constant special case.
+                            long LocalIndex_FracI_Prime = (long)workspace[i + indexWorkspaceOffset];
+
+                            /* compute variable pulse function */
+                            float X = 1;
+                            if (LocalWaveTableSamplePosition_FracI >= LocalIndex_FracI_Prime)
+                            {
+                                /* low cycle */
+                                X = -1;
+                            }
+
+                            LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                            workspace[i + lOffset] = OrigLeft + X * LocalLoudness * LeftPan;
+                            workspace[i + rOffset] = OrigRight + X * LocalLoudness * RightPan;
+
+                            LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
+                                + LocalWaveTableSamplePositionDifferential_FracI);
+                        }
+                    }
+                    else
+                    {
+                        // index invariant
+
+                        // in this variant, using a long, LocalIndex_FracI can be 1.0 (fixed), eliminating the index==1.0
+                        // constant special case.
+                        long LocalIndex_FracI_Prime = new Fixed64(State.Index).raw;
+
+                        int i = 0;
+
+                        // TODO: vectorize
+
+                        for (; i < nActualFrames; i++)
+                        {
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
+
+                            /* compute variable pulse function */
+                            float X = 1;
+                            if (LocalWaveTableSamplePosition_FracI >= LocalIndex_FracI_Prime)
+                            {
+                                /* low cycle */
+                                X = -1;
+                            }
+
+                            LocalLoudness = workspace[i + loudnessWorkspaceOffset];
+                            workspace[i + lOffset] = OrigLeft + X * LocalLoudness * LeftPan;
+                            workspace[i + rOffset] = OrigRight + X * LocalLoudness * RightPan;
+
+                            LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
+                                + LocalWaveTableSamplePositionDifferential_FracI);
+                        }
+                    }
+                }
+                else
+#endif
+                {
+                    // no envelope smoothing
+
+                    float LocalLeftLoudness = LeftPan * LocalLoudness;
+                    float LocalRightLoudness = RightPan * LocalLoudness;
+
+                    Fixed64 LocalIndex64 = new Fixed64(State.Index);
+                    // strength reduction:
+                    uint LocalIndex_FracI = LocalIndex64.FracI;
+
+                    // By using long for LocalIndex_FracI, the 1.0 case could be eliminated. However, the code is retained
+                    // in present form as a reference, as 64-bit arithmetic was unavailable when originally written.
+
+                    if (LocalIndex64.Int == 0)
+                    {
+                        /* everything except the 1.0 case */
+
+                        int i = 0;
+
+#if DEBUG
+                        AssertVectorAligned(workspace, lOffset);
+                        AssertVectorAligned(workspace, rOffset);
+#endif
+#if VECTOR
+                        if (EnableVector && (nActualFrames >= 2 * Vector<float>.Count))
+                        {
+                            // Vector API currently lacks uint==>float conversion, so to work around, the wave phase recurrence
+                            // is computed as float throughout. This has two problems:
+                            // 1. reduction of precision vs. historical implementation using 32-bit uint
+                            // 2. lack of robustness regarding wrap-around. The recurrence update checks for overflow and
+                            //    subtracts 1 (but it is sufficient for a well-behaved score).
+#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
+                            float[] fb = SynthParams.vectorWorkspace2.Base;
+                            int fOffset = SynthParams.vectorWorkspace2.Offset;
+#else
+                            uint[] uib = SynthParams.vectorWorkspace1.BaseUint;
+                            int uiOffset = SynthParams.vectorWorkspace1.Offset;
+#endif
+                            for (int j = 0; j < Vector<int>.Count; j++)
+                            {
+#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
+                                fb[j + fOffset] = LocalWaveTableSamplePosition_FracI;
+#else
+                                uib[j + uiOffset] = LocalWaveTableSamplePosition_FracI;
+#endif
+                                LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
+                                    + LocalWaveTableSamplePositionDifferential_FracI);
+                            }
+#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
+                            Vector<float> vPosF = new Vector<float>(fb, fOffset);
+#else
+                            Vector<uint> vPos = new Vector<uint>(uib, uiOffset);
+#endif
+                            Vector<float> vOne = new Vector<float>((float)1);
+                            Vector<uint> vSignBit = new Vector<uint>((uint)0x80000000);
+                            Vector<float> vLocalLeftLoudness = new Vector<float>(LocalLeftLoudness);
+                            Vector<float> vLocalRightLoudness = new Vector<float>(LocalRightLoudness);
+#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
+                            Vector<float> vLocalIndexFracF = new Vector<float>((float)LocalIndex_FracI);
+                            Vector<float> vDifferentialF = new Vector<float>((float)(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI));
+                            Vector<float> vRolloverLimit = new Vector<float>((float)Fixed64.FIXED64_WHOLE);
+#else
+                            Vector<uint> vLocalIndexFracI = new Vector<uint>(LocalIndex_FracI);
+                            Vector<uint> vDifferential = new Vector<uint>(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI);
+#endif
+                            for (; i <= nActualFrames - Vector<float>.Count; i += Vector<float>.Count)
+                            {
+                                /* compute variable pulse function */
+#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
+                                Vector<int> selector = Vector.GreaterThanOrEqual(vPosF, vLocalIndexFracF);
+#else
+                                Vector<int> selector = Vector.AsVectorInt32(Vector.LessThan(vPos, vLocalIndexFracI));
+#endif
+                                Vector<float> X = Vector.AsVectorSingle((Vector.AsVectorUInt32(selector) & vSignBit) ^ Vector.AsVectorUInt32(vOne));
+
+                                Vector<float> l = new Vector<float>(workspace, i + lOffset);
+                                Vector<float> r = new Vector<float>(workspace, i + rOffset);
+                                l = l + X * vLocalLeftLoudness;
+                                r = r + X * vLocalRightLoudness;
+                                l.CopyTo(workspace, i + lOffset);
+                                r.CopyTo(workspace, i + rOffset);
+
+#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
+                                vPosF = vPosF + vDifferentialF;
+                                vPosF = Vector.ConditionalSelect(
+                                    Vector.GreaterThanOrEqual(vPosF, vRolloverLimit),
+                                    vPosF - vRolloverLimit,
+                                    vPosF);
+#else
+                                vPos = vPos + vDifferential;
+#endif
+                            }
+#if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
+                            LocalWaveTableSamplePosition_FracI = unchecked((uint)vPosF[0]); // capture final-next recurrence value for cleanup loop
+#else
+                            LocalWaveTableSamplePosition_FracI = vPos[0]; // capture final-next recurrence value for cleanup loop
+#endif
+                        }
+#endif
+
+                        for (; i < nActualFrames; i++)
+                        {
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
+
+                            /* compute variable pulse function */
+                            float X = 1;
+                            if (LocalWaveTableSamplePosition_FracI >= LocalIndex_FracI)
+                            {
+                                /* low cycle */
+                                X = -1;
+                            }
+
+                            workspace[i + lOffset] = OrigLeft + X * LocalLeftLoudness;
+                            workspace[i + rOffset] = OrigRight + X * LocalRightLoudness;
+
+                            LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
+                                + LocalWaveTableSamplePositionDifferential_FracI);
+                        }
+                    }
+                    else
+                    {
+                        /* the 1.0 case -- output constant 1 */
+
+                        int i = 0;
+
+                        for (; i < nActualFrames; i++)
+                        {
+                            float OrigLeft = workspace[i + lOffset];
+                            float OrigRight = workspace[i + rOffset];
+
+                            workspace[i + lOffset] = OrigLeft + LocalLeftLoudness;
+                            workspace[i + rOffset] = OrigRight + LocalRightLoudness;
+
+                            LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
+                                + LocalWaveTableSamplePositionDifferential_FracI);
+                        }
                     }
                 }
 

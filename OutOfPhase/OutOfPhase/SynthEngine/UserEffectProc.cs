@@ -48,6 +48,14 @@ namespace OutOfPhase
             /* data processing formula. */
             public PcodeRec DataFunc;
 
+            // Some user-provided effects might be parametrically unstable and exhibit bad behavior when sampling
+            // rates are well out of expected range. An example (which motivated this feature) is the "TB-303 VCF" by
+            // Hans Mikelson (implemented in csound), wherein a reasonably-behaved score at 44.1kHz fails completely
+            // at 88.2kHz. This option allows the use of the original parameter range with oversampling for the rest
+            // of the score, at a cost in terms of aliasing in the audio chain containing this effect processor.
+            public bool disableOversampling;
+            public float lastLeft, lastRight;
+
             /* parameter vector */
             public int cParams;
             /* vector of parameter evaluations */
@@ -78,6 +86,14 @@ namespace OutOfPhase
             {
                 string FuncName;
                 FuncCodeRec FuncCode;
+
+                Proc.disableOversampling = GetUserEffectSpecNoOversampling(Template);
+
+                double sr = SynthParams.dSamplingRate;
+                if (!((SynthParams.iOversampling == 1) || !Proc.disableOversampling))
+                {
+                    sr /= SynthParams.iOversampling;
+                }
 
                 /* init func */
                 FuncName = GetUserEffectSpecInitFuncName(Template);
@@ -165,7 +181,7 @@ namespace OutOfPhase
 
                     StackBase[StackNumElements++].Data.Double = SynthParams.dCurrentBeatsPerMinute; /* bpm */
 
-                    StackBase[StackNumElements++].Data.Double = SynthParams.dSamplingRate; /* sr */
+                    StackBase[StackNumElements++].Data.Double = sr; /* sr */
 
                     StackNumElements++; /* return address placeholder */
 
@@ -323,6 +339,12 @@ namespace OutOfPhase
                 UserEffectProcRec Proc,
                 SynthParamRec SynthParams)
             {
+                double sr = SynthParams.dSamplingRate;
+                if (!((SynthParams.iOversampling == 1) || !Proc.disableOversampling))
+                {
+                    sr /= SynthParams.iOversampling;
+                }
+
                 SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
                     1/*retval*/ + 1/*leftstate*/ + 1/*rightstate*/ + 1/*fleftstate*/ + 1/*frightstate*/ +
                     1/*t*/ + 1/*bpm*/ + 1/*sr*/ + Proc.cParams + 1/*retaddr*/);
@@ -341,7 +363,7 @@ namespace OutOfPhase
 
                 StackBase[StackNumElements++].Data.Double = SynthParams.dCurrentBeatsPerMinute; /* bpm */
 
-                StackBase[StackNumElements++].Data.Double = SynthParams.dSamplingRate; /* sr */
+                StackBase[StackNumElements++].Data.Double = sr; /* sr */
 
                 for (int i = 0; i < Proc.cParams; i += 1)
                 {
@@ -375,48 +397,75 @@ namespace OutOfPhase
             }
 
             /* update user effect processor state with accent information */
-            public void TrackUpdateState(
+            public SynthErrorCodes TrackUpdateState(
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
                 if (this.UpdateFunc != null)
                 {
+                    SynthErrorCodes error;
+
                     /* compute additional arguments to the update function */
                     for (int i = 0; i < this.cParams; i += 1)
                     {
-                        ScalarParamEval(
+                        error = ScalarParamEval(
                             this.rgParams_Track[i].Eval,
                             ref Accents,
                             SynthParams,
                             out this.rgParamResults[i]);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                     }
 
-                    UserEffectUpdateFunctionHelper(this, SynthParams);
+                    error = UserEffectUpdateFunctionHelper(this, SynthParams);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* update user effect processor state with accent information */
-            public void OscUpdateEnvelopes(
+            public SynthErrorCodes OscUpdateEnvelopes(
                 double OscillatorFrequency,
                 SynthParamRec SynthParams)
             {
                 if (this.UpdateFunc != null)
                 {
+                    SynthErrorCodes error;
+
                     /* compute additional arguments to the update function */
                     for (int i = 0; i < this.cParams; i += 1)
                     {
+                        error = SynthErrorCodes.eSynthDone;
                         this.rgParamResults[i] = LFOGenUpdateCycle(
                             this.rgParams_Osc[i].LFO,
                             EnvelopeUpdate(
                                 this.rgParams_Osc[i].Envelope,
                                 OscillatorFrequency,
-                                SynthParams),
+                                SynthParams,
+                                ref error),
                             OscillatorFrequency,
-                            SynthParams);
+                            SynthParams,
+                            ref error);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                     }
 
-                    UserEffectUpdateFunctionHelper(this, SynthParams);
+                    error = UserEffectUpdateFunctionHelper(this, SynthParams);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* create key-up impulse */
@@ -501,6 +550,39 @@ namespace OutOfPhase
                 }
             }
 
+            // linear interpolation upsample (TODO: ought to replace with band-limited upsample)
+            // unoptimized loop - optimize when scenarios become available
+            private void Upsample(
+                float[] source,
+                int sourceOffset,
+                float[] target,
+                int targetOffset,
+                int count,
+                int rate,
+                ref float last)
+            {
+                float left = last;
+
+                for (int i = 0, n = 0; i < count; i++)
+                {
+                    Debug.Assert(n == i * rate);
+
+                    float right = source[i + sourceOffset];
+
+                    target[n + targetOffset] = left;
+                    n++;
+                    for (int c = 1; c < rate; c++, n++)
+                    {
+                        float rWeight = (float)c / rate;
+                        target[n + targetOffset] = left + rWeight * (right - left);
+                    }
+
+                    left = right;
+                }
+
+                last = left;
+            }
+
             /* apply user effect processing to some stuff */
             public SynthErrorCodes Apply(
                 float[] workspace,
@@ -509,22 +591,41 @@ namespace OutOfPhase
                 int nActualFrames,
                 SynthParamRec SynthParams)
             {
-                // reinit each ccycle because user code can reallocate or remove them
+                Debug.Assert(nActualFrames % SynthParams.iOversampling == 0);
+
+                // reinit each cycle because user code can reallocate or remove them
                 leftWorkspaceHandle.floats = leftWorkspace;
                 rightWorkspaceHandle.floats = rightWorkspace;
 
-                Array.Copy(
-                    workspace,
-                    lOffset,
-                    leftWorkspaceHandle.floats, // not vector-aligned
-                    0,
-                    nActualFrames);
-                Array.Copy(
-                    workspace,
-                    rOffset,
-                    rightWorkspaceHandle.floats, // not vector-aligned
-                    0,
-                    nActualFrames);
+                int c = nActualFrames;
+                double sr = SynthParams.dSamplingRate;
+
+                if ((SynthParams.iOversampling == 1) || !disableOversampling)
+                {
+                    Array.Copy(
+                        workspace,
+                        lOffset,
+                        leftWorkspaceHandle.floats, // not vector-aligned
+                        0,
+                        nActualFrames);
+                    Array.Copy(
+                        workspace,
+                        rOffset,
+                        rightWorkspaceHandle.floats, // not vector-aligned
+                        0,
+                        nActualFrames);
+                }
+                else
+                {
+                    // downsample
+                    c /= SynthParams.iOversampling;
+                    sr /= SynthParams.iOversampling;
+                    for (int i = 0, j = 0; i < nActualFrames; i += SynthParams.iOversampling, j++)
+                    {
+                        leftWorkspaceHandle.floats[j] = workspace[i + lOffset];
+                        rightWorkspaceHandle.floats[j] = workspace[i + rOffset];
+                    }
+                }
 
                 SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
                     1/*retval*/ + 1/*leftstate*/ + 1/*rightstate*/ + 1/*fleftstate*/ + 1/*frightstate*/ +
@@ -543,9 +644,9 @@ namespace OutOfPhase
                 StackBase[StackNumElements++].reference.arrayHandleFloat = leftWorkspaceHandle;
                 StackBase[StackNumElements++].reference.arrayHandleFloat = rightWorkspaceHandle;
 
-                StackBase[StackNumElements++].Data.Integer = nActualFrames;
+                StackBase[StackNumElements++].Data.Integer = c;
 
-                StackBase[StackNumElements++].Data.Double = SynthParams.dSamplingRate;
+                StackBase[StackNumElements++].Data.Double = sr;
 
                 StackNumElements++; /* return address placeholder */
 
@@ -570,22 +671,58 @@ namespace OutOfPhase
 
                 SynthParams.FormulaEvalContext.Clear();
 
-                if ((leftWorkspaceHandle.floats != null) && (leftWorkspaceHandle.floats.Length >= nActualFrames)
-                    && (rightWorkspaceHandle.floats != null) && (rightWorkspaceHandle.floats.Length >= nActualFrames))
+                if ((leftWorkspaceHandle.floats != null) && (leftWorkspaceHandle.floats.Length >= c)
+                    && (rightWorkspaceHandle.floats != null) && (rightWorkspaceHandle.floats.Length >= c))
                 {
-                    // remove NaN/Infinity - prevent user effect misbehavior from taking rest of system down
-                    FloatVectorCopyReplaceNaNInf(
-                        leftWorkspaceHandle.floats, // unaligned permitted
-                        0,
-                        workspace,
-                        lOffset,
-                        nActualFrames);
-                    FloatVectorCopyReplaceNaNInf(
-                        rightWorkspaceHandle.floats, // unaligned permitted
-                        0,
-                        workspace,
-                        rOffset,
-                        nActualFrames);
+                    if ((SynthParams.iOversampling == 1) || !disableOversampling)
+                    {
+                        // remove NaN/Infinity - prevent user effect misbehavior from taking rest of system down
+                        FloatVectorCopyReplaceNaNInf(
+                            leftWorkspaceHandle.floats, // unaligned permitted
+                            0,
+                            workspace,
+                            lOffset,
+                            nActualFrames);
+                        FloatVectorCopyReplaceNaNInf(
+                            rightWorkspaceHandle.floats, // unaligned permitted
+                            0,
+                            workspace,
+                            rOffset,
+                            nActualFrames);
+                    }
+                    else
+                    {
+                        // upsample
+                        Upsample(
+                            leftWorkspaceHandle.floats,
+                            0,
+                            workspace,
+                            lOffset,
+                            c,
+                            SynthParams.iOversampling,
+                            ref lastLeft);
+                        Upsample(
+                            rightWorkspaceHandle.floats,
+                            0,
+                            workspace,
+                            rOffset,
+                            c,
+                            SynthParams.iOversampling,
+                            ref lastRight);
+                        // remove NaN/Infinity - prevent user effect misbehavior from taking rest of system down
+                        FloatVectorCopyReplaceNaNInf(
+                            workspace,
+                            lOffset,
+                            workspace,
+                            lOffset,
+                            nActualFrames);
+                        FloatVectorCopyReplaceNaNInf(
+                            workspace,
+                            rOffset,
+                            workspace,
+                            rOffset,
+                            nActualFrames);
+                    }
                 }
 
                 return SynthErrorCodes.eSynthDone;

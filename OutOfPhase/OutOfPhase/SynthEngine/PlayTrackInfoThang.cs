@@ -98,7 +98,7 @@ namespace OutOfPhase
         }
 
         /* info for pending channel releases */
-        public enum RelType { eReleaser = 1, eTieBreaker = 2 } ;
+        public enum RelType { eReleaser = 1, eTieBreaker = 2 };
         public class ReleaseRec
         {
             /* execution index when this happens */
@@ -311,7 +311,7 @@ namespace OutOfPhase
 
                 /* get the instrument */
                 string InstrName = MultiInstrSpecGetIndexedActualInstrName(Spec, i);
-                InstrObjectRec BaseInstrument = InstrList.Find(delegate(InstrObjectRec candidate) { return String.Equals(candidate.Name, InstrName); });
+                InstrObjectRec BaseInstrument = InstrList.Find(delegate (InstrObjectRec candidate) { return String.Equals(candidate.Name, InstrName); });
                 if (BaseInstrument == null)
                 {
                     SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUndefinedInstrument;
@@ -1312,7 +1312,7 @@ namespace OutOfPhase
 
         /* auxiliary routine for PlayTrackUpdate */
         /* update envelopes */
-        private static void OscillatorCycleUpdateEnvelope(
+        private static SynthErrorCodes OscillatorCycleUpdateEnvelope(
             PlayTrackInfoRec TrackInfo,
             SynthParamRec SynthParams)
         {
@@ -1323,10 +1323,15 @@ namespace OutOfPhase
                 OscBankConsCell OscBankScan = InstrScan.ExecutingOscillatorBanks;
                 while (OscBankScan != null)
                 {
-                    OscBankScan.StillActive = !OscStateBankGenerateEnvelopes(
+                    SynthErrorCodes error = OscStateBankGenerateEnvelopes(
                         OscBankScan.OscBank,
                         OscBankScan.fDontUpdateEnvelopes,
-                        SynthParams);
+                        SynthParams,
+                        out OscBankScan.StillActive);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
 
                     OscBankScan.StillActive = OscBankScan.StillActive
                         || (OscBankScan.TieContinuationList != null);
@@ -1339,6 +1344,8 @@ namespace OutOfPhase
 
                 InstrScan = InstrScan.Next;
             }
+
+            return SynthErrorCodes.eSynthDone;
         }
 
         /* this is called to execute a command on the track */
@@ -1370,7 +1377,8 @@ namespace OutOfPhase
                 default:
                     ExecuteParamCommandFrame(
                         TrackInfo.ParameterController,
-                        Command);
+                        Command,
+                        SynthParams);
                     break;
 
                 case NoteCommands.eCmdSetEffectParam1:
@@ -1947,9 +1955,13 @@ namespace OutOfPhase
             if (UpdateEnvelopes)
             {
                 /* apply oscillators */
-                OscillatorCycleUpdateEnvelope(
+                SynthErrorCodes error = OscillatorCycleUpdateEnvelope(
                     TrackInfo,
                     SynthParams);
+                if (error != SynthErrorCodes.eSynthDone)
+                {
+                    return error;
+                }
 
 
                 /* set up effects (only if not fast forwarding) */
@@ -1958,9 +1970,13 @@ namespace OutOfPhase
                     PerInstrRec InstrScan = TrackInfo.Instrs;
                     while (InstrScan != null)
                     {
-                        UpdateStateTrackEffectGenerator(
+                        error = UpdateStateTrackEffectGenerator(
                             InstrScan.EffectGenerator,
                             SynthParams);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                         TrackEffectSetNoSourceSignal(
                             InstrScan.EffectGenerator,
                             InstrScan.ExecutingOscillatorBanks == null);

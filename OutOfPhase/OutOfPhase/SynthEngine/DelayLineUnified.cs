@@ -409,7 +409,32 @@ namespace OutOfPhase
 
                 /* set up initial parameters */
                 Delay.Type = Type; /* do this right away */
-                Delay.MaxDelayTime = (float)GetDelayMaxTime(Template);
+                PcodeRec MaxDelayTimeFormula = GetDelayMaxTimeFormula(Template);
+                if (MaxDelayTimeFormula == null)
+                {
+                    Delay.MaxDelayTime = (float)GetDelayMaxTime(Template);
+                }
+                else
+                {
+                    // This parameter function feature is mostly provided so that max delay time can be parameterized on
+                    // 'bpm', to facilitate easy moving of delay effects from one document to another. Not all functionality
+                    // is supported right now, such as accent parameterization. In any case, this parameter is fixed at the
+                    // creation of the delay line processor, so accent changes or changes to the 'bpm' parameter can't be
+                    // handled anyway. The convenience is still worth having it.
+                    AccentRec zero = new AccentRec();
+                    double temp;
+                    SynthErrorCodes error = StaticEval(
+                        0,
+                        MaxDelayTimeFormula,
+                        ref zero, // TODO: pass track effect accents in to here
+                        SynthParams,
+                        out temp);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        // TODO:
+                    }
+                    Delay.MaxDelayTime = (float)temp;
+                }
                 Delay.TapCount = GetDelayEffectSpecNumTaps(Template);
                 Delay.ComplexCaseRequired = false; /* start out simple case */
 
@@ -796,10 +821,12 @@ namespace OutOfPhase
             }
 
             /* update delay line state with accent information */
-            public void TrackUpdateState(
+            public SynthErrorCodes TrackUpdateState(
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
+                SynthErrorCodes error;
+
 #if DEBUG
                 if (this.Type != DelayType.eTypeTrackDelay)
                 {
@@ -820,11 +847,15 @@ namespace OutOfPhase
                     UnifiedDelayCtrlRec ThisCtrl = CtrlVector[Scan];
 
                     /* determine source offset */
-                    ScalarParamEval(
+                    error = ScalarParamEval(
                         ThisCtrl.Track.SourceTime,
                         ref Accents,
                         SynthParams,
                         out Time);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                     if (Time < 0)
                     {
                         Time = 0;
@@ -838,11 +869,15 @@ namespace OutOfPhase
                     ThisTap.SourceOffsetFraction = (float)(Temp - ThisTap.SourceOffsetInteger);
 
                     /* determine target offset */
-                    ScalarParamEval(
+                    error = ScalarParamEval(
                         ThisCtrl.Track.TargetTime,
                         ref Accents,
                         SynthParams,
                         out Time);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                     if (Time < 0)
                     {
                         Time = 0;
@@ -854,31 +889,41 @@ namespace OutOfPhase
                     ThisTap.TargetOffsetInteger = (int)(Time * SynthParams.dSamplingRate);
 
                     /* determine scale factor */
-                    ScalarParamEval(
+                    error = ScalarParamEval(
                         ThisCtrl.Track.ScaleFactor,
                         ref Accents,
                         SynthParams,
                         out Temp);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                     ThisTap.Scaling = (float)Temp;
 
                     /* update filter, if it exists */
                     if (ThisTap.LowpassFilterEnabled)
                     {
-                        ScalarParamEval(
+                        error = ScalarParamEval(
                             ThisCtrl.Track.Cutoff,
                             ref Accents,
                             SynthParams,
                             out Temp);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                         FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
                             ThisTap.LowpassFilter,
                             Temp,
                             SynthParams.dSamplingRate);
                     }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             /* generate delays from envelopes */
-            public void OscUpdateEnvelopes(
+            public SynthErrorCodes OscUpdateEnvelopes(
                 double OscillatorFrequency,
                 SynthParamRec SynthParams)
             {
@@ -899,14 +944,21 @@ namespace OutOfPhase
                     double Temp;
 
                     /* determine source offset */
+                    SynthErrorCodes error = SynthErrorCodes.eSynthDone;
                     Time = LFOGenUpdateCycle(
                         CtrlVector[Scan].Osc.SourceLFO,
                         EnvelopeUpdate(
                             CtrlVector[Scan].Osc.SourceEnvelope,
                             OscillatorFrequency,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         OscillatorFrequency,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                     if (Time < 0)
                     {
                         Time = 0;
@@ -920,14 +972,21 @@ namespace OutOfPhase
                     TapVector[Scan].SourceOffsetFraction = (float)(Temp - TapVector[Scan].SourceOffsetInteger);
 
                     /* determine target offset */
+                    error = SynthErrorCodes.eSynthDone;
                     Time = LFOGenUpdateCycle(
                         CtrlVector[Scan].Osc.TargetLFO,
                         EnvelopeUpdate(
                             CtrlVector[Scan].Osc.TargetEnvelope,
                             OscillatorFrequency,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         OscillatorFrequency,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                     if (Time < 0)
                     {
                         Time = 0;
@@ -941,29 +1000,46 @@ namespace OutOfPhase
                     /* update lowpass filter */
                     if (TapVector[Scan].LowpassFilterEnabled)
                     {
+                        error = SynthErrorCodes.eSynthDone;
+                        double cutoff = LFOGenUpdateCycle(
+                            CtrlVector[Scan].Osc.CutoffLFO,
+                            EnvelopeUpdate(
+                                CtrlVector[Scan].Osc.CutoffEnvelope,
+                                OscillatorFrequency,
+                                SynthParams,
+                                ref error),
+                            OscillatorFrequency,
+                            SynthParams,
+                            ref error);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                         FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
                             TapVector[Scan].LowpassFilter,
-                            LFOGenUpdateCycle(
-                                CtrlVector[Scan].Osc.CutoffLFO,
-                                EnvelopeUpdate(
-                                    CtrlVector[Scan].Osc.CutoffEnvelope,
-                                    OscillatorFrequency,
-                                    SynthParams),
-                                OscillatorFrequency,
-                                SynthParams),
+                            cutoff,
                             SynthParams.dSamplingRate);
                     }
 
                     /* determine scale factor */
+                    error = SynthErrorCodes.eSynthDone;
                     TapVector[Scan].Scaling = (float)LFOGenUpdateCycle(
                         CtrlVector[Scan].Osc.ScaleLFO,
                         EnvelopeUpdate(
                             CtrlVector[Scan].Osc.ScaleEnvelope,
                             OscillatorFrequency,
-                            SynthParams),
+                            SynthParams,
+                            ref error),
                         OscillatorFrequency,
-                        SynthParams);
+                        SynthParams,
+                        ref error);
+                    if (error != SynthErrorCodes.eSynthDone)
+                    {
+                        return error;
+                    }
                 }
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             public void OscKeyUpSustain1()

@@ -48,6 +48,12 @@ namespace OutOfPhase
 
             myListBoxSections.SetUnderlying(displayList, GetDisplayText);
             myListBoxSections.SelectItem(defaultSection != null ? (object)defaultSection : (object)nullSection, true/*clearOtherSelections*/);
+            myListBoxSections.DoubleClick2 += MyListBoxSections_DoubleClick;
+        }
+
+        private void MyListBoxSections_DoubleClick(object sender, MyListBox.DoubleClick2EventArgs e)
+        {
+            buttonOK.PerformClick();
         }
 
         private static string GetDisplayText(object obj)

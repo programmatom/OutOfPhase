@@ -71,5 +71,15 @@ namespace OutOfPhase
 
             noteNoteObjectRecBindingSource.Add(this.note);
         }
+
+        private void buttonOK_Click(object sender, EventArgs e)
+        {
+            if (!ValidateChildren())
+            {
+                return;
+            }
+            DialogResult = DialogResult.OK;
+            Close();
+        }
     }
 }
