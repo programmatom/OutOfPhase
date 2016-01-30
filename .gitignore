@@ -1,13 +1,13 @@
 # application compilation intermediate files
 
 /OutOfPhase/.vs/*
+/OutOfPhase/ConvolverEL/*
 /OutOfPhase/OutOfPhase.ncb
 /OutOfPhase/OutOfPhase.suo
-/OutOfPhase/OutOfPhase/bin/Debug/OutOfPhase.vshost.*
-/OutOfPhase/OutOfPhase/bin/Release/OutOfPhase.vshost.*
+/OutOfPhase/OutOfPhase/bin/*/*/OutOfPhase.vshost.*
+/OutOfPhase/OutOfPhase/bin/*/*/plugins/ConvolverEL.*
 /OutOfPhase/OutOfPhase/obj/*
 /OutOfPhase/OutOfPhase/OutOfPhase.csproj.user
-/OutOfPhase/OutOfPhase/SynthEngine/ConvolutionExplicitLatency.cs
 /OutOfPhase/packages
 /OutOfPhase/Setup/*
 /OutOfPhaseTraceScheduleAnalyzer/.vs/OutOfPhaseTraceScheduleAnalyzer/v14/.suo

@@ -88,7 +88,7 @@ namespace OutOfPhase
                 PropVariant prop = new PropVariant();
                 try
                 {
-                    int hr = props.GetValue(DEVPKEY_Device_FriendlyName, out prop);
+                    int hr = props.GetValue(ref DEVPKEY_Device_FriendlyName, out prop);
                     name = (string)prop.Value;
                 }
                 catch (COMException)
@@ -199,9 +199,10 @@ namespace OutOfPhase
                     deviceEnumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out device);
                 }
             }
+            Guid IID_IAudioClient = new Guid("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2");
             object o;
             device.Activate(
-                new Guid("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2"), // IID_IAudioClient
+                ref IID_IAudioClient,
                 (int)CLSCTX.CLSCTX_INPROC_SERVER,
                 IntPtr.Zero,
                 out o);
@@ -285,7 +286,8 @@ namespace OutOfPhase
                     bool supported = hr == 0;
                 }
             }
-            audioClient.GetService(new Guid("F294ACFC-3146-4483-A7BF-ADDCA7C260E2"), out o); // IID_IAudioRenderClient
+            Guid IID_IAudioRenderClient = new Guid("F294ACFC-3146-4483-A7BF-ADDCA7C260E2");
+            audioClient.GetService(ref IID_IAudioRenderClient, out o);
             renderClient = (IAudioRenderClient)o;
 
             audioClient.GetBufferSize(out maxBufferedFrames);
@@ -509,7 +511,7 @@ namespace OutOfPhase
     {
         [return: MarshalAs(UnmanagedType.Error)]
         int Activate(
-            [In] Guid iid,
+            [In] ref Guid iid,
             [In] int dwClsCtx,
             /*[In, Optional] ref Guid pActivationParams*/[In, Optional] IntPtr pActivationParams,
             [Out, MarshalAs(UnmanagedType.Interface)] out object ppInterface);
@@ -560,7 +562,7 @@ namespace OutOfPhase
         [return: MarshalAs(UnmanagedType.Error)]
         int OnPropertyValueChanged(
              [In] string pwstrDeviceId,
-             [In] Guid key);
+             [In] ref Guid key);
     }
 
     [Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -577,12 +579,12 @@ namespace OutOfPhase
 
         [return: MarshalAs(UnmanagedType.Error)]
         int GetValue(
-            [In] DEVPROPKEY key,
+            [In] ref DEVPROPKEY key,
             out PropVariant pv);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int SetValue(
-            [In] DEVPROPKEY key,
+            [In] ref DEVPROPKEY key,
             [In] PropVariant propvar);
 
         [return: MarshalAs(UnmanagedType.Error)]
@@ -733,7 +735,7 @@ namespace OutOfPhase
             [In] long hnsBufferDuration, // REFERENCE_TIME 
             [In] long hnsPeriodicity, // REFERENCE_TIME 
             [In, MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(OutOfPhase.WAVEFORMATEX_marshaler))] WAVEFORMATEX pFormat,
-            /*[In, Optional] Guid AudioSessionGuid*/[In, Optional] IntPtr AudioSessionGuid);
+            /*[In, Optional] ref Guid AudioSessionGuid*/[In, Optional] IntPtr AudioSessionGuid);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int GetBufferSize(
@@ -779,7 +781,7 @@ namespace OutOfPhase
 
         [return: MarshalAs(UnmanagedType.Error)]
         int GetService(
-            [In] Guid riid,
+            [In] ref Guid riid,
             [Out, MarshalAs(UnmanagedType.Interface)] out object ppv);
     }
 
@@ -853,30 +855,30 @@ namespace OutOfPhase
         [return: MarshalAs(UnmanagedType.Error)]
         int OnDisplayNameChanged(
             [In] string NewDisplayName,
-            [In] Guid EventContext);
+            [In] ref Guid EventContext);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int OnIconPathChanged(
             [In] string NewIconPath,
-            [In] Guid EventContext);
+            [In] ref Guid EventContext);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int OnSimpleVolumeChanged(
             [In] float NewVolume,
             [In]bool NewMute,
-            [In] Guid EventContext);
+            [In] ref Guid EventContext);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int OnChannelVolumeChanged(
             [In] int ChannelCount,
             [In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] float[] NewChannelVolumeArray,
             [In] int ChangedChannel,
-            [In] Guid EventContext);
+            [In] ref Guid EventContext);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int OnGroupingParamChanged(
-            [In] Guid NewGroupingParam,
-            [In] Guid EventContext);
+            [In] ref Guid NewGroupingParam,
+            [In] ref Guid EventContext);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int OnStateChanged(
@@ -909,7 +911,7 @@ namespace OutOfPhase
         [return: MarshalAs(UnmanagedType.Error)]
         int SetDisplayName(
             [In] string Value,
-            [In] Guid EventContext);
+            [In] ref Guid EventContext);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int GetIconPath(
@@ -918,7 +920,7 @@ namespace OutOfPhase
         [return: MarshalAs(UnmanagedType.Error)]
         int SetIconPath(
             [In] string Value,
-            [In] Guid EventContext);
+            [In] ref Guid EventContext);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int GetGroupingParam(
@@ -926,8 +928,8 @@ namespace OutOfPhase
 
         [return: MarshalAs(UnmanagedType.Error)]
         int SetGroupingParam(
-            [In] Guid Override,
-            [In] Guid EventContext);
+            [In] ref Guid Override,
+            [In] ref Guid EventContext);
 
         [return: MarshalAs(UnmanagedType.Error)]
         int RegisterAudioSessionNotification(

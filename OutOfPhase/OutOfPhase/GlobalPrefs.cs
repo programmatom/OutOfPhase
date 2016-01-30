@@ -52,8 +52,27 @@ namespace OutOfPhase
         private string _OutputDeviceFriendlyName = String.Empty;
         public string OutputDeviceFriendlyName { get { return _OutputDeviceFriendlyName; } set { _OutputDeviceFriendlyName = value; Notify("OutputDeviceFriendlyName"); } }
 
-        private string _FFTWWisdom = null;
-        public string FFTWWisdom { get { return _FFTWWisdom; } set { _FFTWWisdom = value; Notify("FFTWWisdom"); } }
+        private string _FFTWWisdom32f = null;
+        private string _FFTWWisdom64f = null;
+        public string FFTWWisdom
+        {
+            get
+            {
+                return Environment.Is64BitProcess ? _FFTWWisdom64f : _FFTWWisdom32f;
+            }
+            set
+            {
+                if (Environment.Is64BitProcess)
+                {
+                    _FFTWWisdom64f = value;
+                }
+                else
+                {
+                    _FFTWWisdom32f = value;
+                }
+                Notify("FFTWWisdom");
+            }
+        }
 
         private int _Concurrency = 0; // 0: default, 1: sequential, >1: use C procs, <0: use N-(-C) procs [i.e. reserve]
         public int Concurrency { get { return _Concurrency; } set { _Concurrency = value; Notify("Concurrency"); } }
@@ -149,9 +168,13 @@ namespace OutOfPhase
                 _OutputDevice = root.SelectSingleNode("/settings/outputDevice").Value;
                 _OutputDeviceFriendlyName = root.SelectSingleNode("/settings/outputDevice/@name").Value;
                 _Concurrency = root.SelectSingleNode("/settings/concurrency").ValueAsInt;
-                if ((nav = root.SelectSingleNode("/settings/fftwfWisdom")) != null)
+                if ((nav = root.SelectSingleNode("/settings/fftwfWisdom32f")) != null)
                 {
-                    _FFTWWisdom = nav.Value;
+                    _FFTWWisdom32f = nav.Value;
+                }
+                if ((nav = root.SelectSingleNode("/settings/fftwfWisdom64f")) != null)
+                {
+                    _FFTWWisdom64f = nav.Value;
                 }
                 nav = root.SelectSingleNode("/settings/recentDocuments/@max");
                 if (nav != null)
@@ -235,10 +258,16 @@ namespace OutOfPhase
                     writer.WriteValue(_Concurrency);
                     writer.WriteEndElement();
 
-                    if (!String.IsNullOrEmpty(FFTWWisdom))
+                    if (!String.IsNullOrEmpty(_FFTWWisdom32f))
                     {
-                        writer.WriteStartElement("fftwfWisdom");
-                        writer.WriteValue(_FFTWWisdom);
+                        writer.WriteStartElement("fftwfWisdom32f");
+                        writer.WriteValue(_FFTWWisdom32f);
+                        writer.WriteEndElement();
+                    }
+                    if (!String.IsNullOrEmpty(_FFTWWisdom64f))
+                    {
+                        writer.WriteStartElement("fftwfWisdom64f");
+                        writer.WriteValue(_FFTWWisdom64f);
                         writer.WriteEndElement();
                     }
 

@@ -5,16 +5,42 @@ VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OutOfPhase", "OutOfPhase\OutOfPhase.csproj", "{CEDFF1AC-BA16-4694-833B-C4432117E072}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConvolutionEL", "ConvolverEL\ConvolutionEL.csproj", "{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
 		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Debug|x64.ActiveCfg = Debug|x64
 		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Debug|x64.Build.0 = Debug|x64
+		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Debug|x86.ActiveCfg = Debug|x86
+		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Debug|x86.Build.0 = Debug|x86
+		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Release|x64.ActiveCfg = Release|x64
 		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Release|x64.Build.0 = Release|x64
+		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Release|x86.ActiveCfg = Release|x86
+		{CEDFF1AC-BA16-4694-833B-C4432117E072}.Release|x86.Build.0 = Release|x86
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Debug|x64.ActiveCfg = Debug|x64
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Debug|x64.Build.0 = Debug|x64
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Debug|x86.ActiveCfg = Debug|x86
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Debug|x86.Build.0 = Debug|x86
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Release|x64.ActiveCfg = Release|x64
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Release|x64.Build.0 = Release|x64
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Release|x86.ActiveCfg = Release|x86
+		{20FBDB71-E092-4DE5-8329-91A48D2DC2B2}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

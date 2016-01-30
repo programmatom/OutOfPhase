@@ -547,6 +547,15 @@ namespace OutOfPhase
 
                 // Fixed64[] workspaces
                 {
+                    // TODO:
+                    // Compensating for unaligned allocation isn't feasible for 64-bit types in 32-bit mode. The problem occurs
+                    // because the allocator sometimes gives a 4-byte aligned address (e.g. 0xXXXXXXX4 or 0xXXXXXXXc) which
+                    // would require adding one-half of a 64-bit element to the offset, which of course isn't possible. In C this
+                    // could be solved by reinterpret-casting the pointers and doing some arithmetic, but in .NET there are a
+                    // number of reasons it won't work. Therefore, for this (less commonly used) data type, we'll be living with
+                    // unaligned vector accesses in 32-bit mode. (Assert is disabled -- see FloatVectors.cs) Fortunately, .NET
+                    // emits the unaligned variant of vector move instructions, so code should work.
+
                     // each workspace area is guarranteed large enough to hold one machine vector
 #if VECTOR
                     int minimumLength = Vector<double>.Count;

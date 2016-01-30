@@ -108,16 +108,20 @@ namespace OutOfPhase
             int offset)
         {
 #if VECTOR
-            GCHandle hVector = GCHandle.Alloc(vector, GCHandleType.Pinned);
-            try
+            if (Environment.Is64BitProcess)
             {
-                int vectorLength = Vector<long>.Count;
-                Debug.Assert((hVector.AddrOfPinnedObject().ToInt64() + offset * sizeof(long)) % (vectorLength * sizeof(long)) == 0);
+                GCHandle hVector = GCHandle.Alloc(vector, GCHandleType.Pinned);
+                try
+                {
+                    int vectorLength = Vector<long>.Count;
+                    Debug.Assert((hVector.AddrOfPinnedObject().ToInt64() + offset * sizeof(long)) % (vectorLength * sizeof(long)) == 0);
+                }
+                finally
+                {
+                    hVector.Free();
+                }
             }
-            finally
-            {
-                hVector.Free();
-            }
+            // else: compensating for unaligned allocation isn't feasible for 64-bit types in 32-bit mode - see SynthParamRec for explanation
 #endif
         }
 

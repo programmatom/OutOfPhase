@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 
 namespace OutOfPhase
@@ -42,6 +43,9 @@ namespace OutOfPhase
 
         public static class ConvolveStreamFactory
         {
+            private static bool? convolveStreamExplicitLatencyAvailable;
+            private static MethodInfo convolveStreamExplicitLatencyCreator;
+
             public static SynthErrorCodes NewConvStream(
                 float[] ImpulseResponse,
                 int ImpulseResponseLength,
@@ -54,16 +58,40 @@ namespace OutOfPhase
                 convolveStream = null;
                 if (LatencySpecified)
                 {
-                    if (!ConvolveStreamExplicitLatency.Available)
+                    if (convolveStreamExplicitLatencyAvailable.HasValue && !convolveStreamExplicitLatencyAvailable.Value)
                     {
                         errorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExConvolverExplicitLatencyNotAvailable;
                         return SynthErrorCodes.eSynthErrorEx;
                     }
-                    convolveStream = ConvolveStreamExplicitLatency.NewConvStream(
-                        ImpulseResponse,
-                        ImpulseResponseLength,
-                        Latency,
-                        lOversampling);
+
+                    if (convolveStreamExplicitLatencyCreator == null)
+                    {
+                        Type type = null;
+
+                        // TODO: the ConvolveStreamExplicitLatency should be signed so that other plugins can't mask it
+
+                        foreach (Assembly plugin in Program.PluginAssemblies)
+                        {
+                            foreach (Type candidateType in plugin.GetTypes())
+                            {
+                                if (candidateType.IsClass && candidateType.Name == "ConvolveStreamExplicitLatency")
+                                {
+                                    type = candidateType;
+                                    goto Found;
+                                }
+                            }
+                        }
+
+                        // if you get here - not found
+                        convolveStreamExplicitLatencyAvailable = false;
+                        errorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExConvolverExplicitLatencyNotAvailable;
+                        return SynthErrorCodes.eSynthErrorEx;
+
+                    Found:
+                        convolveStreamExplicitLatencyCreator = type.GetMethod("NewConvStream", BindingFlags.Static | BindingFlags.Public);
+                    }
+
+                    convolveStream = (IConvolution)convolveStreamExplicitLatencyCreator.Invoke(null, new object[] { (float[])ImpulseResponse, (int)ImpulseResponseLength, (int)Latency, (int)lOversampling });
                 }
                 else
                 {
@@ -75,67 +103,6 @@ namespace OutOfPhase
                 }
                 return SynthErrorCodes.eSynthDone;
             }
-        }
-
-        public class ConvolveStreamExplicitLatency : IConvolution
-        {
-#if ELCONV
-#else
-            public const bool Available = false;
-#endif
-
-#if ELCONV
-#endif
-
-
-            /* initialize convolver stream.  The impulse response should be sampled at */
-            /* the nominal rate.  If oversampling is being employed, it will check SynthParams */
-            /* and interpolate the impulse response to the real sampling rate. */
-            public static ConvolveStreamExplicitLatency NewConvStream(
-                float[] ImpulseResponse,
-                int ImpulseResponseLength,
-                int Latency,
-                int lOversampling)
-            {
-#if ELCONV
-#else
-                return null;
-#endif
-            }
-
-            /* apply the convolution, accumulating into output */
-            public void Apply(
-                float[] Input,
-                int InputOffset,
-                float[] Output,
-                int OutputOffset,
-                int DataLength,
-                float DirectGain,
-                float ProcessedGain)
-            {
-#if ELCONV
-#endif
-            }
-
-            public void Dispose()
-            {
-#if ELCONV
-#endif
-
-                GC.SuppressFinalize(this);
-            }
-
-            ~ConvolveStreamExplicitLatency()
-            {
-#if DEBUG
-                Debug.Assert(false, "ConvolveStreamExplicitLatency finalizer invoked - have you forgotten to .Dispose()? " + allocatedFrom.ToString());
-#endif
-                Dispose();
-            }
-
-#if DEBUG
-            private readonly StackTrace allocatedFrom = new StackTrace(true);
-#endif
         }
 
         public class ConvolveStreamSimple : IConvolution

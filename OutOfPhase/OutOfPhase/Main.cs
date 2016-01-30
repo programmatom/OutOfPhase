@@ -23,7 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;   
 using System.IO;
-using System.Runtime.InteropServices;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -1052,18 +1052,30 @@ namespace OutOfPhase
             }
         }
 
-        //[DllImport("shcore.dll")]
-        //private static extern int/*HRESULT*/ SetProcessDpiAwareness(PROCESS_DPI_AWARENESS value);
-        //private enum PROCESS_DPI_AWARENESS
-        //{
-        //    PROCESS_DPI_UNAWARE = 0,
-        //    PROCESS_SYSTEM_DPI_AWARE = 1,
-        //    PROCESS_PER_MONITOR_DPI_AWARE = 2
-        //}
+        private static Assembly[] pluginAssemblies;
+        public static Assembly[] PluginAssemblies { get { return pluginAssemblies; } }
 
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
+        private const string PluginsSubdirectory = "plugins";
+        private static void LoadPlugins()
+        {
+            List<Assembly> pluginAssembliesList = new List<Assembly>();
+            string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), PluginsSubdirectory);
+            foreach (string file in Directory.GetFiles(path, "*.dll"))
+            {
+                try
+                {
+                    // TODO: SECURITY REVIEW
+                    Assembly assembly = Assembly.Load(File.ReadAllBytes(file));
+                    pluginAssembliesList.Add(assembly);
+                }
+                catch (Exception)
+                {
+                    // TODO: report errors
+                }
+            }
+            pluginAssemblies = pluginAssembliesList.ToArray();
+        }
+
         [STAThread]
         public static void Main(string[] args)
         {
@@ -1099,10 +1111,10 @@ namespace OutOfPhase
             }
             #endregion
 
-            //SetProcessDpiAwareness(PROCESS_DPI_AWARENESS.PROCESS_PER_MONITOR_DPI_AWARE);
-
             LoadSettings();
             Synthesizer.FFTW.StaticInitialization(Config.FFTWWisdom);
+
+            LoadPlugins();
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
