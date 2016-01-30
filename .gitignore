@@ -7,6 +7,7 @@
 /OutOfPhase/OutOfPhase/bin/Release/OutOfPhase.vshost.*
 /OutOfPhase/OutOfPhase/obj/*
 /OutOfPhase/OutOfPhase/OutOfPhase.csproj.user
+/OutOfPhase/OutOfPhase/SynthEngine/ConvolutionExplicitLatency.cs
 /OutOfPhase/packages
 /OutOfPhase/Setup/*
 /OutOfPhaseTraceScheduleAnalyzer/.vs/OutOfPhaseTraceScheduleAnalyzer/v14/.suo
