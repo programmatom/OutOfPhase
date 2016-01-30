@@ -1632,7 +1632,7 @@ namespace OutOfPhase
 
         private void timerAutosave_Tick(object sender, EventArgs e)
         {
-            if ((DateTime.UtcNow - lastAutosave).TotalSeconds >= Program.Config.AutosaveInterval)
+            if ((DateTime.UtcNow - lastAutosave).TotalSeconds >= Program.Config.AutosaveIntervalSeconds)
             {
                 DoAutosave();
             }

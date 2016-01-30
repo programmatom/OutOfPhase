@@ -1052,15 +1052,25 @@ namespace OutOfPhase
             }
         }
 
-        private static Assembly[] pluginAssemblies;
+        private static Assembly[] pluginAssemblies = new Assembly[0];
         public static Assembly[] PluginAssemblies { get { return pluginAssemblies; } }
 
         private const string PluginsSubdirectory = "plugins";
         private static void LoadPlugins()
         {
-            List<Assembly> pluginAssembliesList = new List<Assembly>();
             string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), PluginsSubdirectory);
-            foreach (string file in Directory.GetFiles(path, "*.dll"))
+            string[] files;
+            try
+            {
+                files = Directory.GetFiles(path, "*.dll");
+            }
+            catch (Exception)
+            {
+                return; // no plugins subdirectory - ok
+            }
+
+            List<Assembly> pluginAssembliesList = new List<Assembly>();
+            foreach (string file in files)
             {
                 try
                 {

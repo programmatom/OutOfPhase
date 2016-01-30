@@ -52,7 +52,7 @@ namespace OutOfPhase
             textBoxTabSize.Text = Program.Config.TabSize.ToString();
             checkBoxAutoIndent.Checked = Program.Config.AutoIndent;
             checkBoxAutosaveEnabled.Checked = Program.Config.AutosaveEnabled;
-            textBoxAutosaveInterval.Text = Program.Config.AutosaveInterval.ToString();
+            textBoxAutosaveInterval.Text = Program.Config.AutosaveIntervalSeconds.ToString();
 
             concurrency = Program.Config.Concurrency;
             UpdateConcurrencyEnables();
@@ -84,7 +84,7 @@ namespace OutOfPhase
 
             try
             {
-                Program.Config.AutosaveInterval = Math.Min(Math.Max(Int32.Parse(textBoxAutosaveInterval.Text), Constants.MINAUTOSAVEINTERVAL), Constants.MAXAUTOSAVEINTERVAL);
+                Program.Config.AutosaveIntervalSeconds = Math.Min(Math.Max(Int32.Parse(textBoxAutosaveInterval.Text), Constants.MINAUTOSAVEINTERVAL), Constants.MAXAUTOSAVEINTERVAL);
             }
             catch (Exception)
             {
@@ -93,7 +93,7 @@ namespace OutOfPhase
             Program.Config.Concurrency = concurrency;
 
             Program.Config.OutputDevice = devices[comboBoxOutputDevice.SelectedIndex].Key;
-            Program.Config.OutputDeviceFriendlyName = devices[comboBoxOutputDevice.SelectedIndex].Value;
+            Program.Config.OutputDeviceName = devices[comboBoxOutputDevice.SelectedIndex].Value;
 
             Program.SaveSettings();
 

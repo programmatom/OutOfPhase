@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Xml;
@@ -34,77 +35,101 @@ namespace OutOfPhase
     {
         // Publicly supported and advertized properties.
 
-        private int _TabSize = 4;
-        public int TabSize { get { return _TabSize; } set { _TabSize = value; Notify("TabSize"); } }
+        public int TabSize
+        {
+            get { return FindSimpleProperty<int>("TabSize").Value; }
+            set { FindSimpleProperty<int>("TabSize").Value = value; Notify("TabSize"); }
+        }
 
-        private bool _AutoIndent = true;
-        public bool AutoIndent { get { return _AutoIndent; } set { _AutoIndent = value; Notify("AutoIndent"); } }
+        public bool AutoIndent
+        {
+            get { return FindSimpleProperty<bool>("AutoIndent").Value; }
+            set { FindSimpleProperty<bool>("AutoIndent").Value = value; Notify("AutoIndent"); }
+        }
 
-        private bool _AutosaveEnabled = true;
-        public bool AutosaveEnabled { get { return _AutosaveEnabled; } set { _AutosaveEnabled = value; Notify("AutosaveEnabled"); } }
+        public bool AutosaveEnabled
+        {
+            get { return FindSimpleProperty<bool>("AutosaveEnabled").Value; }
+            set { FindSimpleProperty<bool>("AutosaveEnabled").Value = value; Notify("AutosaveEnabled"); }
+        }
 
-        private int _AutosaveInterval = 5 * 60; // seconds
-        public int AutosaveInterval { get { return _AutosaveInterval; } set { _AutosaveInterval = value; Notify("AutosaveInterval"); } }
+        public int AutosaveIntervalSeconds
+        {
+            get { return FindSimpleProperty<int>("AutosaveIntervalSeconds").Value; }
+            set { FindSimpleProperty<int>("AutosaveIntervalSeconds").Value = value; Notify("AutosaveIntervalSeconds"); }
+        }
 
-        private string _OutputDevice = ERole.eMultimedia.ToString();
-        public string OutputDevice { get { return _OutputDevice; } set { _OutputDevice = value; Notify("OutputDevice"); } }
+        public string OutputDevice
+        {
+            get { return FindSimpleProperty<string>("OutputDevice").Value; }
+            set { FindSimpleProperty<string>("OutputDevice").Value = value; Notify("OutputDevice"); }
+        }
 
-        private string _OutputDeviceFriendlyName = String.Empty;
-        public string OutputDeviceFriendlyName { get { return _OutputDeviceFriendlyName; } set { _OutputDeviceFriendlyName = value; Notify("OutputDeviceFriendlyName"); } }
+        public string OutputDeviceName
+        {
+            get { return FindSimpleProperty<string>("OutputDeviceName").Value; }
+            set { FindSimpleProperty<string>("OutputDeviceName").Value = value; Notify("OutputDeviceName"); }
+        }
 
-        private string _FFTWWisdom32f = null;
-        private string _FFTWWisdom64f = null;
         public string FFTWWisdom
         {
-            get
-            {
-                return Environment.Is64BitProcess ? _FFTWWisdom64f : _FFTWWisdom32f;
-            }
+            get { return FindSimpleProperty<string>(Environment.Is64BitProcess ? "FFTWWisdom64f" : "FFTWWisdom32f").Value; }
             set
             {
-                if (Environment.Is64BitProcess)
-                {
-                    _FFTWWisdom64f = value;
-                }
-                else
-                {
-                    _FFTWWisdom32f = value;
-                }
+                FindSimpleProperty<string>(Environment.Is64BitProcess ? "FFTWWisdom64f" : "FFTWWisdom32f").Value = value;
                 Notify("FFTWWisdom");
             }
         }
 
-        private int _Concurrency = 0; // 0: default, 1: sequential, >1: use C procs, <0: use N-(-C) procs [i.e. reserve]
-        public int Concurrency { get { return _Concurrency; } set { _Concurrency = value; Notify("Concurrency"); } }
+        public int Concurrency // 0: default, 1: sequential, >1: use C procs, <0: use N-(-C) procs [i.e. reserve]
+        {
+            get { return FindSimpleProperty<int>("Concurrency").Value; }
+            set { FindSimpleProperty<int>("Concurrency").Value = value; Notify("Concurrency"); }
+        }
 
-        private int _RecentDocumentsMax = 10;
-        public int RecentDocumentsMax { get { return _RecentDocumentsMax; } set { _RecentDocumentsMax = value; Notify("RecentDocumentsMax"); } }
+        public int RecentDocumentsMax
+        {
+            get { return FindSimpleProperty<int>("RecentDocumentsMax").Value; }
+            set { FindSimpleProperty<int>("RecentDocumentsMax").Value = value; Notify("RecentDocumentsMax"); }
+        }
 
-        private readonly BindingList<string> _RecentDocuments = new BindingList<string>();
-        public BindingList<string> RecentDocuments { get { return _RecentDocuments; } }
+        public BindingList<string> RecentDocuments
+        {
+            get { return ((GlobalPrefsListItem<string>)FindProperty("RecentDocuments")).List; }
+        }
 
         // Unadvertised properties used for diagnostics and controlling experimental features.
         // As a rule, these properties are set at startup and must not change for the duration or broken behavior may occur.
 
-        private bool _EnableCILSet;
-        private bool _EnableCIL = true; // enable for .NET jitted code generation (disable for pcode)
-        public bool EnableCIL { get { return _EnableCIL; } }
+        public bool EnableCIL // enable for .NET jitted code generation (disable for pcode)
+        {
+            get { return FindSimpleProperty<bool>("EnableCIL").Value; }
+            set { FindSimpleProperty<bool>("EnableCIL").Value = value; Notify("EnableCIL"); }
+        }
 
-        private bool _EnableEnvelopeSmoothingSet;
-        private bool _EnableEnvelopeSmoothing = true; // enable for oscillator envelope smoothing (of loudness and index envelopes)
-        public bool EnableEnvelopeSmoothing { get { return _EnableEnvelopeSmoothing; } }
+        public bool EnableEnvelopeSmoothing // enable for oscillator envelope smoothing (of loudness and index envelopes)
+        {
+            get { return FindSimpleProperty<bool>("EnableEnvelopeSmoothing").Value; }
+            set { FindSimpleProperty<bool>("EnableEnvelopeSmoothing").Value = value; Notify("EnableEnvelopeSmoothing"); }
+        }
 
-        private bool _EnablePriorityBoostSet;
-        private bool _EnablePriorityBoost = true; // enable for synth engine threads priority boost during synthesis
-        public bool EnablePriorityBoost { get { return _EnablePriorityBoost; } }
+        public bool EnablePriorityBoost // enable for synth engine threads priority boost during synthesis
+        {
+            get { return FindSimpleProperty<bool>("EnablePriorityBoost").Value; }
+            set { FindSimpleProperty<bool>("EnablePriorityBoost").Value = value; Notify("EnablePriorityBoost"); }
+        }
 
-        private bool _EnableDirectWriteSet;
-        private bool _EnableDirectWrite = false; // enable DirectWrite rendering of UI instead of GDI rendering
-        public bool EnableDirectWrite { get { return _EnableDirectWrite; } }
+        public bool EnableDirectWrite // enable DirectWrite rendering of UI instead of GDI rendering
+        {
+            get { return FindSimpleProperty<bool>("EnableDirectWrite").Value; }
+            set { FindSimpleProperty<bool>("EnableDirectWrite").Value = value; Notify("EnableDirectWrite"); }
+        }
 
-        private bool _MaximumSmoothedParameterCountSet;
-        private int _MaximumSmoothedParameterCount = 16;
-        public int MaximumSmoothedParameterCount { get { return _MaximumSmoothedParameterCount; } }
+        public int MaximumSmoothedParameterCount
+        {
+            get { return FindSimpleProperty<int>("MaximumSmoothedParameterCount").Value; }
+            set { FindSimpleProperty<int>("MaximumSmoothedParameterCount").Value = value; Notify("MaximumSmoothedParameterCount"); }
+        }
 
 
         //
@@ -146,75 +171,73 @@ namespace OutOfPhase
 
         //
 
+        private readonly GlobalPrefsItem[] items;
+
         public GlobalPrefs()
         {
+            items = new GlobalPrefsItem[]
+            {
+                // advertised properties
+                new GlobalPrefsSimpleItem<int>("TabSize", 4),
+                new GlobalPrefsSimpleItem<bool>("AutoIndent", true),
+                new GlobalPrefsSimpleItem<bool>("AutosaveEnabled", true),
+                new GlobalPrefsSimpleItem<int>("AutosaveIntervalSeconds", 5 * 60),
+                new GlobalPrefsSimpleItem<string>("OutputDevice", ERole.eMultimedia.ToString()),
+                new GlobalPrefsSimpleItem<string>("OutputDeviceName", String.Empty),
+                new GlobalPrefsSimpleItem<string>("FFTWWisdom32f", String.Empty),
+                new GlobalPrefsSimpleItem<string>("FFTWWisdom64f", String.Empty),
+                new GlobalPrefsSimpleItem<int>("Concurrency", 0),
+                new GlobalPrefsSimpleItem<int>("RecentDocumentsMax", 10),
+                new GlobalPrefsListItem<string>("RecentDocuments"),
+
+                // unadvertised properties
+                new GlobalPrefsSimpleItem<bool>("EnableCIL", true),
+                new GlobalPrefsSimpleItem<bool>("EnableEnvelopeSmoothing", true),
+                new GlobalPrefsSimpleItem<bool>("EnablePriorityBoost", true),
+                new GlobalPrefsSimpleItem<bool>("EnableDirectWrite", false),
+                new GlobalPrefsSimpleItem<int>("MaximumSmoothedParameterCount", 16),
+            };
         }
 
         public GlobalPrefs(string path)
             : this()
         {
-            try
+            StringBuilder errors = new StringBuilder();
+
+            if (File.Exists(path))
             {
-                XPathNavigator nav;
+                try
+                {
+                    XmlDocument xml = new XmlDocument();
+                    xml.Load(path);
 
-                XmlDocument xml = new XmlDocument();
-                xml.Load(path);
-                XPathNavigator root = xml.CreateNavigator();
+                    XPathNavigator settingsContainer = xml.CreateNavigator().SelectSingleNode("/settings");
+                    if (settingsContainer == null)
+                    {
+                        return;
+                    }
 
-                _TabSize = Math.Min(Math.Max(root.SelectSingleNode("/settings/tabSize").ValueAsInt, Constants.MINTABCOUNT), Constants.MAXTABCOUNT);
-                _AutoIndent = root.SelectSingleNode("/settings/autoIndent").ValueAsBoolean;
-                _AutosaveEnabled = root.SelectSingleNode("/settings/autosave").ValueAsBoolean;
-                _AutosaveInterval = Math.Min(Math.Max(root.SelectSingleNode("/settings/autosaveInterval").ValueAsInt, Constants.MINAUTOSAVEINTERVAL), Constants.MAXAUTOSAVEINTERVAL);
-                _OutputDevice = root.SelectSingleNode("/settings/outputDevice").Value;
-                _OutputDeviceFriendlyName = root.SelectSingleNode("/settings/outputDevice/@name").Value;
-                _Concurrency = root.SelectSingleNode("/settings/concurrency").ValueAsInt;
-                if ((nav = root.SelectSingleNode("/settings/fftwfWisdom32f")) != null)
-                {
-                    _FFTWWisdom32f = nav.Value;
+                    foreach (GlobalPrefsItem item in items)
+                    {
+                        try
+                        {
+                            item.Read(settingsContainer);
+                        }
+                        catch (Exception exception)
+                        {
+                            errors.AppendLine(String.Format("{0}: {1}", item.PropertyName, exception.ToString()));
+                        }
+                    }
                 }
-                if ((nav = root.SelectSingleNode("/settings/fftwfWisdom64f")) != null)
+                catch (Exception exception)
                 {
-                    _FFTWWisdom64f = nav.Value;
-                }
-                nav = root.SelectSingleNode("/settings/recentDocuments/@max");
-                if (nav != null)
-                {
-                    _RecentDocumentsMax = Math.Max(0, nav.ValueAsInt);
-                }
-                foreach (XPathNavigator recentNav in root.Select("/settings/recentDocuments/recentDocument"))
-                {
-                    _RecentDocuments.Add(recentNav.Value);
-                }
-
-                if ((nav = root.SelectSingleNode("/settings/enableCIL")) != null)
-                {
-                    _EnableCILSet = true;
-                    _EnableCIL = nav.ValueAsBoolean;
-                }
-                if ((nav = root.SelectSingleNode("/settings/enableEnvelopeSmoothing")) != null)
-                {
-                    _EnableEnvelopeSmoothingSet = true;
-                    _EnableEnvelopeSmoothing = nav.ValueAsBoolean;
-                }
-                if ((nav = root.SelectSingleNode("/settings/enablePriorityBoost")) != null)
-                {
-                    _EnablePriorityBoostSet = true;
-                    _EnablePriorityBoost = nav.ValueAsBoolean;
-                }
-                if ((nav = root.SelectSingleNode("/settings/enableDirectWrite")) != null)
-                {
-                    _EnableDirectWriteSet = true;
-                    _EnableDirectWrite = nav.ValueAsBoolean;
-                }
-                if ((nav = root.SelectSingleNode("/settings/maximumSmoothedParameterCount")) != null)
-                {
-                    _MaximumSmoothedParameterCountSet = true;
-                    _MaximumSmoothedParameterCount = nav.ValueAsInt;
+                    errors.AppendLine(exception.ToString());
                 }
             }
-            catch (Exception exception)
+
+            if (errors.Length != 0)
             {
-                MessageBox.Show(String.Format("An error ocurred parsing the application preferences; some preferences will be reset. {0}", exception), "Out Of Phase");
+                MessageBox.Show(String.Format("An error ocurred parsing the application preferences; some preferences will be reset. {0}", errors), "Out Of Phase");
             }
         }
 
@@ -228,103 +251,138 @@ namespace OutOfPhase
                 {
                     writer.WriteStartElement("settings");
 
-
-                    // advertised settings
-
-                    writer.WriteStartElement("tabSize");
-                    writer.WriteValue(_TabSize);
-                    writer.WriteEndElement();
-
-                    writer.WriteStartElement("autoIndent");
-                    writer.WriteValue(_AutoIndent);
-                    writer.WriteEndElement();
-
-                    writer.WriteStartElement("autosave");
-                    writer.WriteValue(_AutosaveEnabled);
-                    writer.WriteEndElement();
-
-                    writer.WriteStartElement("autosaveInterval");
-                    writer.WriteValue(_AutosaveInterval);
-                    writer.WriteEndElement();
-
-                    writer.WriteStartElement("outputDevice");
-                    writer.WriteStartAttribute("name", null);
-                    writer.WriteValue(_OutputDeviceFriendlyName);
-                    writer.WriteEndAttribute();
-                    writer.WriteValue(_OutputDevice);
-                    writer.WriteEndElement();
-
-                    writer.WriteStartElement("concurrency");
-                    writer.WriteValue(_Concurrency);
-                    writer.WriteEndElement();
-
-                    if (!String.IsNullOrEmpty(_FFTWWisdom32f))
+                    foreach (GlobalPrefsItem item in items)
                     {
-                        writer.WriteStartElement("fftwfWisdom32f");
-                        writer.WriteValue(_FFTWWisdom32f);
-                        writer.WriteEndElement();
+                        item.Write(writer);
                     }
-                    if (!String.IsNullOrEmpty(_FFTWWisdom64f))
-                    {
-                        writer.WriteStartElement("fftwfWisdom64f");
-                        writer.WriteValue(_FFTWWisdom64f);
-                        writer.WriteEndElement();
-                    }
-
-                    writer.WriteStartElement("recentDocuments");
-                    writer.WriteStartAttribute("max");
-                    writer.WriteValue(_RecentDocumentsMax);
-                    writer.WriteEndAttribute();
-                    foreach (string recent in RecentDocuments)
-                    {
-                        writer.WriteStartElement("recentDocument");
-                        writer.WriteValue(recent);
-                        writer.WriteEndElement();
-                    }
-                    writer.WriteEndElement();
-
-
-                    // unadvertised settings
-
-                    if (_EnableCILSet)
-                    {
-                        writer.WriteStartElement("enableCIL");
-                        writer.WriteValue(_EnableCIL);
-                        writer.WriteEndElement();
-                    }
-
-                    if (_EnableEnvelopeSmoothingSet)
-                    {
-                        writer.WriteStartElement("enableEnvelopeSmoothing");
-                        writer.WriteValue(_EnableEnvelopeSmoothing);
-                        writer.WriteEndElement();
-                    }
-
-                    if (_EnablePriorityBoostSet)
-                    {
-                        writer.WriteStartElement("enablePriorityBoost");
-                        writer.WriteValue(_EnablePriorityBoost);
-                        writer.WriteEndElement();
-                    }
-
-                    if (_EnableDirectWriteSet)
-                    {
-                        writer.WriteStartElement("enableDirectWrite");
-                        writer.WriteValue(_EnableDirectWrite);
-                        writer.WriteEndElement();
-                    }
-
-                    if (_MaximumSmoothedParameterCountSet)
-                    {
-                        writer.WriteStartElement("maximumSmoothedParameterCount");
-                        writer.WriteValue(_MaximumSmoothedParameterCount);
-                        writer.WriteEndElement();
-                    }
-
 
                     writer.WriteEndElement();
                 }
             }
+        }
+
+
+        // generic property immplementation
+
+        private abstract class GlobalPrefsItem
+        {
+            protected readonly string propertyName;
+
+            protected GlobalPrefsItem(string propertyName)
+            {
+                this.propertyName = propertyName;
+            }
+
+            public abstract void Read(XPathNavigator containerNav);
+            public abstract void Write(XmlWriter writer);
+
+            public string PropertyName { get { return propertyName; } }
+        }
+
+        private class GlobalPrefsSimpleItem<T> : GlobalPrefsItem
+        {
+            private T value;
+            private T defaultValue;
+            private bool explicitlySet;
+
+            public GlobalPrefsSimpleItem(string propertyName, T defaultValue)
+                : base(propertyName)
+            {
+                this.value = this.defaultValue = defaultValue;
+            }
+
+            public override void Read(XPathNavigator containerNav)
+            {
+                XPathNavigator nav = containerNav.SelectSingleNode(propertyName);
+                if (nav != null)
+                {
+                    explicitlySet = true;
+                    string text = nav.Value;
+                    value = (T)TypeDescriptor.GetConverter(typeof(T)).ConvertFromString(text);
+                }
+            }
+
+            public override void Write(XmlWriter writer)
+            {
+                if (explicitlySet || !EqualityComparer<T>.Default.Equals(value, defaultValue))
+                {
+                    writer.WriteStartElement(propertyName);
+                    string text = TypeDescriptor.GetConverter(typeof(T)).ConvertToString(value);
+                    writer.WriteValue(text);
+                    writer.WriteEndElement();
+                }
+            }
+
+            public T Value { get { return value; } set { this.value = value; explicitlySet = true; } }
+        }
+
+        private class GlobalPrefsListItem<T> : GlobalPrefsItem
+        {
+            private readonly BindingList<T> items = new BindingList<T>();
+            private const string ItemNodeName = "item";
+
+            public GlobalPrefsListItem(string nodeName)
+                : base(nodeName)
+            {
+            }
+
+            public override void Read(XPathNavigator containerNav)
+            {
+                XPathNavigator topNav = containerNav.SelectSingleNode(propertyName);
+                if (topNav != null)
+                {
+                    foreach (XPathNavigator itemNav in topNav.Select(ItemNodeName))
+                    {
+                        string text = itemNav.Value;
+                        if (text == null)
+                        {
+                            text = String.Empty;
+                        }
+                        T value = (T)TypeDescriptor.GetConverter(typeof(T)).ConvertFromString(text);
+                        items.Add(value);
+                    }
+                }
+            }
+
+            public override void Write(XmlWriter writer)
+            {
+                if (items.Count != 0)
+                {
+                    writer.WriteStartElement(propertyName);
+
+                    foreach (T value in items)
+                    {
+                        writer.WriteStartElement(ItemNodeName);
+                        string text = TypeDescriptor.GetConverter(typeof(T)).ConvertToString(value);
+                        writer.WriteValue(text);
+                        writer.WriteEndElement();
+                    }
+
+                    writer.WriteEndElement();
+                }
+            }
+
+            public BindingList<T> List { get { return items; } }
+        }
+
+        private GlobalPrefsItem FindProperty(string propertyName)
+        {
+            foreach (GlobalPrefsItem item in items)
+            {
+                if (String.Equals(propertyName, item.PropertyName))
+                {
+                    return item;
+                }
+            }
+            Debug.Assert(false);
+            throw new ArgumentException();
+        }
+
+        private GlobalPrefsSimpleItem<T> FindSimpleProperty<T>(string propertyName)
+        {
+            GlobalPrefsItem item = FindProperty(propertyName);
+            Debug.Assert(item is GlobalPrefsSimpleItem<T>);
+            return (GlobalPrefsSimpleItem<T>)item;
         }
     }
 }
