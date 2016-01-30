@@ -51,18 +51,21 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.label1 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
             this.textBoxInstrumentName = new System.Windows.Forms.TextBox();
             this.instrObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.label2 = new System.Windows.Forms.Label();
+            this.label2 = new OutOfPhase.MyLabel();
             this.menuStripManager = new OutOfPhase.MenuStripManager();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxInstrumentBody = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.textBoxWindowHelper = new OutOfPhase.TextBoxWindowHelper(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.instrObjectRecBindingSource)).BeginInit();
+            this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
@@ -74,7 +77,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.Controls.Add(this.textBoxInstrumentName, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.label2, 0, 3);
             this.tableLayoutPanel1.Controls.Add(this.menuStripManager, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.textBoxInstrumentBody, 0, 4);
+            this.tableLayoutPanel1.Controls.Add(this.panel1, 0, 4);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -91,7 +94,7 @@ namespace OutOfPhase
             // 
             this.label1.AutoSize = true;
             this.label1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.label1.Location = new System.Drawing.Point(3, 30);
+            this.label1.Location = new System.Drawing.Point(3, 24);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(596, 13);
             this.label1.TabIndex = 1;
@@ -101,7 +104,7 @@ namespace OutOfPhase
             // 
             this.textBoxInstrumentName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.instrObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxInstrumentName.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxInstrumentName.Location = new System.Drawing.Point(3, 46);
+            this.textBoxInstrumentName.Location = new System.Drawing.Point(3, 40);
             this.textBoxInstrumentName.Name = "textBoxInstrumentName";
             this.textBoxInstrumentName.Size = new System.Drawing.Size(596, 20);
             this.textBoxInstrumentName.TabIndex = 2;
@@ -114,7 +117,7 @@ namespace OutOfPhase
             // 
             this.label2.AutoSize = true;
             this.label2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.label2.Location = new System.Drawing.Point(3, 69);
+            this.label2.Location = new System.Drawing.Point(3, 63);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(596, 13);
             this.label2.TabIndex = 3;
@@ -123,23 +126,34 @@ namespace OutOfPhase
             // menuStripManager
             // 
             this.menuStripManager.AutoSize = true;
-            this.menuStripManager.Location = new System.Drawing.Point(3, 3);
+            this.menuStripManager.Location = new System.Drawing.Point(0, 0);
+            this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(596, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(602, 24);
             this.menuStripManager.TabIndex = 5;
+            // 
+            // panel1
+            // 
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.textBoxInstrumentBody);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(3, 79);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(596, 268);
+            this.panel1.TabIndex = 7;
             // 
             // textBoxInstrumentBody
             // 
             this.textBoxInstrumentBody.AutoScroll = true;
             this.textBoxInstrumentBody.AutoScrollMinSize = new System.Drawing.Size(596, 13);
-            this.textBoxInstrumentBody.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.textBoxInstrumentBody.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textBoxInstrumentBody.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxInstrumentBody.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxInstrumentBody.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.instrObjectRecBindingSource, "InstrDefinition", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxInstrumentBody.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxInstrumentBody.Location = new System.Drawing.Point(3, 85);
+            this.textBoxInstrumentBody.Location = new System.Drawing.Point(0, 0);
             this.textBoxInstrumentBody.Name = "textBoxInstrumentBody";
-            this.textBoxInstrumentBody.Size = new System.Drawing.Size(596, 262);
+            this.textBoxInstrumentBody.SimpleNavigation = true;
+            this.textBoxInstrumentBody.Size = new System.Drawing.Size(594, 266);
             this.textBoxInstrumentBody.TabIndex = 6;
             this.textBoxInstrumentBody.TextService = TextEditor.TextService.Simple;
             this.textBoxInstrumentBody.TextStorageFactory = this.stringStorageFactory;
@@ -179,6 +193,10 @@ namespace OutOfPhase
             this.textBoxWindowHelper.SelectAllToolStripMenuItem = null;
             this.textBoxWindowHelper.UndoToolStripMenuItem = null;
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // InstrumentWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -189,6 +207,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.instrObjectRecBindingSource)).EndInit();
+            this.panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).EndInit();
             this.ResumeLayout(false);
 
@@ -197,9 +216,9 @@ namespace OutOfPhase
         #endregion
 
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.Label label1;
+        private MyLabel label1;
         private System.Windows.Forms.TextBox textBoxInstrumentName;
-        private System.Windows.Forms.Label label2;
+        private MyLabel label2;
         private System.Windows.Forms.BindingSource instrObjectRecBindingSource;
         private MenuStripManager menuStripManager;
         private TextEditor.TextEditControl textBoxInstrumentBody;
@@ -207,5 +226,7 @@ namespace OutOfPhase
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextBoxWindowHelper textBoxWindowHelper;
         private TextEditor.StringStorageFactory stringStorageFactory;
+        private System.Windows.Forms.Panel panel1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

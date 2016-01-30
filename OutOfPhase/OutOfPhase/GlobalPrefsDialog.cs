@@ -39,7 +39,7 @@ namespace OutOfPhase
         {
             InitializeComponent();
 
-            devices = OutputDeviceDestinationHandler.EnumerateAudioOutputDeviceIdentifiers();
+            devices = OutputDeviceEnumerator.EnumerateAudioOutputDeviceIdentifiers();
             for (int i = 0; i < devices.Length; i++)
             {
                 comboBoxOutputDevice.Items.Add(devices[i].Value);
@@ -56,6 +56,12 @@ namespace OutOfPhase
 
             concurrency = Program.Config.Concurrency;
             UpdateConcurrencyEnables();
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
         }
 
         private void buttonCancel_Click(object sender, EventArgs e)

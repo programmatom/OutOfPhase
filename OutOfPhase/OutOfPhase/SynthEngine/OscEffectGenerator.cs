@@ -210,6 +210,34 @@ namespace OutOfPhase
                                 }
                             }
                             break;
+                        case EffectTypes.ePluggableEffect:
+                            {
+                                PluggableSpec Spec = GetPluggableEffectFromEffectSpecList(SpecList, Scan);
+                                Debug.Assert(Spec is PluggableOscSpec);
+                                PluggableOscEffectTemplate template = new PluggableOscEffectTemplate(
+                                    (PluggableOscSpec)Spec,
+                                    SynthParams);
+                                IOscillatorEffect effect;
+                                SynthErrorCodes error = template.Create(
+                                    ref Accents,
+                                    HurryUp,
+                                    InitialFrequency,
+                                    FreqForMultisampling,
+                                    out OnePreOrigin,
+                                    TrackInfo,
+                                    SynthParams,
+                                    out effect);
+                                if (error != SynthErrorCodes.eSynthDone)
+                                {
+                                    return error;
+                                }
+                                Effect.u = effect;
+                                if (OnePreOrigin > MaxPreOrigin)
+                                {
+                                    MaxPreOrigin = OnePreOrigin;
+                                }
+                            }
+                            break;
                     }
                 }
             }

@@ -52,10 +52,13 @@ namespace OutOfPhase
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.menuStripManager = new OutOfPhase.MenuStripManager();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxDisassembly = new TextEditor.TextEditControl();
             this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
+            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -63,7 +66,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ColumnCount = 1;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Controls.Add(this.menuStripManager, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.textBoxDisassembly, 0, 1);
+            this.tableLayoutPanel1.Controls.Add(this.panel1, 0, 1);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -76,23 +79,34 @@ namespace OutOfPhase
             // menuStripManager
             // 
             this.menuStripManager.AutoSize = true;
-            this.menuStripManager.Location = new System.Drawing.Point(3, 3);
+            this.menuStripManager.Location = new System.Drawing.Point(0, 0);
+            this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(509, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(515, 24);
             this.menuStripManager.TabIndex = 2;
+            // 
+            // panel1
+            // 
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.textBoxDisassembly);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(3, 27);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(509, 495);
+            this.panel1.TabIndex = 4;
             // 
             // textBoxDisassembly
             // 
             this.textBoxDisassembly.AutoScroll = true;
             this.textBoxDisassembly.AutoScrollMinSize = new System.Drawing.Size(509, 13);
-            this.textBoxDisassembly.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.textBoxDisassembly.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textBoxDisassembly.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxDisassembly.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxDisassembly.Font = new System.Drawing.Font("Lucida Console", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.textBoxDisassembly.Location = new System.Drawing.Point(3, 33);
+            this.textBoxDisassembly.Location = new System.Drawing.Point(0, 0);
             this.textBoxDisassembly.Name = "textBoxDisassembly";
             this.textBoxDisassembly.ReadOnly = true;
-            this.textBoxDisassembly.Size = new System.Drawing.Size(509, 489);
+            this.textBoxDisassembly.SimpleNavigation = true;
+            this.textBoxDisassembly.Size = new System.Drawing.Size(507, 493);
             this.textBoxDisassembly.TabIndex = 3;
             this.textBoxDisassembly.TextService = TextEditor.TextService.Simple;
             this.textBoxDisassembly.TextStorageFactory = this.stringStorageFactory;
@@ -119,6 +133,10 @@ namespace OutOfPhase
             this.textEditorWindowHelper.TrimTrailingSpacesToolStripMenuItem = null;
             this.textEditorWindowHelper.UndoToolStripMenuItem = null;
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // DisassemblyWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -128,6 +146,7 @@ namespace OutOfPhase
             this.Name = "DisassemblyWindow";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
+            this.panel1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -139,5 +158,7 @@ namespace OutOfPhase
         private TextEditor.TextEditControl textBoxDisassembly;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextEditor.StringStorageFactory stringStorageFactory;
+        private System.Windows.Forms.Panel panel1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

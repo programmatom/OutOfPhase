@@ -146,8 +146,6 @@ namespace OutOfPhase
 
                 State.NoteLoudnessScaling = Loudness * Template.OverallOscillatorLoudness;
 
-                State.OneOverFinalOutputSamplingRate = 1d / SynthParams.dSamplingRate;
-
                 switch (Template.Algorithm)
                 {
                     default:
@@ -198,6 +196,11 @@ namespace OutOfPhase
                 {
                     MaxPreOrigin = OnePreOrigin;
                 }
+                // initial value for envelope smoothing
+                State.PreviousIndex = LFOGenInitialValue(
+                    State.IndexLFOGenerator,
+                    EnvelopeInitialValue(
+                       State.AlgorithmicIndexEnvelope));
 
                 /* State.MonoLoudness, State.LeftLoudness, State.RightLoudness */
                 /* are determined by the envelope update */
@@ -241,6 +244,12 @@ namespace OutOfPhase
                 {
                     MaxPreOrigin = OnePreOrigin;
                 }
+                // initial value for envelope smoothing
+                State.PreviousLoudness = (float)LFOGenInitialValue(
+                    State.LoudnessLFOGenerator,
+                    EnvelopeInitialValue(
+                       State.AlgorithmicLoudnessEnvelope));
+
                 State.PitchLFO = NewLFOGenerator(
                     Template.PitchLFOTemplate,
                     out OnePreOrigin,
@@ -352,9 +361,6 @@ namespace OutOfPhase
             /* postprocessing for this oscillator; may be null */
             public OscEffectGenRec OscEffectGenerator;
 
-            /* precomputed factor for UpdateWaveTableEnvelopes to use */
-            public double OneOverFinalOutputSamplingRate;
-
             /* static information for the algorithmic oscillator */
             public AlgorithmicTemplateRec Template;
 
@@ -390,7 +396,7 @@ namespace OutOfPhase
                     }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier + State.Template.FrequencyAdder;
-                Differential = NewFrequencyHertz * State.OneOverFinalOutputSamplingRate;
+                Differential = NewFrequencyHertz * SynthParams.dSamplingRateReciprocal;
                 //State.WaveTableSamplePositionDifferential = new Fixed64(Differential);
                 // strength reduction:
                 Fixed64 LocalWaveTableSamplePositionDifferential = new Fixed64(Differential);

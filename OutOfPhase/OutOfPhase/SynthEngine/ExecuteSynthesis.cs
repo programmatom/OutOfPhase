@@ -91,6 +91,7 @@ namespace OutOfPhase
             eSynthErrorExUndefinedSample,
             eSynthErrorExUndefinedFunction,
             eSynthErrorExTypeMismatchFunction,
+            eSynthErrorExTypeMismatchFunctionMultiple,
             eSynthErrorExPossibleInfiniteSequenceLoop,
             eSynthErrorExLaterTrackIssusedCommandToEarlierTrack,
             eSynthErrorExTooManyNestedSkipCommands,
@@ -105,6 +106,8 @@ namespace OutOfPhase
             eSynthErrorExExceptionOccurred,
             eSynthErrorExUserParamFunctionEvalError,
             eSynthErrorExUserEffectFunctionEvalError,
+            eSynthErrorExUndefinedPitchTable,
+            eSynthErrorExPluggableParameterOutOfRange,
 
             eSynthErrorEx_End,
 
@@ -124,10 +127,12 @@ namespace OutOfPhase
             public string FunctionName;
             public string IssuingTrackName;
             public string ReceivingTrackName;
+            public string GenericName;
             public string CustomError;
-            public Exception exception;
-            public EvalErrors userEvalErrorCode = EvalErrors.eEvalNoError;
-            public EvalErrInfoRec userEvalErrorInfo; // subservient to userEvalErrorCode
+            public Exception Exception;
+            public EvalErrors UserEvalErrorCode = EvalErrors.eEvalNoError;
+            public EvalErrInfoRec UserEvalErrorInfo; // subservient to UserEvalErrorCode
+            public string ExtraInfo;
 
             public void CopyFrom(SynthErrorInfoRec source)
             {
@@ -142,8 +147,10 @@ namespace OutOfPhase
                 this.IssuingTrackName = source.IssuingTrackName;
                 this.ReceivingTrackName = source.ReceivingTrackName;
                 this.CustomError = source.CustomError;
-                this.exception = source.exception;
-                this.userEvalErrorCode = source.userEvalErrorCode;
+                this.ExtraInfo = source.ExtraInfo;
+                this.Exception = source.Exception;
+                this.UserEvalErrorCode = source.UserEvalErrorCode;
+                this.UserEvalErrorInfo = source.UserEvalErrorInfo;
             }
         }
 
@@ -282,6 +289,7 @@ namespace OutOfPhase
             public readonly double dEnvelopeRate;
             /* number of sample frames per second */
             public readonly double dSamplingRate;
+            public readonly double dSamplingRateReciprocal;
             /* integer versions */
             public readonly int iEnvelopeRate;
             public readonly int iSamplingRate;
@@ -324,15 +332,15 @@ namespace OutOfPhase
             // workspaces capacity
             public readonly int nAllocatedPointsOneChannel;
 
-            public static readonly int VECTORALIGN =
+            public static readonly int VECTORALIGNBYTES =
 #if VECTOR
                 Vector<float>.Count * sizeof(float)
 #else
  0
 #endif
 ; // SSE/AVX required alignment (bytes)
-            public const int CACHEALIGN = 16; // cache line optimal alignment (bytes)
-            public static readonly int WORKSPACEALIGN = Math.Max(VECTORALIGN, CACHEALIGN);
+            public const int CACHEALIGNBYTES = 16; // cache line optimal alignment (bytes)
+            public static readonly int WORKSPACEALIGNBYTES = Math.Max(VECTORALIGNBYTES, CACHEALIGNBYTES);
 
             // float[] workspaces
             public readonly float[] workspace;
@@ -351,13 +359,20 @@ namespace OutOfPhase
             public readonly int ScratchWorkspace1ROffset; // Length == nAllocatedPointsOneChannel
             public readonly int ScratchWorkspace2LOffset; // Length == nAllocatedPointsOneChannel
             public readonly int ScratchWorkspace2ROffset; // Length == nAllocatedPointsOneChannel
+            public readonly int ScratchWorkspace4LOffset; // Length == nAllocatedPointsOneChannel
+            public readonly int ScratchWorkspace4ROffset; // Length == nAllocatedPointsOneChannel
 #if DEBUG
+            // these "in use" flags are not a proper check-out/check-in mechanism but just a way for parts of the code
+            // to signal periods when they are using buffers so that invalid dual uses (code errors) are detected.
             public bool ScratchWorkspace1InUse;
             public bool ScratchWorkspace2InUse;
+            public bool ScratchWorkspace4InUse;
 #endif
             // offsets to L, R, each section...
             // can't be moved to SynthState because it's tuned for the vector misalignment of this object's workspace array
             public readonly int[] SectionInputAccumulationWorkspaces;
+            // all float workspaces (incl. scratch 1 & 2) - to max required by smoothing and pluggable effects
+            public readonly int[] AllScratchWorkspaces32;
 
             // Fixed64[] workspaces
 
@@ -365,8 +380,12 @@ namespace OutOfPhase
             public readonly GCHandle hScratchWorkspace3;
             public readonly int ScratchWorkspace3Offset;
 #if DEBUG
+            // these "in use" flags are not a proper check-out/check-in mechanism but just a way for parts of the code
+            // to signal periods when they are using buffers so that invalid dual uses (code errors) are detected.
             public bool ScratchWorkspace3InUse;
 #endif
+            // all float workspaces (incl. scratch 3) - to max required by smoothing and pluggable effects
+            public readonly int[] AllScratchWorkspaces64;
 
             // Vector workspaces
 #if VECTOR
@@ -396,10 +415,13 @@ namespace OutOfPhase
                     template.fOverallVolumeScaling,
                     template.CodeCenter,
                     template.randomSeedProvider,
-                    template.SectionInputAccumulationWorkspaces.Length / 2)
+                    template.SectionInputAccumulationWorkspaces.Length / 2,
+                    template.AllScratchWorkspaces32.Length,
+                    template.AllScratchWorkspaces64.Length)
             {
                 this.dEnvelopeRate = template.dEnvelopeRate;
                 this.dSamplingRate = template.dSamplingRate;
+                this.dSamplingRateReciprocal = template.dSamplingRateReciprocal;
                 this.lElapsedTimeInEnvelopeTicks = template.lElapsedTimeInEnvelopeTicks;
                 this.dElapsedTimeInSeconds = template.dElapsedTimeInSeconds;
                 this.dCurrentBeatsPerMinute = template.dCurrentBeatsPerMinute;
@@ -416,10 +438,13 @@ namespace OutOfPhase
                 float fOverallVolumeScaling,
                 CodeCenterRec CodeCenter,
                 RandomSeedProvider randomSeedProvider,
-                int sectionCount)
+                int sectionCount,
+                int required32BitWorkspaceCount,
+                int required64BitWorkspaceCount)
             {
                 this.dEnvelopeRate = this.iEnvelopeRate = iEnvelopeRate;
                 this.dSamplingRate = this.iSamplingRate = iSamplingRate;
+                this.dSamplingRateReciprocal = 1d / this.dSamplingRate;
                 this.iOversampling = iOversampling;
                 this.iScanningGapWidthInEnvelopeTicks = iScanningGapWidthInEnvelopeTicks;
                 this.Document = Document;
@@ -436,52 +461,82 @@ namespace OutOfPhase
 
                 // float[] workspaces
                 {
+                    // each workspace area is guarranteed large enough to hold one machine vector
+#if VECTOR
+                    int minimumLength = Vector<float>.Count;
+#else
+                    const int minimumLength = 0;
+#endif
+                    int oneLength = Math.Max(this.nAllocatedPointsOneChannel, minimumLength);
+
                     /* allocate the workspace */
                     /* allocate block containing all workspace areas */
-                    const int NumberOfWorkspaces = 7;
-                    this.workspace = new float[(nAllocatedPointsOneChannel + WORKSPACEALIGN) * 2 * (NumberOfWorkspaces + sectionCount)];
+                    const int NumberOfWorkspacesBase = 8; // this count is of L&R pairs
+                    int NumberOfWorkspacesAdditional = Math.Max(0, required32BitWorkspaceCount - 6/*scratch {1, 2, 3} x {L, R}*/);
+                    this.workspace = new float[(oneLength + WORKSPACEALIGNBYTES / sizeof(float)) *
+                        (2 * (NumberOfWorkspacesBase + sectionCount) + NumberOfWorkspacesAdditional)];
                     this.hWorkspace = GCHandle.Alloc(this.workspace, GCHandleType.Pinned);
                     // assign workspace subsections
-                    const int SizeOfFloat = 4;
                     int offset = 0;
-                    this.ScoreWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.ScoreWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.SectionWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.SectionWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.TrackWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.TrackWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.CombinedOscillatorWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.CombinedOscillatorWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.OscillatorWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.OscillatorWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.ScratchWorkspace1LOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.ScratchWorkspace1ROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.ScratchWorkspace2LOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
-                    this.ScratchWorkspace2ROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                    offset += this.nAllocatedPointsOneChannel;
+                    this.ScoreWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.ScoreWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.SectionWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.SectionWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.TrackWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.TrackWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.CombinedOscillatorWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.CombinedOscillatorWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.OscillatorWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.OscillatorWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.ScratchWorkspace1LOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.ScratchWorkspace1ROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.ScratchWorkspace2LOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.ScratchWorkspace2ROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.ScratchWorkspace4LOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
+                    this.ScratchWorkspace4ROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                    offset += oneLength;
                     Debug.Assert(offset <= this.workspace.Length);
 
                     this.SectionInputAccumulationWorkspaces = new int[2 * sectionCount];
                     for (int i = 0; i < 2 * sectionCount; i++)
                     {
-                        this.SectionInputAccumulationWorkspaces[i] = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFloat);
-                        offset += this.nAllocatedPointsOneChannel;
+                        this.SectionInputAccumulationWorkspaces[i] = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
                     }
                     Debug.Assert(offset <= this.workspace.Length);
 
+                    List<int> allScratch = new List<int>();
+                    allScratch.Add(this.ScratchWorkspace1LOffset);
+                    allScratch.Add(this.ScratchWorkspace1ROffset);
+                    allScratch.Add(this.ScratchWorkspace2LOffset);
+                    allScratch.Add(this.ScratchWorkspace2ROffset);
+                    allScratch.Add(this.ScratchWorkspace4LOffset);
+                    allScratch.Add(this.ScratchWorkspace4ROffset);
+                    for (int i = 0; i < NumberOfWorkspacesAdditional; i++)
+                    {
+                        int start = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        allScratch.Add(start);
+                        offset += oneLength;
+                    }
+                    AllScratchWorkspaces32 = allScratch.ToArray();
+                    Debug.Assert(offset <= this.workspace.Length);
+
+                    // TODO: move these into the main workspace array
 #if VECTOR
                     vectorWorkspace1 = new AlignedWorkspace(Vector<float>.Count);
                     vectorWorkspace2 = new AlignedWorkspace(Vector<float>.Count);
@@ -492,13 +547,32 @@ namespace OutOfPhase
 
                 // Fixed64[] workspaces
                 {
-                    const int SizeOfFixed64 = 8;
-                    this.ScratchWorkspace3 = new Fixed64[this.nAllocatedPointsOneChannel + WORKSPACEALIGN * 2];
+                    // each workspace area is guarranteed large enough to hold one machine vector
+#if VECTOR
+                    int minimumLength = Vector<double>.Count;
+#else
+                    const int minimumLength = 0;
+#endif
+                    int oneLength = Math.Max(this.nAllocatedPointsOneChannel, minimumLength);
+
+                    int NumberOfWorkspaces = Math.Max(1, required64BitWorkspaceCount); // this count is of L&R pairs
+                    this.ScratchWorkspace3 = new Fixed64[(oneLength + WORKSPACEALIGNBYTES / sizeof(double)) * NumberOfWorkspaces];
                     this.hScratchWorkspace3 = GCHandle.Alloc(this.ScratchWorkspace3, GCHandleType.Pinned);
                     int offset = 0;
-                    this.ScratchWorkspace3Offset = Align(this.hScratchWorkspace3.AddrOfPinnedObject(), ref offset, WORKSPACEALIGN, SizeOfFixed64);
-                    offset += this.nAllocatedPointsOneChannel;
+                    this.ScratchWorkspace3Offset = Align(this.hScratchWorkspace3.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(double));
+                    offset += oneLength;
                     Debug.Assert(offset <= this.ScratchWorkspace3.Length);
+
+                    List<int> allScratch = new List<int>();
+                    allScratch.Add(this.ScratchWorkspace3Offset);
+                    for (int i = 0; i < NumberOfWorkspaces; i++)
+                    {
+                        int start = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(double));
+                        allScratch.Add(start);
+                        offset += oneLength;
+                    }
+                    AllScratchWorkspaces64 = allScratch.ToArray();
+                    Debug.Assert(offset <= this.workspace.Length);
                 }
             }
 
@@ -564,7 +638,9 @@ namespace OutOfPhase
 
             public SectionObjectRec SectionObject;
 
-#if true // PARALLEL
+
+            // for parallel
+
             // leftOffset = SynthParamRec.SectionInputAccumulationWorkspaces[2 * sectionInputAccumulatorIndex + 0];
             // rightOffset = SynthParamRec.SectionInputAccumulationWorkspaces[2 * sectionInputAccumulatorIndex + 1];
             public int sectionInputAccumulatorIndex;
@@ -579,11 +655,12 @@ namespace OutOfPhase
             public long lastCost;
 
             public PlayListNodeRec[] inputTracks;
-#endif
+
+
+            // for tracing
 
             public TraceInfoRec traceInfo;
 
-            // for tracing
             public int seqGen;
             public List<EventTraceRec> events; // null == not tracing
             public int denormalCount; // iff level2TraceFlags & Denormals != 0
@@ -646,15 +723,18 @@ namespace OutOfPhase
             /* flag indicating whether track object is active */
             public bool IsActive;
 
-#if true // PARALLEL
+
+            // for parallel
+
             // cpu cost of last cycle
             public long lastCost;
 
             // 0 = not processed; 1 = processed
             public int processed;
-#endif
+
 
             // for tracing
+
             public TraceInfoRec traceInfo;
             public int denormalCount; // iff level2TraceFlags & Denormals != 0
         }
@@ -673,7 +753,10 @@ namespace OutOfPhase
             public SequencerTableRec SequencerTable;
             public TrackEffectGenRec ScoreEffectProcessor;
             public PlayListNodeRec PlayTrackList;
-#if true // PARALLEL
+
+
+            // for parallel
+
             public int concurrency; // 0 = old, 1 = new serialized, >1 = new parallelized
             public SecEffRec DefaultSectionEffectSurrogate;
             public int scoreEffectInputAccumulatorIndex; // synonymous with DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex
@@ -683,10 +766,8 @@ namespace OutOfPhase
             public object[] CombinedPlayArray; // each is either PlayListNodeRec or SecEffRec
 
             public SynthParamRec[] SynthParamsPerProc;
-#endif
             public SynthParamRec SynthParams0; // synonymous with SynthParamsPerProc[0]
 
-#if true // PARALLEL
             public ManualResetEvent startBarrier;
             public ManualResetEvent endBarrier;
             public volatile int startBarrierReleaseSpin;
@@ -702,7 +783,9 @@ namespace OutOfPhase
 
             public Thread[] threads; // [0]=main thread, [1..c-1] for each aux processor
             public volatile int exit; // non-zero causes exit
-#endif
+
+
+            //
 
             public int initialSeed;
             public RandomSeedProvider randomSeedProvider;
@@ -839,7 +922,6 @@ namespace OutOfPhase
 
                     SynthState = new SynthStateRec();
 
-#if true // PARALLEL
                     if (automationSettings.Concurrency.HasValue)
                     {
                         // explicit concurrency value overrides global settings
@@ -878,12 +960,10 @@ namespace OutOfPhase
                             // reserved (unused) processor count
                             SynthState.concurrency = Math.Max(Environment.ProcessorCount + Program.Config.Concurrency, 1);
                         }
-#endif
 
                         SynthState.concurrency = Math.Max(1, SynthState.concurrency);
                     }
 
-#if true // PARALLEL
                     int sectionCount = 0;
                     if (SynthState.concurrency > 0)
                     {
@@ -901,7 +981,6 @@ namespace OutOfPhase
                             }
                         }
                     }
-#endif
 
                     int iScanningGapWidthInEnvelopeTicks = (int)((double)ScanningGap * EnvelopeRate);
                     float fOverallVolumeScaling = (float)(1d / OverallVolumeScalingReciprocal);
@@ -925,6 +1004,17 @@ namespace OutOfPhase
                     SynthState.initialSeed = ParkAndMiller.ConstrainSeed(SynthState.initialSeed);
                     SynthState.randomSeedProvider = new RandomSeedProvider(SynthState.initialSeed);
 
+                    // compute number of workspaces required by envelope smoothing and pluggable processors
+                    int scratch32Count = 0;
+                    int scratch64Count = 0;
+                    for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
+                    {
+                        int scratch32Count1, scratch64Count1;
+                        ComputeWorkspaceRequirements(BuiltInPluggableProcessors[i].Value, out scratch32Count1, out scratch64Count1);
+                        scratch32Count = Math.Max(scratch32Count, scratch32Count1);
+                        scratch64Count = Math.Max(scratch64Count, scratch64Count1);
+                    }
+
                     SynthParamRec SynthParams = SynthState.SynthParams0 = new SynthParamRec(
                         EnvelopeRate,
                         SamplingRate,
@@ -936,7 +1026,9 @@ namespace OutOfPhase
                         fOverallVolumeScaling,
                         Document.CodeCenter,
                         SynthState.randomSeedProvider,
-                        sectionCount);
+                        sectionCount,
+                        scratch32Count,
+                        scratch64Count);
 
                     SynthState.ListOfTracks = ListOfTracks;
                     SynthState.KeyTrack = KeyTrack;
@@ -1061,7 +1153,6 @@ namespace OutOfPhase
                             / SynthParams.dEnvelopeRate) * DURATIONUPDATECLOCKRESOLUTION;
 
 
-#if true // PARALLEL
                     // Assign section effect input accumulator indices.
                     // Ensure that section count used to allocate workspaces is the same as the count
                     // that BuildPlayList() came up with.
@@ -1173,7 +1264,7 @@ namespace OutOfPhase
                         }
                         SynthState.threads[0] = Thread.CurrentThread;
                     }
-#endif
+
 
                     // initialize debugging helpers
                     if (automationSettings.BreakFrames != null)
@@ -1261,6 +1352,16 @@ namespace OutOfPhase
                         SynthState.Dispose();
                     }
                 }
+            }
+
+            private static void ComputeWorkspaceRequirements(
+                IPluggableProcessorFactory pluggable,
+                out int scratch32Count,
+                out int scratch64Count)
+            {
+                scratch32Count = pluggable.MaximumRequired32BitWorkspaceCount;
+                scratch64Count = pluggable.MaximumRequired64BitWorkspaceCount;
+                scratch32Count += Math.Max(pluggable.MaximumSmoothedParameterCount, Program.Config.MaximumSmoothedParameterCount);
             }
 
             /* compare tracks for sorting based on the section they are in.  before sorting, */
@@ -1964,7 +2065,13 @@ namespace OutOfPhase
                                     SynthState.SynthParams0);
                                 if (Result != SynthErrorCodes.eSynthDone)
                                 {
-                                    goto Error;
+                                    // failures (typically invalid cross-track command) are deferred since aux threads have
+                                    // been primed and we need to exit the synchronized zone normally.
+                                    if (SynthState.SynthParams0.result == SynthErrorCodes.eSynthDone)
+                                    {
+                                        SynthState.SynthParams0.result = Result;
+                                        // ErrorEx info would be filled in on SynthState.SynthParams0 in any case
+                                    }
                                 }
                             }
                             /* next one please */
@@ -1981,451 +2088,264 @@ namespace OutOfPhase
 
                 SynthState.randomSeedProvider.Freeze();
 
-#if true // PARALLEL
-                long time2 = time1; // bogus initialization
+                long time2 = time1; // bogus initialization for compiler
                 if (AnyTrackActive)
                 {
-                    if (effectiveCurrency == 0)
+                    // begin parallel section
+
+                    if (effectiveCurrency > 1) // must not reset for scheduled skips since threads are not triggerd this cycle
                     {
-#endif
-                        #region sequential method
-                        // sequential method
+                        SynthState.startingThreadCount = 0;
+                        SynthState.completionThreadCount = 0;
+                    }
 
-                        /* perform execution cycle */
-                        PlayListNodeRec Scan = SynthState.PlayTrackList;
-                        /* start with the first effect handle */
-#if DEBUG
-                        if (Scan == null)
+                    SynthState.control.nActualFrames = nActualFrames;
+                    SynthState.control.NumNoteDurationTicks = NumNoteDurationTicks;
+                    SynthState.control.UpdateEnvelopes = UpdateEnvelopes;
+                    SynthState.control.AreWeStillFastForwarding = AreWeStillFastForwarding;
+                    SynthState.control.fScheduledSkip = fScheduledSkip;
+
+                    for (int i = 1; i < SynthState.SynthParamsPerProc.Length; i++)
+                    {
+                        SynthState.SynthParamsPerProc[i].lElapsedTimeInEnvelopeTicks = SynthState.SynthParamsPerProc[0].lElapsedTimeInEnvelopeTicks;
+                        SynthState.SynthParamsPerProc[i].dElapsedTimeInSeconds = SynthState.SynthParamsPerProc[0].dElapsedTimeInSeconds;
+                        SynthState.SynthParamsPerProc[i].dCurrentBeatsPerMinute = SynthState.SynthParamsPerProc[0].dCurrentBeatsPerMinute;
+                    }
+
+                    // flags for tracking lazy-init/dirtying of workspaces
+                    for (int p = 0; p < SynthState.SynthParamsPerProc.Length; p++)
+                    {
+                        SynthParamRec SynthParamsPOther = SynthState.SynthParamsPerProc[p];
+                        for (int i = 0; i < SynthParamsPOther.SectionWorkspaceUsed.Length; i++)
                         {
-                            // empty track list
-                            Debug.Assert(false);
-                            throw new ArgumentException();
+                            SynthParamsPOther.SectionWorkspaceUsed[i] = false;
                         }
-#endif
-                        SecEffRec CurrentEffectHandle = Scan.SectionEffectHandle;
-                        /* iterate over all active tracks */
-                        while (Scan != null)
-                        {
-                            int TargetSectionWorkSpaceLOffset;
-                            int TargetSectionWorkSpaceROffset;
+                    }
 
-                            /* initialize section buffer, if not default proc */
-                            if (CurrentEffectHandle != null)
+                    // Generate combined task array for threads. Constraints:
+                    // - all inputs to a section must come before the section (hard requirement)
+                    // - more expensive items should come earlier (without violating the first rule)
+                    //
+                    // TODO: This scheduling scheme may be good enough. If it turns out not to be, the next
+                    // thing to try would be using "critical path length" criterion - sorting on the combined
+                    // cost the track and it's effect, to get maximum critical path lengths up front.
+                    // That could involve moving some long-running tracks across section entries in order
+                    // to get them done earlier, when it matters.
+                    // 
+                    // 'sortify' SynthState.SectionArray on .lastCost
+                    // The idea here is to gradually migrate more expensive sections to the beginning of the list
+                    // The partial "bubble" sorting is meant to prevent large jumps in case of spurious timings.
+                    // - nothing moves more than one slot per cycle
+                    //
+                    // Do not reorder processing in non-parallel case - improves stability of output by ensuring
+                    // deterministic ordering of float accumulation (i.e. round-off error propagation).
+                    if (effectiveCurrency > 1)
+                    {
+                        for (int i = unchecked((int)(SynthState.SynthParamsPerProc[0].lElapsedTimeInEnvelopeTicks & 1));
+                            i + 1 < SynthState.SectionArrayAll.Length;
+                            i += 2)
+                        {
+                            long lcost = SynthState.SectionArrayAll[i].lastCost;
+                            long rcost = SynthState.SectionArrayAll[i + 1].lastCost;
+                            if (lcost.CompareTo(rcost) < 0)
                             {
-                                /* section processor exists, use special section workspace */
-                                TargetSectionWorkSpaceLOffset = SynthState.SynthParams0.SectionWorkspaceLOffset;
-                                TargetSectionWorkSpaceROffset = SynthState.SynthParams0.SectionWorkspaceROffset;
-                                if (UpdateEnvelopes)
+                                SecEffRec temp = SynthState.SectionArrayAll[i];
+                                SynthState.SectionArrayAll[i] = SynthState.SectionArrayAll[i + 1];
+                                SynthState.SectionArrayAll[i + 1] = temp;
+                            }
+                        }
+                        int o = 0;
+                        for (int j = 0; j < SynthState.SectionArrayAll.Length; j++)
+                        {
+                            SecEffRec section = SynthState.SectionArrayAll[j];
+                            // 'sortify' Section.inputTracks on .lastCost
+                            // The idea is to migrate tracks so that the more expensive ones dispatched earlier.
+                            // The partial "bubble" sorting is meant to prevent large jumps in case of spurious timings
+                            // - nothing moves more than one slot per cycle
+                            for (int i = unchecked((int)(SynthState.SynthParamsPerProc[0].lElapsedTimeInEnvelopeTicks & 1));
+                                i + 1 < section.inputTracks.Length;
+                                i += 2)
+                            {
+                                long lcost = section.inputTracks[i].lastCost;
+                                long rcost = section.inputTracks[i + 1].lastCost;
+                                if (lcost.CompareTo(rcost) < 0)
                                 {
-                                    FloatVectorZero(
-                                        SynthState.SynthParams0.workspace,
-                                        TargetSectionWorkSpaceLOffset,
-                                        nActualFrames);
-                                    FloatVectorZero(
-                                        SynthState.SynthParams0.workspace,
-                                        TargetSectionWorkSpaceROffset,
-                                        nActualFrames);
+                                    PlayListNodeRec temp = section.inputTracks[i];
+                                    section.inputTracks[i] = section.inputTracks[i + 1];
+                                    section.inputTracks[i + 1] = temp;
                                 }
+                            }
+                            for (int i = 0; i < section.inputTracks.Length; i++)
+                            {
+                                SynthState.CombinedPlayArray[o++] = section.inputTracks[i];
+                            }
+                            if (section != SynthState.DefaultSectionEffectSurrogate)
+                            {
+                                SynthState.CombinedPlayArray[o++] = section;
+                            }
+                        }
+                    }
+
+                    // reset status variables
+                    PlayListNodeRec Scan = SynthState.PlayTrackList;
+                    while (Scan != null)
+                    {
+                        Scan.processed = 0;
+                        Scan = Scan.Next;
+                    }
+                    for (int i = 0; i < SynthState.SectionArrayAll.Length; i++)
+                    {
+                        SynthState.SectionArrayAll[i].sectionInputCounter = 0;
+                        SynthState.SectionArrayAll[i].processed = 0;
+                    }
+
+                    // Each processor initializes it's own accumulation buffers for all sections and
+                    // increments the input counter for each one. The input target counts each processor's
+                    // initialization as well as the actual inputs. This allows us to avoid having a barrier
+                    // between initialization and processing since section effect processing won't be
+                    // released until all initializations are done.
+
+                    // release sync barrier for threads (only if really parallel)
+#if DEBUG
+                    Interlocked.Increment(ref SynthState.epoch);
+#endif
+                    if (effectiveCurrency > 1)
+                    {
+                        //SynthState.endBarrier.Reset();
+                        //SynthState.startBarrierReleaseSpin = 0;
+                        //SynthState.startBarrier.Set();
+                        SynthState.startBarrierReleaseSpin = 1;
+                    }
+
+                    // synthesis on all threads including main
+                    SynthGenerateOneCycleParallelPhase(
+                        0,
+                        SynthState);
+
+                    // wait for all threads to finish
+                    if (effectiveCurrency > 1)
+                    {
+                        SpinWaitOnThreadsCompletion(SynthState);
+                        SynthState.startBarrier.Reset();
+                        SynthState.endBarrier.Set();
+                    }
+
+                    // validate completion states
+#if DEBUG
+                    Scan = SynthState.PlayTrackList;
+                    while (Scan != null)
+                    {
+                        Debug.Assert(Scan.processed == 1);
+                        Scan = Scan.Next;
+                    }
+                    for (int i = 0; i < SynthState.SectionArrayExcludesDefault.Length; i++)
+                    {
+                        Debug.Assert(SynthState.SectionArrayExcludesDefault[i].processed == 1);
+                        Debug.Assert(SynthState.SectionArrayExcludesDefault[i].sectionInputCounter
+                            == SynthState.SectionArrayExcludesDefault[i].sectionInputTarget);
+                    }
+                    Debug.Assert(SynthState.DefaultSectionEffectSurrogate.processed == 0); // should not be done
+                    Debug.Assert(SynthState.DefaultSectionEffectSurrogate.sectionInputCounter
+                        == SynthState.DefaultSectionEffectSurrogate.sectionInputTarget); // should be ready
+#endif
+
+                    Timing.QueryPerformanceCounter(out time2);
+                    SynthState.phase1Time += time2 - time1;
+                    SynthState.DefaultSectionEffectSurrogate.traceInfo.start = time2;
+                    SynthState.DefaultSectionEffectSurrogate.traceInfo.processor = 0;
+
+                    // consolidate errors
+                    if (SynthState.SynthParamsPerProc[0].result == SynthErrorCodes.eSynthDone)
+                    {
+                        for (int i = 1; i < SynthState.SynthParamsPerProc.Length; i++)
+                        {
+                            if (SynthState.SynthParamsPerProc[i].result != SynthErrorCodes.eSynthDone)
+                            {
+                                SynthState.SynthParamsPerProc[0].result = SynthState.SynthParamsPerProc[i].result;
+                                SynthState.SynthParamsPerProc[0].ErrorInfo.CopyFrom(SynthState.SynthParamsPerProc[i].ErrorInfo);
+                            }
+                        }
+                    }
+                    if (SynthState.SynthParamsPerProc[0].result != SynthErrorCodes.eSynthDone)
+                    {
+                        Result = SynthState.SynthParamsPerProc[0].result;
+                        goto Error;
+                    }
+
+                    // only main thread continues from here
+
+                    // accumulate input to score effects to primary processor's buffer
+                    if (nActualFrames != 0)
+                    {
+                        bool used = false;
+                        for (int p = 0; p < SynthState.SynthParamsPerProc.Length; p++)
+                        {
+                            if (!SynthState.SynthParamsPerProc[p].SectionWorkspaceUsed[
+                                SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex])
+                            {
+                                continue; // skip workspaces from processors that never worked on inputs for this section
+                            }
+                            if (!used) // first one copies, subsequent ones accumulate
+                            {
+                                used = true;
+                                FloatVectorCopy(
+                                    SynthState.SynthParamsPerProc[p].workspace,
+                                    SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
+                                        2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 0],
+                                    SynthState.SynthParamsPerProc[0].workspace,
+                                    SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset,
+                                    nActualFrames);
+                                FloatVectorCopy(
+                                    SynthState.SynthParamsPerProc[p].workspace,
+                                    SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
+                                        2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 1],
+                                    SynthState.SynthParamsPerProc[0].workspace,
+                                    SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset,
+                                    nActualFrames);
+                                // early warning of uninitialized buffer use
+                                Debug.Assert((nActualFrames == 0)
+                                    || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
+                                    && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
                             }
                             else
                             {
-                                /* no section processor, just write to score workspace */
-                                TargetSectionWorkSpaceLOffset = SynthState.SynthParams0.ScoreWorkspaceLOffset;
-                                TargetSectionWorkSpaceROffset = SynthState.SynthParams0.ScoreWorkspaceROffset;
-                            }
-
-                            /* iterate over all tracks that share the current effects proc */
-                            /* (the key is that all tracks in a section are adjacent in the */
-                            /* list so we can just scan until we find a different section */
-                            /* handle) */
-                            while ((Scan != null) && (Scan.SectionEffectHandle == CurrentEffectHandle))
-                            {
-                                /* if track is active, then play it */
-                                if (Scan.IsActive)
-                                {
-#if false // TODO: remove - factoring out phase 1 of envelope update (non-parallelizable) to this loop here
-                                    Result = PlayTrackUpdateControl(
-                                        Scan.ThisTrack,
-                                        UpdateEnvelopes/*scanning gap control*/,
-                                        NumNoteDurationTicks,
-                                        OneOverDurationTicksPerEnvelopeClock/*envelope ticks per duration tick*/,
-                                        SynthState.iScanningGapFrontInEnvelopeTicks,
-                                        AreWeStillFastForwarding,
-                                        SynthState.SkipSchedule,
-                                        SynthState.SynthParams);
-                                    if (Result != SynthErrorCodes.eSynthDone)
-                                    {
-                                        goto Error;
-                                    }
-#endif
-
-                                    // phase 2 (parallelizable) of envelope update
-                                    Result = PlayTrackUpdateEnvelopes(
-                                        Scan.ThisTrack,
-                                        UpdateEnvelopes/*scanning gap control*/,
-                                        AreWeStillFastForwarding,
-                                        SynthState.SynthParams0);
-                                    if (Result != SynthErrorCodes.eSynthDone)
-                                    {
-                                        goto Error;
-                                    }
-
-                                    if (!AreWeStillFastForwarding && !fScheduledSkip)
-                                    {
-                                        /* only generate wave if we're playing for real */
-                                        PlayTrackGenerateWave(
-                                            Scan.ThisTrack,
-                                            UpdateEnvelopes/*scanning gap control*/,
-                                            SynthState.SynthParams0.workspace,
-                                            nActualFrames,
-                                            TargetSectionWorkSpaceLOffset,
-                                            TargetSectionWorkSpaceROffset,
-                                            SynthState.SynthParams0.TrackWorkspaceLOffset,
-                                            SynthState.SynthParams0.TrackWorkspaceROffset,
-                                            SynthState.SynthParams0.OscillatorWorkspaceLOffset,
-                                            SynthState.SynthParams0.OscillatorWorkspaceROffset,
-                                            SynthState.SynthParams0.CombinedOscillatorWorkspaceLOffset,
-                                            SynthState.SynthParams0.CombinedOscillatorWorkspaceROffset,
-                                            SynthState.SynthParams0);
-                                    }
-
-                                    PlayTrackFinish(
-                                        Scan.ThisTrack,
-                                        UpdateEnvelopes/*scanning gap control*/,
-                                        NumNoteDurationTicks,
-                                        fScheduledSkip,
-                                        SynthState.SynthParams0);
-                                    if (!PlayTrackIsItStillActive(Scan.ThisTrack))
-                                    {
-                                        Scan.IsActive = false;
-                                    }
-                                }
-
-                                /* next one please */
-                                Scan = Scan.Next;
-                            }
-
-                            /* apply section effects to workspace, if they exist, accumulating */
-                            /* result into score workspace.  (if no section effects, then results */
-                            /* are already in score workspace, and we skip this processing.) */
-                            if (CurrentEffectHandle != null)
-                            {
-                                /* apply processor */
-                                if (UpdateEnvelopes)
-                                {
-                                    /* if we are generating samples, then we should */
-                                    /* apply the score effects processor */
-                                    TrackEffectProcessQueuedCommands(
-                                        CurrentEffectHandle.SectionEffect,
-                                        SynthState.SynthParams0);
-
-                                    if (!AreWeStillFastForwarding)
-                                    {
-                                        /* control-update cycle */
-                                        UpdateStateTrackEffectGenerator(
-                                            CurrentEffectHandle.SectionEffect,
-                                            SynthState.SynthParams0);
-
-                                        /* generate wave */
-                                        ApplyTrackEffectGenerator(
-                                            CurrentEffectHandle.SectionEffect,
-                                            SynthState.SynthParams0.workspace,
-                                            nActualFrames,
-                                            SynthState.SynthParams0.SectionWorkspaceLOffset,
-                                            SynthState.SynthParams0.SectionWorkspaceROffset,
-                                            SynthState.SynthParams0);
-                                        FloatVectorAcc(
-                                            SynthState.SynthParams0.workspace,
-                                            SynthState.SynthParams0.SectionWorkspaceLOffset,
-                                            SynthState.SynthParams0.workspace,
-                                            SynthState.SynthParams0.ScoreWorkspaceLOffset,
-                                            nActualFrames);
-                                        FloatVectorAcc(
-                                            SynthState.SynthParams0.workspace,
-                                            SynthState.SynthParams0.SectionWorkspaceROffset,
-                                            SynthState.SynthParams0.workspace,
-                                            SynthState.SynthParams0.ScoreWorkspaceROffset,
-                                            nActualFrames);
-                                    }
-                                }
-                                /* update effects, but only AFTER they have been applied, */
-                                /* so that parameters come from the leading edge of an */
-                                /* envelope period, rather than the trailing edge. */
-                                TrackEffectIncrementDurationTimer(
-                                    CurrentEffectHandle.SectionEffect,
-                                    NumNoteDurationTicks);
-                            }
-
-                            /* grab the next section effect handle */
-                            if (Scan != null)
-                            {
-                                CurrentEffectHandle = Scan.SectionEffectHandle;
+                                FloatVectorAcc(
+                                    SynthState.SynthParamsPerProc[p].workspace,
+                                    SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
+                                        2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 0],
+                                    SynthState.SynthParamsPerProc[0].workspace,
+                                    SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset,
+                                    nActualFrames);
+                                FloatVectorAcc(
+                                    SynthState.SynthParamsPerProc[p].workspace,
+                                    SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
+                                        2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 1],
+                                    SynthState.SynthParamsPerProc[0].workspace,
+                                    SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset,
+                                    nActualFrames);
+                                // early warning of uninitialized buffer use
+                                Debug.Assert((nActualFrames == 0)
+                                    || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
+                                    && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
                             }
                         }
-
-                        Timing.QueryPerformanceCounter(out time2);
-                        SynthState.phase1Time += time2 - time1;
-                        #endregion
-#if true // PARALLEL
+                        Debug.Assert(used); // by definition, at least one input must have been prepared somewhere
                     }
-                    else
-                    {
-                        // parallel method
+                    // early warning of uninitialized buffer use
+                    Debug.Assert((nActualFrames == 0)
+                        || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
+                        && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
+                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
 
-                        if (effectiveCurrency > 1) // must not reset for scheduled skips since threads are not triggerd this cycle
-                        {
-                            SynthState.startingThreadCount = 0;
-                            SynthState.completionThreadCount = 0;
-                        }
+                    Debug.Assert(SynthState.SynthParams0 == SynthState.SynthParamsPerProc[0]);
 
-                        SynthState.control.nActualFrames = nActualFrames;
-                        SynthState.control.NumNoteDurationTicks = NumNoteDurationTicks;
-                        SynthState.control.UpdateEnvelopes = UpdateEnvelopes;
-                        SynthState.control.AreWeStillFastForwarding = AreWeStillFastForwarding;
-                        SynthState.control.fScheduledSkip = fScheduledSkip;
+                    // end parallel portion
 
-                        for (int i = 1; i < SynthState.SynthParamsPerProc.Length; i++)
-                        {
-                            SynthState.SynthParamsPerProc[i].lElapsedTimeInEnvelopeTicks = SynthState.SynthParamsPerProc[0].lElapsedTimeInEnvelopeTicks;
-                            SynthState.SynthParamsPerProc[i].dElapsedTimeInSeconds = SynthState.SynthParamsPerProc[0].dElapsedTimeInSeconds;
-                            SynthState.SynthParamsPerProc[i].dCurrentBeatsPerMinute = SynthState.SynthParamsPerProc[0].dCurrentBeatsPerMinute;
-                        }
-
-                        // flags for tracking lazy-init/dirtying of workspaces
-                        for (int p = 0; p < SynthState.SynthParamsPerProc.Length; p++)
-                        {
-                            SynthParamRec SynthParamsPOther = SynthState.SynthParamsPerProc[p];
-                            for (int i = 0; i < SynthParamsPOther.SectionWorkspaceUsed.Length; i++)
-                            {
-                                SynthParamsPOther.SectionWorkspaceUsed[i] = false;
-                            }
-                        }
-
-                        // Generate combined task array for threads. Constraints:
-                        // - all inputs to a section must come before the section (hard requirement)
-                        // - more expensive items should come earlier (without violating the first rule)
-                        //
-                        // TODO: This scheduling scheme may be good enough. If it turns out not to be, the next
-                        // thing to try would be using "critical path length" criterion - sorting on the combined
-                        // cost the track and it's effect, to get maximum critical path lengths up front.
-                        // That could involve moving some long-running tracks across section entries in order
-                        // to get them done earlier, when it matters.
-                        // 
-                        // 'sortify' SynthState.SectionArray on .lastCost
-                        // The idea here is to gradually migrate more expensive sections to the beginning of the list
-                        // The partial "bubble" sorting is meant to prevent large jumps in case of spurious timings.
-                        // - nothing moves more than one slot per cycle
-                        //
-                        // Do not reorder processing in non-parallel case - improves stability of output by ensuring
-                        // deterministic ordering of float accumulation (i.e. round-off error propagation).
-                        if (effectiveCurrency > 1)
-                        {
-                            for (int i = unchecked((int)(SynthState.SynthParamsPerProc[0].lElapsedTimeInEnvelopeTicks & 1));
-                                i + 1 < SynthState.SectionArrayAll.Length;
-                                i += 2)
-                            {
-                                long lcost = SynthState.SectionArrayAll[i].lastCost;
-                                long rcost = SynthState.SectionArrayAll[i + 1].lastCost;
-                                if (lcost.CompareTo(rcost) < 0)
-                                {
-                                    SecEffRec temp = SynthState.SectionArrayAll[i];
-                                    SynthState.SectionArrayAll[i] = SynthState.SectionArrayAll[i + 1];
-                                    SynthState.SectionArrayAll[i + 1] = temp;
-                                }
-                            }
-                            int o = 0;
-                            for (int j = 0; j < SynthState.SectionArrayAll.Length; j++)
-                            {
-                                SecEffRec section = SynthState.SectionArrayAll[j];
-                                // 'sortify' Section.inputTracks on .lastCost
-                                // The idea is to migrate tracks so that the more expensive ones dispatched earlier.
-                                // The partial "bubble" sorting is meant to prevent large jumps in case of spurious timings
-                                // - nothing moves more than one slot per cycle
-                                for (int i = unchecked((int)(SynthState.SynthParamsPerProc[0].lElapsedTimeInEnvelopeTicks & 1));
-                                    i + 1 < section.inputTracks.Length;
-                                    i += 2)
-                                {
-                                    long lcost = section.inputTracks[i].lastCost;
-                                    long rcost = section.inputTracks[i + 1].lastCost;
-                                    if (lcost.CompareTo(rcost) < 0)
-                                    {
-                                        PlayListNodeRec temp = section.inputTracks[i];
-                                        section.inputTracks[i] = section.inputTracks[i + 1];
-                                        section.inputTracks[i + 1] = temp;
-                                    }
-                                }
-                                for (int i = 0; i < section.inputTracks.Length; i++)
-                                {
-                                    SynthState.CombinedPlayArray[o++] = section.inputTracks[i];
-                                }
-                                if (section != SynthState.DefaultSectionEffectSurrogate)
-                                {
-                                    SynthState.CombinedPlayArray[o++] = section;
-                                }
-                            }
-                        }
-
-                        // reset status variables
-                        PlayListNodeRec Scan = SynthState.PlayTrackList;
-                        while (Scan != null)
-                        {
-                            Scan.processed = 0;
-                            Scan = Scan.Next;
-                        }
-                        for (int i = 0; i < SynthState.SectionArrayAll.Length; i++)
-                        {
-                            SynthState.SectionArrayAll[i].sectionInputCounter = 0;
-                            SynthState.SectionArrayAll[i].processed = 0;
-                        }
-
-                        // Each processor initializes it's own accumulation buffers for all sections and
-                        // increments the input counter for each one. The input target counts each processor's
-                        // initialization as well as the actual inputs. This allows us to avoid having a barrier
-                        // between initialization and processing since section effect processing won't be
-                        // released until all initializations are done.
-
-                        // release sync barrier for threads (only if really parallel)
-#if DEBUG
-                        Interlocked.Increment(ref SynthState.epoch);
-#endif
-                        if (effectiveCurrency > 1)
-                        {
-                            //SynthState.endBarrier.Reset();
-                            //SynthState.startBarrierReleaseSpin = 0;
-                            //SynthState.startBarrier.Set();
-                            SynthState.startBarrierReleaseSpin = 1;
-                        }
-
-                        // synthesis on all threads including main
-                        SynthGenerateOneCycleParallelPhase(
-                            0,
-                            SynthState);
-
-                        // wait for all threads to finish
-                        if (effectiveCurrency > 1)
-                        {
-                            SpinWaitOnThreadsCompletion(SynthState);
-                            SynthState.startBarrier.Reset();
-                            SynthState.endBarrier.Set();
-                        }
-
-                        // validate completion states
-#if DEBUG
-                        Scan = SynthState.PlayTrackList;
-                        while (Scan != null)
-                        {
-                            Debug.Assert(Scan.processed == 1);
-                            Scan = Scan.Next;
-                        }
-                        for (int i = 0; i < SynthState.SectionArrayExcludesDefault.Length; i++)
-                        {
-                            Debug.Assert(SynthState.SectionArrayExcludesDefault[i].processed == 1);
-                            Debug.Assert(SynthState.SectionArrayExcludesDefault[i].sectionInputCounter
-                                == SynthState.SectionArrayExcludesDefault[i].sectionInputTarget);
-                        }
-                        Debug.Assert(SynthState.DefaultSectionEffectSurrogate.processed == 0); // should not be done
-                        Debug.Assert(SynthState.DefaultSectionEffectSurrogate.sectionInputCounter
-                            == SynthState.DefaultSectionEffectSurrogate.sectionInputTarget); // should be ready
-#endif
-
-                        Timing.QueryPerformanceCounter(out time2);
-                        SynthState.phase1Time += time2 - time1;
-                        SynthState.DefaultSectionEffectSurrogate.traceInfo.start = time2;
-                        SynthState.DefaultSectionEffectSurrogate.traceInfo.processor = 0;
-
-                        // consolidate errors
-                        if (SynthState.SynthParamsPerProc[0].result == SynthErrorCodes.eSynthDone)
-                        {
-                            for (int i = 1; i < SynthState.SynthParamsPerProc.Length; i++)
-                            {
-                                if (SynthState.SynthParamsPerProc[i].result != SynthErrorCodes.eSynthDone)
-                                {
-                                    SynthState.SynthParamsPerProc[0].result = SynthState.SynthParamsPerProc[i].result;
-                                    SynthState.SynthParamsPerProc[0].ErrorInfo.CopyFrom(SynthState.SynthParamsPerProc[i].ErrorInfo);
-                                }
-                            }
-                        }
-                        if (SynthState.SynthParamsPerProc[0].result != SynthErrorCodes.eSynthDone)
-                        {
-                            Result = SynthState.SynthParamsPerProc[0].result;
-                            goto Error;
-                        }
-
-                        // only main thread continues from here
-
-                        // accumulate input to score effects to primary processor's buffer
-                        if (nActualFrames != 0)
-                        {
-                            bool used = false;
-                            for (int p = 0; p < SynthState.SynthParamsPerProc.Length; p++)
-                            {
-                                if (!SynthState.SynthParamsPerProc[p].SectionWorkspaceUsed[
-                                    SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex])
-                                {
-                                    continue; // skip workspaces from processors that never worked on inputs for this section
-                                }
-                                if (!used) // first one copies, subsequent ones accumulate
-                                {
-                                    used = true;
-                                    FloatVectorCopy(
-                                        SynthState.SynthParamsPerProc[p].workspace,
-                                        SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
-                                            2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 0],
-                                        SynthState.SynthParamsPerProc[0].workspace,
-                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset,
-                                        nActualFrames);
-                                    FloatVectorCopy(
-                                        SynthState.SynthParamsPerProc[p].workspace,
-                                        SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
-                                            2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 1],
-                                        SynthState.SynthParamsPerProc[0].workspace,
-                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset,
-                                        nActualFrames);
-                                    // early warning of uninitialized buffer use
-                                    Debug.Assert((nActualFrames == 0)
-                                        || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
-                                        && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
-                                }
-                                else
-                                {
-                                    FloatVectorAcc(
-                                        SynthState.SynthParamsPerProc[p].workspace,
-                                        SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
-                                            2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 0],
-                                        SynthState.SynthParamsPerProc[0].workspace,
-                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset,
-                                        nActualFrames);
-                                    FloatVectorAcc(
-                                        SynthState.SynthParamsPerProc[p].workspace,
-                                        SynthState.SynthParamsPerProc[p].SectionInputAccumulationWorkspaces[
-                                            2 * SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex + 1],
-                                        SynthState.SynthParamsPerProc[0].workspace,
-                                        SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset,
-                                        nActualFrames);
-                                    // early warning of uninitialized buffer use
-                                    Debug.Assert((nActualFrames == 0)
-                                        || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
-                                        && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                            SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
-                                }
-                            }
-                            Debug.Assert(used); // by definition, at least one input must have been prepared somewhere
-                        }
-                        // early warning of uninitialized buffer use
-                        Debug.Assert((nActualFrames == 0)
-                            || (!Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset])
-                            && !Single.IsNaN(SynthState.SynthParamsPerProc[0].workspace[
-                                SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
-
-                        // fall through to common code path to continue with score effects processing
-
-                        Debug.Assert(SynthState.SynthParams0 == SynthState.SynthParamsPerProc[0]);
-                    }
-#endif
 
                     /* apply score effects to score workspace */
                     if (UpdateEnvelopes)
@@ -3185,7 +3105,7 @@ namespace OutOfPhase
                         // the presence of an error will terminate the primary thread's synthesis loop
                         SynthState.SynthParamsPerProc[processor].result = SynthErrorCodes.eSynthErrorEx;
                         SynthState.SynthParamsPerProc[processor].ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExExceptionOccurred;
-                        SynthState.SynthParamsPerProc[processor].ErrorInfo.exception = exception;
+                        SynthState.SynthParamsPerProc[processor].ErrorInfo.Exception = exception;
                     }
                     finally
                     {
@@ -3408,24 +3328,12 @@ namespace OutOfPhase
                                 // this ensures that pcode evals that get stuck in infinite loops can be cancelled.
                                 EventHandler onStopHandler = new EventHandler(delegate (object sender, EventArgs e)
                                 {
-#if true // TODO: eventually hope to remove legacy loop
-                                    if (SynthState.SynthParamsPerProc != null)
+                                    for (int i = 0; i < SynthState.SynthParamsPerProc.Length; i++)
                                     {
-#endif
-                                        for (int i = 0; i < SynthState.SynthParamsPerProc.Length; i++)
-                                        {
-                                            PcodeSystem.EvaluatePcodeThread.SafeCancel(
-                                                SynthState.threads[i],
-                                                ref SynthState.SynthParamsPerProc[i].pcodeThreadContext);
-                                        }
-#if true // TODO: eventually hope to remove legacy loop
+                                        PcodeSystem.EvaluatePcodeThread.SafeCancel(
+                                            SynthState.threads[i],
+                                            ref SynthState.SynthParamsPerProc[i].pcodeThreadContext);
                                     }
-                                    else
-                                    {
-                                        // TODO: in the legacy mode, we don't have access to the thread object
-                                        SynthState.SynthParams0.pcodeThreadContext.GlobalCancelPending = 1;
-                                    }
-#endif
                                 });
                                 Stopper.OnStop += onStopHandler; // this will be executed on UI thread
                                 ThreadPriorityBoostEncapsulator priorityBoost = new ThreadPriorityBoostEncapsulator();
@@ -3594,6 +3502,11 @@ namespace OutOfPhase
 
             public void Boost(bool mainThread)
             {
+                if (!Program.Config.EnablePriorityBoost)
+                {
+                    return;
+                }
+
                 bool f;
                 int r;
 
@@ -3627,6 +3540,11 @@ namespace OutOfPhase
 
             public void Revert(bool mainThread)
             {
+                if (!Program.Config.EnablePriorityBoost)
+                {
+                    return;
+                }
+
                 bool f;
 
                 if (boosted)
@@ -3688,6 +3606,7 @@ namespace OutOfPhase
         private const string StrUndefinedSample = "Undefined sample referenced.";
         private const string StrUndefinedFunction = "Undefined function referenced.";
         private const string StrTypeMismatchFunction = "Actual function type does not match expected type.";
+        private const string StrTypeMismatchFunctionMultiple = "None of the specified functions match the expected function type.";
         private const string StrPossibleInfiniteSequenceLoop = "The track appeared to have an infinite loop in sequencing.";
         private const string StrLaterTrackIssusedCommandToEarlierTrack = "One track issued a command to another track that is ealier in execution order.";
         private const string StrTooManyNestedSkipCommands = "Track is involved in too many nested skip commands.";
@@ -3702,6 +3621,8 @@ namespace OutOfPhase
         private const string StrExceptionOccurred = "An exception occurred during processing.";
         private const string StrUserParamFunctionEvalError = "An error ocurred evaluating user-provided function in instrument parameter.";
         private const string StrUserEffectFunctionEvalError = "An error ocurred evaluating function in user effect.";
+        private const string StrUndefinedPitchTable = "Load pitch table specified an undefined built-in table.";
+        private const string StrPluggableParameterOutOfRange = "Parameter to pluggable processor was out of range.";
 
         private static readonly SERec[] ErrorMessages = new SERec[]
         {
@@ -3712,6 +3633,7 @@ namespace OutOfPhase
             new SERec(SynthErrorSubCodes.eSynthErrorExUndefinedSample, StrUndefinedSample),
             new SERec(SynthErrorSubCodes.eSynthErrorExUndefinedFunction, StrUndefinedFunction),
             new SERec(SynthErrorSubCodes.eSynthErrorExTypeMismatchFunction, StrTypeMismatchFunction),
+            new SERec(SynthErrorSubCodes.eSynthErrorExTypeMismatchFunctionMultiple, StrTypeMismatchFunctionMultiple),
             new SERec(SynthErrorSubCodes.eSynthErrorExPossibleInfiniteSequenceLoop, StrPossibleInfiniteSequenceLoop),
             new SERec(SynthErrorSubCodes.eSynthErrorExLaterTrackIssusedCommandToEarlierTrack, StrLaterTrackIssusedCommandToEarlierTrack),
             new SERec(SynthErrorSubCodes.eSynthErrorExTooManyNestedSkipCommands, StrTooManyNestedSkipCommands),
@@ -3726,6 +3648,8 @@ namespace OutOfPhase
             new SERec(SynthErrorSubCodes.eSynthErrorExExceptionOccurred, StrExceptionOccurred),
             new SERec(SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError, StrUserParamFunctionEvalError),
             new SERec(SynthErrorSubCodes.eSynthErrorExUserEffectFunctionEvalError, StrUserEffectFunctionEvalError),
+            new SERec(SynthErrorSubCodes.eSynthErrorExUndefinedPitchTable, StrUndefinedPitchTable),
+            new SERec(SynthErrorSubCodes.eSynthErrorExPluggableParameterOutOfRange, StrPluggableParameterOutOfRange),
         };
 
         /* display synth error */
@@ -3820,15 +3744,24 @@ namespace OutOfPhase
                     {
                         Message.AppendFormat("  Receiving Track '{0}'.", ErrorEx.ReceivingTrackName);
                     }
-                    if (ErrorEx.exception != null)
+                    if (ErrorEx.GenericName != null)
                     {
-                        Message.AppendFormat("  Exception: {0}", ErrorEx.exception);
+                        Message.AppendFormat("  Name '{0}'.", ErrorEx.GenericName);
                     }
-                    if (ErrorEx.userEvalErrorCode != EvalErrors.eEvalNoError)
+                    if (ErrorEx.Exception != null)
+                    {
+                        Message.AppendFormat("  Exception: {0}", ErrorEx.Exception);
+                    }
+                    if (ErrorEx.UserEvalErrorCode != EvalErrors.eEvalNoError)
                     {
                         Message.AppendFormat(
                             "  Function Evaluation Error: {0}",
-                            PcodeSystem.GetPcodeErrorMessage(ErrorEx.userEvalErrorCode));
+                            PcodeSystem.GetPcodeErrorMessage(ErrorEx.UserEvalErrorCode));
+                    }
+
+                    if (ErrorEx.ExtraInfo != null)
+                    {
+                        Message.AppendFormat("  {0}", ErrorEx.ExtraInfo);
                     }
 
                     return Message.ToString();

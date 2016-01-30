@@ -93,6 +93,7 @@ namespace OutOfPhase
     {
         eNone,
         eScannerMalformedFloat,
+        eScannerMalformedInteger,
         eScannerUnknownCharacter,
     }
 
@@ -157,6 +158,13 @@ namespace OutOfPhase
             Debug.Assert(false);
             throw new InvalidOperationException();
         }
+
+#if DEBUG
+        public override string ToString()
+        {
+            return base.ToString();
+        }
+#endif
     }
 
     public class UnqualifiedTokenRec<T> : TokenRec<T> where T : struct
@@ -764,13 +772,46 @@ namespace OutOfPhase
                         Debug.Assert(false);
                         throw new InvalidOperationException();
                     case NumFormType.eTypeSingle:
-                        Token = new SingleTokenRec<T>(Single.Parse(StringData));
+                        {
+                            float v;
+                            if (!Single.TryParse(StringData, out v))
+                            {
+                                // Reasons it could fail:
+                                // 1: our scanner is more permissive than they are - accepting things like "."
+                                // 2: number could be syntactically valid but out of range for the type.
+                                Token = new ErrorTokenRec<T>(ScannerErrors.eScannerMalformedFloat);
+                                goto AbortNumberErrorPoint;
+                            }
+                            Token = new SingleTokenRec<T>(v);
+                        }
                         break;
                     case NumFormType.eTypeDouble:
-                        Token = new DoubleTokenRec<T>(Double.Parse(StringData));
+                        {
+                            double v;
+                            if (!Double.TryParse(StringData, out v))
+                            {
+                                // Reasons it could fail:
+                                // 1: our scanner is more permissive than they are - accepting things like "."
+                                // 2: number could be syntactically valid but out of range for the type.
+                                Token = new ErrorTokenRec<T>(ScannerErrors.eScannerMalformedFloat);
+                                goto AbortNumberErrorPoint;
+                            }
+                            Token = new DoubleTokenRec<T>(v);
+                        }
                         break;
                     case NumFormType.eTypeInteger:
-                        Token = new IntegerTokenRec<T>(Int32.Parse(StringData));
+                        {
+                            int v;
+                            if (!Int32.TryParse(StringData, out v))
+                            {
+                                // Reasons it could fail:
+                                // 1: our scanner is more permissive than they are - accepting things like "."
+                                // 2: number could be syntactically valid but out of range for the type.
+                                Token = new ErrorTokenRec<T>(ScannerErrors.eScannerMalformedInteger);
+                                goto AbortNumberErrorPoint;
+                            }
+                            Token = new IntegerTokenRec<T>(v);
+                        }
                         break;
                 }
 

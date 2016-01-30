@@ -30,11 +30,12 @@ using System.Windows.Forms;
 
 namespace OutOfPhase
 {
-    // TODO: stream switch
+    // TODO: implement stream switch
 
     // WASAPI Info
     // WASAPI (Core Audio) is a low level interface and does not provide many niceties:
     // https://msdn.microsoft.com/en-us/library/dd370811%28v=vs.85%29.aspx
+
 
 #if true // prevents "Add New Data Source..." from working
     public class OutputDeviceDestination
@@ -58,41 +59,15 @@ namespace OutOfPhase
         }
     }
 
-    public class OutputDeviceDestinationHandler : DestinationHandler<OutputDeviceDestination>, IBufferLoading
+
+    public static class OutputDeviceEnumerator
     {
-        private readonly NumChannelsType channels;
-        private readonly NumBitsType bits;
-        private readonly int samplingRate;
-        private readonly int pointsPerFrame;
-
-        private IAudioClient audioClient;
-        private IAudioRenderClient renderClient;
-
-        public static bool OutputDeviceGetDestination(out OutputDeviceDestination destination)
-        {
-            destination = new OutputDeviceDestination();
-            return true;
-        }
-
-        public static DestinationHandler<OutputDeviceDestination> CreateOutputDeviceDestinationHandler(
-            OutputDeviceDestination destination,
-            NumChannelsType channels,
-            NumBitsType bits,
-            int samplingRate,
-            OutputDeviceArguments arguments)
-        {
-            return new OutputDeviceDestinationHandler(
-                channels,
-                bits,
-                samplingRate,
-                arguments);
-        }
-
         public static KeyValuePair<string, string>[] EnumerateAudioOutputDeviceIdentifiers()
         {
             List<KeyValuePair<string, string>> devices = new List<KeyValuePair<string, string>>();
             //devices.Add(new KeyValuePair<string, string>(ERole.eConsole.ToString(), "Default Console Device"));
             //devices.Add(new KeyValuePair<string, string>(ERole.eCommunications.ToString(), "Default Communications Device"));
+            devices.Add(new KeyValuePair<string, string>(ERole.eLegacy.ToString(), "Default Legacy Multimedia Device"));
             devices.Add(new KeyValuePair<string, string>(ERole.eMultimedia.ToString(), "Default Multimedia Device"));
 
             IMMDeviceEnumerator deviceEnumerator = (IMMDeviceEnumerator)(new MMDeviceEnumerator());
@@ -130,7 +105,50 @@ namespace OutOfPhase
             return devices.ToArray();
         }
 
-        public OutputDeviceDestinationHandler(
+        public static bool OutputDeviceGetDestination(out OutputDeviceDestination destination)
+        {
+            destination = new OutputDeviceDestination();
+            return true;
+        }
+
+        public static DestinationHandler<OutputDeviceDestination> CreateOutputDeviceDestinationHandler(
+            OutputDeviceDestination destination,
+            NumChannelsType channels,
+            NumBitsType bits,
+            int samplingRate,
+            OutputDeviceArguments arguments)
+        {
+            if (String.Equals(arguments.DeviceId, ERole.eLegacy.ToString()))
+            {
+                return new OutputDeviceLegacyDestinationHandler(
+                    channels,
+                    bits,
+                    samplingRate,
+                    arguments);
+            }
+            else
+            {
+                return new OutputDeviceWASAPIDestinationHandler(
+                    channels,
+                    bits,
+                    samplingRate,
+                    arguments);
+            }
+        }
+    }
+
+
+    public class OutputDeviceWASAPIDestinationHandler : DestinationHandler<OutputDeviceDestination>, IBufferLoading
+    {
+        private readonly NumChannelsType channels;
+        private readonly NumBitsType bits;
+        private readonly int samplingRate;
+        private readonly int pointsPerFrame;
+
+        private IAudioClient audioClient;
+        private IAudioRenderClient renderClient;
+
+        public OutputDeviceWASAPIDestinationHandler(
             NumChannelsType channels,
             NumBitsType bits,
             int samplingRate,
@@ -413,7 +431,7 @@ namespace OutOfPhase
     }
 #endif
 
-    #region interop
+    #region WASAPI Interop
     public enum EDataFlow
     {
         eRender,
@@ -428,6 +446,8 @@ namespace OutOfPhase
         eMultimedia,
         eCommunications,
         ERole_enum_count,
+
+        eLegacy = 127, // our addition
     }
 
     [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -1023,6 +1043,519 @@ namespace OutOfPhase
             //f.cbSize = (ushort)Marshal.ReadInt16(pNativeData, 16);
             return f;
         }
+    }
+    #endregion
+
+#if true // prevents "Add New Data Source..." from working
+    public class OutputDeviceLegacyDestinationHandler : DestinationHandler<OutputDeviceDestination>, IBufferLoading
+    {
+        private readonly NumChannelsType channels;
+        private readonly NumBitsType bits;
+        private readonly int samplingRate;
+        private readonly int pointsPerFrame;
+
+        private readonly IntPtr hWaveOut;
+
+        private readonly int bufferCount;
+        private readonly int pointsPerBuffer;
+        private volatile int bufferedPoints;
+        private volatile Buffer freeList;
+        private volatile Buffer current;
+        private volatile int enqueuedBuffers;
+        private readonly ManualResetEvent avail;
+        private readonly Buffer[] bufferMap;
+
+        private readonly WaveOut.waveOutProc callbackRef; // keep-alive
+
+        private bool paused;
+        private bool terminated;
+
+        private class Buffer : IDisposable
+        {
+            public Buffer next;
+
+            public WaveOut.WAVEHDR header;
+            public float[] points; // data
+            public GCHandle hPoints;
+            public GCHandle hHeader;
+
+            public int level;
+
+            public Buffer(int capacity)
+            {
+                points = new float[capacity];
+                hPoints = GCHandle.Alloc(points, GCHandleType.Pinned);
+
+                header = new WaveOut.WAVEHDR();
+                hHeader = GCHandle.Alloc(header, GCHandleType.Pinned);
+                header.lpData = hPoints.AddrOfPinnedObject();
+            }
+
+            public void Dispose()
+            {
+                hPoints.Free();
+                hHeader.Free();
+                GC.SuppressFinalize(this);
+            }
+
+            ~Buffer()
+            {
+#if DEBUG
+                Debug.Assert(false, "Buffer finalizer invoked - have you forgotten to .Dispose()? " + allocatedFrom.ToString());
+#endif
+                Dispose();
+            }
+#if DEBUG
+            private readonly StackTrace allocatedFrom = new StackTrace(true);
+#endif
+        }
+
+        public OutputDeviceLegacyDestinationHandler(
+            NumChannelsType channels,
+            NumBitsType bits,
+            int samplingRate,
+            OutputDeviceArguments arguments)
+        {
+#if DEBUG
+            if ((channels != NumChannelsType.eSampleMono)
+                && (channels != NumChannelsType.eSampleStereo))
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+            if ((bits != NumBitsType.eSample8bit)
+                && (bits != NumBitsType.eSample16bit)
+                && (bits != NumBitsType.eSample24bit))
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+#endif
+
+            this.channels = channels;
+            this.bits = bits;
+            this.samplingRate = samplingRate;
+            this.pointsPerFrame = channels == NumChannelsType.eSampleStereo ? 2 : 1;
+            this.pointsPerBuffer = (pointsPerFrame * samplingRate) / 8;
+            this.avail = new ManualResetEvent(true);
+
+            this.bufferCount = Math.Max(2, (int)Math.Ceiling(arguments.BufferSeconds * pointsPerFrame * samplingRate / pointsPerBuffer));
+            this.bufferMap = new Buffer[bufferCount];
+            for (int i = 0; i < bufferCount; i++)
+            {
+                Buffer buffer = new Buffer(pointsPerBuffer);
+                this.bufferMap[i] = buffer;
+                buffer.header.dwUser = new IntPtr(i);
+                buffer.next = freeList;
+                this.freeList = buffer;
+            }
+
+            WAVEFORMATEX format = new WAVEFORMATEX();
+            format.wFormatTag = WAVE_FORMAT.WAVE_FORMAT_IEEE_FLOAT;
+            format.nChannels = (ushort)pointsPerFrame;
+            format.nSamplesPerSec = samplingRate;
+            format.nAvgBytesPerSec = samplingRate * sizeof(float) * format.nChannels;
+            format.nBlockAlign = (ushort)(sizeof(float) * format.nChannels);
+            format.wBitsPerSample = 32;
+
+            int error = WaveOut.waveOutOpen(
+                out hWaveOut,
+                new IntPtr(WaveOut.WAVE_MAPPER),
+                format,
+                callbackRef = Callback,
+                IntPtr.Zero,
+                WaveOut.CALLBACK_FUNCTION /*| WaveOut.WAVE_ALLOWSYNC*/);
+            if (error != WaveOut.MMSYSERR_NOERROR)
+            {
+                throw new MultimediaException("waveOutOpen", error);
+            }
+
+            error = WaveOut.waveOutPause(
+                hWaveOut);
+            if (error != WaveOut.MMSYSERR_NOERROR)
+            {
+                throw new MultimediaException("waveOutPause", error);
+            }
+            paused = true;
+        }
+
+        public override void Finish(bool abort)
+        {
+            int error;
+
+            terminated = true;
+
+            if (!abort)
+            {
+                if (paused)
+                {
+                    error = WaveOut.waveOutRestart(
+                        hWaveOut);
+                    if (error != WaveOut.MMSYSERR_NOERROR)
+                    {
+                        throw new MultimediaException("waveOutRestart", error);
+                    }
+                    paused = false;
+                }
+
+                if (current != null)
+                {
+                    Flush();
+                }
+
+                while (bufferedPoints != 0) // TODO: cancel? review for correctness and hackiness
+                {
+                    Thread.Sleep(50);
+                }
+            }
+            else
+            {
+                avail.Set(); // break any deadlocks
+            }
+
+            error = WaveOut.waveOutReset(hWaveOut);
+            if (error != WaveOut.MMSYSERR_NOERROR)
+            {
+                throw new MultimediaException("waveOutReset", error);
+            }
+        }
+
+        ~OutputDeviceLegacyDestinationHandler()
+        {
+#if DEBUG
+            Debug.Assert(false, "OutputDeviceLegacyDestinationHandler finalizer invoked - have you forgotten to .Dispose()? " + allocatedFrom.ToString());
+#endif
+            Dispose();
+        }
+#if DEBUG
+        private readonly StackTrace allocatedFrom = new StackTrace(true);
+#endif
+
+        public override void Dispose()
+        {
+            int error;
+
+            error = WaveOut.waveOutClose(hWaveOut);
+            if (error != WaveOut.MMSYSERR_NOERROR)
+            {
+                throw new MultimediaException("waveOutClose", error);
+            }
+
+            for (int i = 0; i < bufferMap.Length; i++)
+            {
+                //Debug.Assert(((bufferMap[i].header.dwFlags & WaveOut.WHDR_PREPARED) != 0)
+                //    == ((bufferMap[i].header.dwFlags & WaveOut.WHDR_DONE) != 0));
+                bufferMap[i].Dispose();
+            }
+
+            avail.Close();
+
+            GC.SuppressFinalize(this);
+        }
+
+        // IBufferLoading
+        public bool Available { get { return true; } }
+        public float Level { get { return (float)(bufferedPoints / pointsPerFrame) / samplingRate; } } // seconds
+        public float Maximum { get { return (float)((bufferCount * pointsPerBuffer) / pointsPerFrame) / samplingRate; } } // seconds
+        public float Critical { get { return .5f; } }
+
+        public override Synthesizer.SynthErrorCodes Post(
+            float[] data,
+            int offset,
+            int pointCount)
+        {
+            if (pointCount != 0)
+            {
+            Restart:
+                try
+                {
+                    while (!avail.WaitOne(1000))
+                    {
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Debugger.Break();
+                    // event object was deleted - indicating playback was cancelled while we were waiting for buffer to empty
+                    terminated = true;
+                }
+                if (terminated)
+                {
+                    return Synthesizer.SynthErrorCodes.eSynthUserCancelled;
+                }
+
+                if ((current != null) && (current.level + pointCount > pointsPerBuffer))
+                {
+                    Flush();
+                }
+
+                if (!paused && (enqueuedBuffers == 0))
+                {
+                    int error = WaveOut.waveOutPause(
+                        hWaveOut);
+                    if (error != WaveOut.MMSYSERR_NOERROR)
+                    {
+                        throw new MultimediaException("waveOutPause", error);
+                    }
+                    paused = true;
+                }
+
+                if (current == null)
+                {
+                    lock (this)
+                    {
+                        if (freeList == null)
+                        {
+                            avail.Reset();
+                            goto Restart;
+                        }
+
+                        current = freeList;
+                        freeList = freeList.next;
+                        current.next = null;
+                        current.level = 0;
+                    }
+                }
+                Array.Copy(data, offset, current.points, current.level, pointCount);
+                current.level += pointCount;
+                Interlocked.Add(ref bufferedPoints, pointCount);
+            }
+
+            return Synthesizer.SynthErrorCodes.eSynthDone;
+        }
+
+        private void Flush()
+        {
+            int error;
+
+            if ((current.header.dwFlags & WaveOut.WHDR_PREPARED) != 0)
+            {
+                error = WaveOut.waveOutUnprepareHeader(
+                    hWaveOut,
+                    current.header,
+                    Marshal.SizeOf(current.header));
+                if (error != WaveOut.MMSYSERR_NOERROR)
+                {
+                    throw new MultimediaException("waveOutUnprepareHeader", error);
+                }
+            }
+
+            current.header.dwBufferLength = sizeof(float) * current.level;
+            current.header.dwFlags = 0;
+            error = WaveOut.waveOutPrepareHeader(
+                hWaveOut,
+                current.header,
+                Marshal.SizeOf(current.header));
+            if (error != WaveOut.MMSYSERR_NOERROR)
+            {
+                throw new MultimediaException("waveOutPrepareHeader", error);
+            }
+            error = WaveOut.waveOutWrite(
+                hWaveOut,
+                current.header,
+                Marshal.SizeOf(current.header));
+            if (error != WaveOut.MMSYSERR_NOERROR)
+            {
+                throw new MultimediaException("waveOutWrite", error);
+            }
+            Interlocked.Increment(ref enqueuedBuffers);
+
+            if (paused && (enqueuedBuffers >= bufferCount / 2))
+            {
+                error = WaveOut.waveOutRestart(
+                    hWaveOut);
+                if (error != WaveOut.MMSYSERR_NOERROR)
+                {
+                    throw new MultimediaException("waveOutRestart", error);
+                }
+                paused = false;
+            }
+
+            current = null;
+        }
+
+        public void Callback(
+            IntPtr/*HWAVEOUT*/ hwo,
+            uint uMsg,
+            IntPtr dwInstance,
+            WaveOut.WAVEHDR dwParam1,
+            IntPtr dwParam2)
+        {
+            switch (uMsg)
+            {
+                case WaveOut.WOM_OPEN:
+                    break;
+
+                case WaveOut.WOM_CLOSE:
+                    break;
+
+                case WaveOut.WOM_DONE:
+                    Buffer buffer = bufferMap[dwParam1.dwUser.ToInt32()];
+#if false
+                    int error = WaveOut.waveOutUnprepareHeader(
+                        hWaveOut,
+                        buffer.header,
+                        Marshal.SizeOf(buffer.header));
+#endif
+                    Interlocked.Add(ref bufferedPoints, -buffer.level);
+                    Interlocked.Decrement(ref enqueuedBuffers);
+                    lock (this)
+                    {
+                        buffer.next = freeList;
+                        freeList = buffer;
+                        avail.Set();
+                    }
+                    break;
+            }
+        }
+
+        public class MultimediaException : ApplicationException
+        {
+            public MultimediaException()
+                : base()
+            {
+            }
+
+            public MultimediaException(string function, int error)
+                : base(String.Format("{0} error {1}", function, error))
+            {
+            }
+        }
+    }
+#endif
+
+    #region Legacy Interop
+    public static class WaveOut
+    {
+        public delegate void waveOutProc(
+            IntPtr/*HWAVEOUT*/ hwo,
+            uint uMsg,
+            IntPtr dwInstance,
+            [In] WaveOut.WAVEHDR dwParam1,
+            IntPtr dwParam2);
+
+        [DllImport("winmm.dll", PreserveSig = true)]
+        public static extern int/*MMRESULT*/ waveOutOpen(
+            out IntPtr/*LPHWAVEOUT*/ phwo,
+            IntPtr uDeviceID,
+            [In, MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(OutOfPhase.WAVEFORMATEX_marshaler))] WAVEFORMATEX pwfx,
+            waveOutProc dwCallback,
+            IntPtr dwCallbackInstance,
+            uint fdwOpen);
+
+        [DllImport("winmm.dll", PreserveSig = true)]
+        public static extern int/*MMRESULT*/ waveOutPause(
+            IntPtr/*HWAVEOUT*/ hwo);
+
+        [DllImport("winmm.dll", PreserveSig = true)]
+        public static extern int/*MMRESULT*/ waveOutRestart(
+            IntPtr/*HWAVEOUT*/ hwo);
+
+        [DllImport("winmm.dll", PreserveSig = true)]
+        public static extern int/*MMRESULT*/ waveOutReset(
+            IntPtr/*HWAVEOUT*/ hwo);
+
+        [DllImport("winmm.dll", PreserveSig = true)]
+        public static extern int/*MMRESULT*/ waveOutClose(
+            IntPtr/*HWAVEOUT*/ hwo);
+
+        [DllImport("winmm.dll", PreserveSig = true)]
+        public static extern int/*MMRESULT*/ waveOutPrepareHeader(
+            IntPtr/*HWAVEOUT*/ hwo,
+            [In, Out] WaveOut.WAVEHDR pwh,
+            int cbwh);
+
+        [DllImport("winmm.dll", PreserveSig = true)]
+        public static extern int/*MMRESULT*/ waveOutUnprepareHeader(
+            IntPtr/*HWAVEOUT*/ hwo,
+            [In, Out] WaveOut.WAVEHDR pwh,
+            int cbwh);
+
+        [DllImport("winmm.dll", PreserveSig = true)]
+        public static extern int/*MMRESULT*/ waveOutWrite(
+            IntPtr/*HWAVEOUT*/ hwo,
+            [In, Out] WaveOut.WAVEHDR pwh,
+            int cbwh);
+
+        // MMSystem.h
+
+        /* device ID for wave device mapper */
+        public const int WAVE_MAPPER = -1;
+
+        public const int CALLBACK_TYPEMASK = 0x00070000; /* callback type mask */
+        public const int CALLBACK_NULL = 0x00000000; /* no callback */
+        public const int CALLBACK_WINDOW = 0x00010000; /* dwCallback is a HWND */
+        public const int CALLBACK_TASK = 0x00020000; /* dwCallback is a HTASK */
+        public const int CALLBACK_FUNCTION = 0x00030000; /* dwCallback is a FARPROC */
+        public const int CALLBACK_THREAD = CALLBACK_TASK; /* thread ID replaces 16 bit task */
+        public const int CALLBACK_EVENT = 0x00050000; /* dwCallback is an EVENT Handle */
+
+        /* flags for dwFlags parameter in waveOutOpen() and waveInOpen() */
+        public const int WAVE_FORMAT_QUERY = 0x0001;
+        public const int WAVE_ALLOWSYNC = 0x0002;
+        public const int WAVE_MAPPED = 0x0004;
+        public const int WAVE_FORMAT_DIRECT = 0x0008;
+        public const int WAVE_FORMAT_DIRECT_QUERY = (WAVE_FORMAT_QUERY | WAVE_FORMAT_DIRECT);
+        public const int WAVE_MAPPED_DEFAULT_COMMUNICATION_DEVICE = 0x0010;
+
+        public const int WOM_OPEN = 0x3BB; /* waveform output */
+        public const int WOM_CLOSE = 0x3BC;
+        public const int WOM_DONE = 0x3BD;
+
+        /* flags for dwFlags field of WAVEHDR */
+        public const int WHDR_DONE = 0x00000001; /* done bit */
+        public const int WHDR_PREPARED = 0x00000002; /* set if this header has been prepared */
+        public const int WHDR_BEGINLOOP = 0x00000004; /* loop start block */
+        public const int WHDR_ENDLOOP = 0x00000008; /* loop end block */
+        public const int WHDR_INQUEUE = 0x00000010; /* reserved for driver */
+
+        /* wave data block header */
+        [StructLayout(LayoutKind.Sequential)]
+        public class WAVEHDR
+        {
+            public IntPtr lpData; /* pointer to locked data buffer */
+            public int dwBufferLength; /* length of data buffer */
+            public int dwBytesRecorded; /* used for input only */
+            public IntPtr dwUser; /* for client's use */
+            public int dwFlags; /* assorted flags (see defines) */
+            public int dwLoops; /* loop control counter */
+            public IntPtr lpNext; /* reserved for driver */
+            public IntPtr reserved; /* reserved for driver */
+        }
+
+        /* general error return values */
+        private const int MMSYSERR_BASE = 0;
+        public const int MMSYSERR_NOERROR = 0; /* no error */
+        public const int MMSYSERR_ERROR = MMSYSERR_BASE + 1; /* unspecified error */
+        public const int MMSYSERR_BADDEVICEID = MMSYSERR_BASE + 2; /* device ID out of range */
+        public const int MMSYSERR_NOTENABLED = MMSYSERR_BASE + 3; /* driver failed enable */
+        public const int MMSYSERR_ALLOCATED = MMSYSERR_BASE + 4; /* device already allocated */
+        public const int MMSYSERR_INVALHANDLE = MMSYSERR_BASE + 5; /* device handle is invalid */
+        public const int MMSYSERR_NODRIVER = MMSYSERR_BASE + 6; /* no device driver present */
+        public const int MMSYSERR_NOMEM = MMSYSERR_BASE + 7; /* memory allocation error */
+        public const int MMSYSERR_NOTSUPPORTED = MMSYSERR_BASE + 8; /* function isn't supported */
+        public const int MMSYSERR_BADERRNUM = MMSYSERR_BASE + 9; /* error value out of range */
+        public const int MMSYSERR_INVALFLAG = MMSYSERR_BASE + 10; /* invalid flag passed */
+        public const int MMSYSERR_INVALPARAM = MMSYSERR_BASE + 11; /* invalid parameter passed */
+        public const int MMSYSERR_HANDLEBUSY = MMSYSERR_BASE + 12; /* handle being used simultaneously on another thread =eg callback) */
+        public const int MMSYSERR_INVALIDALIAS = MMSYSERR_BASE + 13; /* specified alias not found */
+        public const int MMSYSERR_BADDB = MMSYSERR_BASE + 14; /* bad registry database */
+        public const int MMSYSERR_KEYNOTFOUND = MMSYSERR_BASE + 15; /* registry key not found */
+        public const int MMSYSERR_READERROR = MMSYSERR_BASE + 16; /* registry read error */
+        public const int MMSYSERR_WRITEERROR = MMSYSERR_BASE + 17; /* registry write error */
+        public const int MMSYSERR_DELETEERROR = MMSYSERR_BASE + 18; /* registry delete error */
+        public const int MMSYSERR_VALNOTFOUND = MMSYSERR_BASE + 19; /* registry value not found */
+        public const int MMSYSERR_NODRIVERCB = MMSYSERR_BASE + 20; /* driver does not call DriverCallback */
+        public const int MMSYSERR_MOREDATA = MMSYSERR_BASE + 21; /* more data to be returned */
+        public const int MMSYSERR_LASTERROR = MMSYSERR_BASE + 21; /* last error in range */
+
+        /* waveform audio error return values */
+        private const int WAVERR_BASE = 32;
+        public const int WAVERR_BADFORMAT = WAVERR_BASE + 0; /* unsupported wave format */
+        public const int WAVERR_STILLPLAYING = WAVERR_BASE + 1; /* still something playing */
+        public const int WAVERR_UNPREPARED = WAVERR_BASE + 2; /* header not prepared */
+        public const int WAVERR_SYNC = WAVERR_BASE + 3; /* device is synchronous */
+        public const int WAVERR_LASTERROR = WAVERR_BASE + 3; /* last error in range */
     }
     #endregion
 }

@@ -49,7 +49,14 @@ namespace OutOfPhase
         /// </summary>
         private void InitializeComponent()
         {
-            components = new System.ComponentModel.Container();
+            this.SuspendLayout();
+            // 
+            // SampleControl
+            // 
+            this.BackColor = System.Drawing.SystemColors.Window;
+            this.Name = "SampleControl";
+            this.ResumeLayout(false);
+
         }
 
         #endregion

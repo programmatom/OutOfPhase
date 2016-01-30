@@ -30,22 +30,53 @@ using System.Windows.Forms;
 
 namespace OutOfPhase
 {
-    public partial class NoteViewControl : UserControl
+    public partial class NoteViewControl : UserControl, IValueInfoOwner
     {
         private Font boldFont;
+        private int lastToolTipId = -1;
+        private readonly Rectangle[] rectsFieldBounds = new Rectangle[ValueInfo.Values.Length];
+        private readonly Rectangle[] rectsFieldEditableBounds = new Rectangle[ValueInfo.Values.Length];
+        private UndoHelper undoHelper;
+        private Color highlightBackColor = SystemColors.Window;
+        private Brush backBrush;
+        private Pen forePen;
+        private Control focusReturnsTo;
 
         public NoteViewControl()
         {
             DoubleBuffered = true;
 
             InitializeComponent();
+
+            textEditControl.TextChanged += TextEditControl_TextChanged;
+            textEditControl.LostFocus += TextEditControl_LostFocus;
+            textEditControl.BackColor = highlightBackColor;
+            textEditControl.ForeColor = this.ForeColor;
+
+            Disposed += NoteViewControl_Disposed;
+        }
+
+        private void NoteViewControl_Disposed(object sender, EventArgs e)
+        {
+            if (boldFont != null)
+            {
+                boldFont.Dispose();
+            }
+            if (backBrush != null)
+            {
+                backBrush.Dispose();
+            }
+            if (forePen != null)
+            {
+                forePen.Dispose();
+            }
         }
 
         protected override Size DefaultMinimumSize
         {
             get
             {
-                return new Size(0, NUMLINES * Font.Height + 2 * PIXELINSET);
+                return new Size(0, NUMLINES * Font.Height);
             }
         }
 
@@ -54,254 +85,429 @@ namespace OutOfPhase
             base.OnLoad(e);
 
             boldFont = new Font(Font, FontStyle.Bold);
+            backBrush = new SolidBrush(BackColor);
+            forePen = new Pen(ForeColor);
         }
 
 
-        private NoteNoteObjectRec note;
-        public NoteNoteObjectRec Note { get { return note; } set { note = value; Invalidate(); } }
+        //
 
-        private const int PIXELINSET = 2;
-        private const int NUMLINES = 3;
+        [Category("Appearance"), DefaultValue(typeof(SystemColors), "Window")]
+        public Color HighlightBackColor { get { return highlightBackColor; } set { highlightBackColor = value; } }
+
+        [Category("Behavior")]
+        public Control FocusReturnsTo { get { return focusReturnsTo; } set { focusReturnsTo = value; } }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public UndoHelper UndoHelper { get { return undoHelper; } set { undoHelper = value; } }
+
+
+        //
+
+        private NoteNoteObjectRec note;
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public NoteNoteObjectRec Note
+        {
+            get
+            {
+                return note;
+            }
+            set
+            {
+                NoteNoteObjectRec oldNote = note;
+                note = value;
+                if (oldNote != note)
+                {
+                    Invalidate();
+                }
+            }
+        }
+
+        private const int NUMLINES = 2;
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            // we repaint entire surface - so suppress background fill to reduce flicker
+            if (!DesignMode)
+            {
+                return;
+            }
+
+            base.OnPaintBackground(e);
+        }
 
         protected override void OnPaint(PaintEventArgs pe)
         {
-            // custom paint code here
-            pe.Graphics.DrawRectangle(Pens.Black, ClientRectangle);
-            pe.Graphics.FillRectangle(Brushes.White, Rectangle.Inflate(ClientRectangle, -1, -1));
-            if (note != null)
-            {
-                double Number;
-
-
-                // line 1
-
-                int y = PIXELINSET;
-                float x = PIXELINSET;
-
-                AddText(pe.Graphics, "Vol=", ref x, y, Font);
-                Number = Note.GetNoteOverallLoudnessAdjustment();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 1) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  Start=", ref x, y, Font);
-                Number = Note.GetNoteEarlyLateAdjust();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  DurAdj=", ref x, y, Font);
-                Number = Note.GetNoteDurationAdjust();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-                AddText(pe.Graphics, "/", ref x, y, Font);
-                switch (Note.GetNoteDurationAdjustMode())
-                {
-                    default:
-                        Debug.Assert(false);
-                        throw new InvalidOperationException();
-                    case NoteFlags.eDurationAdjustDefault:
-                        AddText(pe.Graphics, "dflt", ref x, y, Font);
-                        break;
-                    case NoteFlags.eDurationAdjustAdditive:
-                        AddText(pe.Graphics, "add", ref x, y, boldFont);
-                        break;
-                    case NoteFlags.eDurationAdjustMultiplicative:
-                        AddText(pe.Graphics, "mul", ref x, y, boldFont);
-                        break;
-                }
-
-                AddText(pe.Graphics, "  Rls1=", ref x, y, Font);
-                Number = Note.GetNoteReleasePoint1();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-                AddText(pe.Graphics, "/", ref x, y, Font);
-                switch (Note.GetNoteRelease1Origin())
-                {
-                    default:
-                        Debug.Assert(false);
-                        throw new InvalidOperationException();
-                    case NoteFlags.eRelease1FromDefault:
-                        AddText(pe.Graphics, "dflt", ref x, y, Font);
-                        break;
-                    case NoteFlags.eRelease1FromStart:
-                        AddText(pe.Graphics, "start", ref x, y, boldFont);
-                        break;
-                    case NoteFlags.eRelease1FromEnd:
-                        AddText(pe.Graphics, "end", ref x, y, boldFont);
-                        break;
-                }
-
-                AddText(pe.Graphics, "  Rls2=", ref x, y, Font);
-                Number = Note.GetNoteReleasePoint2();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-                AddText(pe.Graphics, "/", ref x, y, Font);
-                switch (Note.GetNoteRelease2Origin())
-                {
-                    default:
-                        Debug.Assert(false);
-                        throw new InvalidOperationException();
-                    case NoteFlags.eRelease2FromDefault:
-                        AddText(pe.Graphics, "dflt", ref x, y, Font);
-                        break;
-                    case NoteFlags.eRelease2FromStart:
-                        AddText(pe.Graphics, "start", ref x, y, boldFont);
-                        break;
-                    case NoteFlags.eRelease2FromEnd:
-                        AddText(pe.Graphics, "end", ref x, y, boldFont);
-                        break;
-                }
-
-                AddText(pe.Graphics, "  Rls3=", ref x, y, Font);
-                if (Note.GetNoteRelease3FromStartInsteadOfEnd())
-                {
-                    AddText(pe.Graphics, "start", ref x, y, boldFont);
-                }
-                else
-                {
-                    AddText(pe.Graphics, "end", ref x, y, Font);
-                }
-
-                AddText(pe.Graphics, "  ", ref x, y, Font);
-                if (Note.GetNotePortamentoHertzNotHalfstepsFlag())
-                {
-                    AddText(pe.Graphics, "PorHz", ref x, y, boldFont);
-                }
-                else
-                {
-                    AddText(pe.Graphics, "PorHStp", ref x, y, Font);
-                }
-
-
-                // line 2
-
-                y += Font.Height;
-                x = PIXELINSET;
-
-                AddText(pe.Graphics, "Por=", ref x, y, Font);
-                Number = Note.GetNotePortamentoDuration();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  Bal=", ref x, y, Font);
-                Number = Note.GetNoteStereoPositioning();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  PDD=", ref x, y, Font);
-                Number = Note.GetNotePitchDisplacementDepthAdjust();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 1) ? boldFont : Font);
-                AddText(pe.Graphics, "/", ref x, y, Font);
-                switch (Note.GetNotePitchDisplacementStartOrigin())
-                {
-                    default:
-                        Debug.Assert(false);
-                        throw new InvalidOperationException();
-                    case NoteFlags.ePitchDisplacementStartFromDefault:
-                        AddText(pe.Graphics, "dflt", ref x, y, Font);
-                        break;
-                    case NoteFlags.ePitchDisplacementStartFromStart:
-                        AddText(pe.Graphics, "start", ref x, y, boldFont);
-                        break;
-                    case NoteFlags.ePitchDisplacementStartFromEnd:
-                        AddText(pe.Graphics, "end", ref x, y, boldFont);
-                        break;
-                }
-
-                AddText(pe.Graphics, "  PDR=", ref x, y, Font);
-                Number = Note.GetNotePitchDisplacementRateAdjust();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 1) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  PDS=", ref x, y, Font);
-                Number = Note.GetNotePitchDisplacementStartPoint();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  Hur=", ref x, y, Font);
-                Number = Note.GetNoteHurryUpFactor();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 1) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  Dtn=", ref x, y, Font);
-                Number = Note.GetNoteDetuning();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-                AddText(pe.Graphics, "/", ref x, y, Font);
-                switch (Note.GetNoteDetuneConversionMode())
-                {
-                    default:
-                        Debug.Assert(false);
-                        throw new InvalidOperationException();
-                    case NoteFlags.eDetuningModeDefault:
-                        AddText(pe.Graphics, "dflt", ref x, y, Font);
-                        break;
-                    case NoteFlags.eDetuningModeHalfSteps:
-                        AddText(pe.Graphics, "HStp", ref x, y, boldFont);
-                        break;
-                    case NoteFlags.eDetuningModeHertz:
-                        AddText(pe.Graphics, "Hz", ref x, y, boldFont);
-                        break;
-                }
-
-                AddText(pe.Graphics, "  Sur=", ref x, y, Font);
-                Number = Note.GetNoteSurroundPositioning();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-
-                // line 3
-
-                y += Font.Height;
-                x = PIXELINSET;
-
-                AddText(pe.Graphics, "MuS=", ref x, y, Font);
-                if (-1 == Note.GetNoteMultisampleFalsePitch())
-                {
-                    AddText(pe.Graphics, "dflt", ref x, y, Font);
-                }
-                else
-                {
-                    AddText(pe.Graphics, SymbolicPitch.NumericPitchToString(Note.GetNoteMultisampleFalsePitch(), 0), ref x, y, boldFont);
-                }
-
-                AddText(pe.Graphics, "    Accents:  1=", ref x, y, Font);
-                Number = Note.GetNoteAccent1();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  2=", ref x, y, Font);
-                Number = Note.GetNoteAccent2();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  3=", ref x, y, Font);
-                Number = Note.GetNoteAccent3();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  4=", ref x, y, Font);
-                Number = Note.GetNoteAccent4();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  5=", ref x, y, Font);
-                Number = Note.GetNoteAccent5();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  6=", ref x, y, Font);
-                Number = Note.GetNoteAccent6();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  7=", ref x, y, Font);
-                Number = Note.GetNoteAccent7();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-
-                AddText(pe.Graphics, "  8=", ref x, y, Font);
-                Number = Note.GetNoteAccent8();
-                AddText(pe.Graphics, Number.ToString(), ref x, y, (Number != 0) ? boldFont : Font);
-            }
-
-            // Calling the base class OnPaint
+            Redraw(pe.Graphics);
             base.OnPaint(pe);
         }
 
-        private void AddText(Graphics graphics, string text, ref float x, int y, Font font)
+        private void Redraw(Graphics graphics)
         {
-            StringFormat format = new StringFormat();
-            RectangleF rect = new RectangleF(0, 0, 1000, font.Height);
-            CharacterRange[] ranges = new CharacterRange[] { new CharacterRange(0, text.Length) };
-            Region[] regions = new Region[1];
-            format.SetMeasurableCharacterRanges(ranges);
-            regions = graphics.MeasureCharacterRanges(text, font, rect, format);
-            rect = regions[0].GetBounds(graphics);
-            float width = rect.Width;
+            if (note != null)
+            {
+                int xWidth = MeasureText(graphics, "x", Font);
+                int sepWidth = 2 * xWidth;
 
-            graphics.DrawString(text, font, Brushes.Black, x, y);
-            x += width;
+                int x = 0, y = 0;
+
+                StartLine(graphics, y);
+                for (int i = 0; i < ValueInfo.Values.Length; i++)
+                {
+                    ValueInfo valueInfo = ValueInfo.Values[i];
+
+                    if (valueInfo == null)
+                    {
+                        if (y == 0)
+                        {
+                            FinishLine(graphics, ref x, ref y);
+                            StartLine(graphics, y);
+                        }
+                        continue;
+                    }
+
+                    string value = valueInfo.GetValue(Note);
+                    string defaultValue = valueInfo.GetDefaultValue();
+
+                    bool editing = currentFieldValueInfo == valueInfo;
+
+                    AddText(
+                        graphics,
+                        valueInfo.Tag,
+                        !editing ? value : textEditControl.Text, // value text
+                        editing || !String.Equals(value, defaultValue), // bold
+                        !editing && (highlightedItem == i), // highlight
+                        ref x,
+                        ref y,
+                        out rectsFieldBounds[i],
+                        out rectsFieldEditableBounds[i]);
+
+                    if (valueInfo.SpacerFollows)
+                    {
+                        x += sepWidth;
+                    }
+                }
+                FinishLine(graphics, ref x, ref y);
+
+                MinimumSize = new Size(MinimumSize.Width, y);
+            }
+            else
+            {
+                graphics.FillRectangle(backBrush, ClientRectangle);
+
+            }
+        }
+
+        private void Redraw()
+        {
+            using (Graphics graphics = CreateGraphics())
+            {
+                Redraw(graphics);
+            }
+        }
+
+        private const TextFormatFlags FormatFlags = TextFormatFlags.Left | TextFormatFlags.NoClipping | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+
+        private int MeasureText(
+            Graphics graphics,
+            string text,
+            Font font)
+        {
+            return MyTextRenderer.MeasureText(
+                graphics,
+                text,
+                font,
+                new Size(ClientSize.Width, FontHeight),
+                FormatFlags).Width;
+        }
+
+        private void AddText(
+            Graphics graphics,
+            string label,
+            string value,
+            bool bold,
+            bool highlight,
+            ref int x,
+            ref int y,
+            out Rectangle bounds,
+            out Rectangle editableBounds)
+        {
+            int labelWidth = MeasureText(graphics, label, Font);
+            int valueWidth = MeasureText(graphics, value, bold ? boldFont : Font);
+            if (x + labelWidth + valueWidth > ClientSize.Width)
+            {
+                FinishLine(graphics, ref x, ref y);
+                StartLine(graphics, y);
+            }
+            bounds = new Rectangle(x, y, labelWidth + valueWidth, FontHeight);
+            editableBounds = new Rectangle(x + labelWidth, y, valueWidth, FontHeight);
+            MyTextRenderer.DrawText(
+                graphics,
+                label,
+                Font,
+                new Point(
+                    x,
+                    y),
+                ForeColor,
+                FormatFlags);
+            x += labelWidth;
+            MyTextRenderer.DrawText(
+                graphics,
+                value,
+                bold ? boldFont : Font,
+                new Point(
+                    x,
+                    y),
+                !highlight ? ForeColor : BackColor,
+                !highlight ? Color.Transparent : ForeColor,
+                FormatFlags);
+            x += valueWidth;
+        }
+
+        private void StartLine(
+            Graphics graphics,
+            int y)
+        {
+            graphics.FillRectangle(backBrush, 0, y, ClientSize.Width, FontHeight);
+        }
+
+        private void FinishLine(
+            Graphics graphics,
+            ref int x,
+            ref int y)
+        {
+            x = 0;
+            y += FontHeight;
+        }
+
+
+        //
+
+        private bool HitTest(Point location, out int index)
+        {
+            index = -1;
+            for (int i = 0; i < rectsFieldBounds.Length; i++)
+            {
+                if (rectsFieldBounds[i].Contains(location))
+                {
+                    index = i;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private int mouseTrackingItem = -1;
+        private int highlightedItem = -1;
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+
+            if (Note != null)
+            {
+                HitTest(e.Location, out mouseTrackingItem);
+                highlightedItem = mouseTrackingItem;
+                Invalidate();
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+
+            highlightedItem = -1;
+            Invalidate();
+            if (mouseTrackingItem >= 0)
+            {
+                int i = mouseTrackingItem;
+                mouseTrackingItem = -1;
+                if (rectsFieldBounds[i].Contains(e.Location))
+                {
+                    ValueInfo.Values[i].DoClick(Note, -1, this);
+                }
+            }
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+
+            if (Note != null)
+            {
+                if (mouseTrackingItem >= 0)
+                {
+                    int oldHighlight = highlightedItem;
+                    if (rectsFieldBounds[mouseTrackingItem].Contains(e.Location))
+                    {
+                        highlightedItem = mouseTrackingItem;
+                    }
+                    else
+                    {
+                        highlightedItem = -1;
+                    }
+                    if (oldHighlight != highlightedItem)
+                    {
+                        Invalidate();
+                    }
+                }
+                else
+                {
+                    int i;
+                    if (HitTest(e.Location, out i))
+                    {
+                        if (lastToolTipId != i)
+                        {
+                            lastToolTipId = i;
+                            toolTip.Show(
+                                String.Format("{0}: {1}", ValueInfo.Values[i].Description, ValueInfo.Values[i].GetValue(Note)),
+                                this,
+                                e.X + FontHeight,
+                                e.Y + FontHeight,
+                                30000);
+                        }
+                        return;
+                    }
+                }
+            }
+
+            lastToolTipId = -1;
+            toolTip.Hide(this);
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+
+            lastToolTipId = -1;
+            toolTip.Hide(this);
+        }
+
+
+        //
+
+        private ValueInfo currentFieldValueInfo;
+
+        public void SaveUndoInfo(string tag)
+        {
+            undoHelper.SaveUndoInfo(false/*forRedo*/, tag);
+        }
+
+        public void BeginFieldEdit(ValueInfo valueInfo, int noteIndexNotUsed, string initialText)
+        {
+            Debug.Assert(Note != null);
+
+            if (textEditControl.Visible)
+            {
+                CommitFieldEdit(valueInfo);
+            }
+
+            int index = Array.IndexOf(ValueInfo.Values, valueInfo);
+            Debug.Assert(index >= 0);
+
+            textEditControl.Location = rectsFieldEditableBounds[index].Location;
+            textEditControl.Size = rectsFieldEditableBounds[index].Size;
+            textEditControl.Text = initialText;
+            textEditControl.SelectAll();
+            textEditControl.Visible = true;
+            textEditControl.Focus();
+
+            currentFieldValueInfo = valueInfo;
+
+            Invalidate();
+        }
+
+        private void CommitFieldEdit(ValueInfo valueInfo)
+        {
+            int index = Array.IndexOf(ValueInfo.Values, valueInfo);
+            Debug.Assert(index >= 0);
+
+            if (Note != null)
+            {
+                if (!String.Equals(textEditControl.Text, valueInfo.GetValue(Note)))
+                {
+                    undoHelper.SaveUndoInfo(false/*forRedo*/, "Change Note Property");
+                    valueInfo.SetValue(Note, textEditControl.Text);
+                }
+            }
+
+            textEditControl.Visible = false;
+            currentFieldValueInfo = null;
+            Invalidate();
+        }
+
+        private void CancelFieldEdit()
+        {
+            textEditControl.Visible = false;
+            currentFieldValueInfo = null;
+            Invalidate();
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (!textEditControl.Visible)
+            {
+                return base.ProcessCmdKey(ref msg, keyData);
+            }
+
+            // inline edit is operative
+
+            if ((keyData & Keys.KeyCode) == Keys.Escape)
+            {
+                CancelFieldEdit();
+                if (focusReturnsTo != null)
+                {
+                    focusReturnsTo.Focus();
+                }
+            }
+            else if (keyData == Keys.Enter)
+            {
+                CommitFieldEdit(currentFieldValueInfo);
+                if (focusReturnsTo != null)
+                {
+                    focusReturnsTo.Focus();
+                }
+            }
+            // editing shortcut keys
+            else if (keyData == (Keys.A | Keys.Control))
+            {
+                textEditControl.SelectAll();
+            }
+            else if (keyData == (Keys.V | Keys.Control))
+            {
+                textEditControl.Paste();
+            }
+            else if (keyData == (Keys.X | Keys.Control))
+            {
+                textEditControl.Cut();
+            }
+            else if (keyData == (Keys.C | Keys.Control))
+            {
+                textEditControl.Copy();
+            }
+            else if (Array.IndexOf(NavKeys, keyData & Keys.KeyCode) >= 0)
+            {
+                return base.ProcessCmdKey(ref msg, keyData); // nav keys get routed normally
+            }
+            // default cases
+            else if ((keyData & (Keys.Control | Keys.Alt)) == 0)
+            {
+                return base.ProcessCmdKey(ref msg, keyData); // unmodified keys get routed normally
+            }
+            return true; // eat all modified key commands - prevent going to other panels
+        }
+        private static readonly Keys[] NavKeys = new Keys[] { Keys.Left, Keys.Right, Keys.Up, Keys.Down, Keys.Home, Keys.End, Keys.PageUp, Keys.PageDown, Keys.F4 };
+
+        private void TextEditControl_TextChanged(object sender, EventArgs e)
+        {
+            Invalidate();
+        }
+
+        private void TextEditControl_LostFocus(object sender, EventArgs e)
+        {
+            if (textEditControl.Visible)
+            {
+                CommitFieldEdit(currentFieldValueInfo);
+            }
         }
     }
 }

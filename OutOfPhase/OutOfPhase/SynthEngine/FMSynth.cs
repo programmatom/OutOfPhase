@@ -370,7 +370,7 @@ namespace OutOfPhase
                                 Wave.FramesPerTableMinus1 = FramesPerTable - 1;
 
                                 Wave.FramesPerTableOverFinalOutputSamplingRate
-                                    = (double)Wave.FloatFramesPerTable / SynthParams.dSamplingRate;
+                                    = (double)Wave.FloatFramesPerTable * SynthParams.dSamplingRateReciprocal;
 
                                 /* State.FramesPerTable > 0: */
                                 /*   if the wave table is empty, then we don't do any work (and we must not, */

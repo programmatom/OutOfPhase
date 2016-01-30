@@ -5,7 +5,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>TRACE;DEBUG;VECTOR NETNEW</DefineConstants>
     <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Prefer32Bit>false</Prefer32Bit>
@@ -22,6 +22,7 @@
     <AssemblyName>OutOfPhase</AssemblyName>
     <ApplicationIcon>_Resources\Icon2.ico</ApplicationIcon>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
     <UpgradeBackupLocation>
@@ -49,10 +50,33 @@
     <DefineConstants>TRACE;VECTOR NETNEW</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
     <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;VECTOR NETNEW</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE;VECTOR NETNEW</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -68,11 +92,11 @@
     <Reference Include="System.Xml" />
     <Reference Include="TextEditorDirectWrite, Version=1.0.5781.17299, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\TextEditor\TextEditorLib\bin\Debug\TextEditorDirectWrite.dll</HintPath>
+      <HintPath>..\..\TextEditor\TextEditorLib\bin\$(ConfigurationName)\TextEditorDirectWrite.dll</HintPath>
     </Reference>
     <Reference Include="TextEditorLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\TextEditor\TextEditorLib\bin\Debug\TextEditorLib.dll</HintPath>
+      <HintPath>..\..\TextEditor\TextEditorLib\bin\$(ConfigurationName)\TextEditorLib.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -124,9 +148,16 @@
       <DependentUpon>CmdDlgTwoParams.cs</DependentUpon>
     </Compile>
     <Compile Include="DataModelNumericTypes.cs" />
+    <Compile Include="DpiChangeHelper.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="DpiChangeHelper.Designer.cs">
+      <DependentUpon>DpiChangeHelper.cs</DependentUpon>
+    </Compile>
     <Compile Include="EditCommandParameters.cs" />
     <Compile Include="ExportAIFFSample.cs" />
     <Compile Include="ExportWAVSample.cs" />
+    <Compile Include="FindEverywhere.cs" />
     <Compile Include="GlobalPrefs.cs" />
     <Compile Include="GlobalPrefsDialog.cs">
       <SubType>Form</SubType>
@@ -164,6 +195,9 @@
     <Compile Include="MIDIImport\RawMIDIEvent.cs" />
     <Compile Include="MIDIImport\RawMIDIScore.cs" />
     <Compile Include="MIDIImport\RawMIDITrack.cs" />
+    <Compile Include="MyLabel.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="MyListBox.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -182,11 +216,19 @@
     <Compile Include="MyProgressBar.Designer.cs">
       <DependentUpon>MyProgressBar.cs</DependentUpon>
     </Compile>
+    <Compile Include="MyTextRenderer.cs" />
     <Compile Include="NoteAttributeDialog.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="NoteAttributeDialog.Designer.cs">
       <DependentUpon>NoteAttributeDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="NoteParamConfig.cs" />
+    <Compile Include="NoteParamStrip.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="NoteParamStrip.Designer.cs">
+      <DependentUpon>NoteParamStrip.cs</DependentUpon>
     </Compile>
     <Compile Include="OutputDevice.cs" />
     <Compile Include="OutputGeneric.cs" />
@@ -254,8 +296,12 @@
     <Compile Include="SequencerConfigWindow.Designer.cs">
       <DependentUpon>SequencerConfigWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="SynthBuild\PluggableSpec.cs" />
     <Compile Include="SynthEngine\AlignedWorkspace.cs" />
     <Compile Include="SynthEngine\IEffect.cs" />
+    <Compile Include="SynthEngine\PluggableBase.cs" />
+    <Compile Include="SynthEngine\PluggableOscSine.cs" />
+    <Compile Include="SynthEngine\PluggableEffectUserEffect.cs" />
     <Compile Include="SynthEngine\SplayTree.cs" />
     <Compile Include="SynthEngine\SplayTreeArray.cs" />
     <Compile Include="SymbolicDuration.cs" />
@@ -381,6 +427,12 @@
       <SubType>Designer</SubType>
       <DependentUpon>NoteAttributeDialog.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="NoteParamStrip.resx">
+      <DependentUpon>NoteParamStrip.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NoteViewControl.resx">
+      <DependentUpon>NoteViewControl.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="PlayAudioFileWithEffects.resx">
       <SubType>Designer</SubType>
       <DependentUpon>PlayAudioFileWithEffects.cs</DependentUpon>
@@ -393,6 +445,9 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SampleControl.resx">
+      <DependentUpon>SampleControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="SampleWindow.resx">
       <SubType>Designer</SubType>
@@ -426,8 +481,13 @@
       <SubType>Designer</SubType>
       <DependentUpon>TrackAttributeDialog.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="TrackEditControl.resx">
+      <DependentUpon>TrackEditControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TrackViewControl.resx">
+      <DependentUpon>TrackViewControl.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="TrackWindow.resx">
-      <SubType>Designer</SubType>
       <DependentUpon>TrackWindow.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="UnsavedDialog.resx">
@@ -448,7 +508,8 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
-    <None Include="app.config" />
+    <None Include="Properties\app.config" />
+    <None Include="Properties\app.manifest" />
     <None Include="packages.config" />
     <None Include="Properties\DataSources\AlgoSampObjectRec.datasource" />
     <None Include="Properties\DataSources\AlgoWaveTableObjectRec.datasource" />
@@ -584,6 +645,12 @@
     <Compile Include="TrackAttributeDialog.Designer.cs">
       <DependentUpon>TrackAttributeDialog.cs</DependentUpon>
     </Compile>
+    <Compile Include="TrackEditControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="TrackEditControl.Designer.cs">
+      <DependentUpon>TrackEditControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="TrackViewControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -627,8 +694,8 @@
     <Content Include="libfftw3f-3.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="_Resources\Icon2.ico" />
-    <Content Include="_Resources\Icon1.ico" />
+    <Resource Include="_Resources\Icon2.ico" />
+    <Resource Include="_Resources\Icon1.ico" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">

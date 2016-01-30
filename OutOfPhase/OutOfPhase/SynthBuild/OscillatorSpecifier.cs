@@ -36,6 +36,7 @@ namespace OutOfPhase
             eOscillatorFOF, /* FOF pulse synthesis */
             eOscillatorAlgorithm, /* Algorithmically generated waveform */
             eOscillatorFMSynth, /* use phase modulation network */
+            eOscillatorPluggable, // extensible interface
         }
 
         /* what happens when FOF pitch increases so that one grain isn't */
@@ -123,6 +124,9 @@ namespace OutOfPhase
 
             /* network definition for FM synth */
             public FMSynthSpecRec FMSynthSpec;
+
+            // definition for ploggable oscillator -- overrides all parameters here
+            public PluggableOscSpec PluggableSpec;
         }
 
         /* create a new oscillator public static ure */
@@ -166,7 +170,8 @@ namespace OutOfPhase
                 && (WhatKindOfOscillator != OscillatorTypes.eOscillatorWaveTable)
                 && (WhatKindOfOscillator != OscillatorTypes.eOscillatorFOF)
                 && (WhatKindOfOscillator != OscillatorTypes.eOscillatorAlgorithm)
-                && (WhatKindOfOscillator != OscillatorTypes.eOscillatorFMSynth))
+                && (WhatKindOfOscillator != OscillatorTypes.eOscillatorFMSynth)
+                && (WhatKindOfOscillator != OscillatorTypes.eOscillatorPluggable))
             {
                 Debug.Assert(false);
                 throw new ArgumentException();
@@ -422,6 +427,32 @@ namespace OutOfPhase
             }
 #endif
             return Osc.FMSynthSpec;
+        }
+
+        public static void PutOscillatorPluggableSpec(
+            OscillatorRec Osc,
+            PluggableOscSpec pluggableSpec)
+        {
+#if DEBUG
+            if (Osc.OscillatorType != OscillatorTypes.eOscillatorPluggable)
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+#endif
+            Osc.PluggableSpec = pluggableSpec;
+        }
+
+        public static PluggableOscSpec GetOscillatorPluggableSpec(OscillatorRec Osc)
+        {
+#if DEBUG
+            if (Osc.OscillatorType != OscillatorTypes.eOscillatorPluggable)
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+#endif
+            return Osc.PluggableSpec;
         }
     }
 }

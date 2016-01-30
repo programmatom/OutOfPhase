@@ -50,6 +50,7 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            this.textBoxFunction.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxFunction.AutoIndent = Program.Config.AutoIndent;
 
             undoHelper = new UndoHelper(this);
@@ -159,6 +160,12 @@ namespace OutOfPhase
         {
             menuStripManager.SetActiveHandler(null);
             base.OnDeactivate(e);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
         }
 
 
@@ -493,6 +500,7 @@ namespace OutOfPhase
                 out AST);
             if (CompileError != CompileErrors.eCompileNoError)
             {
+                textBoxFunction.Focus();
                 textBoxFunction.SetSelectionLine(ErrorLineNumberCompilation - 1);
                 LiteralBuildErrorInfo errorInfo = new LiteralBuildErrorInfo(Compiler.GetCompileErrorString(CompileError), ErrorLineNumberCompilation);
                 MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
@@ -993,8 +1001,8 @@ namespace OutOfPhase
 #if true // prevents "Add New Data Source..." from working
             state = SampleTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 mainWindow.DisplayName,
-                OutputDeviceDestinationHandler.OutputDeviceGetDestination,
-                OutputDeviceDestinationHandler.CreateOutputDeviceDestinationHandler,
+                OutputDeviceEnumerator.OutputDeviceGetDestination,
+                OutputDeviceEnumerator.CreateOutputDeviceDestinationHandler,
                 new OutputDeviceArguments(BufferDuration),
                 SampleTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.MainLoop,
                 generatorParams = new SampleTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>(

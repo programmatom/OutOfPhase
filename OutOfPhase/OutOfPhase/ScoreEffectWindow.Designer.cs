@@ -52,12 +52,15 @@ namespace OutOfPhase
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.menuStripManager = new OutOfPhase.MenuStripManager();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxScoreEffectsText = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.scoreEffectsRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
+            this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.scoreEffectsRecBindingSource)).BeginInit();
             this.SuspendLayout();
@@ -67,7 +70,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ColumnCount = 1;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Controls.Add(this.menuStripManager, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.textBoxScoreEffectsText, 0, 1);
+            this.tableLayoutPanel1.Controls.Add(this.panel1, 0, 1);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -80,25 +83,36 @@ namespace OutOfPhase
             // menuStripManager
             // 
             this.menuStripManager.AutoSize = true;
-            this.menuStripManager.Location = new System.Drawing.Point(3, 3);
+            this.menuStripManager.Location = new System.Drawing.Point(0, 0);
+            this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(568, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(574, 24);
             this.menuStripManager.TabIndex = 2;
+            // 
+            // panel1
+            // 
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.textBoxScoreEffectsText);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(3, 27);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(568, 336);
+            this.panel1.TabIndex = 4;
             // 
             // textBoxScoreEffectsText
             // 
             this.textBoxScoreEffectsText.AutoScroll = true;
             this.textBoxScoreEffectsText.AutoScrollMinSize = new System.Drawing.Size(568, 13);
-            this.textBoxScoreEffectsText.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.textBoxScoreEffectsText.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textBoxScoreEffectsText.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxScoreEffectsText.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxScoreEffectsText.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.scoreEffectsRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxScoreEffectsText.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxScoreEffectsText.Location = new System.Drawing.Point(3, 33);
+            this.textBoxScoreEffectsText.Location = new System.Drawing.Point(0, 0);
             this.textBoxScoreEffectsText.Name = "textBoxScoreEffectsText";
-            this.textBoxScoreEffectsText.Size = new System.Drawing.Size(568, 330);
+            this.textBoxScoreEffectsText.Size = new System.Drawing.Size(566, 334);
             this.textBoxScoreEffectsText.TabIndex = 3;
             this.textBoxScoreEffectsText.TextService = TextEditor.TextService.Simple;
+            this.textBoxScoreEffectsText.SimpleNavigation = true;
             this.textBoxScoreEffectsText.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
@@ -130,6 +144,10 @@ namespace OutOfPhase
             this.textEditorWindowHelper.TrimTrailingSpacesToolStripMenuItem = null;
             this.textEditorWindowHelper.UndoToolStripMenuItem = null;
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // ScoreEffectWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -139,6 +157,7 @@ namespace OutOfPhase
             this.Name = "ScoreEffectWindow";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
+            this.panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.scoreEffectsRecBindingSource)).EndInit();
             this.ResumeLayout(false);
@@ -154,5 +173,7 @@ namespace OutOfPhase
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextEditor.StringStorageFactory stringStorageFactory;
+        private System.Windows.Forms.Panel panel1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

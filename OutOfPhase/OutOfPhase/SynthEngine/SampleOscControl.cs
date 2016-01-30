@@ -395,6 +395,12 @@ namespace OutOfPhase
                 {
                     MaxPreOrigin = OnePreOrigin;
                 }
+                // initial value for envelope smoothing
+                State.Loudness = (float)LFOGenInitialValue(
+                    State.LoudnessLFOGenerator,
+                    EnvelopeInitialValue(
+                       State.SampleLoudnessEnvelope));
+
                 State.PitchLFO = NewLFOGenerator(
                     Template.PitchLFOTemplate,
                     out OnePreOrigin,
@@ -562,7 +568,7 @@ namespace OutOfPhase
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier
                     + State.Template.FrequencyAdder;
                 Differential = (NewFrequencyHertz / State.NaturalFrequency)
-                    / SynthParams.dSamplingRate
+                    * SynthParams.dSamplingRateReciprocal
                     * State.NaturalSamplingRate;
                 if (Differential < 0)
                 {

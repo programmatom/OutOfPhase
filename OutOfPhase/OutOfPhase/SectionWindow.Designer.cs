@@ -51,17 +51,20 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.label1 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
             this.textBoxSectionName = new System.Windows.Forms.TextBox();
             this.sectionObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            this.menuStripManager = new OutOfPhase.MenuStripManager();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxSectionText = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.stringStorageFactory = new TextEditor.StringStorageFactory();
-            this.menuStripManager = new OutOfPhase.MenuStripManager();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.textBoxWindowHelper = new OutOfPhase.TextBoxWindowHelper(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.sectionObjectRecBindingSource)).BeginInit();
+            this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
@@ -73,8 +76,8 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Controls.Add(this.label1, 0, 1);
             this.tableLayoutPanel1.Controls.Add(this.textBoxSectionName, 2, 1);
-            this.tableLayoutPanel1.Controls.Add(this.textBoxSectionText, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.menuStripManager, 0, 0);
+            this.tableLayoutPanel1.Controls.Add(this.panel1, 0, 2);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -82,6 +85,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(627, 364);
             this.tableLayoutPanel1.TabIndex = 0;
             // 
@@ -89,7 +93,7 @@ namespace OutOfPhase
             // 
             this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(3, 36);
+            this.label1.Location = new System.Drawing.Point(3, 30);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(77, 13);
             this.label1.TabIndex = 2;
@@ -99,7 +103,7 @@ namespace OutOfPhase
             // 
             this.textBoxSectionName.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxSectionName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sectionObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
-            this.textBoxSectionName.Location = new System.Drawing.Point(106, 33);
+            this.textBoxSectionName.Location = new System.Drawing.Point(106, 27);
             this.textBoxSectionName.Name = "textBoxSectionName";
             this.textBoxSectionName.Size = new System.Drawing.Size(518, 20);
             this.textBoxSectionName.TabIndex = 3;
@@ -108,35 +112,46 @@ namespace OutOfPhase
             // 
             this.sectionObjectRecBindingSource.DataSource = typeof(OutOfPhase.SectionObjectRec);
             // 
+            // menuStripManager
+            // 
+            this.menuStripManager.AutoSize = true;
+            this.tableLayoutPanel1.SetColumnSpan(this.menuStripManager, 3);
+            this.menuStripManager.Location = new System.Drawing.Point(0, 0);
+            this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
+            this.menuStripManager.Name = "menuStripManager";
+            this.menuStripManager.Size = new System.Drawing.Size(627, 24);
+            this.menuStripManager.TabIndex = 5;
+            // 
+            // panel1
+            // 
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.tableLayoutPanel1.SetColumnSpan(this.panel1, 3);
+            this.panel1.Controls.Add(this.textBoxSectionText);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(3, 53);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(621, 308);
+            this.panel1.TabIndex = 6;
+            // 
             // textBoxSectionText
             // 
             this.textBoxSectionText.AutoScroll = true;
             this.textBoxSectionText.AutoScrollMinSize = new System.Drawing.Size(621, 13);
-            this.textBoxSectionText.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.textBoxSectionText.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.tableLayoutPanel1.SetColumnSpan(this.textBoxSectionText, 3);
+            this.textBoxSectionText.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxSectionText.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxSectionText.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sectionObjectRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxSectionText.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxSectionText.Location = new System.Drawing.Point(3, 59);
+            this.textBoxSectionText.Location = new System.Drawing.Point(0, 0);
             this.textBoxSectionText.Name = "textBoxSectionText";
-            this.textBoxSectionText.Size = new System.Drawing.Size(621, 302);
+            this.textBoxSectionText.Size = new System.Drawing.Size(619, 306);
             this.textBoxSectionText.TabIndex = 4;
             this.textBoxSectionText.TextService = TextEditor.TextService.Simple;
+            this.textBoxSectionText.SimpleNavigation = true;
             this.textBoxSectionText.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
             // 
             this.documentBindingSource.DataSource = typeof(OutOfPhase.Document);
-            // 
-            // menuStripManager
-            // 
-            this.menuStripManager.AutoSize = true;
-            this.tableLayoutPanel1.SetColumnSpan(this.menuStripManager, 3);
-            this.menuStripManager.Location = new System.Drawing.Point(3, 3);
-            this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(621, 24);
-            this.menuStripManager.TabIndex = 5;
             // 
             // textEditorWindowHelper
             // 
@@ -169,6 +184,10 @@ namespace OutOfPhase
             this.textBoxWindowHelper.SelectAllToolStripMenuItem = null;
             this.textBoxWindowHelper.UndoToolStripMenuItem = null;
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // SectionWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -179,6 +198,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.sectionObjectRecBindingSource)).EndInit();
+            this.panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).EndInit();
             this.ResumeLayout(false);
 
@@ -188,7 +208,7 @@ namespace OutOfPhase
 
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
         private System.Windows.Forms.BindingSource sectionObjectRecBindingSource;
-        private System.Windows.Forms.Label label1;
+        private MyLabel label1;
         private System.Windows.Forms.TextBox textBoxSectionName;
         private TextEditor.TextEditControl textBoxSectionText;
         private System.Windows.Forms.BindingSource documentBindingSource;
@@ -196,5 +216,7 @@ namespace OutOfPhase
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextBoxWindowHelper textBoxWindowHelper;
         private TextEditor.StringStorageFactory stringStorageFactory;
+        private System.Windows.Forms.Panel panel1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

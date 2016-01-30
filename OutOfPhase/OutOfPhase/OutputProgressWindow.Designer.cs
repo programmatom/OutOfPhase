@@ -52,16 +52,17 @@ namespace OutOfPhase
             this.components = new System.ComponentModel.Container();
             this.buttonStop = new System.Windows.Forms.Button();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
-            this.labelElapsedSongTime = new System.Windows.Forms.Label();
-            this.textElapsedAudioSeconds = new System.Windows.Forms.Label();
-            this.labelTotalFrames = new System.Windows.Forms.Label();
-            this.textTotalFrames = new System.Windows.Forms.Label();
-            this.labelTotalClippedPoints = new System.Windows.Forms.Label();
-            this.textTotalClippedPoints = new System.Windows.Forms.Label();
-            this.labelBufferLoading = new System.Windows.Forms.Label();
+            this.labelElapsedSongTime = new OutOfPhase.MyLabel();
+            this.textElapsedAudioSeconds = new OutOfPhase.MyLabel();
+            this.labelTotalFrames = new OutOfPhase.MyLabel();
+            this.textTotalFrames = new OutOfPhase.MyLabel();
+            this.labelTotalClippedPoints = new OutOfPhase.MyLabel();
+            this.textTotalClippedPoints = new OutOfPhase.MyLabel();
+            this.labelBufferLoading = new OutOfPhase.MyLabel();
             this.myProgressBarBufferLoading = new OutOfPhase.MyProgressBar();
-            this.labelBufferSeconds = new System.Windows.Forms.Label();
+            this.labelBufferSeconds = new OutOfPhase.MyLabel();
             this.timerUpdate = new System.Windows.Forms.Timer(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel2.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -125,7 +126,7 @@ namespace OutOfPhase
             this.textElapsedAudioSeconds.Dock = System.Windows.Forms.DockStyle.Top;
             this.textElapsedAudioSeconds.Location = new System.Drawing.Point(184, 5);
             this.textElapsedAudioSeconds.Name = "textElapsedAudioSeconds";
-            this.textElapsedAudioSeconds.Size = new System.Drawing.Size(194, 13);
+            this.textElapsedAudioSeconds.Size = new System.Drawing.Size(194, 0);
             this.textElapsedAudioSeconds.TabIndex = 1;
             // 
             // labelTotalFrames
@@ -145,7 +146,7 @@ namespace OutOfPhase
             this.textTotalFrames.Dock = System.Windows.Forms.DockStyle.Top;
             this.textTotalFrames.Location = new System.Drawing.Point(184, 18);
             this.textTotalFrames.Name = "textTotalFrames";
-            this.textTotalFrames.Size = new System.Drawing.Size(194, 13);
+            this.textTotalFrames.Size = new System.Drawing.Size(194, 0);
             this.textTotalFrames.TabIndex = 3;
             // 
             // labelTotalClippedPoints
@@ -165,7 +166,7 @@ namespace OutOfPhase
             this.textTotalClippedPoints.Dock = System.Windows.Forms.DockStyle.Top;
             this.textTotalClippedPoints.Location = new System.Drawing.Point(184, 31);
             this.textTotalClippedPoints.Name = "textTotalClippedPoints";
-            this.textTotalClippedPoints.Size = new System.Drawing.Size(194, 13);
+            this.textTotalClippedPoints.Size = new System.Drawing.Size(194, 0);
             this.textTotalClippedPoints.TabIndex = 5;
             // 
             // labelBufferLoading
@@ -207,12 +208,16 @@ namespace OutOfPhase
             this.timerUpdate.Interval = 1000;
             this.timerUpdate.Tick += new System.EventHandler(this.timerUpdate_Tick);
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // OutputProgressWindow
             // 
             this.AcceptButton = this.buttonStop;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.BackColor = System.Drawing.SystemColors.Window;
             this.CancelButton = this.buttonStop;
             this.ClientSize = new System.Drawing.Size(386, 98);
             this.Controls.Add(this.tableLayoutPanel2);
@@ -232,15 +237,16 @@ namespace OutOfPhase
 
         private System.Windows.Forms.Button buttonStop;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
-        private System.Windows.Forms.Label labelElapsedSongTime;
-        private System.Windows.Forms.Label textElapsedAudioSeconds;
-        private System.Windows.Forms.Label labelTotalFrames;
-        private System.Windows.Forms.Label textTotalFrames;
-        private System.Windows.Forms.Label labelTotalClippedPoints;
-        private System.Windows.Forms.Label textTotalClippedPoints;
+        private MyLabel labelElapsedSongTime;
+        private MyLabel textElapsedAudioSeconds;
+        private MyLabel labelTotalFrames;
+        private MyLabel textTotalFrames;
+        private MyLabel labelTotalClippedPoints;
+        private MyLabel textTotalClippedPoints;
         private System.Windows.Forms.Timer timerUpdate;
-        private System.Windows.Forms.Label labelBufferLoading;
+        private MyLabel labelBufferLoading;
         private MyProgressBar myProgressBarBufferLoading;
-        private System.Windows.Forms.Label labelBufferSeconds;
+        private MyLabel labelBufferSeconds;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

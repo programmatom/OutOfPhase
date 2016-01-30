@@ -39,6 +39,12 @@ namespace OutOfPhase
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             cancelled = true;

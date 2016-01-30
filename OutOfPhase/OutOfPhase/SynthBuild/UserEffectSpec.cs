@@ -38,172 +38,74 @@ namespace OutOfPhase
             /* these controls apply only to the oscillator effect, not the track effect */
             public EnvelopeRec ParamEnvelope;
             public LFOListSpecRec ParamLFO;
+
+            public bool Smoothed;
         }
 
         public class UserEffectSpecRec
         {
             public ItemRec[] Items;
 
+            public DataTypes[] workspaces = new DataTypes[0];
             public string InitFuncName; /* NIL = none */
-            public string ArgUpdateFuncName; /* NIL = none */
-            public string ProcessDataFuncName;
+            public string[] ProcessDataFuncNames;
 
             public bool NoOversampling;
         }
 
-        /* validate type signature of pcode things */
-        public static bool UserEffectValidateTypeInit(FuncCodeRec FuncCode)
+        public static void UserEffectGetInitSignature(
+            UserEffectSpecRec UserEffect,
+            out DataTypes[] argsTypesOut,
+            out DataTypes returnTypeOut)
         {
-            DataTypes[] Args = FuncCode.GetFunctionParameterTypeList();
+            List<DataTypes> argsTypes = new List<DataTypes>();
 
-            /* signature of init method is */
-            /* void init(doublearray dLeftState, doublearray dRightState, floatarray fLeftState, floatarray fRightState, */
-            /*     double t, double bpm, double SamplingRate) */
+            argsTypes.Add(DataTypes.eDouble); // 't'
+            argsTypes.Add(DataTypes.eDouble); // 'bpm'
+            argsTypes.Add(DataTypes.eDouble); // 'samplingRate'
+            argsTypes.Add(DataTypes.eInteger); // 'maxSampleCount'
+            argsTypes.AddRange(UserEffect.workspaces); // user-specified workspace arrays
 
-            if (Args.Length != 7)
-            {
-                return false;
-            }
-
-            if (Args[0] != DataTypes.eArrayOfDouble)
-            {
-                return false;
-            }
-            if (Args[1] != DataTypes.eArrayOfDouble)
-            {
-                return false;
-            }
-            if (Args[2] != DataTypes.eArrayOfFloat)
-            {
-                return false;
-            }
-            if (Args[3] != DataTypes.eArrayOfFloat)
-            {
-                return false;
-            }
-            if (Args[4] != DataTypes.eDouble)
-            {
-                return false;
-            }
-            if (Args[5] != DataTypes.eDouble)
-            {
-                return false;
-            }
-            if (Args[6] != DataTypes.eDouble)
-            {
-                return false;
-            }
-
-            return true;
+            argsTypesOut = argsTypes.ToArray();
+            returnTypeOut = DataTypes.eBoolean;
         }
 
-        /* validate type signature of pcode things */
-        public static bool UserEffectValidateTypeUpdate(
-            FuncCodeRec FuncCode,
-            int ArgCount)
+        public static void UserEffectGetDataSignature(
+            UserEffectSpecRec UserEffect,
+            out DataTypes[] argsTypesOut,
+            out DataTypes returnTypeOut)
         {
-            DataTypes[] Args = FuncCode.GetFunctionParameterTypeList();
+            List<DataTypes> argsTypes = new List<DataTypes>();
 
-            /* signature of update method is */
-            /* void update(doublearray LeftState, doublearray RightState, floatarray fLeftState, floatarray fRightState, */
-            /*   double t, double bpm, double SamplingRate [, double param, ...]) */
-
-            if (Args.Length != 7 + ArgCount)
+            argsTypes.Add(DataTypes.eDouble); // 't'
+            argsTypes.Add(DataTypes.eDouble); // 'bpm'
+            argsTypes.Add(DataTypes.eDouble); // 'samplingRate'
+            argsTypes.Add(DataTypes.eArrayOfFloat); // 'leftData'
+            argsTypes.Add(DataTypes.eArrayOfFloat); // 'rightData'
+            argsTypes.Add(DataTypes.eInteger); // 'sampleCount'
+            argsTypes.AddRange(UserEffect.workspaces); // user-specified workspace arrays
+            for (int i = 0; i < UserEffect.Items.Length; i++)
             {
-                return false;
-            }
-
-            if (Args[0] != DataTypes.eArrayOfDouble)
-            {
-                return false;
-            }
-            if (Args[1] != DataTypes.eArrayOfDouble)
-            {
-                return false;
-            }
-            if (Args[2] != DataTypes.eArrayOfFloat)
-            {
-                return false;
-            }
-            if (Args[3] != DataTypes.eArrayOfFloat)
-            {
-                return false;
-            }
-            // t, bpm, SamplingRate, and all user params checked here (all must be 'double')
-            for (int i = 4; i < Args.Length; i++)
-            {
-                if (Args[i] != DataTypes.eDouble)
-                {
-                    return false;
-                }
+                argsTypes.Add(UserEffect.Items[i].Smoothed ? DataTypes.eArrayOfFloat : DataTypes.eDouble); // user-specified control param
             }
 
-            return true;
-        }
-
-        /* validate type signature of pcode things */
-        public static bool UserEffectValidateTypeData(FuncCodeRec FuncCode)
-        {
-            DataTypes[] Args = FuncCode.GetFunctionParameterTypeList();
-
-            /* signature of init method is */
-            /* void processdata(doublearray LeftState, doublearray RightState, floatarray fLeftState, floatarray fRightState, */
-            /*   floatarray LeftData, floatarray RightData, int c, double SamplingRate) */
-
-            if (Args.Length != 8)
-            {
-                return false;
-            }
-
-            if (Args[0] != DataTypes.eArrayOfDouble)
-            {
-                return false;
-            }
-            if (Args[1] != DataTypes.eArrayOfDouble)
-            {
-                return false;
-            }
-            if (Args[2] != DataTypes.eArrayOfFloat)
-            {
-                return false;
-            }
-            if (Args[3] != DataTypes.eArrayOfFloat)
-            {
-                return false;
-            }
-            if (Args[4] != DataTypes.eArrayOfFloat)
-            {
-                return false;
-            }
-            if (Args[5] != DataTypes.eArrayOfFloat)
-            {
-                return false;
-            }
-            if (Args[6] != DataTypes.eInteger)
-            {
-                return false;
-            }
-            if (Args[7] != DataTypes.eDouble)
-            {
-                return false;
-            }
-
-            return true;
+            argsTypesOut = argsTypes.ToArray();
+            returnTypeOut = DataTypes.eBoolean;
         }
 
         /* create a new user effect processor specifier.  name block is deleted */
         public static UserEffectSpecRec NewUserEffectSpec(
             string InitFuncName,
-            string ArgUpdateFuncName,
-            string ProcessDataFuncName)
+            string[] ProcessDataFuncNames,
+            DataTypes[] workspaces)
         {
             UserEffectSpecRec Spec = new UserEffectSpecRec();
 
             Spec.Items = new ItemRec[0];
 
+            Spec.workspaces = workspaces;
             Spec.InitFuncName = InitFuncName; // can be null
-            Spec.ArgUpdateFuncName = ArgUpdateFuncName; // can be null
-            Spec.ProcessDataFuncName = ProcessDataFuncName; // can be null
+            Spec.ProcessDataFuncNames = ProcessDataFuncNames; // can be null
 
             return Spec;
         }
@@ -236,15 +138,9 @@ namespace OutOfPhase
         }
 
         /* get function symbols (NIL = not specified) */
-        public static string GetUserEffectSpecArgUpdateFuncName(UserEffectSpecRec Spec)
+        public static string[] GetUserEffectSpecProcessDataFuncNames(UserEffectSpecRec Spec)
         {
-            return Spec.ArgUpdateFuncName;
-        }
-
-        /* get function symbols (NIL = not specified) */
-        public static string GetUserEffectSpecProcessDataFuncName(UserEffectSpecRec Spec)
-        {
-            return Spec.ProcessDataFuncName;
+            return Spec.ProcessDataFuncNames;
         }
 
         /* set various attributes */
@@ -304,6 +200,21 @@ namespace OutOfPhase
             return Spec.Items[Index].ParamLFO;
         }
 
+        public static bool GetUserEffectSpecParamSmoothed(
+            UserEffectSpecRec Spec,
+            int Index)
+        {
+            return Spec.Items[Index].Smoothed;
+        }
+
+        public static void SetUserEffectSpecParamSmoothed(
+            UserEffectSpecRec Spec,
+            int Index,
+            bool smoothed)
+        {
+            Spec.Items[Index].Smoothed = smoothed;
+        }
+
         public static void SetUserEffectSpecNoOversampling(
             UserEffectSpecRec Spec,
             bool NoOversampling)
@@ -315,6 +226,12 @@ namespace OutOfPhase
             UserEffectSpecRec Spec)
         {
             return Spec.NoOversampling;
+        }
+
+        public static DataTypes[] UserEffectGetWorkspaceTypes(
+            UserEffectSpecRec Spec)
+        {
+            return Spec.workspaces;
         }
     }
 }

@@ -208,11 +208,11 @@ namespace OutOfPhase
                                     GetConvolverEffectFromEffectSpecList(SpecList, i),
                                     SynthParams,
                                     out ConvolverEffect);
-                                Effect.u = ConvolverEffect;
                                 if (Result != SynthErrorCodes.eSynthDone)
                                 {
                                     return Result;
                                 }
+                                Effect.u = ConvolverEffect;
                             }
                             break;
                         case EffectTypes.eUserEffect:
@@ -226,6 +226,25 @@ namespace OutOfPhase
                                 {
                                     return error;
                                 }
+                                Effect.u = userEffect;
+                            }
+                            break;
+                        case EffectTypes.ePluggableEffect:
+                            {
+                                PluggableSpec Spec = GetPluggableEffectFromEffectSpecList(SpecList, i);
+                                Debug.Assert(Spec is PluggableTrackSpec);
+                                PluggableTrackEffectTemplate Template = new PluggableTrackEffectTemplate(
+                                    (PluggableTrackSpec)Spec,
+                                    SynthParams);
+                                ITrackEffect effect;
+                                SynthErrorCodes error = Template.Create(
+                                    SynthParams,
+                                    out effect);
+                                if (error != SynthErrorCodes.eSynthDone)
+                                {
+                                    return error;
+                                }
+                                Effect.u = effect;
                             }
                             break;
                     }

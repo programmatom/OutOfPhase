@@ -30,16 +30,16 @@ using System.IO;
 using System.Text;
 using System.Windows.Forms;
 
+using Microsoft.Win32;
+
 namespace OutOfPhase
 {
-    // TODO: this implementation is quite a mess after shoe-horning it into WinForms idiom.
-    // For WPF, it should be completely rewritten.
+    // TODO: for WPF, all this custom drawn code should be rewritten as a hierarchy of modular elements
 
     public partial class TrackViewControl : UserControl, IGraphicsContext, IUndoClient
     {
         private TrackObjectRec trackObject;
 
-        private const bool UseGDITranslation = false;
         private int PixelIndent; // horizontal scroll offset
         private int VerticalOffset; // vertical scroll offset
 
@@ -57,9 +57,12 @@ namespace OutOfPhase
         private int RangeSelectEnd; /* valid only for eTrackViewRangeSelection */
         private bool RangeSelectStartIsActive; /* valid only for eTrackViewRangeSelection */
 
+        private int phantomInsertionPointIndex = -1;
+
         private TrackDispScheduleRec Schedule;
 
         private NoteViewControl noteView;
+        private NoteParamStrip noteParamStrip;
 
         private ITrackViewContextUI Window;
 
@@ -67,18 +70,27 @@ namespace OutOfPhase
 
         private readonly UndoHelper undoHelper;
 
+        private Brush backBrush;
+        private Pen backPen;
+        private Brush foreBrush;
+        private Pen forePen;
+        private Brush greyBrush;
+        private Pen greyPen;
+        private Brush lightGreyBrush;
+        private Pen lightGreyPen;
+        private Brush lightLightGreyBrush;
+
 
         public TrackViewControl()
         {
-            // TODO: enable
-            //DoubleBuffered = true;
-
             InitializeComponent();
 
             undoHelper = new UndoHelper(this);
 
-            Schedule = new TrackDispScheduleRec(this);
+            Schedule = new TrackDispScheduleRec(this, this);
             Schedule.TrackExtentsChanged += new EventHandler(Schedule_TrackExtentsChanged);
+
+            SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
 
             Disposed += new EventHandler(TrackViewControl_Disposed);
         }
@@ -91,10 +103,14 @@ namespace OutOfPhase
             }
             this.trackObject = trackObject;
 
+            noteParamStrip.InlineParamVis = trackObject.InlineParamVis;
+
             Init();
         }
 
-        // hack for now
+        // Hack for now - controls can't take arguments in constructor. Ideally the primary track object would be passed in
+        // as a constructor argument and set to a read-only member, since it never makes sense to change it. Instead, we
+        // must set it after construction via SetTrackObject() which then calls Init() to finish construction.
         private bool initialized;
         public void Init()
         {
@@ -109,12 +125,15 @@ namespace OutOfPhase
 
             RecalcTrackExtent(); // AutoScrollMinSize
 
+            RebuildInlineStrip();
+
             trackObject.PropertyChanged += new PropertyChangedEventHandler(trackObject_PropertyChanged);
             trackObject.FrameArray.ListChanged += new ListChangedEventHandler(FrameArray_ListChanged);
+            trackObject.FrameArrayChanged += new PropertyChangedEventHandler(TrackObject_FrameArrayChanged);
             trackObject.BackgroundObjects.ListChanged += new ListChangedEventHandler(BackgroundObjects_ListChanged);
         }
 
-        void TrackViewControl_Disposed(object sender, EventArgs e)
+        private void TrackViewControl_Disposed(object sender, EventArgs e)
         {
             // remove dependent view connections
 
@@ -122,25 +141,54 @@ namespace OutOfPhase
             {
                 trackObject.PropertyChanged -= new PropertyChangedEventHandler(trackObject_PropertyChanged);
                 trackObject.FrameArray.ListChanged -= new ListChangedEventHandler(FrameArray_ListChanged);
+                trackObject.FrameArrayChanged -= new PropertyChangedEventHandler(TrackObject_FrameArrayChanged);
                 trackObject.BackgroundObjects.ListChanged -= new ListChangedEventHandler(BackgroundObjects_ListChanged);
             }
 
             undoHelper.Dispose();
+
+            SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
+
+            ClearGraphicsObjects();
         }
 
-        void trackObject_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void trackObject_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             TrackObjectAltered(trackObject, 0);
         }
 
-        void FrameArray_ListChanged(object sender, ListChangedEventArgs e)
+        private void FrameArray_ListChanged(object sender, ListChangedEventArgs e)
         {
             TrackObjectAltered(trackObject, 0);
+
+            // TODO: this occurs for every note in the track when undo/redo is invoked
+            if (trackObject.InlineParamVis != InlineParamVis.None)
+            {
+                RebuildInlineStrip();
+            }
+        }
+
+        private void TrackObject_FrameArrayChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (noteView.Note != null)
+            {
+                noteView.Invalidate();
+            }
+            if (trackObject.InlineParamVis != InlineParamVis.None)
+            {
+                RebuildInlineStrip();
+            }
+
+            // The event does not convey which note, but it's most likely this one
+            if (TrackViewIsASingleCommandSelected() || TrackViewIsASingleNoteSelected())
+            {
+                TrackViewInvalidateNote(SelectedNote);
+            }
         }
 
         private void RebuildSchedule()
         {
-            Schedule = new TrackDispScheduleRec(this);
+            Schedule = new TrackDispScheduleRec(this, this);
             Schedule.TrackExtentsChanged += new EventHandler(Schedule_TrackExtentsChanged);
             Schedule.Add(trackObject);
             foreach (TrackObjectRec trackObjectBackground in trackObject.BackgroundObjects)
@@ -165,9 +213,99 @@ namespace OutOfPhase
             RecalcTrackExtent(); // AutoScrollMinSize
         }
 
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public NoteViewControl NoteView { set { noteView = value; } }
 
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public NoteParamStrip NoteParamStrip
+        {
+            set
+            {
+                noteParamStrip = value;
+                noteParamStrip.ValueChanged += delegate (object sender, EventArgs e)
+                {
+                    using (GraphicsContext gc = new GraphicsContext(this))
+                    {
+                        TrackObjectAltered(trackObject, 0);
+                        TrackViewRedrawAll();
+                        RebuildInlineStrip();
+                    }
+                };
+            }
+        }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public ITrackViewContextUI ContextUI { set { Window = value; } }
+
+
+        // appearance properties
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public Color GreyColor { get { return BlendColor(SystemColors.Window, 1, SystemColors.ControlText, 1); } }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public Color LightGreyColor { get { return BlendColor(SystemColors.Window, 3, SystemColors.ControlText, 1); } }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public Color LightLightGreyColor { get { return BlendColor(SystemColors.Window, 7, SystemColors.ControlText, 1); } }
+
+        private Color BlendColor(Color color1, int parts1, Color color2, int parts2)
+        {
+            Color blendColor = Color.FromArgb(
+                (color1.R * parts1 + color2.R * parts2) / (parts1 + parts2),
+                (color1.G * parts1 + color2.G * parts2) / (parts1 + parts2),
+                (color1.B * parts1 + color2.B * parts2) / (parts1 + parts2));
+            return blendColor;
+        }
+
+        private void ClearGraphicsObjects()
+        {
+            if (backBrush != null)
+            {
+                backBrush.Dispose();
+                backBrush = null;
+            }
+            if (backPen != null)
+            {
+                backPen.Dispose();
+                backPen = null;
+            }
+            if (foreBrush != null)
+            {
+                foreBrush.Dispose();
+                foreBrush = null;
+            }
+            if (forePen != null)
+            {
+                forePen.Dispose();
+                forePen = null;
+            }
+            if (greyBrush != null)
+            {
+                greyBrush.Dispose();
+                greyBrush = null;
+            }
+            if (greyPen != null)
+            {
+                greyPen.Dispose();
+                greyPen = null;
+            }
+            if (lightGreyBrush != null)
+            {
+                lightGreyBrush.Dispose();
+                lightGreyBrush = null;
+            }
+            if (lightGreyPen != null)
+            {
+                lightGreyPen.Dispose();
+                lightGreyPen = null;
+            }
+            if (lightLightGreyBrush != null)
+            {
+                lightLightGreyBrush.Dispose();
+                lightLightGreyBrush = null;
+            }
+        }
 
 
         // events and binding
@@ -193,7 +331,7 @@ namespace OutOfPhase
             }
         }
 
-        void BackgroundObjects_ListChanged(object sender, ListChangedEventArgs e)
+        private void BackgroundObjects_ListChanged(object sender, ListChangedEventArgs e)
         {
             switch (e.ListChangedType)
             {
@@ -254,7 +392,25 @@ namespace OutOfPhase
             base.OnLostFocus(e);
         }
 
+
         // keyboard and mouse handling
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == (Keys.OemPeriod | Keys.Control)) /* show selection */
+            {
+                if (TrackViewIsARangeSelected())
+                {
+                    // swap active end
+                    TrackViewRangeSetStartActiveFlag(!TrackViewIsRangeStartActive());
+                    Invalidate();
+                }
+                TrackViewShowSelection();
+                return true;
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
 
         protected override bool IsInputKey(Keys keyData)
         {
@@ -339,7 +495,8 @@ namespace OutOfPhase
                                 false/*end is active*/);
                             TrackViewShowSelection();
                         }
-                        else if ((e.KeyData & Keys.Control) == 0)
+                        else if (((e.KeyData & Keys.Control) == 0)
+                            || ((e.KeyData & (Keys.Control | Keys.Alt)) == (Keys.Control | Keys.Alt)))
                         {
                             if (e.KeyCode == Keys.Home)
                             {
@@ -374,11 +531,21 @@ namespace OutOfPhase
                                     }
                                     else
                                     {
-                                        TrackViewSetInsertionPoint(
-                                            TrackViewGetSingleNoteSelectionFrameNumber());
+                                        if ((TrackViewGetSingleNoteSelectionFrameNumber() == 0)
+                                            || !((e.KeyData & (Keys.Control | Keys.Alt)) == (Keys.Control | Keys.Alt)))
+                                        {
+                                            TrackViewSetInsertionPoint(
+                                                TrackViewGetSingleNoteSelectionFrameNumber());
+                                        }
+                                        else
+                                        {
+                                            TrackViewTrySingleNoteSelectionIndexed(
+                                                TrackViewGetSingleNoteSelectionFrameNumber() - 1,
+                                                trackObject.FrameArray[TrackViewGetSingleNoteSelectionFrameNumber() - 1].Count - 1);
+                                        }
                                     }
                                 }
-                                if ((e.KeyData & Keys.Alt) != 0)
+                                if (((e.KeyData & Keys.Alt) != 0) && ((e.KeyData & Keys.Control) == 0))
                                 {
                                     if (TrackViewIsASingleNoteSelected() || TrackViewIsASingleCommandSelected())
                                     {
@@ -448,7 +615,8 @@ namespace OutOfPhase
                                 false/*end is active*/);
                             TrackViewShowSelection();
                         }
-                        else if ((e.KeyData & Keys.Control) == 0)
+                        else if (((e.KeyData & Keys.Control) == 0)
+                            || ((e.KeyData & (Keys.Control | Keys.Alt)) == (Keys.Control | Keys.Alt)))
                         {
                             if (e.KeyCode == Keys.End)
                             {
@@ -484,13 +652,23 @@ namespace OutOfPhase
                                     }
                                     else
                                     {
-                                        Debug.Assert(TrackViewGetSingleNoteSelectionFrameNumber() + 1
-                                            <= trackObject.FrameArray.Count);
-                                        TrackViewSetInsertionPoint(
-                                            TrackViewGetSingleNoteSelectionFrameNumber() + 1);
+                                        if ((TrackViewGetSingleNoteSelectionFrameNumber() == trackObject.FrameArray.Count - 1)
+                                            || !((e.KeyData & (Keys.Control | Keys.Alt)) == (Keys.Control | Keys.Alt)))
+                                        {
+                                            Debug.Assert(TrackViewGetSingleNoteSelectionFrameNumber() + 1
+                                                <= trackObject.FrameArray.Count);
+                                            TrackViewSetInsertionPoint(
+                                                TrackViewGetSingleNoteSelectionFrameNumber() + 1);
+                                        }
+                                        else
+                                        {
+                                            TrackViewTrySingleNoteSelectionIndexed(
+                                                TrackViewGetSingleNoteSelectionFrameNumber() + 1,
+                                                0);
+                                        }
                                     }
                                 }
-                                if ((e.KeyData & Keys.Alt) != 0)
+                                if (((e.KeyData & Keys.Alt) != 0) && ((e.KeyData & Keys.Control) == 0))
                                 {
                                     if (TrackViewIsASingleNoteSelected() || TrackViewIsASingleCommandSelected())
                                     {
@@ -582,6 +760,15 @@ namespace OutOfPhase
                         // first escape clears selection, subsequent one resets command to "arrow"
                         if (SelectionMode != SelectionModes.eTrackViewNoSelection)
                         {
+                            if (TrackViewIsASingleNoteSelected() || TrackViewIsASingleCommandSelected())
+                            {
+                                int noteIndex;
+                                if (!trackObject.FindNote(SelectedNote, out InsertionPointIndex, out noteIndex))
+                                {
+                                    Debug.Assert(false); // shouldn't happen
+                                    InsertionPointIndex = 0;
+                                }
+                            }
                             SelectionMode = SelectionModes.eTrackViewNoSelection;
                             TrackViewRedrawAll();
                             e.Handled = true;
@@ -589,7 +776,7 @@ namespace OutOfPhase
                         }
                         goto ResetCommandBar; // fallthrough
                     case Keys.A:
-                    ResetCommandBar:
+                        ResetCommandBar:
                         Window.NoteReady = false;
                         //Window.NoteState = NoteFlags.e4thNote | NoteFlags.eDiv1Modifier; /* reset the note */
                         TrackViewUndrawCursorBar();
@@ -769,18 +956,6 @@ namespace OutOfPhase
                         }
                         e.Handled = true;
                         return;
-#if false // TODO:
-                    case 3: /* show selection */
-                        if (TrackViewIsARangeSelected(Window->TrackView))
-                        {
-                            TrackViewRangeSetStartActiveFlag(
-                                Window->TrackView,
-                                !TrackViewIsRangeStartActive(Window->TrackView));
-                        }
-                        TrackWindowShowSelection(Window);
-                        e.Handled = true;
-                        return;
-#endif
                     case Keys.Space: /* insert note or command */
                         if ((TrackViewIsASingleNoteSelected() || TrackViewIsASingleCommandSelected()
                             || TrackViewIsThereInsertionPoint()) && Window.NoteReady)
@@ -796,6 +971,57 @@ namespace OutOfPhase
                         }
                         e.Handled = true;
                         return;
+                }
+            }
+        }
+
+        // update NoteView and phantom selection visuals
+        private void UpdateMouseOverEffects(Graphics graphics, bool mouseInside, int x, int y)
+        {
+            if (noteView != null)
+            {
+                NoteObjectRec oldNote = noteView.Note;
+
+                NoteNoteObjectRec Note;
+                if (mouseInside && ((Note = TrackViewGetMouseOverNote(graphics, x, y) as NoteNoteObjectRec) != null))
+                {
+                    TrackViewChangePhantomInsertionPoint(-1);
+                    noteView.Note = Note;
+                }
+                else
+                {
+                    if (mouseInside)
+                    {
+                        bool onFrame;
+                        int newPhantomInsertionPointIndex;
+                        Schedule.TrackDisplayPixelToIndex(trackObject, x + PixelIndent, out onFrame, out newPhantomInsertionPointIndex);
+                        TrackViewChangePhantomInsertionPoint(newPhantomInsertionPointIndex);
+                    }
+                    else
+                    {
+                        TrackViewChangePhantomInsertionPoint(-1);
+                    }
+
+                    if (TrackViewIsASingleNoteSelected())
+                    {
+                        noteView.Note = (NoteNoteObjectRec)SelectedNote;
+                    }
+                    else
+                    {
+                        noteView.Note = null;
+                    }
+                }
+
+                if (oldNote != noteView.Note)
+                {
+                    if (oldNote != null)
+                    {
+                        TrackViewRedrawNote(oldNote);
+                    }
+                    if (noteView.Note != null)
+                    {
+                        TrackViewRedrawNote(noteView.Note);
+                    }
                 }
             }
         }
@@ -825,11 +1051,7 @@ namespace OutOfPhase
                 TrackViewUpdateMouseCursor(e.X, e.Y, NoteReady);
 
                 /* draw info for this note */
-                NoteObjectRec Note = TrackViewGetMouseOverNote(gc.graphics, e.X, e.Y);
-                if (noteView != null)
-                {
-                    noteView.Note = Note as NoteNoteObjectRec;
-                }
+                UpdateMouseOverEffects(gc.graphics, true/*mouseInside*/, e.X, e.Y);
             }
         }
 
@@ -837,10 +1059,18 @@ namespace OutOfPhase
         {
             base.OnMouseLeave(e);
 
-            if (noteView != null)
+            using (GraphicsContext gc = new GraphicsContext(this))
             {
-                noteView.Note = null;
+                UpdateMouseOverEffects(gc.graphics, false/*mouseInside*/, 0, 0);
             }
+        }
+
+        private void timerUpdateMouseOverEffect_Tick(object sender, EventArgs e)
+        {
+            timerUpdateMouseOverEffect.Stop();
+
+            Point localMousePosition = PointToClient(MousePosition);
+            OnMouseMove(new MouseEventArgs(MouseButtons, 0, localMousePosition.X, localMousePosition.Y, 0));
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
@@ -877,7 +1107,15 @@ namespace OutOfPhase
                     else
                     {
                         bool ExtendSelection = (ModifierKeys & Keys.Shift) != 0;
-                        TrackViewDoBlockSelection(e.X, e.Y, ExtendSelection);
+                        if (!ExtendSelection && (ModifierKeys == 0) && (TrackViewGetMouseOverNote(gc.graphics, e.X, e.Y) != null))
+                        {
+                            // in 'arrow' mode, allow click to select single note without having control key pressed
+                            TrackViewTrySingleNoteSelection(e.X, e.Y);
+                        }
+                        else
+                        {
+                            TrackViewDoBlockSelection(e.X, e.Y, ExtendSelection);
+                        }
                     }
                 }
             }
@@ -1160,6 +1398,11 @@ namespace OutOfPhase
             /* redraw what needs to be redrawn.  this definitely needs to be fixed */
             /* up since it's unnecessary to redraw the whole staff just to add a note. */
             TrackViewRedrawAll();
+
+            if (trackObject.InlineParamVis != InlineParamVis.None)
+            {
+                RebuildInlineStrip();
+            }
         }
 
         /* add a command at the specified mouse coordinates. */
@@ -1250,6 +1493,12 @@ namespace OutOfPhase
                     SelectedNoteFrame = -1;
                     /* redrawing everything is overkill and should be fixed */
                     TrackViewRedrawAll();
+
+                    if (trackObject.InlineParamVis != InlineParamVis.None)
+                    {
+                        RebuildInlineStrip();
+                    }
+
                     return;
                 }
             }
@@ -1527,6 +1776,28 @@ namespace OutOfPhase
             }
         }
 
+        public void TrackViewTrySingleNoteOrCommandSelection(NoteObjectRec note)
+        {
+            int frameIndex, noteIndex;
+            if (!trackObject.FindNote(note, out frameIndex, out noteIndex))
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+            if (note.IsItACommand)
+            {
+                SelectionMode = SelectionModes.eTrackViewSingleCommandSelection;
+            }
+            else
+            {
+                SelectionMode = SelectionModes.eTrackViewSingleNoteSelection;
+            }
+            SelectedNote = note;
+            SelectedNoteFrame = frameIndex;
+            Invalidate();
+            TrackViewShowSelection();
+        }
+
         /* try to select a single note, if there is one, at the specified mouse location */
         private void TrackViewTrySingleNoteSelection(int X, int Y)
         {
@@ -1646,7 +1917,14 @@ namespace OutOfPhase
                 if (FrameIndex < trackObject.FrameArray.Count)
                 {
                     Schedule.TrackDisplayIndexToPixel(0/*first track*/, FrameIndex, out PixelIndex);
-                    FrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(gc, 0, 0, trackObject.FrameArray[FrameIndex], false/*don't draw*/, false);
+                    FrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(
+                        gc,
+                        0,
+                        0,
+                        trackObject.FrameArray[FrameIndex],
+                        false/*don't draw*/,
+                        false,
+                        trackObject.InlineParamVis);
                 }
                 else if (trackObject.FrameArray.Count > 0)
                 {
@@ -1654,7 +1932,14 @@ namespace OutOfPhase
                         0/*first track*/,
                         trackObject.FrameArray.Count - 1,
                         out PixelIndex);
-                    FrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(gc, 0, 0, trackObject.FrameArray[trackObject.FrameArray.Count - 1], false/*don't draw*/, false);
+                    FrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(
+                        gc,
+                        0,
+                        0,
+                        trackObject.FrameArray[trackObject.FrameArray.Count - 1],
+                        false/*don't draw*/,
+                        false,
+                        trackObject.InlineParamVis);
                     PixelIndex += FrameWidth;
                     FrameWidth = 0;
                 }
@@ -1863,7 +2148,6 @@ namespace OutOfPhase
             undoHelper.SaveUndoInfo(false/*forRedo*/, "Edit Note Properties");
 
             Window.EditNoteProperties();
-            trackObject.FrameArray[SelectedNoteFrame].ForceFrameLengthChange();
         }
 
         /* attempt to paste notes into the track.  returns False if it fails.  undo */
@@ -1978,6 +2262,38 @@ namespace OutOfPhase
                 PixelIndex = 0;
             }
             AutoScrollPosition = new Point(PixelIndex, -AutoScrollPosition.Y);
+        }
+
+        public void TrackViewShowNote(NoteObjectRec note)
+        {
+            int frameIndex, noteIndex;
+            if (!trackObject.FindNote(note, out frameIndex, out noteIndex))
+            {
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+
+            int PixelIndex;
+            Schedule.TrackDisplayIndexToPixel(0/*first track*/, frameIndex, out PixelIndex);
+            int offset = Schedule.TrackDisplayGetNoteOffset(0/*first track*/, frameIndex, noteIndex);
+            PixelIndex += offset;
+            int width = Schedule.TrackDisplayGetNoteInternalWidth(0/*first track*/, frameIndex, noteIndex);
+
+            const int ScrollIntoViewMargin = 75;
+            int oldScrollOffset = -AutoScrollPosition.X;
+            if (-AutoScrollPosition.X > PixelIndex - ScrollIntoViewMargin)
+            {
+                AutoScrollPosition = new Point(PixelIndex - ScrollIntoViewMargin, -AutoScrollPosition.Y);
+            }
+            else if (-AutoScrollPosition.X < PixelIndex + width - ClientSize.Width + ScrollIntoViewMargin)
+            {
+                AutoScrollPosition = new Point(PixelIndex + width - ClientSize.Width + ScrollIntoViewMargin, -AutoScrollPosition.Y);
+            }
+            int newScrollOffset = -AutoScrollPosition.X;
+            if (noteParamStrip != null)
+            {
+                noteParamStrip.Shift(oldScrollOffset - newScrollOffset);
+            }
         }
 
         /* helper for TrackViewAdjustDuration: make sure the note can be made of the */
@@ -2174,6 +2490,12 @@ namespace OutOfPhase
 
         // rendering
 
+        private void SystemEvents_UserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+        {
+            ClearGraphicsObjects();
+            Invalidate();
+        }
+
         protected override void OnPaintBackground(PaintEventArgs e)
         {
             if (!DesignMode)
@@ -2197,43 +2519,72 @@ namespace OutOfPhase
             else
             {
                 // draw X to indicate control is operating but has no content (vs. failing to start)
-                pe.Graphics.FillRectangle(Brushes.White, ClientRectangle);
-                pe.Graphics.DrawLine(Pens.Black, 0, 0, Width, Height);
-                pe.Graphics.DrawLine(Pens.Black, Width, 0, 0, Height);
+                pe.Graphics.FillRectangle(gc.BackBrush, ClientRectangle);
+                pe.Graphics.DrawLine(gc.ForePen, 0, 0, Width, Height);
+                pe.Graphics.DrawLine(gc.ForePen, Width, 0, 0, Height);
             }
 
             // Calling the base class OnPaint
             base.OnPaint(pe);
         }
 
+        // TODO: turn into live properties
         private void SetScrollOffsetsForRendering(Graphics graphics)
         {
-            if (UseGDITranslation)
-            {
-                PixelIndent = 0;
-                VerticalOffset = 0;
-                graphics.TranslateTransform(AutoScrollPosition.X, AutoScrollPosition.Y);
-            }
-            else
-            {
-                PixelIndent = -AutoScrollPosition.X;
-                VerticalOffset = -AutoScrollPosition.Y;
-            }
+            PixelIndent = -AutoScrollPosition.X;
+            VerticalOffset = -AutoScrollPosition.Y;
         }
 
         private void TrackViewRedrawAll()
         {
             SetScrollOffsetsForRendering(gc.graphics);
 
+            bool layoutChanged = Schedule.TrackDisplayScheduleUpdate();
+
             /* erase the drawing area */
             gc.graphics.FillRectangle(
-                Brushes.White,
+                gc.BackBrush,
                 0,
                 0,
                 Schedule.TotalWidth + Width/*for overscrolled*/,
                 StaffCalibration.MaxVerticalSize + Height/*for overscrolled*/);
+
+            // draw mouse-over highlight effect for single note selection and NoteView inspector pane
+            if (noteView.Note != null)
+            {
+                int frameIndex, noteIndex;
+                if (trackObject.FindNote(noteView.Note, out frameIndex, out noteIndex))
+                {
+                    if (Schedule.TrackDisplayShouldWeDrawIt(0, frameIndex))
+                    {
+                        int PixelIndex;
+                        Schedule.TrackDisplayIndexToPixel(0, frameIndex, out PixelIndex);
+                        gc.graphics.FillRectangle(
+                            gc.LightLightGreyBrush,
+                            PixelIndex - PixelIndent + Schedule.TrackDisplayGetNoteOffset(0, frameIndex, noteIndex),
+                            -VerticalOffset,
+                            Schedule.TrackDisplayGetNoteInternalWidth(0, frameIndex, noteIndex),
+                            StaffCalibration.MaxVerticalSize);
+                    }
+                }
+            }
+
+            // draw phantom insertion point
+            if (phantomInsertionPointIndex >= 0)
+            {
+                int PixelIndex;
+                Schedule.TrackDisplayIndexToPixelRobust(0, phantomInsertionPointIndex, out PixelIndex);
+                gc.graphics.FillRectangle(
+                    gc.LightGreyBrush,
+                    PixelIndex - PixelIndent,
+                    0,
+                    1,
+                    ClientSize.Height);
+            }
+
             /* draw the staff */
             TrackViewRedrawStaff(gc.graphics);
+
             /* now we have to draw the notes */
             int CenterNotePixel = -VerticalOffset + StaffCalibration.CenterNotePixel;
 
@@ -2241,7 +2592,6 @@ namespace OutOfPhase
             {
                 GraphicsState saved = gc.graphics.Save();
                 gc.graphics.SmoothingMode = SmoothingMode.AntiAlias; // they never looked so beautiful!
-                /*TieIntersectListRec*/
                 List<TieTrackPixelRec.TiePixelRec> TieList = Schedule.TrackDisplayGetTieIntervalList(PixelIndent, Schedule.TotalWidth);
                 for (int iTie = 0; iTie < TieList.Count; iTie++)
                 {
@@ -2259,7 +2609,7 @@ namespace OutOfPhase
                         out EndY);
                     DrawTieLine(
                         gc.graphics,
-                        Pens.Black,
+                        gc.ForePen,
                         (StartX + TrackDisplayConstants.TIESTARTXCORRECTION) - PixelIndent,
                         (StartY + TrackDisplayConstants.TIESTARTYCORRECTION) - VerticalOffset,
                         (EndX + TrackDisplayConstants.TIEENDXCORRECTION) - (StartX + TrackDisplayConstants.TIESTARTXCORRECTION),
@@ -2335,7 +2685,7 @@ namespace OutOfPhase
                                 InsertionPixel = TrackDisplayConstants.ORDTYPEMAX / 2;
                             }
                             gc.graphics.FillRectangle(
-                                Brushes.Black,
+                                gc.ForeBrush,
                                 InsertionPixel,
                                 0,
                                 TrackDisplayConstants.INSERTIONPOINTWIDTH,
@@ -2354,7 +2704,8 @@ namespace OutOfPhase
                                 0,
                                 TrackObj.FrameArray[TotalNumFrames - 1],
                                 false/*don't draw*/,
-                                false);
+                                false,
+                                (TrackObj != trackObject) ? 0 : trackObject.InlineParamVis);
                             InsertionPixel = -TrackDisplayConstants.INSERTIONPOINTWIDTH / 2
                                 + InsertionPixel + TrackDisplayConstants.EXTERNALSEPARATION - PixelIndent;
                             if (InsertionPixel < TrackDisplayConstants.ORDTYPEMIN / 2)
@@ -2366,7 +2717,7 @@ namespace OutOfPhase
                                 InsertionPixel = TrackDisplayConstants.ORDTYPEMAX / 2;
                             }
                             gc.graphics.FillRectangle(
-                                Brushes.Black,
+                                gc.ForeBrush,
                                 InsertionPixel,
                                 0,
                                 TrackDisplayConstants.INSERTIONPOINTWIDTH,
@@ -2426,18 +2777,21 @@ namespace OutOfPhase
                                 int MeasureBarIndex = Schedule.TrackDisplayMeasureBarIndex(i);
                                 if (MeasureBarIndex != TrackDisplayConstants.NOMEASUREBAR)
                                 {
+                                    Color color;
                                     Pen pen;
                                     Brush brush;
 
                                     if (Schedule.TrackDisplayShouldMeasureBarBeGreyed(i))
                                     {
-                                        pen = Pens.Gray;
-                                        brush = Brushes.Gray;
+                                        color = gc.GreyColor;
+                                        pen = gc.GreyPen;
+                                        brush = gc.GreyBrush;
                                     }
                                     else
                                     {
-                                        pen = Pens.Black;
-                                        brush = Brushes.Black;
+                                        color = gc.ForeColor;
+                                        pen = gc.ForePen;
+                                        brush = gc.ForeBrush;
                                     }
                                     /* actually something to be drawn */
                                     string measureNumberText = MeasureBarIndex.ToString();
@@ -2447,13 +2801,19 @@ namespace OutOfPhase
                                         -VerticalOffset,
                                         PixelIndex - 4/*!*/ - PixelIndent,
                                         -VerticalOffset + StaffCalibration.MaxVerticalSize);
-                                    int widthMeasureNumberText = (int)Math.Ceiling(gc.graphics.MeasureString(measureNumberText, gc.font).Width);
-                                    gc.graphics.DrawString(
+                                    int widthMeasureNumberText = MyTextRenderer.MeasureText(
+                                        gc.graphics,
+                                        measureNumberText,
+                                        gc.font).Width;
+                                    MyTextRenderer.DrawText(
+                                        gc.graphics,
                                         measureNumberText,
                                         gc.font,
-                                        brush,
-                                        PixelIndex - 4/*!*/ - PixelIndent - widthMeasureNumberText / 2,
-                                        CenterNotePixel - gc.font.Height / 2);
+                                        new Point(
+                                            PixelIndex - 4/*!*/ - PixelIndent - widthMeasureNumberText / 2,
+                                            CenterNotePixel - gc.font.Height / 2),
+                                        color,
+                                        TextFormatFlags.PreserveGraphicsClipping);
                                 }
                             }
 
@@ -2464,7 +2824,8 @@ namespace OutOfPhase
                                 CenterNotePixel,
                                 Frame,
                                 true/*draw*/,
-                                (TrackObj != trackObject)/*greyed*/);
+                                (TrackObj != trackObject)/*greyed*/,
+                                (TrackObj != trackObject) ? 0 : trackObject.InlineParamVis);
 
                             /* draw any hilighting for selected items */
                             switch (SelectionMode)
@@ -2488,24 +2849,27 @@ namespace OutOfPhase
                                         {
                                             if (Frame[j] == SelectedNote)
                                             {
+                                                int trackIndex = Schedule.TrackDisplayGetTrackIndex(TrackObj);
+                                                int offset = Schedule.TrackDisplayGetNoteOffset(trackIndex, i, j);
+                                                int width = Schedule.TrackDisplayGetNoteInternalWidth(trackIndex, i, j);
                                                 gc.graphics.DrawRectangle(
-                                                    Pens.Gray,
-                                                    PixelIndex - PixelIndent + (j * FrameDisplayConstants.INTERNALSEPARATION),
+                                                    gc.GreyPen,
+                                                    PixelIndex - PixelIndent + offset,
                                                     -VerticalOffset,
-                                                    FrameDisplayConstants.ICONWIDTH,
+                                                    width,
                                                     StaffCalibration.MaxVerticalSize);
                                                 gc.graphics.DrawRectangle(
-                                                    Pens.Gray,
-                                                    PixelIndex - PixelIndent + (j * FrameDisplayConstants.INTERNALSEPARATION) + 1,
+                                                    gc.GreyPen,
+                                                    PixelIndex - PixelIndent + offset + 1,
                                                     -VerticalOffset + 1,
-                                                    FrameDisplayConstants.ICONWIDTH - 2,
+                                                    width - 2,
                                                     StaffCalibration.MaxVerticalSize - 2);
                                                 goto SingleNoteSelectDonePoint;
                                             }
                                             j++;
                                         }
                                     }
-                                SingleNoteSelectDonePoint:
+                                    SingleNoteSelectDonePoint:
                                     break;
                                 case SelectionModes.eTrackViewSingleCommandSelection:
                                     if ((SelectedNoteFrame < 0) || (SelectedNoteFrame >= trackObject.FrameArray.Count))
@@ -2519,13 +2883,13 @@ namespace OutOfPhase
                                         if (SelectedNote == Frame[0])
                                         {
                                             gc.graphics.DrawRectangle(
-                                                Pens.Gray,
+                                                gc.GreyPen,
                                                 PixelIndex - PixelIndent,
                                                 -VerticalOffset,
                                                 TheFrameWidth,
                                                 StaffCalibration.MaxVerticalSize);
                                             gc.graphics.DrawRectangle(
-                                                Pens.Gray,
+                                                gc.GreyPen,
                                                 PixelIndex - PixelIndent + 1,
                                                 -VerticalOffset + 1,
                                                 TheFrameWidth - 2,
@@ -2534,13 +2898,14 @@ namespace OutOfPhase
                                     }
                                     break;
                                 case SelectionModes.eTrackViewRangeSelection:
+                                    // done later, after all notes are drawn
                                     break;
                             }
                         }
                     } /* end of frame scan */
 #if true
-                /* jump here when end of visible note series is reached */
-                DonePoint:
+                    /* jump here when end of visible note series is reached */
+                    DonePoint:
                     ;
 #endif
                 }
@@ -2589,7 +2954,8 @@ namespace OutOfPhase
                     0,
                     trackObject.FrameArray[RangeSelectEnd - 1],
                     false/*nodraw*/,
-                    false);
+                    false,
+                    trackObject.InlineParamVis);
                 EndPixelIndex += -PixelIndent; /* normalize to screen */
                 if (EndPixelIndex < TrackDisplayConstants.ORDTYPEMIN / 2)
                 {
@@ -2601,40 +2967,47 @@ namespace OutOfPhase
                 }
 
                 /* draw upper and lower edges of bounding box */
-                gc.graphics.DrawRectangle(
-                    Pens.Black,
+                gc.graphics.FillRectangle(
+                    gc.ForeBrush,
                     StartPixelIndex,
                     0,
                     EndPixelIndex - StartPixelIndex + TrackDisplayConstants.EXTERNALSEPARATION,
                     TrackDisplayConstants.RANGESELECTTHICKNESS);
                 gc.graphics.FillRectangle(
-                    Brushes.Black,
+                    gc.ForeBrush,
                     StartPixelIndex,
-                    StaffCalibration.MaxVerticalSize - TrackDisplayConstants.RANGESELECTTHICKNESS,
+                    ClientSize.Height - TrackDisplayConstants.RANGESELECTTHICKNESS/*StaffCalibration.MaxVerticalSize - TrackDisplayConstants.RANGESELECTTHICKNESS*/,
                     EndPixelIndex - StartPixelIndex + TrackDisplayConstants.EXTERNALSEPARATION,
                     TrackDisplayConstants.RANGESELECTTHICKNESS);
 
                 /* draw left edge of bounding box */
                 gc.graphics.FillRectangle(
-                    Brushes.Black,
+                    gc.ForeBrush,
                     StartPixelIndex,
                     0,
-                    TrackDisplayConstants.RANGESELECTTHICKNESS,
-                    StaffCalibration.MaxVerticalSize);
+                    RangeSelectStartIsActive ? TrackDisplayConstants.RANGESELECTTHICKNESS : 1,
+                    ClientSize.Height/*StaffCalibration.MaxVerticalSize*/);
 
                 /* draw right edge of bounding box */
                 gc.graphics.FillRectangle(
-                    Brushes.Black,
+                    gc.ForeBrush,
                     EndPixelIndex + TrackDisplayConstants.EXTERNALSEPARATION,
                     0,
-                    TrackDisplayConstants.RANGESELECTTHICKNESS,
-                    StaffCalibration.MaxVerticalSize);
+                    !RangeSelectStartIsActive ? TrackDisplayConstants.RANGESELECTTHICKNESS : 1,
+                    ClientSize.Height/*StaffCalibration.MaxVerticalSize*/);
             }
 
             /* draw cursor bar */
             if (CursorBarIsVisible && Focused)
             {
                 TrackViewDrawCursorBar();
+            }
+
+            // if positions may have changed, trigger an event to update mouse-over visuals for whatever is now under the mouse.
+            // (timer is used as simpler way instead of trying to post fake WM_MOUSEMOVE to message queue.)
+            if (layoutChanged)
+            {
+                timerUpdateMouseOverEffect.Start();
             }
         }
 
@@ -2646,7 +3019,7 @@ namespace OutOfPhase
             {
                 int y = StaffCalibration.ConvertPitchToPixel(MajorStaffList[i], 0) - VerticalOffset;
                 graphics.DrawLine(
-                    Pens.Black,
+                    gc.ForePen,
                     0,
                     y,
                     Schedule.TotalWidth,
@@ -2658,7 +3031,7 @@ namespace OutOfPhase
             {
                 int y = StaffCalibration.ConvertPitchToPixel(StaffCalibration.MinorStaffList[i], 0) - VerticalOffset;
                 graphics.DrawLine(
-                    Pens.LightGray,
+                    gc.LightGreyPen,
                     0,
                     y,
                     Schedule.TotalWidth,
@@ -2670,14 +3043,14 @@ namespace OutOfPhase
             {
                 int y = StaffCalibration.ConvertPitchToPixel(Constants.CENTERNOTE - i, 0) - VerticalOffset;
                 graphics.DrawLine(
-                    (i == 0) ? Pens.LightGray : Pens.Gray,
+                    (i == 0) ? gc.LightGreyPen : gc.GreyPen,
                     0,
                     y,
                     Schedule.TotalWidth,
                     y);
                 y = StaffCalibration.ConvertPitchToPixel(Constants.CENTERNOTE + i, 0) - VerticalOffset;
                 graphics.DrawLine(
-                    (i == 0) ? Pens.LightGray : Pens.Gray,
+                    (i == 0) ? gc.LightGreyPen : gc.GreyPen,
                     0,
                     y,
                     Schedule.TotalWidth,
@@ -2724,7 +3097,7 @@ namespace OutOfPhase
         {
             CursorBarIsVisible = true;
             gc.graphics.FillRectangle(
-                Brushes.Gray,
+                gc.GreyBrush,
                 0,
                 -VerticalOffset + CursorBarLoc - 1,
                 Schedule.TotalWidth,
@@ -2743,23 +3116,128 @@ namespace OutOfPhase
                         -VerticalOffset + CursorBarLoc - 1,
                         Width,
                         3));
-                gc.graphics.FillRectangle(
-                    Brushes.White,
-                    0,
-                    -VerticalOffset + CursorBarLoc - 1,
-                    Width,
-                    3);
                 TrackViewRedrawAll();
                 gc.graphics.SetClip(ClientRectangle);
             }
         }
 
+        private void TrackViewRedrawNote(NoteObjectRec note)
+        {
+            TrackViewRedrawOrInvalidateNote(note, true/*redraw*/);
+        }
+
+        private void TrackViewInvalidateNote(NoteObjectRec note)
+        {
+            TrackViewRedrawOrInvalidateNote(note, false/*redraw*/);
+        }
+
+        private void TrackViewRedrawOrInvalidateNote(NoteObjectRec note, bool redraw)
+        {
+            int frameIndex, noteIndex;
+            if (trackObject.FindNote(note, out frameIndex, out noteIndex))
+            {
+                if (Schedule.TrackDisplayShouldWeDrawIt(0, frameIndex))
+                {
+                    int PixelIndex;
+                    Schedule.TrackDisplayIndexToPixel(0, frameIndex, out PixelIndex);
+                    Rectangle rect = new Rectangle(
+                        PixelIndex - PixelIndent + Schedule.TrackDisplayGetNoteOffset(0, frameIndex, noteIndex),
+                        -VerticalOffset,
+                        Schedule.TrackDisplayGetNoteInternalWidth(0, frameIndex, noteIndex),
+                        StaffCalibration.MaxVerticalSize);
+                    if (redraw)
+                    {
+                        gc.graphics.IntersectClip(rect);
+                        TrackViewRedrawAll();
+                        gc.graphics.SetClip(ClientRectangle);
+                    }
+                    else
+                    {
+                        Invalidate(rect);
+                    }
+                }
+            }
+        }
+
+        private void TrackViewChangePhantomInsertionPoint(int newIP)
+        {
+            if (phantomInsertionPointIndex != newIP)
+            {
+                using (GraphicsContext gc = new GraphicsContext(this))
+                {
+                    // undraw old location
+                    if (phantomInsertionPointIndex >= 0)
+                    {
+                        int PixelIndex;
+                        Schedule.TrackDisplayIndexToPixelRobust(0, phantomInsertionPointIndex, out PixelIndex);
+                        gc.graphics.SetClip(
+                            new Rectangle(
+                                PixelIndex - PixelIndent,
+                                0,
+                                1,
+                                ClientSize.Height));
+
+                        phantomInsertionPointIndex = -1;
+
+                        TrackViewRedrawAll();
+                    }
+
+                    // draw new location
+                    if (newIP >= 0)
+                    {
+                        phantomInsertionPointIndex = newIP;
+
+                        int PixelIndex;
+                        Schedule.TrackDisplayIndexToPixelRobust(0, phantomInsertionPointIndex, out PixelIndex);
+                        gc.graphics.SetClip(
+                            new Rectangle(
+                                PixelIndex - PixelIndent,
+                                0,
+                                1,
+                                ClientSize.Height));
+                        TrackViewRedrawAll();
+                    }
+
+                    gc.graphics.SetClip(ClientRectangle);
+                }
+            }
+        }
+
+        protected override void OnScroll(ScrollEventArgs se)
+        {
+            base.OnScroll(se);
+
+            // Because of the odd way range selection is drawn, artifacts appear on the top and bottom of the
+            // canvas during vertical scroll. Invalidate the top and bottom margins to clean them up.
+            if ((se.ScrollOrientation == ScrollOrientation.VerticalScroll) && TrackViewIsARangeSelected())
+            {
+                using (GraphicsContext gc = new GraphicsContext(this))
+                {
+                    SetScrollOffsetsForRendering(gc.graphics);
+                    Invalidate(new Rectangle(
+                        PixelIndent,
+                        (se.OldValue - se.NewValue),
+                        ClientSize.Width,
+                        TrackDisplayConstants.RANGESELECTTHICKNESS));
+                    Invalidate(new Rectangle(
+                        PixelIndent,
+                        (se.OldValue - se.NewValue) + (ClientSize.Height - TrackDisplayConstants.RANGESELECTTHICKNESS),
+                        ClientSize.Width,
+                        TrackDisplayConstants.RANGESELECTTHICKNESS));
+                }
+            }
+
+            Update(); // redraw scrolled-in area immediately to prevent artifacts
+
+            if ((se.ScrollOrientation == ScrollOrientation.HorizontalScroll)
+                && (trackObject.InlineParamVis != InlineParamVis.None))
+            {
+                noteParamStrip.Shift(se.OldValue - se.NewValue);
+            }
+        }
+
         private void TrackObjectAltered(TrackObjectRec trackObj, int startFrame, int endFrame)
         {
-            for (int i = startFrame; i <= endFrame; i++)
-            {
-                trackObj.FrameArray[i].ForceFrameLengthChange();
-            }
             Schedule.TrackDisplayScheduleMarkChanged(trackObject, startFrame);
         }
 
@@ -2829,6 +3307,115 @@ namespace OutOfPhase
             get { return Font; }
         }
 
+        Brush IGraphicsContext.BackBrush
+        {
+            get
+            {
+                if (backBrush == null)
+                {
+                    backBrush = new SolidBrush(BackColor);
+                }
+                return backBrush;
+            }
+        }
+
+        Pen IGraphicsContext.BackPen
+        {
+            get
+            {
+                if (backPen == null)
+                {
+                    backPen = new Pen(BackColor);
+                }
+                return backPen;
+            }
+        }
+
+        Brush IGraphicsContext.ForeBrush
+        {
+            get
+            {
+                if (foreBrush == null)
+                {
+                    foreBrush = new SolidBrush(ForeColor);
+                }
+                return foreBrush;
+            }
+        }
+
+        Pen IGraphicsContext.ForePen
+        {
+            get
+            {
+                if (forePen == null)
+                {
+                    forePen = new Pen(ForeColor);
+                }
+                return forePen;
+            }
+        }
+
+        Brush IGraphicsContext.GreyBrush
+        {
+            get
+            {
+                if (greyBrush == null)
+                {
+                    greyBrush = new SolidBrush(GreyColor);
+                }
+                return greyBrush;
+            }
+        }
+
+        Pen IGraphicsContext.GreyPen
+        {
+            get
+            {
+                if (greyPen == null)
+                {
+                    greyPen = new Pen(GreyColor);
+                }
+                return greyPen;
+            }
+        }
+
+        Brush IGraphicsContext.LightGreyBrush
+        {
+            get
+            {
+                if (lightGreyBrush == null)
+                {
+                    lightGreyBrush = new SolidBrush(LightGreyColor);
+                }
+                return lightGreyBrush;
+            }
+        }
+
+        Pen IGraphicsContext.LightGreyPen
+        {
+            get
+            {
+                if (lightGreyPen == null)
+                {
+                    lightGreyPen = new Pen(LightGreyColor);
+                }
+                return lightGreyPen;
+            }
+        }
+
+        Brush IGraphicsContext.LightLightGreyBrush
+        {
+            get
+            {
+                if (lightLightGreyBrush == null)
+                {
+                    lightLightGreyBrush = new SolidBrush(LightLightGreyColor);
+                }
+                return lightLightGreyBrush;
+            }
+        }
+
+
         private class GraphicsContext : IGraphicsContext, IDisposable
         {
             private readonly TrackViewControl view;
@@ -2862,15 +3449,50 @@ namespace OutOfPhase
                 view.contextGraphics = graphics;
             }
 
-            public Graphics graphics
-            {
-                get { return view.contextGraphics; }
-            }
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public Graphics graphics { get { return view.contextGraphics; } }
 
-            public Font font
-            {
-                get { return view.Font; }
-            }
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public Font font { get { return view.Font; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Brush IGraphicsContext.BackBrush { get { return ((IGraphicsContext)view).BackBrush; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Pen IGraphicsContext.BackPen { get { return ((IGraphicsContext)view).BackPen; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Color IGraphicsContext.BackColor { get { return ((IGraphicsContext)view).BackColor; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Brush IGraphicsContext.ForeBrush { get { return ((IGraphicsContext)view).ForeBrush; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Pen IGraphicsContext.ForePen { get { return ((IGraphicsContext)view).ForePen; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Color IGraphicsContext.ForeColor { get { return ((IGraphicsContext)view).ForeColor; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Brush IGraphicsContext.GreyBrush { get { return ((IGraphicsContext)view).GreyBrush; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Pen IGraphicsContext.GreyPen { get { return ((IGraphicsContext)view).GreyPen; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Color IGraphicsContext.GreyColor { get { return ((IGraphicsContext)view).GreyColor; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Brush IGraphicsContext.LightGreyBrush { get { return ((IGraphicsContext)view).LightGreyBrush; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Pen IGraphicsContext.LightGreyPen { get { return ((IGraphicsContext)view).LightGreyPen; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Color IGraphicsContext.LightGreyColor { get { return ((IGraphicsContext)view).LightGreyColor; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            Brush IGraphicsContext.LightLightGreyBrush { get { return ((IGraphicsContext)view).LightLightGreyBrush; } }
 
             public void Dispose()
             {
@@ -2890,6 +3512,7 @@ namespace OutOfPhase
             return new TrackUndoRec(this);
         }
 
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public UndoHelper UndoHelper { get { return undoHelper; } }
 
         private class TrackUndoRec : IUndoUnit, IDisposable
@@ -2962,6 +3585,10 @@ namespace OutOfPhase
                     trackView.TrackObjectAltered(trackView.trackObject, 0);
                     trackView.TrackViewShowSelection();
                     trackView.TrackViewRedrawAll();
+                    if (trackView.trackObject.InlineParamVis != InlineParamVis.None)
+                    {
+                        trackView.RebuildInlineStrip();
+                    }
                 }
             }
 
@@ -2970,12 +3597,68 @@ namespace OutOfPhase
                 persistedTrack.Dispose();
             }
         }
+
+
+        //
+
+        private bool expandedWidths;
+        public void RebuildInlineStrip()
+        {
+            if (noteParamStrip != null)
+            {
+                using (GraphicsContext gc = new GraphicsContext(this))
+                {
+                    // if CurrentInternalSeparation/CurrentExternalSeparation is changing, invalidate entire layout
+                    if (expandedWidths != (trackObject.InlineParamVis != InlineParamVis.None))
+                    {
+                        expandedWidths = trackObject.InlineParamVis != InlineParamVis.None;
+                        RebuildSchedule();
+                        TrackObjectAltered(trackObject, 0);
+                        Invalidate();
+                    }
+
+                    // rebuild parameter strip data array
+                    // TODO: provisional - inefficient
+                    Schedule.TrackDisplayScheduleUpdate();
+                    noteParamStrip.Clear();
+                    for (int frameIndex = 0; frameIndex < trackObject.FrameArray.Count; frameIndex++)
+                    {
+                        for (int noteIndex = 0; noteIndex < trackObject.FrameArray[frameIndex].Count; noteIndex++)
+                        {
+                            if (!trackObject.FrameArray[frameIndex].IsThisACommandFrame)
+                            {
+                                int PixelIndex;
+                                Schedule.TrackDisplayIndexToPixel(0, frameIndex, out PixelIndex);
+                                noteParamStrip.Add(
+                                    PixelIndex - PixelIndent + Schedule.TrackDisplayGetNoteOffset(0, frameIndex, noteIndex),
+                                    (NoteNoteObjectRec)trackObject.FrameArray[frameIndex][noteIndex],
+                                    gc.graphics);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public interface IGraphicsContext
     {
         Graphics graphics { get; }
         Font font { get; }
+
+        Brush BackBrush { get; }
+        Pen BackPen { get; }
+        Color BackColor { get; }
+        Brush ForeBrush { get; }
+        Pen ForePen { get; }
+        Color ForeColor { get; }
+        Brush GreyBrush { get; }
+        Pen GreyPen { get; }
+        Color GreyColor { get; }
+        Brush LightGreyBrush { get; }
+        Pen LightGreyPen { get; }
+        Color LightGreyColor { get; }
+        Brush LightLightGreyBrush { get; }
     }
 
     public interface ITrackViewContextUI
@@ -3343,15 +4026,25 @@ namespace OutOfPhase
     }
 
 
-    class TrackDispScheduleRec
+    public class TrackDispScheduleRec
     {
         private readonly IGraphicsContext gc;
+        private readonly TrackViewControl ownerView;
 
         private struct FrameAttrRec
         {
             public int PixelStart;
             public int Width;
             public bool SquashThisOne; /* True == don't draw this one */
+
+            public int widthIncludingTrailingSpace;
+            public NoteMetrics[] metrics;
+        }
+
+        public struct NoteMetrics
+        {
+            public short offset;
+            public short width;
         }
 
         private struct TrackAttrRec
@@ -3380,12 +4073,14 @@ namespace OutOfPhase
         private int totalWidth;
         private bool RecalculationRequired = true;
         private TieTrackPixelRec TiePixelTracker; /* NIL if not up to date */
+        private InlineParamVis inlineParamVis;
 
         public event EventHandler TrackExtentsChanged; // fired after recalc
 
-        public TrackDispScheduleRec(IGraphicsContext gc)
+        public TrackDispScheduleRec(IGraphicsContext gc, TrackViewControl ownerView)
         {
             this.gc = gc;
+            this.ownerView = ownerView;
         }
 
         public void Add(TrackObjectRec TrackObj)
@@ -3394,6 +4089,11 @@ namespace OutOfPhase
             {
                 Debug.Assert(false);
                 throw new ArgumentException();
+            }
+
+            if (TrackAttrArray.Length == 0)
+            {
+                inlineParamVis = TrackObj.InlineParamVis;
             }
 
             Array.Resize(ref TrackAttrArray, TrackAttrArray.Length + 1);
@@ -3469,7 +4169,7 @@ namespace OutOfPhase
                             /* gather location information */
                             int ThisNotePixelX;
                             TrackDisplayIndexToPixel(0/*main track*/, iFrame, out ThisNotePixelX);
-                            ThisNotePixelX += iNote * FrameDisplayConstants.INTERNALSEPARATION;
+                            ThisNotePixelX += TrackDisplayGetNoteOffset(0, iFrame, iNote);
                             int ThisNotePixelY = StaffCalibration.ConvertPitchToPixel(Note.GetNotePitch(), Note.GetNoteFlatOrSharpStatus());
 
                             /* do the thing for a note tied to us */
@@ -3493,7 +4193,32 @@ namespace OutOfPhase
         public void TrackDisplayIndexToPixel(int TrackIndex, int FrameIndex, out int Pixel)
         {
             TrackDisplayScheduleUpdate();
+            Debug.Assert(unchecked((uint)TrackIndex < (uint)TrackAttrArray.Length));
+            Debug.Assert(unchecked((uint)FrameIndex < (uint)TrackAttrArray[TrackIndex].FrameAttrArray.Length));
             Pixel = TrackAttrArray[TrackIndex].FrameAttrArray[FrameIndex].PixelStart;
+        }
+
+        // calculate the pixel index for a frame based on it's array index.
+        // this version permits FrameIndex == Count and does the right thing.
+        public void TrackDisplayIndexToPixelRobust(int TrackIndex, int FrameIndex, out int Pixel)
+        {
+            TrackDisplayScheduleUpdate();
+            Debug.Assert(unchecked((uint)TrackIndex < (uint)TrackAttrArray.Length));
+            //Debug.Assert(unchecked((uint)FrameIndex <= (uint)TrackAttrArray[TrackIndex].FrameAttrArray.Length));
+            if (FrameIndex < (uint)TrackAttrArray[TrackIndex].FrameAttrArray.Length)
+            {
+                Pixel = TrackAttrArray[TrackIndex].FrameAttrArray[FrameIndex].PixelStart;
+            }
+            else if (TrackAttrArray[TrackIndex].FrameAttrArray.Length > 0)
+            {
+                int end = TrackAttrArray[TrackIndex].FrameAttrArray.Length - 1;
+                Pixel = TrackAttrArray[TrackIndex].FrameAttrArray[end].PixelStart
+                    + TrackAttrArray[TrackIndex].FrameAttrArray[end].widthIncludingTrailingSpace;
+            }
+            else
+            {
+                Pixel = 0;
+            }
         }
 
         private struct TrackWorkRec
@@ -3511,12 +4236,13 @@ namespace OutOfPhase
         }
 
         /* apply schedule to tracks. */
-        public void TrackDisplayScheduleUpdate()
+        // return value is true if positions were recalculated (may not have changed), false if nothing changed
+        public bool TrackDisplayScheduleUpdate()
         {
             /* if everything is up to date, then don't bother */
             if (!RecalculationRequired)
             {
-                return;
+                return false;
             }
 
             TiePixelTracker = new TieTrackPixelRec();
@@ -3542,8 +4268,7 @@ namespace OutOfPhase
                     Array.Resize(ref TrackAttrArray[i].FrameAttrArray, TheirFramesTemp);
 
                     /* zero the new space in the array so that we make sure it changes */
-                    for (int Index = TrackAttrArray[i].NumFrames;
-                        Index < TheirFramesTemp; Index++)
+                    for (int Index = TrackAttrArray[i].NumFrames; Index < TheirFramesTemp; Index++)
                     {
                         TrackAttrArray[i].FrameAttrArray[Index].PixelStart = -1;
                         TrackAttrArray[i].FrameAttrArray[Index].Width = -1;
@@ -3589,32 +4314,32 @@ namespace OutOfPhase
                 /* After stage 1, Frame will be NIL if the channel is not scheduled */
                 /* this time around, or valid if it contains the one to schedule */
                 int MaximumWidth = 0;
-                for (int i = 0; i < TrackAttrArray.Length; i++)
+                for (int trackIndex = 0; trackIndex < TrackAttrArray.Length; trackIndex++)
                 {
-                    if (WorkArray[i].CurrentIndex < TrackAttrArray[i].NumFrames)
+                    if (WorkArray[trackIndex].CurrentIndex < TrackAttrArray[trackIndex].NumFrames)
                     {
                         /* this channel still has more items to schedule. */
                         /* we want to see if this frame will be scheduled this time. */
-                        if (FractionRec.FracGreaterThan(CurrentTime, WorkArray[i].CurrentFrameStartTime))
+                        if (FractionRec.FracGreaterThan(CurrentTime, WorkArray[trackIndex].CurrentFrameStartTime))
                         {
                             // current time later than frame start
                             Debug.Assert(false);
                             throw new InvalidOperationException();
                         }
 
-                        if (FractionRec.FractionsEqual(CurrentTime, WorkArray[i].CurrentFrameStartTime))
+                        if (FractionRec.FractionsEqual(CurrentTime, WorkArray[trackIndex].CurrentFrameStartTime))
                         {
                             /* the frame is scheduled this time around */
 
                             /* obtain the frame reference */
-                            FrameObjectRec Frame = TrackAttrArray[i].TrackObj.FrameArray[WorkArray[i].CurrentIndex];
+                            FrameObjectRec Frame = TrackAttrArray[trackIndex].TrackObj.FrameArray[WorkArray[trackIndex].CurrentIndex];
 
                             /* get duration of this frame */
-                            Frame.DurationOfFrame(out WorkArray[i].CurrentFrameDuration);
+                            Frame.DurationOfFrame(out WorkArray[trackIndex].CurrentFrameDuration);
 
                             /* decide whether the measure bar flag should be set. */
-                            /* this is only done for main track, hence "i == 0". */
-                            if (i == 0)
+                            /* this is only done for main track, hence "trackIndex == 0". */
+                            if (trackIndex == 0)
                             {
                                 /* for big notes (like quads) this may increment */
                                 /* MeasureBarIndex several times, but that's the desired */
@@ -3628,13 +4353,13 @@ namespace OutOfPhase
                                     /*  MeasureBarIntervalThing = current accumulated notes */
                                     bool GreyedFlag = !FractionRec.FractionsEqual(MeasureBarIntervalThing, MeasureBarWidth);
                                     FractionRec.SubFractions(MeasureBarIntervalThing, MeasureBarWidth, out MeasureBarIntervalThing);
-                                    MainTrackMeasureBars[WorkArray[i].CurrentIndex].BarIndex = MeasureBarIndex;
-                                    MainTrackMeasureBars[WorkArray[i].CurrentIndex].DrawBarGreyed = GreyedFlag;
+                                    MainTrackMeasureBars[WorkArray[trackIndex].CurrentIndex].BarIndex = MeasureBarIndex;
+                                    MainTrackMeasureBars[WorkArray[trackIndex].CurrentIndex].DrawBarGreyed = GreyedFlag;
                                     MeasureBarIndex++;
                                 }
 
                                 /* now, increment the value with the current note */
-                                FractionRec.AddFractions(MeasureBarIntervalThing, WorkArray[i].CurrentFrameDuration, out MeasureBarIntervalThing);
+                                FractionRec.AddFractions(MeasureBarIntervalThing, WorkArray[trackIndex].CurrentFrameDuration, out MeasureBarIntervalThing);
 
                                 /* finally, if the note is a meter adjust command, use */
                                 /* it to recalibrate the measure barring */
@@ -3674,21 +4399,38 @@ namespace OutOfPhase
                             /* now that we have the frame's duration and have it scheduled */
                             /* for display (Frame), increment the start */
                             /* time to the end of the frame (which is start of next frame) */
-                            FractionRec.AddFractions(WorkArray[i].CurrentFrameDuration, WorkArray[i].CurrentFrameStartTime, out WorkArray[i].CurrentFrameStartTime);
+                            FractionRec.AddFractions(WorkArray[trackIndex].CurrentFrameDuration, WorkArray[trackIndex].CurrentFrameStartTime, out WorkArray[trackIndex].CurrentFrameStartTime);
 
-                            if ((i == 0) || !Frame.IsThisACommandFrame)
+                            int currentTrackFrameIndex = WorkArray[trackIndex].CurrentIndex;
+                            FrameAttrRec[] currentTrackFrameAttrArray = TrackAttrArray[trackIndex].FrameAttrArray;
+                            if ((trackIndex == 0) || !Frame.IsThisACommandFrame)
                             {
                                 /* if this is NOT a command frame, then it should be scheduled */
                                 /* normally for display. */
 
                                 /* set up the drawing attributes */
 
-                                TrackAttrArray[i].FrameAttrArray[WorkArray[i].CurrentIndex].PixelStart = CurrentXLocation;
-                                TrackAttrArray[i].FrameAttrArray[WorkArray[i].CurrentIndex].Width
-                                    = FrameDrawUtility.WidthOfFrameAndDraw(gc, 0, 0, Frame, false/*don't draw*/, false);
-                                TrackAttrArray[i].FrameAttrArray[WorkArray[i].CurrentIndex].SquashThisOne = false;
+                                if (currentTrackFrameAttrArray[currentTrackFrameIndex].metrics == null)
+                                {
+                                    currentTrackFrameAttrArray[currentTrackFrameIndex].metrics = new NoteMetrics[Frame.Count];
+                                }
 
-                                if (TrackAttrArray[i].FrameAttrArray[WorkArray[i].CurrentIndex].Width == 0)
+                                currentTrackFrameAttrArray[currentTrackFrameIndex].PixelStart = CurrentXLocation;
+                                int width = FrameDrawUtility.WidthOfFrameAndDraw(
+                                    gc,
+                                    0,
+                                    0,
+                                    Frame,
+                                    false/*don't draw*/,
+                                    false,
+                                    inlineParamVis,
+                                    ref currentTrackFrameAttrArray[currentTrackFrameIndex].metrics);
+                                currentTrackFrameAttrArray[currentTrackFrameIndex].Width = width;
+                                currentTrackFrameAttrArray[currentTrackFrameIndex].widthIncludingTrailingSpace
+                                    = width + TrackDisplayConstants.EXTERNALSEPARATION;
+                                currentTrackFrameAttrArray[currentTrackFrameIndex].SquashThisOne = false;
+
+                                if (currentTrackFrameAttrArray[currentTrackFrameIndex].Width == 0)
                                 {
                                     // frame's width is 0
                                     Debug.Assert(false);
@@ -3697,9 +4439,9 @@ namespace OutOfPhase
 
                                 /* we need to obtain the maximum width of these frame so we */
                                 /* can figure out what the next X location will be */
-                                if (TrackAttrArray[i].FrameAttrArray[WorkArray[i].CurrentIndex].Width > MaximumWidth)
+                                if (MaximumWidth < currentTrackFrameAttrArray[currentTrackFrameIndex].Width)
                                 {
-                                    MaximumWidth = TrackAttrArray[i].FrameAttrArray[WorkArray[i].CurrentIndex].Width;
+                                    MaximumWidth = currentTrackFrameAttrArray[currentTrackFrameIndex].Width;
                                 }
                             }
                             else
@@ -3709,13 +4451,15 @@ namespace OutOfPhase
 
                                 /* adjust the displaylocation parameters */
 
-                                TrackAttrArray[i].FrameAttrArray[WorkArray[i].CurrentIndex].PixelStart = CurrentXLocation;
-                                TrackAttrArray[i].FrameAttrArray[WorkArray[i].CurrentIndex].Width = 0; /* no width! */
-                                TrackAttrArray[i].FrameAttrArray[WorkArray[i].CurrentIndex].SquashThisOne = true; /*squish*/
+                                currentTrackFrameAttrArray[currentTrackFrameIndex].PixelStart = CurrentXLocation;
+                                currentTrackFrameAttrArray[currentTrackFrameIndex].Width = 0; /* no width! */
+                                currentTrackFrameAttrArray[currentTrackFrameIndex].SquashThisOne = true; /*squish*/
+                                currentTrackFrameAttrArray[currentTrackFrameIndex].widthIncludingTrailingSpace = 0;
+                                currentTrackFrameAttrArray[currentTrackFrameIndex].metrics = null;
                             }
 
                             /* advance frame pointer to the next frame in the channel */
-                            WorkArray[i].CurrentIndex++;
+                            WorkArray[trackIndex].CurrentIndex++;
                         }
                     }
                 }
@@ -3813,6 +4557,8 @@ namespace OutOfPhase
             {
                 TrackExtentsChanged.Invoke(this, EventArgs.Empty);
             }
+
+            return true;
         }
 
         /* find out where a pixel position is located in the score.  it returns the */
@@ -3839,7 +4585,7 @@ namespace OutOfPhase
             Debug.Assert(false);
             throw new ArgumentException();
 
-        FoundTrackPoint:
+            FoundTrackPoint:
             /* perform a binary search to locate the cell responsible for the track */
             /* first, check to make sure index is within range */
             if (PixelPosition < 0)
@@ -3912,8 +4658,6 @@ namespace OutOfPhase
             return TrackAttrArray.Length;
         }
 
-
-
         /* look up the track index of a specific track */
         public int TrackDisplayGetTrackIndex(TrackObjectRec TrackObj)
         {
@@ -3961,7 +4705,14 @@ namespace OutOfPhase
             int BeginningOfFrame;
             TrackDisplayIndexToPixel(TrackIndex, Index, out BeginningOfFrame);
             FrameObjectRec Frame = TrackAttrArray[TrackIndex].TrackObj.FrameArray[Index];
-            int FrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(gc, 0, 0, Frame, false/*nodraw*/, false);
+            int FrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(
+                gc,
+                0,
+                0,
+                Frame,
+                false/*nodraw*/,
+                false,
+                TrackIndex == 0 ? inlineParamVis : 0);
             CommandFlag = Frame.IsThisACommandFrame;
             if (CommandFlag)
             {
@@ -3981,17 +4732,24 @@ namespace OutOfPhase
                 if ((BeginningOfFrame <= PixelX) && (BeginningOfFrame + FrameWidth > PixelX))
                 {
                     /* calculate possible note index */
-                    int NoteIndex = (PixelX - BeginningOfFrame) / FrameDisplayConstants.INTERNALSEPARATION;
+                    int NoteIndex = Frame.Count;
+                    while (NoteIndex-- >= 0)
+                    {
+                        int offset = TrackDisplayGetNoteOffset(TrackIndex, FrameIndex, NoteIndex);
+                        if (offset <= PixelX - BeginningOfFrame)
+                        {
+                            break;
+                        }
+                    }
                     if (Frame.Count == 0)
                     {
                         // frame doesn't contain any notes
                         Debug.Assert(false);
                         throw new InvalidOperationException();
                     }
-                    int NumFrames = Frame.Count;
-                    if (NoteIndex > NumFrames - 1)
+                    if (NoteIndex > Frame.Count - 1)
                     {
-                        NoteIndex = NumFrames - 1;
+                        NoteIndex = Frame.Count - 1;
                     }
                     return Frame[NoteIndex];
                 }
@@ -4052,7 +4810,7 @@ namespace OutOfPhase
 
         /* get a list of coordinates that need to be tied together */
         /* it might return NIL if there isn't a tie tracker. */
-        public /*TieIntersectListRec*/List<TieTrackPixelRec.TiePixelRec> TrackDisplayGetTieIntervalList(int StartX, int Width)
+        public List<TieTrackPixelRec.TiePixelRec> TrackDisplayGetTieIntervalList(int StartX, int Width)
         {
             TrackDisplayScheduleUpdate();
             return TiePixelTracker.GetTieTrackPixelIntersecting(StartX, Width);
@@ -4066,10 +4824,34 @@ namespace OutOfPhase
             /* we ignore starting position parameters for now. */
             RecalculationRequired = true;
         }
+
+        public int TrackDisplayGetNoteOffset(int trackIndex, int frameIndex, int noteIndex)
+        {
+            if (trackIndex == 0)
+            {
+                return TrackAttrArray[0].FrameAttrArray[frameIndex].metrics[noteIndex].offset;
+            }
+            else
+            {
+                return noteIndex * FrameDisplayConstants.INTERNALSEPARATION;
+            }
+        }
+
+        public int TrackDisplayGetNoteInternalWidth(int trackIndex, int frameIndex, int noteIndex)
+        {
+            if (trackIndex == 0)
+            {
+                return TrackAttrArray[0].FrameAttrArray[frameIndex].metrics[noteIndex].width;
+            }
+            else
+            {
+                return FrameDisplayConstants.ICONWIDTH;
+            }
+        }
     }
 
 
-    class TieTrackRec
+    public class TieTrackRec
     {
         private readonly List<TiePairRec> ListOfRecords = new List<TiePairRec>();
 
@@ -4080,7 +4862,11 @@ namespace OutOfPhase
             public readonly NoteNoteObjectRec SourceNote;
             public readonly NoteNoteObjectRec DestinationNote;
 
-            public TiePairRec(int SourcePixelIndexX, int SourcePixelIndexY, NoteNoteObjectRec SourceNote, NoteNoteObjectRec DestinationNote)
+            public TiePairRec(
+                int SourcePixelIndexX,
+                int SourcePixelIndexY,
+                NoteNoteObjectRec SourceNote,
+                NoteNoteObjectRec DestinationNote)
             {
                 this.SourcePixelIndexX = SourcePixelIndexX;
                 this.SourcePixelIndexY = SourcePixelIndexY;
@@ -4091,7 +4877,11 @@ namespace OutOfPhase
 
         /* find out if there is a tie source in the object for the destination. */
         /* the pair is removed from the list */
-        public bool GetTieSourceFromDestination(out int SourcePixelX, out int SourcePixelY, out NoteNoteObjectRec SourceNote, NoteNoteObjectRec CurrentNote)
+        public bool GetTieSourceFromDestination(
+            out int SourcePixelX,
+            out int SourcePixelY,
+            out NoteNoteObjectRec SourceNote,
+            NoteNoteObjectRec CurrentNote)
         {
             SourcePixelX = Int32.MinValue;
             SourcePixelY = Int32.MinValue;
@@ -4113,14 +4903,23 @@ namespace OutOfPhase
         }
 
         /* add a new tie pair to the list of tie pairs */
-        public void AddTiePair(NoteNoteObjectRec SourceNote, int SourcePixelX, int SourcePixelY, NoteNoteObjectRec DestinationNote)
+        public void AddTiePair(
+            NoteNoteObjectRec SourceNote,
+            int SourcePixelX,
+            int SourcePixelY,
+            NoteNoteObjectRec DestinationNote)
         {
-            ListOfRecords.Add(new TiePairRec(SourcePixelX, SourcePixelY, SourceNote, DestinationNote));
+            ListOfRecords.Add(
+                new TiePairRec(
+                    SourcePixelX,
+                    SourcePixelY,
+                    SourceNote,
+                    DestinationNote));
         }
     }
 
 
-    class TieTrackPixelRec
+    public class TieTrackPixelRec
     {
         private List<TiePixelRec> ListOfTieThangs = new List<TiePixelRec>(); /* of TiePixelRec's */
 
@@ -4131,7 +4930,11 @@ namespace OutOfPhase
             public int DestinationHorizontalPixel;
             public int DestinationVerticalPixel;
 
-            public TiePixelRec(int SourceHorizontalPixel, int SourceVerticalPixel, int DestinationHorizontalPixel, int DestinationVerticalPixel)
+            public TiePixelRec(
+                int SourceHorizontalPixel,
+                int SourceVerticalPixel,
+                int DestinationHorizontalPixel,
+                int DestinationVerticalPixel)
             {
                 this.SourceHorizontalPixel = SourceHorizontalPixel;
                 this.SourceVerticalPixel = SourceVerticalPixel;
@@ -4147,7 +4950,7 @@ namespace OutOfPhase
 
         /* obtain an array of all ties which are in some manner intersecting the */
         /* specified X interval */
-        public /*TieIntersectListRec*/List<TiePixelRec> GetTieTrackPixelIntersecting(int XLocStart, int XLocWidth)
+        public List<TiePixelRec> GetTieTrackPixelIntersecting(int XLocStart, int XLocWidth)
         {
             List<TiePixelRec> List = new List<TiePixelRec>();
             for (int i = 0; i < ListOfTieThangs.Count; i++)
@@ -4165,7 +4968,13 @@ namespace OutOfPhase
         }
 
         /* get the drawing information about a particular tie thang */
-        public static void GetTieTrackIntersectElement(List<TiePixelRec> List, int Index, out int StartX, out int StartY, out int EndX, out int EndY)
+        public static void GetTieTrackIntersectElement(
+            List<TiePixelRec> List,
+            int Index,
+            out int StartX,
+            out int StartY,
+            out int EndX,
+            out int EndY)
         {
             TiePixelRec PixelRec = List[Index];
             StartX = PixelRec.SourceHorizontalPixel;
@@ -4187,14 +4996,24 @@ namespace OutOfPhase
         /* it assumes the clipping rectangle is set up properly.  the X and Y parameters */
         /* specify the left edge of the note and the Middle C line. */
         /* this routine does not handle drawing of ties. */
-        public static int WidthOfFrameAndDraw(IGraphicsContext gc, int X, int Y, FrameObjectRec Frame, bool ActuallyDraw, bool GreyedOut)
+        public static int WidthOfFrameAndDraw(
+            IGraphicsContext gc,
+            int X,
+            int Y,
+            FrameObjectRec Frame,
+            bool ActuallyDraw,
+            bool GreyedOut,
+            InlineParamVis inlineParamVis,
+            ref TrackDispScheduleRec.NoteMetrics[] metrics)
         {
-            /* this caching of the width of the frame should speed things up */
-            if ((Frame.Width != 0) && !ActuallyDraw)
+            int extraSpaceWidth = 0;
+
+            // ensure metrics array is correct size - if caller wants it
+            if (metrics != null)
             {
-                /* we can only do this if we aren't drawing! */
-                return Frame.Width;
+                Array.Resize(ref metrics, Frame.Count);
             }
+
             /* we should be able to find ways of overlapping the notes if they won't */
             /* be on top of each other on screen but we're not going to for now. */
             int Width;
@@ -4202,22 +5021,28 @@ namespace OutOfPhase
             {
                 /* it's a command frame, so draw using the special command drawing routines */
                 Width = DrawCommandOnScreen(gc, X, Y, (CommandNoteObjectRec)Frame[0], ActuallyDraw, GreyedOut);
+                if (metrics != null)
+                {
+                    metrics[0].offset = 0;
+                    metrics[0].width = (short)Width;
+                }
             }
             else
             {
                 /* we have to draw the notes ourselves. */
                 X -= FrameDisplayConstants.LEFTNOTEEDGEINSET;
+                int relX = 0;
                 Width = 0;
-                for (int i = 0; i < Frame.Count; i++)
+                for (int noteIndex = 0; noteIndex < Frame.Count; noteIndex++)
                 {
                     /* get the note to be drawn */
-                    NoteNoteObjectRec Note = (NoteNoteObjectRec)Frame[i];
+                    NoteNoteObjectRec Note = (NoteNoteObjectRec)Frame[noteIndex];
                     /* do the icon stuff */
+                    int NoteOffset = 0;
                     if (ActuallyDraw)
                     {
                         ManagedBitmap2 Image;
                         ManagedBitmap2 Mask;
-                        int NoteOffset;
 
                         /* first, obtain the proper image for the duration */
                         if (!Note.GetNoteIsItARest())
@@ -4454,9 +5279,9 @@ namespace OutOfPhase
                         /* perform the drawing */
                         NoteOffset = Y + StaffCalibration.ConvertPitchToPixel(Note.GetNotePitch(), Note.GetNoteFlatOrSharpStatus())
                             - FrameDisplayConstants.TOPNOTESTAFFINTERSECT - StaffCalibration.CenterNotePixel;
-                        using (Bitmap gdiImage = Image.ToGDI(Color.Transparent, GreyedOut ? Color.LightGray : Color.Black))
+                        using (Bitmap gdiImage = Image.ToGDI(Color.Transparent, GreyedOut ? gc.LightGreyColor : gc.ForeColor))
                         {
-                            using (Bitmap gdiMask = Mask.ToGDI(Color.Transparent, Color.White))
+                            using (Bitmap gdiMask = Mask.ToGDI(Color.Transparent, gc.BackColor))
                             {
                                 gc.graphics.DrawImage(
                                     gdiMask,
@@ -4472,19 +5297,65 @@ namespace OutOfPhase
                                     gdiImage.Height);
                             }
                         }
-                        /* increment X for the next time around */
-                        X += FrameDisplayConstants.INTERNALSEPARATION;
+                    }
 
+                    // compute extra width needed for inline parameter drawing
+                    int inlineTextWidth = 0;
+                    if (inlineParamVis != 0)
+                    {
+                        if (extraSpaceWidth == 0)
+                        {
+                            const string ExtraSpace = "  ";
+                            extraSpaceWidth = MyTextRenderer.MeasureText(
+                                gc.graphics,
+                                ExtraSpace,
+                                gc.font,
+                                new Size(Int16.MaxValue, gc.font.Height),
+                                NoteParamStrip.Flags).Width;
+                        }
+
+                        ValueInfo[] values = ValueInfo.Values;
+                        for (int valueIndex = 0; valueIndex < values.Length; valueIndex++)
+                        {
+                            ValueInfo info = values[valueIndex];
+                            if ((info != null) && ((inlineParamVis & info.InlineParam) != 0))
+                            {
+                                string text = info.GetValue(Note);
+                                int width1 = MyTextRenderer.MeasureText(
+                                    gc.graphics,
+                                    text,
+                                    gc.font,
+                                    new Size(Int16.MaxValue, gc.font.Height),
+                                    NoteParamStrip.Flags).Width;
+                                inlineTextWidth = Math.Max(inlineTextWidth, width1);
+                            }
+                        }
+                    }
+
+                    /* increment X for the next time around */
+                    int rightEdge = X + FrameDisplayConstants.INTERNALSEPARATION;
+                    int internalWidth = Math.Max(FrameDisplayConstants.INTERNALSEPARATION, inlineTextWidth);
+                    int externalWidth = Math.Max(FrameDisplayConstants.INTERNALSEPARATION, inlineTextWidth + extraSpaceWidth);
+                    if (metrics != null)
+                    {
+                        metrics[noteIndex].offset = (short)relX;
+                        metrics[noteIndex].width = (short)Math.Max(internalWidth, FrameDisplayConstants.ICONWIDTH);
+                    }
+                    X += externalWidth;
+                    relX += externalWidth;
+
+                    if (ActuallyDraw)
+                    {
                         /* draw little attributions below */
                         if (!GreyedOut)
                         {
                             if (Note.GetNoteRetriggerEnvelopesOnTieStatus())
                             {
-                                using (Bitmap gdiRetrigger8x8 = Bitmaps.Retrigger8x8.ToGDI(Color.Transparent, Color.Black))
+                                using (Bitmap gdiRetrigger8x8 = Bitmaps.Retrigger8x8.ToGDI(Color.Transparent, gc.ForeColor))
                                 {
                                     gc.graphics.DrawImage(
                                         gdiRetrigger8x8,
-                                        X - 1,
+                                        rightEdge - 1,
                                         NoteOffset + 40,
                                         gdiRetrigger8x8.Width,
                                         gdiRetrigger8x8.Height);
@@ -4495,11 +5366,11 @@ namespace OutOfPhase
                                 if (Note.GetNotePortamentoLeadsBeatFlag())
                                 {
                                     /* draw backwards "P" for portamento leading note */
-                                    using (Bitmap gdiReversePortamento8x8 = Bitmaps.ReversePortamento8x8.ToGDI(Color.Transparent, Color.Black))
+                                    using (Bitmap gdiReversePortamento8x8 = Bitmaps.ReversePortamento8x8.ToGDI(Color.Transparent, gc.ForeColor))
                                     {
                                         gc.graphics.DrawImage(
                                             gdiReversePortamento8x8,
-                                            X - 1,
+                                            rightEdge - 1,
                                             NoteOffset + 40 + 9,
                                             gdiReversePortamento8x8.Width,
                                             gdiReversePortamento8x8.Height);
@@ -4508,11 +5379,11 @@ namespace OutOfPhase
                                 else
                                 {
                                     /* draw "P" for portamento */
-                                    using (Bitmap gdiPortamento8x8 = Bitmaps.Portamento8x8.ToGDI(Color.Transparent, Color.Black))
+                                    using (Bitmap gdiPortamento8x8 = Bitmaps.Portamento8x8.ToGDI(Color.Transparent, gc.ForeColor))
                                     {
                                         gc.graphics.DrawImage(
                                             gdiPortamento8x8,
-                                            X - 1,
+                                            rightEdge - 1,
                                             NoteOffset + 40 + 9,
                                             gdiPortamento8x8.Width,
                                             gdiPortamento8x8.Height);
@@ -4522,11 +5393,11 @@ namespace OutOfPhase
                             if (Note.GetNoteEarlyLateAdjust() < 0)
                             {
                                 /* draw "<" for early adjust */
-                                using (Bitmap gdiShiftEarly8x8 = Bitmaps.ShiftEarly8x8.ToGDI(Color.Transparent, Color.Black))
+                                using (Bitmap gdiShiftEarly8x8 = Bitmaps.ShiftEarly8x8.ToGDI(Color.Transparent, gc.ForeColor))
                                 {
                                     gc.graphics.DrawImage(
                                         gdiShiftEarly8x8,
-                                        X - 1,
+                                        rightEdge - 1,
                                         NoteOffset + 40 + 2 * 9,
                                         gdiShiftEarly8x8.Width,
                                         gdiShiftEarly8x8.Height);
@@ -4535,11 +5406,11 @@ namespace OutOfPhase
                             else if (Note.GetNoteEarlyLateAdjust() > 0)
                             {
                                 /* draw ">" for late adjust */
-                                using (Bitmap gdiShiftLate8x8 = Bitmaps.ShiftLate8x8.ToGDI(Color.Transparent, Color.Black))
+                                using (Bitmap gdiShiftLate8x8 = Bitmaps.ShiftLate8x8.ToGDI(Color.Transparent, gc.ForeColor))
                                 {
                                     gc.graphics.DrawImage(
                                         gdiShiftLate8x8,
-                                        X - 1,
+                                        rightEdge - 1,
                                         NoteOffset + 40 + 2 * 9,
                                         gdiShiftLate8x8.Width,
                                         gdiShiftLate8x8.Height);
@@ -4548,11 +5419,11 @@ namespace OutOfPhase
                             if (Note.GetNoteDetuning() < 0)
                             {
                                 /* draw "-" for detuning down */
-                                using (Bitmap gdiPitchDown8x8 = Bitmaps.PitchDown8x8.ToGDI(Color.Transparent, Color.Black))
+                                using (Bitmap gdiPitchDown8x8 = Bitmaps.PitchDown8x8.ToGDI(Color.Transparent, gc.ForeColor))
                                 {
                                     gc.graphics.DrawImage(
                                         gdiPitchDown8x8,
-                                        X - 1,
+                                        rightEdge - 1,
                                         NoteOffset + 40 + 3 * 9,
                                         gdiPitchDown8x8.Width,
                                         gdiPitchDown8x8.Height);
@@ -4561,11 +5432,11 @@ namespace OutOfPhase
                             else if (Note.GetNoteDetuning() > 0)
                             {
                                 /* draw "+" for detuning up */
-                                using (Bitmap gdiPitchUp8x8 = Bitmaps.PitchUp8x8.ToGDI(Color.Transparent, Color.Black))
+                                using (Bitmap gdiPitchUp8x8 = Bitmaps.PitchUp8x8.ToGDI(Color.Transparent, gc.ForeColor))
                                 {
                                     gc.graphics.DrawImage(
                                         gdiPitchUp8x8,
-                                        X - 1,
+                                        rightEdge - 1,
                                         NoteOffset + 40 + 3 * 9,
                                         gdiPitchUp8x8.Width,
                                         gdiPitchUp8x8.Height);
@@ -4578,22 +5449,49 @@ namespace OutOfPhase
                     if (Width == 0)
                     {
                         /* first time you get the whole width */
-                        Width = FrameDisplayConstants.ICONWIDTH - FrameDisplayConstants.LEFTNOTEEDGEINSET;
+                        Width = Math.Max(FrameDisplayConstants.ICONWIDTH - FrameDisplayConstants.LEFTNOTEEDGEINSET, externalWidth);
                     }
                     else
                     {
                         /* other times, you just get whatever extra there is */
-                        Width += FrameDisplayConstants.INTERNALSEPARATION;
+                        Width += externalWidth;
                     }
                 }
             }
-            Frame.Width = Width;
+
             return Width;
+        }
+
+        public static int WidthOfFrameAndDraw(
+            IGraphicsContext gc,
+            int X,
+            int Y,
+            FrameObjectRec Frame,
+            bool ActuallyDraw,
+            bool GreyedOut,
+            InlineParamVis inlineParamVis)
+        {
+            TrackDispScheduleRec.NoteMetrics[] widthsUnused = null;
+            return WidthOfFrameAndDraw(
+                gc,
+                X,
+                Y,
+                Frame,
+                ActuallyDraw,
+                GreyedOut,
+                inlineParamVis,
+                ref widthsUnused);
         }
 
         /* draw the command on the screen, or measure how many pixels wide the image will be */
         /* if it will draw, it assumes the clipping rectangle to be set up properly */
-        public static int DrawCommandOnScreen(IGraphicsContext gc, int X, int Y, CommandNoteObjectRec Note, bool ActuallyDraw, bool GreyedOut)
+        public static int DrawCommandOnScreen(
+            IGraphicsContext gc,
+            int X,
+            int Y,
+            CommandNoteObjectRec Note,
+            bool ActuallyDraw,
+            bool GreyedOut)
         {
             /* find out what the command's name is */
             string Name = CommandMapping.GetCommandName((NoteCommands)(Note.Flags & ~NoteFlags.eCommandFlag));
@@ -4800,41 +5698,57 @@ namespace OutOfPhase
             return ReturnValue;
         }
 
-        private static int DrawCommandNoParams(IGraphicsContext gc, int X, int Y, bool ActuallyDraw, bool GreyedOut, string String)
+        private static int DrawCommandNoParams(
+            IGraphicsContext gc,
+            int X,
+            int Y,
+            bool ActuallyDraw,
+            bool GreyedOut,
+            string String)
         {
-            int StrWidth = (int)Math.Ceiling(gc.graphics.MeasureString(String, gc.font).Width);
+            int StrWidth = MyTextRenderer.MeasureText(gc.graphics, String, gc.font).Width;
             if (ActuallyDraw)
             {
                 int FontHeight = gc.font.Height;
 
                 gc.graphics.DrawRectangle(
-                    Pens.Black,
+                    gc.ForePen,
                     X,
                     Y,
                     StrWidth + 2 * FrameDisplayConstants.BORDER,
                     FontHeight + 2 * FrameDisplayConstants.BORDER);
                 gc.graphics.FillRectangle(
-                    Brushes.White,
+                    gc.BackBrush,
                     X + 1,
                     Y + 1,
                     StrWidth + 2 * FrameDisplayConstants.BORDER - 1,
                     FontHeight + 2 * FrameDisplayConstants.BORDER - 1);
-                gc.graphics.DrawString(
+                MyTextRenderer.DrawText(
+                    gc.graphics,
                     String,
                     gc.font,
-                    Brushes.Black,
-                    X + FrameDisplayConstants.BORDER,
-                    Y + FrameDisplayConstants.BORDER);
+                    new Point(
+                        X + FrameDisplayConstants.BORDER,
+                        Y + FrameDisplayConstants.BORDER),
+                    gc.ForeColor,
+                    TextFormatFlags.PreserveGraphicsClipping);
             }
             return StrWidth + 2 * FrameDisplayConstants.BORDER;
         }
 
-        private static int DrawCommand1Param(IGraphicsContext gc, int X, int Y, bool ActuallyDraw, bool GreyedOut, string String, string Argument1)
+        private static int DrawCommand1Param(
+            IGraphicsContext gc,
+            int X,
+            int Y,
+            bool ActuallyDraw,
+            bool GreyedOut,
+            string String,
+            string Argument1)
         {
-            int TotalWidth = (int)Math.Ceiling(gc.graphics.MeasureString(String, gc.font).Width);
+            int TotalWidth = MyTextRenderer.MeasureText(gc.graphics, String, gc.font).Width;
             if (Argument1 != null)
             {
-                int OtherWidth = (int)Math.Ceiling(gc.graphics.MeasureString(Argument1, gc.font).Width);
+                int OtherWidth = MyTextRenderer.MeasureText(gc.graphics, Argument1, gc.font).Width;
                 if (OtherWidth > TotalWidth)
                 {
                     TotalWidth = OtherWidth;
@@ -4844,42 +5758,56 @@ namespace OutOfPhase
             {
                 int FontHeight = gc.font.Height;
                 gc.graphics.DrawRectangle(
-                    Pens.Black,
+                    gc.ForePen,
                     X,
                     Y,
                     TotalWidth + 2 * FrameDisplayConstants.BORDER,
                     2 * FontHeight + 2 * FrameDisplayConstants.BORDER);
                 gc.graphics.FillRectangle(
-                    Brushes.White,
+                    gc.BackBrush,
                     X + 1,
                     Y + 1,
                     TotalWidth + 2 * FrameDisplayConstants.BORDER - 1,
                     2 * FontHeight + 2 * FrameDisplayConstants.BORDER - 1);
-                gc.graphics.DrawString(
+                MyTextRenderer.DrawText(
+                    gc.graphics,
                     String,
                     gc.font,
-                    Brushes.Black,
-                    X + FrameDisplayConstants.BORDER,
-                    Y + FrameDisplayConstants.BORDER);
+                    new Point(
+                        X + FrameDisplayConstants.BORDER,
+                        Y + FrameDisplayConstants.BORDER),
+                    gc.ForeColor,
+                    TextFormatFlags.PreserveGraphicsClipping);
                 if (Argument1 != null)
                 {
-                    gc.graphics.DrawString(
+                    MyTextRenderer.DrawText(
+                        gc.graphics,
                         Argument1,
                         gc.font,
-                        Brushes.Black,
-                        X + FrameDisplayConstants.BORDER,
-                        Y + FrameDisplayConstants.BORDER + FontHeight);
+                        new Point(
+                            X + FrameDisplayConstants.BORDER,
+                            Y + FrameDisplayConstants.BORDER + FontHeight),
+                        gc.ForeColor,
+                        TextFormatFlags.PreserveGraphicsClipping);
                 }
             }
             return TotalWidth + 2 * FrameDisplayConstants.BORDER;
         }
 
-        private static int DrawCommand2Params(IGraphicsContext gc, int X, int Y, bool ActuallyDraw, bool GreyedOut, string String, string Argument1, string Argument2)
+        private static int DrawCommand2Params(
+            IGraphicsContext gc,
+            int X,
+            int Y,
+            bool ActuallyDraw,
+            bool GreyedOut,
+            string String,
+            string Argument1,
+            string Argument2)
         {
-            int TotalWidth = (int)Math.Ceiling(gc.graphics.MeasureString(String, gc.font).Width);
+            int TotalWidth = MyTextRenderer.MeasureText(gc.graphics, String, gc.font).Width;
             if (Argument1 != null)
             {
-                int OtherWidth = (int)Math.Ceiling(gc.graphics.MeasureString(Argument1, gc.font).Width);
+                int OtherWidth = MyTextRenderer.MeasureText(gc.graphics, Argument1, gc.font).Width;
                 if (OtherWidth > TotalWidth)
                 {
                     TotalWidth = OtherWidth;
@@ -4887,7 +5815,7 @@ namespace OutOfPhase
             }
             if (Argument2 != null)
             {
-                int OtherWidth = (int)Math.Ceiling(gc.graphics.MeasureString(Argument2, gc.font).Width);
+                int OtherWidth = MyTextRenderer.MeasureText(gc.graphics, Argument2, gc.font).Width;
                 if (OtherWidth > TotalWidth)
                 {
                     TotalWidth = OtherWidth;
@@ -4897,49 +5825,65 @@ namespace OutOfPhase
             {
                 int FontHeight = gc.font.Height;
                 gc.graphics.DrawRectangle(
-                    Pens.Black,
+                    gc.ForePen,
                     X,
                     Y,
                     TotalWidth + 2 * FrameDisplayConstants.BORDER,
                     3 * FontHeight + 2 * FrameDisplayConstants.BORDER);
                 gc.graphics.FillRectangle(
-                    Brushes.White,
+                    gc.BackBrush,
                     X + 1,
                     Y + 1,
                     TotalWidth + 2 * FrameDisplayConstants.BORDER - 1,
                     3 * FontHeight + 2 * FrameDisplayConstants.BORDER - 1);
-                gc.graphics.DrawString(
+                MyTextRenderer.DrawText(
+                    gc.graphics,
                     String,
                     gc.font,
-                    Brushes.Black,
-                    X + FrameDisplayConstants.BORDER,
-                    Y + FrameDisplayConstants.BORDER);
+                    new Point(
+                        X + FrameDisplayConstants.BORDER,
+                        Y + FrameDisplayConstants.BORDER),
+                    gc.ForeColor,
+                    TextFormatFlags.PreserveGraphicsClipping);
                 if (Argument1 != null)
                 {
-                    gc.graphics.DrawString(
+                    MyTextRenderer.DrawText(
+                        gc.graphics,
                         Argument1,
                         gc.font,
-                        Brushes.Black,
-                        X + FrameDisplayConstants.BORDER,
-                        Y + FrameDisplayConstants.BORDER + FontHeight);
+                        new Point(
+                            X + FrameDisplayConstants.BORDER,
+                            Y + FrameDisplayConstants.BORDER + FontHeight),
+                        gc.ForeColor,
+                        TextFormatFlags.PreserveGraphicsClipping);
                 }
                 if (Argument2 != null)
                 {
-                    gc.graphics.DrawString(
+                    MyTextRenderer.DrawText(
+                        gc.graphics,
                         Argument2,
                         gc.font,
-                        Brushes.Black,
-                        X + FrameDisplayConstants.BORDER,
-                        Y + FrameDisplayConstants.BORDER + 2 * FontHeight);
+                        new Point(
+                            X + FrameDisplayConstants.BORDER,
+                            Y + FrameDisplayConstants.BORDER + 2 * FontHeight),
+                        gc.ForeColor,
+                        TextFormatFlags.PreserveGraphicsClipping);
                 }
             }
             return TotalWidth + 2 * FrameDisplayConstants.BORDER;
         }
 
         /* draw a command that has one parameter, but has line feeds in it. */
-        private static int DrawCommand1ParamWithLineFeeds(IGraphicsContext gc, int X, int Y, bool ActuallyDraw, bool GreyedOut, string String, string Argument1)
+        private static int DrawCommand1ParamWithLineFeeds(
+            IGraphicsContext gc,
+            int X,
+            int Y,
+            bool ActuallyDraw,
+            bool GreyedOut,
+            string String,
+            string Argument1)
         {
-            int TotalWidth = (int)Math.Ceiling(gc.graphics.MeasureString(String, gc.font).Width);
+            int TotalWidth = MyTextRenderer.MeasureText(gc.graphics, String, gc.font).Width;
             string[] arg1Parts = new string[0];
             if (Argument1 != null)
             {
@@ -4950,7 +5894,7 @@ namespace OutOfPhase
                 }
                 foreach (string line in arg1Parts)
                 {
-                    int OtherWidth = (int)Math.Ceiling(gc.graphics.MeasureString(line, gc.font).Width);
+                    int OtherWidth = MyTextRenderer.MeasureText(gc.graphics, line, gc.font).Width;
                     if (OtherWidth > TotalWidth)
                     {
                         TotalWidth = OtherWidth;
@@ -4961,32 +5905,38 @@ namespace OutOfPhase
             {
                 int FontHeight = gc.font.Height;
                 gc.graphics.DrawRectangle(
-                    Pens.Black,
+                    gc.ForePen,
                     X,
                     Y,
                     TotalWidth + 2 * FrameDisplayConstants.BORDER,
                     (1 + arg1Parts.Length) * FontHeight + 2 * FrameDisplayConstants.BORDER);
                 gc.graphics.FillRectangle(
-                    Brushes.White,
+                    gc.BackBrush,
                     X + 1,
                     Y + 1,
                     TotalWidth + 2 * FrameDisplayConstants.BORDER - 1,
                     (1 + arg1Parts.Length) * FontHeight + 2 * FrameDisplayConstants.BORDER - 1);
-                gc.graphics.DrawString(
+                MyTextRenderer.DrawText(
+                    gc.graphics,
                     String,
                     gc.font,
-                    Brushes.Black,
-                    X + FrameDisplayConstants.BORDER,
-                    Y + FrameDisplayConstants.BORDER);
+                    new Point(
+                        X + FrameDisplayConstants.BORDER,
+                        Y + FrameDisplayConstants.BORDER),
+                    gc.ForeColor,
+                    TextFormatFlags.PreserveGraphicsClipping);
                 for (int i = 0; i < arg1Parts.Length; i++)
                 {
                     string line = arg1Parts[i];
-                    gc.graphics.DrawString(
+                    MyTextRenderer.DrawText(
+                        gc.graphics,
                         line,
                         gc.font,
-                        Brushes.Black,
-                        X + FrameDisplayConstants.BORDER,
-                        Y + FrameDisplayConstants.BORDER + FontHeight * (i + 1));
+                        new Point(
+                            X + FrameDisplayConstants.BORDER,
+                            Y + FrameDisplayConstants.BORDER + FontHeight * (i + 1)),
+                        gc.ForeColor,
+                        TextFormatFlags.PreserveGraphicsClipping);
                 }
             }
             return TotalWidth + 2 * FrameDisplayConstants.BORDER;

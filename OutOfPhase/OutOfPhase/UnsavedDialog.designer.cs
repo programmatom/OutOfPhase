@@ -49,6 +49,7 @@ namespace OutOfPhase
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.buttonSave = new System.Windows.Forms.Button();
@@ -58,6 +59,7 @@ namespace OutOfPhase
             this.label1 = new System.Windows.Forms.Label();
             this.labelPrompt = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             this.flowLayoutPanel1.SuspendLayout();
             this.flowLayoutPanel2.SuspendLayout();
@@ -161,6 +163,10 @@ namespace OutOfPhase
             this.label2.Size = new System.Drawing.Size(0, 13);
             this.label2.TabIndex = 1;
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // UnsavedDialog
             // 
             this.AcceptButton = this.buttonSave;
@@ -196,5 +202,6 @@ namespace OutOfPhase
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel2;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

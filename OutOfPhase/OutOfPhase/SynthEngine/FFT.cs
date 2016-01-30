@@ -111,10 +111,10 @@ namespace OutOfPhase
                 {
                     // allocate workspace
                     int count = n + 2;
-                    this.workspace = new float[count + SynthParamRec.WORKSPACEALIGN];
+                    this.workspace = new float[count + SynthParamRec.WORKSPACEALIGNBYTES];
                     this.hWorkspace = GCHandle.Alloc(this.workspace, GCHandleType.Pinned);
                     this.offset = 0;
-                    SynthParamRec.Align(this.hWorkspace.AddrOfPinnedObject(), ref this.offset, SynthParamRec.WORKSPACEALIGN, SizeOfFloat);
+                    SynthParamRec.Align(this.hWorkspace.AddrOfPinnedObject(), ref this.offset, SynthParamRec.WORKSPACEALIGNBYTES, SizeOfFloat);
                     Debug.Assert(this.offset + count <= this.workspace.Length);
                 }
             }
@@ -427,10 +427,10 @@ namespace OutOfPhase
                     {
                         // allocate workspace
                         int count = n + 2;
-                        this.workspace = new float[count + SynthParamRec.WORKSPACEALIGN];
+                        this.workspace = new float[count + SynthParamRec.WORKSPACEALIGNBYTES];
                         this.hWorkspace = GCHandle.Alloc(this.workspace, GCHandleType.Pinned);
                         this.offset = 0;
-                        SynthParamRec.Align(this.hWorkspace.AddrOfPinnedObject(), ref this.offset, SynthParamRec.WORKSPACEALIGN, SizeOfFloat);
+                        SynthParamRec.Align(this.hWorkspace.AddrOfPinnedObject(), ref this.offset, SynthParamRec.WORKSPACEALIGNBYTES, SizeOfFloat);
                         Debug.Assert(this.offset + count <= this.workspace.Length);
                     }
 

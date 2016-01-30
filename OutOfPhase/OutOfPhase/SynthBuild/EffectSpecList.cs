@@ -42,6 +42,7 @@ namespace OutOfPhase
             eIdealLowpassEffect,
             eConvolverEffect,
             eUserEffect,
+            ePluggableEffect,
         }
 
         public struct EffectNodeRec
@@ -94,7 +95,8 @@ namespace OutOfPhase
                 || ((GenericSpec is VocoderSpecRec) && (Type == EffectTypes.eVocoderEffect))
                 || ((GenericSpec is IdealLPSpecRec) && (Type == EffectTypes.eIdealLowpassEffect))
                 || ((GenericSpec is ConvolverSpecRec) && (Type == EffectTypes.eConvolverEffect))
-                || ((GenericSpec is UserEffectSpecRec) && (Type == EffectTypes.eUserEffect))))
+                || ((GenericSpec is UserEffectSpecRec) && (Type == EffectTypes.eUserEffect))
+                || ((GenericSpec is PluggableSpec) && (Type == EffectTypes.ePluggableEffect))))
             {
                 Debug.Assert(false);
                 throw new ArgumentException();
@@ -210,6 +212,15 @@ namespace OutOfPhase
             AddGenericToEffectSpecList(EffectSpecList, EffectTypes.eUserEffect, UserEffectSpec, EnabledFlag);
         }
 
+        /* add a user effect to the spec list */
+        public static void AddPluggableEffectToEffectSpecList(
+            EffectSpecListRec EffectSpecList,
+            PluggableSpec PluggableEffectSpec,
+            bool EnabledFlag)
+        {
+            AddGenericToEffectSpecList(EffectSpecList, EffectTypes.ePluggableEffect, PluggableEffectSpec, EnabledFlag);
+        }
+
         /* find out how many effects are in the list */
         public static int GetEffectSpecListLength(EffectSpecListRec EffectSpecList)
         {
@@ -323,6 +334,13 @@ namespace OutOfPhase
             int Index)
         {
             return GetGenericEffectFromEffectSpecList<UserEffectSpecRec>(EffectSpecList, Index, EffectTypes.eUserEffect);
+        }
+
+        public static PluggableSpec GetPluggableEffectFromEffectSpecList(
+            EffectSpecListRec EffectSpecList,
+            int Index)
+        {
+            return GetGenericEffectFromEffectSpecList<PluggableSpec>(EffectSpecList, Index, EffectTypes.ePluggableEffect);
         }
 
         /* find out if specified effect is enabled */

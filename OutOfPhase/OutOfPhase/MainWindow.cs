@@ -60,7 +60,11 @@ namespace OutOfPhase
         // It is used only to close an unused initial empty window when a file is subsequently opened.
         private bool firstWindow;
 
+        private readonly List<TextEditor.FindInFiles> findInFilesWindows = new List<TextEditor.FindInFiles>();
+
         public const string AutosaveFilenameTemplate = "{0}-Autosave-{1}.oop";
+
+        private readonly object playPrefsDataSourceIdentity = new object(); // identity for PlayPrefsDialog registration data source
 
         public MainWindow(Document document, string path)
         {
@@ -69,6 +73,8 @@ namespace OutOfPhase
 
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
+
+            this.textEditComment.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
 
             menuStripManager.SetGlobalHandler(this);
             localMenuHandler = new MainWindowLocalMenuHandler(this);
@@ -130,6 +136,10 @@ namespace OutOfPhase
                 interactionWindow = null;
             }
             CloseMiscForms();
+            for (int i = findInFilesWindows.Count - 1; i >= 0; i--)
+            {
+                findInFilesWindows[i].Close();
+            }
 
             if (autosaveLastPath != null)
             {
@@ -198,6 +208,12 @@ namespace OutOfPhase
         {
             menuStripManager.SetActiveHandler(null);
             base.OnDeactivate(e);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
         }
 
 
@@ -371,6 +387,60 @@ namespace OutOfPhase
 
         //
 
+        public Form CreateAndShowEditor(object dataObject)
+        {
+            Form editor;
+            if (!registration.Activate(dataObject, out editor))
+            {
+                if (dataObject is FunctionObjectRec)
+                {
+                    editor = new FunctionWindow(registration, (FunctionObjectRec)dataObject, document, this);
+                }
+                else if (dataObject is WaveTableObjectRec)
+                {
+                    editor = new WaveTableWindow(registration, (WaveTableObjectRec)dataObject, this);
+                }
+                else if (dataObject is AlgoWaveTableObjectRec)
+                {
+                    editor = new AlgoWaveTableWindow(registration, (AlgoWaveTableObjectRec)dataObject, this);
+                }
+                else if (dataObject is SampleObjectRec)
+                {
+                    editor = new SampleWindow(registration, (SampleObjectRec)dataObject, this);
+                }
+                else if (dataObject is AlgoSampObjectRec)
+                {
+                    editor = new AlgoSampWindow(registration, (AlgoSampObjectRec)dataObject, this);
+                }
+                else if (dataObject is InstrObjectRec)
+                {
+                    editor = new InstrumentWindow(registration, (InstrObjectRec)dataObject, this);
+                }
+                else if (dataObject is ScoreEffectsRec)
+                {
+                    editor = new ScoreEffectWindow(registration, (ScoreEffectsRec)dataObject, this);
+                }
+                else if (dataObject is SectionObjectRec)
+                {
+                    editor = new SectionWindow(registration, (SectionObjectRec)dataObject, this);
+                }
+                else if (dataObject is SequencerRec)
+                {
+                    editor = new SequencerConfigWindow(registration, (SequencerRec)dataObject, this);
+                }
+                else if (dataObject is TrackObjectRec)
+                {
+                    editor = new TrackWindow(registration, (TrackObjectRec)dataObject, this);
+                }
+                else
+                {
+                    throw new ArgumentException();
+                }
+                editor.Show();
+            }
+            return editor;
+        }
+
         // Requires that all active controls have been committed by calling .Validate() on them. That is the
         // responsibility of the window managing the UI that invokes this method, since this method can't possibly
         // know about all the possible controls wherever they may be.
@@ -389,40 +459,13 @@ namespace OutOfPhase
                     Form editor;
                     if (!registration.Activate(sender, out editor))
                     {
-                        if (sender is FunctionObjectRec)
-                        {
-                            editor = new FunctionWindow(registration, (FunctionObjectRec)sender, document, this);
-                        }
-                        else if (sender is AlgoWaveTableObjectRec)
-                        {
-                            editor = new AlgoWaveTableWindow(registration, (AlgoWaveTableObjectRec)sender, this);
-                        }
-                        else if (sender is AlgoSampObjectRec)
-                        {
-                            editor = new AlgoSampWindow(registration, (AlgoSampObjectRec)sender, this);
-                        }
-                        else if (sender is InstrObjectRec)
-                        {
-                            editor = new InstrumentWindow(registration, (InstrObjectRec)sender, this);
-                        }
-                        else if (sender is ScoreEffectsRec)
-                        {
-                            editor = new ScoreEffectWindow(registration, (ScoreEffectsRec)sender, this);
-                        }
-                        else if (sender is SectionObjectRec)
-                        {
-                            editor = new SectionWindow(registration, (SectionObjectRec)sender, this);
-                        }
-                        else if (sender is SequencerRec)
-                        {
-                            editor = new SequencerConfigWindow(registration, (SequencerRec)sender, this);
-                        }
-                        else
-                        {
-                            Debug.Assert(false);
-                            throw new InvalidOperationException();
-                        }
-                        editor.Show();
+                        editor = CreateAndShowEditor(sender);
+
+                        // This is a bit of a hack for HighlightLine() below. Most editors set the IP to the beginning of the
+                        // main body edit field in the OnShow() handler. This is going to happen during event processing of
+                        // MessageBox.Show() below, which blows away the result of HighlightLine(). Unless we do this to get
+                        // that event dealt with first.
+                        Application.DoEvents();
                     }
 
                     ((IHighlightLine)editor).HighlightLine(errorInfo.LineNumber);
@@ -1063,6 +1106,8 @@ namespace OutOfPhase
             menuStrip.importRawSampleToolStripMenuItem.Enabled = true;
             menuStrip.importMIDIScoreToolStripMenuItem.Enabled = true;
 
+            menuStrip.findEverywhereToolStripMenuItem.Enabled = true;
+
             menuStrip.buildAllToolStripMenuItem.Enabled = true;
             menuStrip.unbuildAllToolStripMenuItem.Enabled = true;
             menuStrip.newSampleToolStripMenuItem.Enabled = true;
@@ -1151,9 +1196,9 @@ namespace OutOfPhase
             }
             else if (menuItem == menuStrip.playToolStripMenuItem)
             {
-                using (PlayPrefsDialog dialog = new PlayPrefsDialog(this, document))
+                if (!registration.Activate(playPrefsDataSourceIdentity))
                 {
-                    dialog.ShowDialog();
+                    new PlayPrefsDialog(registration, playPrefsDataSourceIdentity, this, document).Show();
                 }
                 return true;
             }
@@ -1211,6 +1256,22 @@ namespace OutOfPhase
             else if (menuItem == menuStrip.importMIDIScoreToolStripMenuItem)
             {
                 MIDIImport.ImportMIDIFile();
+                return true;
+            }
+
+
+            else if (menuItem == menuStrip.findEverywhereToolStripMenuItem)
+            {
+                TextEditor.FindInFiles finder = new TextEditor.FindInFiles(
+                    new FindInFilesApplication(this),
+                    false/*showPathAndExtension*/,
+                    String.Format("{0} - Find Everywhere", this.DisplayName));
+                finder.Show();
+                findInFilesWindows.Add(finder);
+                finder.FormClosed += delegate (object sender, FormClosedEventArgs e)
+                {
+                    findInFilesWindows.Remove(finder);
+                };
                 return true;
             }
 
@@ -1322,9 +1383,9 @@ namespace OutOfPhase
             }
             else if (menuItem == menuStrip.sectionEffectsToolStripMenuItem)
             {
-                using (SectionEditDialog dialog = new SectionEditDialog(registration, document, this))
+                if (!registration.Activate(document.SectionList))
                 {
-                    dialog.ShowDialog();
+                    new SectionEditDialog(registration, document, this).Show();
                 }
                 return true;
             }
@@ -1560,6 +1621,8 @@ namespace OutOfPhase
 
         private void document_OnSetModified(object sender, EventArgs e)
         {
+            firstWindow = false;
+
             if (!autosaveNeeded)
             {
                 lastAutosave = DateTime.UtcNow;

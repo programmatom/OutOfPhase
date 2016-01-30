@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
@@ -31,12 +32,16 @@ namespace OutOfPhase
 {
     public partial class PlayPrefsDialog : Form
     {
-        private MainWindow mainWindow;
-        private Document document;
-        private Source source;
+        private readonly Registration registration;
+        private readonly object identity;
+        private readonly MainWindow mainWindow;
+        private readonly Document document;
+        private readonly Source source;
 
-        public PlayPrefsDialog(MainWindow mainWindow, Document document)
+        public PlayPrefsDialog(Registration registration, object identity, MainWindow mainWindow, Document document)
         {
+            this.registration = registration;
+            this.identity = identity;
             this.mainWindow = mainWindow;
             this.document = document;
 
@@ -56,7 +61,7 @@ namespace OutOfPhase
             source = new Source(document);
             sourceBindingSource.Add(source);
 
-            listBoxIncludedTracks.SetUnderlying(source.IncludedTracks, delegate(object obj) { return ((Source.TrackInclusionRec)obj).Name; });
+            listBoxIncludedTracks.SetUnderlying(source.IncludedTracks, delegate (object obj) { return ((Source.TrackInclusionRec)obj).Name; });
             for (int i = 0; i < source.IncludedTracks.Count; i++)
             {
                 if (source.IncludedTracks[i].Included)
@@ -64,11 +69,26 @@ namespace OutOfPhase
                     listBoxIncludedTracks.SelectItem(i, false/*clear other selections*/);
                 }
             }
-            listBoxIncludedTracks.SelectionChanged += new EventHandler(delegate(object sender, EventArgs e) { PropagateTrackInclusion(); });
+            listBoxIncludedTracks.SelectionChanged += new EventHandler(delegate (object sender, EventArgs e) { PropagateTrackInclusion(); });
+            source.OnIncludedTracksAdded += Source_OnIncludedTracksAdded;
 
-            checkBoxDeterministic.CheckedChanged += new EventHandler(delegate(object sender, EventArgs e) { textBoxSeed.Enabled = checkBoxDeterministic.Checked; });
+            checkBoxDeterministic.CheckedChanged += new EventHandler(delegate (object sender, EventArgs e) { textBoxSeed.Enabled = checkBoxDeterministic.Checked; });
 
             this.Text = String.Format("{0} - {1}", mainWindow.DisplayName, "Play");
+
+            registration.Register(identity, this);
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            registration.Unregister(identity, this);
+            base.OnFormClosed(e);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
         }
 
         [Bindable(true)]
@@ -164,6 +184,17 @@ namespace OutOfPhase
                 {
                     this.Track = Track;
                     this._Included = Track.IncludeThisTrackInFinalPlayback;
+                    this.Track.PropertyChanged += Track_PropertyChanged;
+                }
+
+                private void Track_PropertyChanged(object sender, PropertyChangedEventArgs e)
+                {
+                    Changed(e.PropertyName);
+                }
+
+                public new void Changed(string propertyName)
+                {
+                    base.Changed(propertyName);
                 }
             }
 
@@ -173,8 +204,14 @@ namespace OutOfPhase
             public BindingList<TrackInclusionRec> IncludedTracks { get { return _IncludedTracks; } }
 
 
+            private readonly Document _document;
+
+            public event ListChangedEventHandler OnIncludedTracksAdded;
+
             public Source(Document document)
             {
+                _document = document;
+
                 _SamplingRate = document.SamplingRate;
                 _EnvelopeUpdateRate = document.EnvelopeUpdateRate;
                 _Oversampling = document.Oversampling;
@@ -192,6 +229,8 @@ namespace OutOfPhase
                 {
                     IncludedTracks.Add(new TrackInclusionRec(Track, this));
                 }
+
+                document.TrackList.ListChanged += TrackList_ListChanged;
             }
 
             public void Save(Document document)
@@ -217,8 +256,64 @@ namespace OutOfPhase
                     }
                 }
             }
+
+            private void TrackList_ListChanged(object sender, ListChangedEventArgs e)
+            {
+                switch (e.ListChangedType)
+                {
+                    default:
+                        Debug.Assert(false);
+                        break;
+                    case ListChangedType.ItemAdded:
+                        _IncludedTracks.Insert(e.NewIndex, new TrackInclusionRec(_document.TrackList[e.NewIndex], this));
+                        if (OnIncludedTracksAdded != null)
+                        {
+                            OnIncludedTracksAdded.Invoke(_IncludedTracks, e);
+                        }
+                        break;
+                    case ListChangedType.ItemDeleted:
+                        _IncludedTracks.RemoveAt(e.NewIndex);
+                        break;
+                    case ListChangedType.ItemChanged:
+                        _IncludedTracks[e.NewIndex].Changed(e.PropertyDescriptor.Name);
+                        break;
+                    case ListChangedType.Reset:
+                    case ListChangedType.PropertyDescriptorChanged:
+                    case ListChangedType.PropertyDescriptorAdded:
+                    case ListChangedType.PropertyDescriptorDeleted:
+                    case ListChangedType.ItemMoved:
+                        Dictionary<TrackObjectRec, TrackInclusionRec> old = new Dictionary<TrackObjectRec, TrackInclusionRec>();
+                        foreach (TrackInclusionRec item in _IncludedTracks)
+                        {
+                            old.Add(item.Track, item);
+                        }
+                        _IncludedTracks.Clear();
+                        foreach (TrackObjectRec track in _document.TrackList)
+                        {
+                            if (old.ContainsKey(track))
+                            {
+                                _IncludedTracks.Add(old[track]);
+                            }
+                            else
+                            {
+                                _IncludedTracks.Add(new TrackInclusionRec(track, this));
+                            }
+                        }
+                        break;
+                }
+            }
         }
 
+        // source --> UI
+        private void Source_OnIncludedTracksAdded(object sender, ListChangedEventArgs e)
+        {
+            if (source.IncludedTracks[e.NewIndex].Track.IncludeThisTrackInFinalPlayback)
+            {
+                listBoxIncludedTracks.SelectItem(e.NewIndex, false/*clearOtherSelections*/);
+            }
+        }
+
+        // UI --> source
         private void PropagateTrackInclusion()
         {
             int[] selected = listBoxIncludedTracks.SelectedIndices;
@@ -268,8 +363,8 @@ namespace OutOfPhase
 #if true // prevents "Add New Data Source..." from working
             SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 mainWindow.DisplayName,
-                OutputDeviceDestinationHandler.OutputDeviceGetDestination,
-                OutputDeviceDestinationHandler.CreateOutputDeviceDestinationHandler,
+                OutputDeviceEnumerator.OutputDeviceGetDestination,
+                OutputDeviceEnumerator.CreateOutputDeviceDestinationHandler,
                 new OutputDeviceArguments(source.BufferDuration),
                 SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.SynthesizerMainLoop,
                 new SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>(

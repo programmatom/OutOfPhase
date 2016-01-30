@@ -51,15 +51,16 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
-            this.label8 = new System.Windows.Forms.Label();
-            this.label9 = new System.Windows.Forms.Label();
+            this.label2 = new OutOfPhase.MyLabel();
+            this.label3 = new OutOfPhase.MyLabel();
+            this.label4 = new OutOfPhase.MyLabel();
+            this.label5 = new OutOfPhase.MyLabel();
+            this.label6 = new OutOfPhase.MyLabel();
+            this.label7 = new OutOfPhase.MyLabel();
+            this.label8 = new OutOfPhase.MyLabel();
+            this.label9 = new OutOfPhase.MyLabel();
             this.textBoxAccent1 = new System.Windows.Forms.TextBox();
+            this.noteNoteObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.textBoxAccent2 = new System.Windows.Forms.TextBox();
             this.textBoxAccent3 = new System.Windows.Forms.TextBox();
             this.textBoxAccent4 = new System.Windows.Forms.TextBox();
@@ -67,67 +68,67 @@ namespace OutOfPhase
             this.textBoxAccent6 = new System.Windows.Forms.TextBox();
             this.textBoxAccent7 = new System.Windows.Forms.TextBox();
             this.textBoxAccent8 = new System.Windows.Forms.TextBox();
-            this.label10 = new System.Windows.Forms.Label();
+            this.label10 = new OutOfPhase.MyLabel();
             this.textBoxRelease1 = new System.Windows.Forms.TextBox();
-            this.label11 = new System.Windows.Forms.Label();
+            this.label11 = new OutOfPhase.MyLabel();
             this.comboBoxRelease1Origin = new System.Windows.Forms.ComboBox();
-            this.label1 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.buttonCancel = new System.Windows.Forms.Button();
-            this.label12 = new System.Windows.Forms.Label();
+            this.label12 = new OutOfPhase.MyLabel();
             this.buttonOK = new System.Windows.Forms.Button();
-            this.label13 = new System.Windows.Forms.Label();
-            this.label14 = new System.Windows.Forms.Label();
+            this.label13 = new OutOfPhase.MyLabel();
+            this.label14 = new OutOfPhase.MyLabel();
             this.textBox1 = new System.Windows.Forms.TextBox();
             this.comboBoxRelease2Origin = new System.Windows.Forms.ComboBox();
-            this.label15 = new System.Windows.Forms.Label();
+            this.label15 = new OutOfPhase.MyLabel();
             this.comboBoxRelease3Origin = new System.Windows.Forms.ComboBox();
-            this.label16 = new System.Windows.Forms.Label();
-            this.label17 = new System.Windows.Forms.Label();
+            this.label16 = new OutOfPhase.MyLabel();
+            this.label17 = new OutOfPhase.MyLabel();
             this.textBoxPitchDisplacementStart = new System.Windows.Forms.TextBox();
             this.comboBoxPitchDisplacementOrigin = new System.Windows.Forms.ComboBox();
-            this.label18 = new System.Windows.Forms.Label();
-            this.label19 = new System.Windows.Forms.Label();
+            this.label18 = new OutOfPhase.MyLabel();
+            this.label19 = new OutOfPhase.MyLabel();
             this.textBoxPitchDisplacementDepthAdjust = new System.Windows.Forms.TextBox();
             this.textBoxPitchDisplacementRateAdjust = new System.Windows.Forms.TextBox();
-            this.label20 = new System.Windows.Forms.Label();
+            this.label20 = new OutOfPhase.MyLabel();
             this.textBoxPortamento = new System.Windows.Forms.TextBox();
             this.checkBoxPortamentoLeadsBeat = new System.Windows.Forms.CheckBox();
             this.comboBoxPortamentoUnits = new System.Windows.Forms.ComboBox();
-            this.label21 = new System.Windows.Forms.Label();
+            this.label21 = new OutOfPhase.MyLabel();
             this.textBoxDurationAdjust = new System.Windows.Forms.TextBox();
             this.comboBoxDurationAdjustMode = new System.Windows.Forms.ComboBox();
-            this.label22 = new System.Windows.Forms.Label();
-            this.label23 = new System.Windows.Forms.Label();
+            this.label22 = new OutOfPhase.MyLabel();
+            this.label23 = new OutOfPhase.MyLabel();
             this.textBoxNoteStartAdjust = new System.Windows.Forms.TextBox();
             this.textBoxHurryUpFactor = new System.Windows.Forms.TextBox();
-            this.label24 = new System.Windows.Forms.Label();
-            this.label25 = new System.Windows.Forms.Label();
+            this.label24 = new OutOfPhase.MyLabel();
+            this.label25 = new OutOfPhase.MyLabel();
             this.checkBoxRetriggerEnvelopesOnTie = new System.Windows.Forms.CheckBox();
-            this.label26 = new System.Windows.Forms.Label();
+            this.label26 = new OutOfPhase.MyLabel();
             this.checkBoxRest = new System.Windows.Forms.CheckBox();
-            this.label29 = new System.Windows.Forms.Label();
-            this.label32 = new System.Windows.Forms.Label();
-            this.label33 = new System.Windows.Forms.Label();
-            this.label34 = new System.Windows.Forms.Label();
+            this.label29 = new OutOfPhase.MyLabel();
+            this.label32 = new OutOfPhase.MyLabel();
+            this.label33 = new OutOfPhase.MyLabel();
+            this.label34 = new OutOfPhase.MyLabel();
             this.textBoxLoudnessAdjust = new System.Windows.Forms.TextBox();
             this.textBoxStereoPosition = new System.Windows.Forms.TextBox();
             this.textBoxSurroundPosition = new System.Windows.Forms.TextBox();
-            this.label31 = new System.Windows.Forms.Label();
+            this.label31 = new OutOfPhase.MyLabel();
             this.comboBoxDetuningMode = new System.Windows.Forms.ComboBox();
-            this.label28 = new System.Windows.Forms.Label();
+            this.label28 = new OutOfPhase.MyLabel();
             this.textBoxDetuning = new System.Windows.Forms.TextBox();
-            this.label27 = new System.Windows.Forms.Label();
+            this.label27 = new OutOfPhase.MyLabel();
             this.textBoxMultisamplePitchAsIf = new System.Windows.Forms.TextBox();
             this.textBoxPitch = new System.Windows.Forms.TextBox();
-            this.label35 = new System.Windows.Forms.Label();
-            this.label30 = new System.Windows.Forms.Label();
-            this.label36 = new System.Windows.Forms.Label();
+            this.label35 = new OutOfPhase.MyLabel();
+            this.label30 = new OutOfPhase.MyLabel();
+            this.label36 = new OutOfPhase.MyLabel();
             this.textBoxDuration = new System.Windows.Forms.TextBox();
-            this.noteNoteObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
-            this.flowLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.noteNoteObjectRecBindingSource)).BeginInit();
+            this.flowLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -322,7 +323,11 @@ namespace OutOfPhase
             this.textBoxAccent1.Location = new System.Drawing.Point(388, 26);
             this.textBoxAccent1.Name = "textBoxAccent1";
             this.textBoxAccent1.Size = new System.Drawing.Size(94, 20);
-            this.textBoxAccent1.TabIndex = 9;
+            this.textBoxAccent1.TabIndex = 13;
+            // 
+            // noteNoteObjectRecBindingSource
+            // 
+            this.noteNoteObjectRecBindingSource.DataSource = typeof(OutOfPhase.NoteNoteObjectRec);
             // 
             // textBoxAccent2
             // 
@@ -331,7 +336,7 @@ namespace OutOfPhase
             this.textBoxAccent2.Location = new System.Drawing.Point(388, 52);
             this.textBoxAccent2.Name = "textBoxAccent2";
             this.textBoxAccent2.Size = new System.Drawing.Size(94, 20);
-            this.textBoxAccent2.TabIndex = 10;
+            this.textBoxAccent2.TabIndex = 14;
             // 
             // textBoxAccent3
             // 
@@ -340,7 +345,7 @@ namespace OutOfPhase
             this.textBoxAccent3.Location = new System.Drawing.Point(388, 79);
             this.textBoxAccent3.Name = "textBoxAccent3";
             this.textBoxAccent3.Size = new System.Drawing.Size(94, 20);
-            this.textBoxAccent3.TabIndex = 11;
+            this.textBoxAccent3.TabIndex = 15;
             // 
             // textBoxAccent4
             // 
@@ -349,7 +354,7 @@ namespace OutOfPhase
             this.textBoxAccent4.Location = new System.Drawing.Point(388, 106);
             this.textBoxAccent4.Name = "textBoxAccent4";
             this.textBoxAccent4.Size = new System.Drawing.Size(94, 20);
-            this.textBoxAccent4.TabIndex = 12;
+            this.textBoxAccent4.TabIndex = 16;
             // 
             // textBoxAccent5
             // 
@@ -358,7 +363,7 @@ namespace OutOfPhase
             this.textBoxAccent5.Location = new System.Drawing.Point(388, 133);
             this.textBoxAccent5.Name = "textBoxAccent5";
             this.textBoxAccent5.Size = new System.Drawing.Size(94, 20);
-            this.textBoxAccent5.TabIndex = 13;
+            this.textBoxAccent5.TabIndex = 17;
             // 
             // textBoxAccent6
             // 
@@ -367,7 +372,7 @@ namespace OutOfPhase
             this.textBoxAccent6.Location = new System.Drawing.Point(388, 160);
             this.textBoxAccent6.Name = "textBoxAccent6";
             this.textBoxAccent6.Size = new System.Drawing.Size(94, 20);
-            this.textBoxAccent6.TabIndex = 14;
+            this.textBoxAccent6.TabIndex = 18;
             // 
             // textBoxAccent7
             // 
@@ -376,7 +381,7 @@ namespace OutOfPhase
             this.textBoxAccent7.Location = new System.Drawing.Point(388, 186);
             this.textBoxAccent7.Name = "textBoxAccent7";
             this.textBoxAccent7.Size = new System.Drawing.Size(94, 20);
-            this.textBoxAccent7.TabIndex = 15;
+            this.textBoxAccent7.TabIndex = 19;
             // 
             // textBoxAccent8
             // 
@@ -385,7 +390,7 @@ namespace OutOfPhase
             this.textBoxAccent8.Location = new System.Drawing.Point(388, 213);
             this.textBoxAccent8.Name = "textBoxAccent8";
             this.textBoxAccent8.Size = new System.Drawing.Size(94, 20);
-            this.textBoxAccent8.TabIndex = 16;
+            this.textBoxAccent8.TabIndex = 20;
             // 
             // label10
             // 
@@ -404,7 +409,7 @@ namespace OutOfPhase
             this.textBoxRelease1.Location = new System.Drawing.Point(183, 26);
             this.textBoxRelease1.Name = "textBoxRelease1";
             this.textBoxRelease1.Size = new System.Drawing.Size(94, 20);
-            this.textBoxRelease1.TabIndex = 18;
+            this.textBoxRelease1.TabIndex = 1;
             // 
             // label11
             // 
@@ -425,7 +430,7 @@ namespace OutOfPhase
             this.comboBoxRelease1Origin.Location = new System.Drawing.Point(183, 52);
             this.comboBoxRelease1Origin.Name = "comboBoxRelease1Origin";
             this.comboBoxRelease1Origin.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxRelease1Origin.TabIndex = 20;
+            this.comboBoxRelease1Origin.TabIndex = 2;
             // 
             // label1
             // 
@@ -450,7 +455,7 @@ namespace OutOfPhase
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Padding = new System.Windows.Forms.Padding(0, 0, 50, 0);
             this.flowLayoutPanel1.Size = new System.Drawing.Size(318, 29);
-            this.flowLayoutPanel1.TabIndex = 21;
+            this.flowLayoutPanel1.TabIndex = 35;
             // 
             // buttonCancel
             // 
@@ -459,7 +464,7 @@ namespace OutOfPhase
             this.buttonCancel.Location = new System.Drawing.Point(3, 3);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(100, 23);
-            this.buttonCancel.TabIndex = 0;
+            this.buttonCancel.TabIndex = 37;
             this.buttonCancel.Text = "Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
             // 
@@ -468,14 +473,14 @@ namespace OutOfPhase
             this.label12.Location = new System.Drawing.Point(109, 0);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(50, 23);
-            this.label12.TabIndex = 2;
+            this.label12.TabIndex = 35;
             // 
             // buttonOK
             // 
             this.buttonOK.Location = new System.Drawing.Point(165, 3);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(100, 23);
-            this.buttonOK.TabIndex = 1;
+            this.buttonOK.TabIndex = 36;
             this.buttonOK.Text = "OK";
             this.buttonOK.UseVisualStyleBackColor = true;
             this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
@@ -507,7 +512,7 @@ namespace OutOfPhase
             this.textBox1.Location = new System.Drawing.Point(183, 79);
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(94, 20);
-            this.textBox1.TabIndex = 24;
+            this.textBox1.TabIndex = 3;
             // 
             // comboBoxRelease2Origin
             // 
@@ -518,7 +523,7 @@ namespace OutOfPhase
             this.comboBoxRelease2Origin.Location = new System.Drawing.Point(183, 106);
             this.comboBoxRelease2Origin.Name = "comboBoxRelease2Origin";
             this.comboBoxRelease2Origin.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxRelease2Origin.TabIndex = 25;
+            this.comboBoxRelease2Origin.TabIndex = 4;
             // 
             // label15
             // 
@@ -539,7 +544,7 @@ namespace OutOfPhase
             this.comboBoxRelease3Origin.Location = new System.Drawing.Point(183, 133);
             this.comboBoxRelease3Origin.Name = "comboBoxRelease3Origin";
             this.comboBoxRelease3Origin.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxRelease3Origin.TabIndex = 28;
+            this.comboBoxRelease3Origin.TabIndex = 5;
             // 
             // label16
             // 
@@ -568,7 +573,7 @@ namespace OutOfPhase
             this.textBoxPitchDisplacementStart.Location = new System.Drawing.Point(183, 160);
             this.textBoxPitchDisplacementStart.Name = "textBoxPitchDisplacementStart";
             this.textBoxPitchDisplacementStart.Size = new System.Drawing.Size(94, 20);
-            this.textBoxPitchDisplacementStart.TabIndex = 32;
+            this.textBoxPitchDisplacementStart.TabIndex = 6;
             // 
             // comboBoxPitchDisplacementOrigin
             // 
@@ -579,7 +584,7 @@ namespace OutOfPhase
             this.comboBoxPitchDisplacementOrigin.Location = new System.Drawing.Point(183, 186);
             this.comboBoxPitchDisplacementOrigin.Name = "comboBoxPitchDisplacementOrigin";
             this.comboBoxPitchDisplacementOrigin.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxPitchDisplacementOrigin.TabIndex = 33;
+            this.comboBoxPitchDisplacementOrigin.TabIndex = 7;
             // 
             // label18
             // 
@@ -608,7 +613,7 @@ namespace OutOfPhase
             this.textBoxPitchDisplacementDepthAdjust.Location = new System.Drawing.Point(183, 213);
             this.textBoxPitchDisplacementDepthAdjust.Name = "textBoxPitchDisplacementDepthAdjust";
             this.textBoxPitchDisplacementDepthAdjust.Size = new System.Drawing.Size(94, 20);
-            this.textBoxPitchDisplacementDepthAdjust.TabIndex = 36;
+            this.textBoxPitchDisplacementDepthAdjust.TabIndex = 8;
             // 
             // textBoxPitchDisplacementRateAdjust
             // 
@@ -617,7 +622,7 @@ namespace OutOfPhase
             this.textBoxPitchDisplacementRateAdjust.Location = new System.Drawing.Point(183, 239);
             this.textBoxPitchDisplacementRateAdjust.Name = "textBoxPitchDisplacementRateAdjust";
             this.textBoxPitchDisplacementRateAdjust.Size = new System.Drawing.Size(94, 20);
-            this.textBoxPitchDisplacementRateAdjust.TabIndex = 37;
+            this.textBoxPitchDisplacementRateAdjust.TabIndex = 9;
             // 
             // label20
             // 
@@ -636,7 +641,7 @@ namespace OutOfPhase
             this.textBoxPortamento.Location = new System.Drawing.Point(658, 26);
             this.textBoxPortamento.Name = "textBoxPortamento";
             this.textBoxPortamento.Size = new System.Drawing.Size(94, 20);
-            this.textBoxPortamento.TabIndex = 40;
+            this.textBoxPortamento.TabIndex = 24;
             // 
             // checkBoxPortamentoLeadsBeat
             // 
@@ -646,7 +651,7 @@ namespace OutOfPhase
             this.checkBoxPortamentoLeadsBeat.Location = new System.Drawing.Point(658, 55);
             this.checkBoxPortamentoLeadsBeat.Name = "checkBoxPortamentoLeadsBeat";
             this.checkBoxPortamentoLeadsBeat.Size = new System.Drawing.Size(94, 14);
-            this.checkBoxPortamentoLeadsBeat.TabIndex = 41;
+            this.checkBoxPortamentoLeadsBeat.TabIndex = 25;
             this.checkBoxPortamentoLeadsBeat.UseVisualStyleBackColor = true;
             // 
             // comboBoxPortamentoUnits
@@ -658,7 +663,7 @@ namespace OutOfPhase
             this.comboBoxPortamentoUnits.Location = new System.Drawing.Point(658, 79);
             this.comboBoxPortamentoUnits.Name = "comboBoxPortamentoUnits";
             this.comboBoxPortamentoUnits.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxPortamentoUnits.TabIndex = 42;
+            this.comboBoxPortamentoUnits.TabIndex = 26;
             // 
             // label21
             // 
@@ -677,7 +682,7 @@ namespace OutOfPhase
             this.textBoxDurationAdjust.Location = new System.Drawing.Point(658, 106);
             this.textBoxDurationAdjust.Name = "textBoxDurationAdjust";
             this.textBoxDurationAdjust.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDurationAdjust.TabIndex = 44;
+            this.textBoxDurationAdjust.TabIndex = 27;
             // 
             // comboBoxDurationAdjustMode
             // 
@@ -688,7 +693,7 @@ namespace OutOfPhase
             this.comboBoxDurationAdjustMode.Location = new System.Drawing.Point(658, 133);
             this.comboBoxDurationAdjustMode.Name = "comboBoxDurationAdjustMode";
             this.comboBoxDurationAdjustMode.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxDurationAdjustMode.TabIndex = 45;
+            this.comboBoxDurationAdjustMode.TabIndex = 28;
             // 
             // label22
             // 
@@ -717,7 +722,7 @@ namespace OutOfPhase
             this.textBoxNoteStartAdjust.Location = new System.Drawing.Point(658, 160);
             this.textBoxNoteStartAdjust.Name = "textBoxNoteStartAdjust";
             this.textBoxNoteStartAdjust.Size = new System.Drawing.Size(94, 20);
-            this.textBoxNoteStartAdjust.TabIndex = 48;
+            this.textBoxNoteStartAdjust.TabIndex = 29;
             // 
             // textBoxHurryUpFactor
             // 
@@ -726,7 +731,7 @@ namespace OutOfPhase
             this.textBoxHurryUpFactor.Location = new System.Drawing.Point(658, 186);
             this.textBoxHurryUpFactor.Name = "textBoxHurryUpFactor";
             this.textBoxHurryUpFactor.Size = new System.Drawing.Size(94, 20);
-            this.textBoxHurryUpFactor.TabIndex = 49;
+            this.textBoxHurryUpFactor.TabIndex = 30;
             // 
             // label24
             // 
@@ -756,7 +761,7 @@ namespace OutOfPhase
             this.checkBoxRetriggerEnvelopesOnTie.Location = new System.Drawing.Point(183, 268);
             this.checkBoxRetriggerEnvelopesOnTie.Name = "checkBoxRetriggerEnvelopesOnTie";
             this.checkBoxRetriggerEnvelopesOnTie.Size = new System.Drawing.Size(94, 14);
-            this.checkBoxRetriggerEnvelopesOnTie.TabIndex = 52;
+            this.checkBoxRetriggerEnvelopesOnTie.TabIndex = 10;
             this.checkBoxRetriggerEnvelopesOnTie.UseVisualStyleBackColor = true;
             // 
             // label26
@@ -777,7 +782,7 @@ namespace OutOfPhase
             this.checkBoxRest.Location = new System.Drawing.Point(183, 294);
             this.checkBoxRest.Name = "checkBoxRest";
             this.checkBoxRest.Size = new System.Drawing.Size(94, 14);
-            this.checkBoxRest.TabIndex = 54;
+            this.checkBoxRest.TabIndex = 11;
             this.checkBoxRest.UseVisualStyleBackColor = true;
             // 
             // label29
@@ -827,7 +832,7 @@ namespace OutOfPhase
             this.textBoxLoudnessAdjust.Location = new System.Drawing.Point(388, 239);
             this.textBoxLoudnessAdjust.Name = "textBoxLoudnessAdjust";
             this.textBoxLoudnessAdjust.Size = new System.Drawing.Size(94, 20);
-            this.textBoxLoudnessAdjust.TabIndex = 66;
+            this.textBoxLoudnessAdjust.TabIndex = 21;
             // 
             // textBoxStereoPosition
             // 
@@ -836,7 +841,7 @@ namespace OutOfPhase
             this.textBoxStereoPosition.Location = new System.Drawing.Point(388, 265);
             this.textBoxStereoPosition.Name = "textBoxStereoPosition";
             this.textBoxStereoPosition.Size = new System.Drawing.Size(94, 20);
-            this.textBoxStereoPosition.TabIndex = 67;
+            this.textBoxStereoPosition.TabIndex = 22;
             // 
             // textBoxSurroundPosition
             // 
@@ -845,7 +850,7 @@ namespace OutOfPhase
             this.textBoxSurroundPosition.Location = new System.Drawing.Point(388, 291);
             this.textBoxSurroundPosition.Name = "textBoxSurroundPosition";
             this.textBoxSurroundPosition.Size = new System.Drawing.Size(94, 20);
-            this.textBoxSurroundPosition.TabIndex = 68;
+            this.textBoxSurroundPosition.TabIndex = 23;
             // 
             // label31
             // 
@@ -866,7 +871,7 @@ namespace OutOfPhase
             this.comboBoxDetuningMode.Location = new System.Drawing.Point(658, 291);
             this.comboBoxDetuningMode.Name = "comboBoxDetuningMode";
             this.comboBoxDetuningMode.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxDetuningMode.TabIndex = 59;
+            this.comboBoxDetuningMode.TabIndex = 34;
             // 
             // label28
             // 
@@ -885,7 +890,7 @@ namespace OutOfPhase
             this.textBoxDetuning.Location = new System.Drawing.Point(658, 265);
             this.textBoxDetuning.Name = "textBoxDetuning";
             this.textBoxDetuning.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDetuning.TabIndex = 58;
+            this.textBoxDetuning.TabIndex = 33;
             // 
             // label27
             // 
@@ -904,7 +909,7 @@ namespace OutOfPhase
             this.textBoxMultisamplePitchAsIf.Location = new System.Drawing.Point(658, 239);
             this.textBoxMultisamplePitchAsIf.Name = "textBoxMultisamplePitchAsIf";
             this.textBoxMultisamplePitchAsIf.Size = new System.Drawing.Size(94, 20);
-            this.textBoxMultisamplePitchAsIf.TabIndex = 56;
+            this.textBoxMultisamplePitchAsIf.TabIndex = 32;
             // 
             // textBoxPitch
             // 
@@ -913,7 +918,7 @@ namespace OutOfPhase
             this.textBoxPitch.Location = new System.Drawing.Point(658, 213);
             this.textBoxPitch.Name = "textBoxPitch";
             this.textBoxPitch.Size = new System.Drawing.Size(94, 20);
-            this.textBoxPitch.TabIndex = 69;
+            this.textBoxPitch.TabIndex = 31;
             // 
             // label35
             // 
@@ -952,11 +957,11 @@ namespace OutOfPhase
             this.textBoxDuration.Location = new System.Drawing.Point(183, 318);
             this.textBoxDuration.Name = "textBoxDuration";
             this.textBoxDuration.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDuration.TabIndex = 72;
+            this.textBoxDuration.TabIndex = 12;
             // 
-            // noteNoteObjectRecBindingSource
+            // dpiChangeHelper
             // 
-            this.noteNoteObjectRecBindingSource.DataSource = typeof(OutOfPhase.NoteNoteObjectRec);
+            this.dpiChangeHelper.Form = this;
             // 
             // NoteAttributeDialog
             // 
@@ -974,8 +979,8 @@ namespace OutOfPhase
             this.Text = "Edit Note Attributes";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
-            this.flowLayoutPanel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.noteNoteObjectRecBindingSource)).EndInit();
+            this.flowLayoutPanel1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -983,15 +988,15 @@ namespace OutOfPhase
         #endregion
 
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.Label label9;
+        private MyLabel label1;
+        private MyLabel label2;
+        private MyLabel label3;
+        private MyLabel label4;
+        private MyLabel label5;
+        private MyLabel label6;
+        private MyLabel label7;
+        private MyLabel label8;
+        private MyLabel label9;
         private System.Windows.Forms.TextBox textBoxAccent1;
         private System.Windows.Forms.TextBox textBoxAccent2;
         private System.Windows.Forms.TextBox textBoxAccent3;
@@ -1000,62 +1005,63 @@ namespace OutOfPhase
         private System.Windows.Forms.TextBox textBoxAccent6;
         private System.Windows.Forms.TextBox textBoxAccent7;
         private System.Windows.Forms.TextBox textBoxAccent8;
-        private System.Windows.Forms.Label label10;
+        private MyLabel label10;
         private System.Windows.Forms.TextBox textBoxRelease1;
-        private System.Windows.Forms.Label label11;
+        private MyLabel label11;
         private System.Windows.Forms.ComboBox comboBoxRelease1Origin;
         private System.Windows.Forms.BindingSource noteNoteObjectRecBindingSource;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button buttonCancel;
-        private System.Windows.Forms.Label label12;
+        private MyLabel label12;
         private System.Windows.Forms.Button buttonOK;
-        private System.Windows.Forms.Label label13;
-        private System.Windows.Forms.Label label14;
+        private MyLabel label13;
+        private MyLabel label14;
         private System.Windows.Forms.TextBox textBox1;
         private System.Windows.Forms.ComboBox comboBoxRelease2Origin;
-        private System.Windows.Forms.Label label15;
+        private MyLabel label15;
         private System.Windows.Forms.ComboBox comboBoxRelease3Origin;
-        private System.Windows.Forms.Label label16;
-        private System.Windows.Forms.Label label17;
+        private MyLabel label16;
+        private MyLabel label17;
         private System.Windows.Forms.TextBox textBoxPitchDisplacementStart;
         private System.Windows.Forms.ComboBox comboBoxPitchDisplacementOrigin;
-        private System.Windows.Forms.Label label18;
-        private System.Windows.Forms.Label label19;
+        private MyLabel label18;
+        private MyLabel label19;
         private System.Windows.Forms.TextBox textBoxPitchDisplacementDepthAdjust;
         private System.Windows.Forms.TextBox textBoxPitchDisplacementRateAdjust;
-        private System.Windows.Forms.Label label20;
+        private MyLabel label20;
         private System.Windows.Forms.TextBox textBoxPortamento;
         private System.Windows.Forms.CheckBox checkBoxPortamentoLeadsBeat;
         private System.Windows.Forms.ComboBox comboBoxPortamentoUnits;
-        private System.Windows.Forms.Label label21;
+        private MyLabel label21;
         private System.Windows.Forms.TextBox textBoxDurationAdjust;
         private System.Windows.Forms.ComboBox comboBoxDurationAdjustMode;
-        private System.Windows.Forms.Label label22;
-        private System.Windows.Forms.Label label23;
+        private MyLabel label22;
+        private MyLabel label23;
         private System.Windows.Forms.TextBox textBoxNoteStartAdjust;
         private System.Windows.Forms.TextBox textBoxHurryUpFactor;
-        private System.Windows.Forms.Label label24;
-        private System.Windows.Forms.Label label25;
+        private MyLabel label24;
+        private MyLabel label25;
         private System.Windows.Forms.CheckBox checkBoxRetriggerEnvelopesOnTie;
-        private System.Windows.Forms.Label label26;
+        private MyLabel label26;
         private System.Windows.Forms.CheckBox checkBoxRest;
-        private System.Windows.Forms.Label label27;
+        private MyLabel label27;
         private System.Windows.Forms.TextBox textBoxMultisamplePitchAsIf;
-        private System.Windows.Forms.Label label28;
+        private MyLabel label28;
         private System.Windows.Forms.TextBox textBoxDetuning;
         private System.Windows.Forms.ComboBox comboBoxDetuningMode;
-        private System.Windows.Forms.Label label29;
-        private System.Windows.Forms.Label label30;
-        private System.Windows.Forms.Label label31;
-        private System.Windows.Forms.Label label32;
-        private System.Windows.Forms.Label label33;
-        private System.Windows.Forms.Label label34;
+        private MyLabel label29;
+        private MyLabel label30;
+        private MyLabel label31;
+        private MyLabel label32;
+        private MyLabel label33;
+        private MyLabel label34;
         private System.Windows.Forms.TextBox textBoxLoudnessAdjust;
         private System.Windows.Forms.TextBox textBoxStereoPosition;
         private System.Windows.Forms.TextBox textBoxSurroundPosition;
         private System.Windows.Forms.TextBox textBoxPitch;
-        private System.Windows.Forms.Label label35;
-        private System.Windows.Forms.Label label36;
+        private MyLabel label35;
+        private MyLabel label36;
         private System.Windows.Forms.TextBox textBoxDuration;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

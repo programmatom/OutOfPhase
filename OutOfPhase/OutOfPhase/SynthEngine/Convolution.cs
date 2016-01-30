@@ -187,7 +187,7 @@ namespace OutOfPhase
                 fft = FFT.Create(this.blockLength * 4);
 
                 /* transform impulse response section to frequency domain */
-                Array.Copy(
+                FloatVectorCopyUnaligned(
                     impulseResponse, // not guarranteed to be vector-aligned
                     0,
                     fft.Base,

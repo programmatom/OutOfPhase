@@ -22,10 +22,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 #if VECTOR
 using System.Numerics;
 #endif
+using System.Text;
 
 namespace OutOfPhase
 {

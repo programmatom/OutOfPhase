@@ -210,8 +210,8 @@ namespace OutOfPhase
             if (Error != EvalErrors.eEvalNoError)
             {
                 SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
-                SynthParams.ErrorInfo.userEvalErrorCode = Error;
-                SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
+                SynthParams.ErrorInfo.UserEvalErrorCode = Error;
+                SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                 return SynthErrorCodes.eSynthErrorEx;
             }
             Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
@@ -278,8 +278,8 @@ namespace OutOfPhase
             if (Error != EvalErrors.eEvalNoError)
             {
                 SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
-                SynthParams.ErrorInfo.userEvalErrorCode = Error;
-                SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
+                SynthParams.ErrorInfo.UserEvalErrorCode = Error;
+                SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                 return SynthErrorCodes.eSynthErrorEx;
             }
             Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
@@ -344,8 +344,8 @@ namespace OutOfPhase
             if (Error != EvalErrors.eEvalNoError)
             {
                 SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
-                SynthParams.ErrorInfo.userEvalErrorCode = Error;
-                SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
+                SynthParams.ErrorInfo.UserEvalErrorCode = Error;
+                SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                 return SynthErrorCodes.eSynthErrorEx;
             }
             Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value

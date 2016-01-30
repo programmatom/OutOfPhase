@@ -152,7 +152,7 @@ namespace OutOfPhase
                 State.NumberOfTablesMinus1 = NumberOfTables - 1;
 
                 State.FramesPerTableOverFinalOutputSamplingRate
-                    = (double)State.FramesPerTable / SynthParams.dSamplingRate;
+                    = (double)State.FramesPerTable * SynthParams.dSamplingRateReciprocal;
 
                 /* State.FramesPerTable > 0: */
                 /*   if the wave table is empty, then we don't do any work (and we must not, */
@@ -203,6 +203,11 @@ namespace OutOfPhase
                 {
                     MaxPreOrigin = OnePreOrigin;
                 }
+                // initial value for envelope smoothing
+                State.WaveTableIndex = LFOGenInitialValue(
+                    State.IndexLFOGenerator,
+                    EnvelopeInitialValue(
+                       State.WaveTableIndexEnvelope));
 
                 /* State.MonoLoudness, State.LeftLoudness, State.RightLoudness */
                 /* are determined by the envelope update */
@@ -246,6 +251,12 @@ namespace OutOfPhase
                 {
                     MaxPreOrigin = OnePreOrigin;
                 }
+                // initial value for envelope smoothing
+                State.Loudness = (float)LFOGenInitialValue(
+                    State.LoudnessLFOGenerator,
+                    EnvelopeInitialValue(
+                       State.WaveTableLoudnessEnvelope));
+
                 State.PitchLFO = NewLFOGenerator(
                     Template.PitchLFOTemplate,
                     out OnePreOrigin,

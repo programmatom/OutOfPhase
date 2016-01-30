@@ -1,6 +1,10 @@
-Out Of Phase II - Music Synthesis Software
+Out Of Phase II - Music Synthesis & Composition Software
+
+Official Web Site: http://outofphasemusic.com/
 
 It lives...
+
+Web site: http://outofphasemusic.com/
 
 Out Of Phase was an ancient program I wrote for music synthesis and sequencing in the [now called] EDM genre. It ran on the pre-Intel, pre-OSX Macintosh, from 1994 to 2002. Once OSX came out, it was on life support, and with the switch to Intel processors it ceased to run on any modern hardware.
 

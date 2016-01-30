@@ -51,18 +51,21 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.labelFunctionName = new System.Windows.Forms.Label();
+            this.labelFunctionName = new OutOfPhase.MyLabel();
             this.textBoxFunctionName = new System.Windows.Forms.TextBox();
             this.functionObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.labelFunctionBody = new System.Windows.Forms.Label();
+            this.labelFunctionBody = new OutOfPhase.MyLabel();
             this.menuStripManager = new OutOfPhase.MenuStripManager();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxFunctionBody = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.textBoxWindowHelper = new OutOfPhase.TextBoxWindowHelper(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.functionObjectRecBindingSource)).BeginInit();
+            this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
@@ -74,7 +77,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.Controls.Add(this.textBoxFunctionName, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.labelFunctionBody, 0, 3);
             this.tableLayoutPanel1.Controls.Add(this.menuStripManager, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.textBoxFunctionBody, 0, 4);
+            this.tableLayoutPanel1.Controls.Add(this.panel1, 0, 4);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -91,7 +94,7 @@ namespace OutOfPhase
             // 
             this.labelFunctionName.AutoSize = true;
             this.labelFunctionName.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelFunctionName.Location = new System.Drawing.Point(3, 30);
+            this.labelFunctionName.Location = new System.Drawing.Point(3, 24);
             this.labelFunctionName.Name = "labelFunctionName";
             this.labelFunctionName.Size = new System.Drawing.Size(609, 13);
             this.labelFunctionName.TabIndex = 1;
@@ -101,7 +104,7 @@ namespace OutOfPhase
             // 
             this.textBoxFunctionName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.functionObjectRecBindingSource, "Name", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxFunctionName.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxFunctionName.Location = new System.Drawing.Point(3, 46);
+            this.textBoxFunctionName.Location = new System.Drawing.Point(3, 40);
             this.textBoxFunctionName.Name = "textBoxFunctionName";
             this.textBoxFunctionName.Size = new System.Drawing.Size(609, 20);
             this.textBoxFunctionName.TabIndex = 2;
@@ -114,7 +117,7 @@ namespace OutOfPhase
             // 
             this.labelFunctionBody.AutoSize = true;
             this.labelFunctionBody.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.labelFunctionBody.Location = new System.Drawing.Point(3, 69);
+            this.labelFunctionBody.Location = new System.Drawing.Point(3, 63);
             this.labelFunctionBody.Name = "labelFunctionBody";
             this.labelFunctionBody.Size = new System.Drawing.Size(609, 13);
             this.labelFunctionBody.TabIndex = 3;
@@ -123,25 +126,36 @@ namespace OutOfPhase
             // menuStripManager
             // 
             this.menuStripManager.AutoSize = true;
-            this.menuStripManager.Location = new System.Drawing.Point(3, 3);
+            this.menuStripManager.Location = new System.Drawing.Point(0, 0);
+            this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(609, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(615, 24);
             this.menuStripManager.TabIndex = 5;
+            // 
+            // panel1
+            // 
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.textBoxFunctionBody);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(3, 79);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(609, 277);
+            this.panel1.TabIndex = 7;
             // 
             // textBoxFunctionBody
             // 
             this.textBoxFunctionBody.AutoScroll = true;
             this.textBoxFunctionBody.AutoScrollMinSize = new System.Drawing.Size(609, 13);
-            this.textBoxFunctionBody.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.textBoxFunctionBody.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textBoxFunctionBody.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxFunctionBody.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxFunctionBody.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.functionObjectRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxFunctionBody.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxFunctionBody.Location = new System.Drawing.Point(3, 85);
+            this.textBoxFunctionBody.Location = new System.Drawing.Point(0, 0);
             this.textBoxFunctionBody.Name = "textBoxFunctionBody";
-            this.textBoxFunctionBody.Size = new System.Drawing.Size(609, 271);
+            this.textBoxFunctionBody.Size = new System.Drawing.Size(607, 275);
             this.textBoxFunctionBody.TabIndex = 6;
             this.textBoxFunctionBody.TextService = TextEditor.TextService.Simple;
+            this.textBoxFunctionBody.SimpleNavigation = true;
             this.textBoxFunctionBody.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
@@ -179,6 +193,10 @@ namespace OutOfPhase
             this.textBoxWindowHelper.SelectAllToolStripMenuItem = null;
             this.textBoxWindowHelper.UndoToolStripMenuItem = null;
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // FunctionWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -190,6 +208,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.functionObjectRecBindingSource)).EndInit();
+            this.panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).EndInit();
             this.ResumeLayout(false);
 
@@ -198,9 +217,9 @@ namespace OutOfPhase
         #endregion
 
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.Label labelFunctionName;
+        private MyLabel labelFunctionName;
         private System.Windows.Forms.TextBox textBoxFunctionName;
-        private System.Windows.Forms.Label labelFunctionBody;
+        private MyLabel labelFunctionBody;
         private System.Windows.Forms.BindingSource functionObjectRecBindingSource;
         private MenuStripManager menuStripManager;
         private TextEditor.TextEditControl textBoxFunctionBody;
@@ -208,5 +227,7 @@ namespace OutOfPhase
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextBoxWindowHelper textBoxWindowHelper;
         private TextEditor.StringStorageFactory stringStorageFactory;
+        private System.Windows.Forms.Panel panel1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

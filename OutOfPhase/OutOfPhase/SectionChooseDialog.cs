@@ -51,6 +51,12 @@ namespace OutOfPhase
             myListBoxSections.DoubleClick2 += MyListBoxSections_DoubleClick;
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
         private void MyListBoxSections_DoubleClick(object sender, MyListBox.DoubleClick2EventArgs e)
         {
             buttonOK.PerformClick();

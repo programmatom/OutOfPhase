@@ -50,6 +50,7 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            this.textBoxEffectBody.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxEffectBody.AutoIndent = Program.Config.AutoIndent;
 
             textBoxAudioFilePath.Text = filePath;
@@ -101,6 +102,12 @@ namespace OutOfPhase
 #endif
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
         private bool BuildThis(out Synthesizer.EffectSpecListRec effectSpec)
         {
             effectSpec = null;
@@ -111,14 +118,17 @@ namespace OutOfPhase
             }
 
             int ErrorLine;
+            string ErrorExtraMessage;
             Synthesizer.BuildInstrErrors Error = Synthesizer.BuildScoreEffectList(
                 textBoxEffectBody.Text,
                 mainWindow.Document.CodeCenter,
                 out ErrorLine,
+                out ErrorExtraMessage,
                 out effectSpec);
             if (Error != Synthesizer.BuildInstrErrors.eBuildInstrNoError)
             {
-                BuildErrorInfo errorInfo = new LiteralBuildErrorInfo(Synthesizer.BuildInstrGetErrorMessageText(Error), ErrorLine);
+                BuildErrorInfo errorInfo = new LiteralBuildErrorInfo(Synthesizer.BuildInstrGetErrorMessageText(Error, ErrorExtraMessage), ErrorLine);
+                textBoxEffectBody.Focus();
                 textBoxEffectBody.SetSelectionLine(ErrorLine - 1);
                 MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
                 return false;
@@ -183,8 +193,8 @@ namespace OutOfPhase
 #endif
             PlayFileWithEffectsGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 Path.GetFileNameWithoutExtension(textBoxAudioFilePath.Text),
-                OutputDeviceDestinationHandler.OutputDeviceGetDestination,
-                OutputDeviceDestinationHandler.CreateOutputDeviceDestinationHandler,
+                OutputDeviceEnumerator.OutputDeviceGetDestination,
+                OutputDeviceEnumerator.CreateOutputDeviceDestinationHandler,
                 new OutputDeviceArguments(BufferDuration),
                 PlayFileWithEffectsGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.MainLoop,
 #if false

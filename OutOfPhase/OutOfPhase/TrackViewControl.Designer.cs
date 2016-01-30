@@ -49,9 +49,24 @@ namespace OutOfPhase
         /// </summary>
         private void InitializeComponent()
         {
-            components = new System.ComponentModel.Container();
+            this.components = new System.ComponentModel.Container();
+            this.timerUpdateMouseOverEffect = new System.Windows.Forms.Timer(this.components);
+            this.SuspendLayout();
+            // 
+            // timerUpdateMouseOverEffect
+            // 
+            this.timerUpdateMouseOverEffect.Interval = 1;
+            this.timerUpdateMouseOverEffect.Tick += new System.EventHandler(this.timerUpdateMouseOverEffect_Tick);
+            // 
+            // TrackViewControl
+            // 
+            this.Name = "TrackViewControl";
+            this.ResumeLayout(false);
+
         }
 
         #endregion
+
+        private System.Windows.Forms.Timer timerUpdateMouseOverEffect;
     }
 }

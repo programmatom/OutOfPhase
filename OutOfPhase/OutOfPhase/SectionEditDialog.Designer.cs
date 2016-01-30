@@ -49,15 +49,17 @@ namespace OutOfPhase
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.myListBoxSections = new OutOfPhase.MyListBox();
-            this.label1 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.buttonChangeSection = new System.Windows.Forms.Button();
             this.buttonNew = new System.Windows.Forms.Button();
             this.buttonDeleteSection = new System.Windows.Forms.Button();
             this.buttonEditSection = new System.Windows.Forms.Button();
             this.buttonClose = new System.Windows.Forms.Button();
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             this.flowLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
@@ -83,7 +85,7 @@ namespace OutOfPhase
             // 
             // myListBoxSections
             // 
-            this.myListBoxSections.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.myListBoxSections.BackColor = System.Drawing.SystemColors.Window;
             this.myListBoxSections.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.myListBoxSections.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxSections.Location = new System.Drawing.Point(3, 26);
@@ -166,6 +168,11 @@ namespace OutOfPhase
             this.buttonClose.TabIndex = 4;
             this.buttonClose.Text = "Close";
             this.buttonClose.UseVisualStyleBackColor = true;
+            this.buttonClose.Click += new System.EventHandler(this.buttonClose_Click);
+            // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
             // 
             // SectionEditDialog
             // 
@@ -195,6 +202,7 @@ namespace OutOfPhase
         private System.Windows.Forms.Button buttonDeleteSection;
         private System.Windows.Forms.Button buttonEditSection;
         private System.Windows.Forms.Button buttonClose;
-        private System.Windows.Forms.Label label1;
+        private MyLabel label1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

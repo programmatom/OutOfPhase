@@ -69,9 +69,6 @@ namespace OutOfPhase
             public IncrParamOneRec Portamento;
 
             /* table of normalized frequencies, [0] = 1 */
-#if false // TODO:remove
-            //public double[] FrequencyTable; // Length == 12
-#endif
             public IncrParamOneRec[] FrequencyTable; // Length == 12
             public double[] FrequencyTableLastLoaded; // Length == 12
 
@@ -119,9 +116,6 @@ namespace OutOfPhase
         {
             IncrParamUpdateRec Updator = new IncrParamUpdateRec();
 
-#if false // TODO:remove
-            Updator.FrequencyTable = new double[12];
-#endif
             Updator.FrequencyTable = new IncrParamOneRec[12];
             Updator.FrequencyTableLastLoaded = new double[12];
             for (int i_enum = 0; i_enum < 12; i_enum++)
@@ -274,9 +268,6 @@ namespace OutOfPhase
 
             Updator.TempoControl = TempoControl;
             Updator.TransposeHalfsteps = 0;
-#if false
-            ParamUpdatorInitFreqTable(Updator);
-#endif
 
             return Updator;
         }
@@ -443,17 +434,6 @@ namespace OutOfPhase
             }
         }
 
-#if false // TODO:remove
-        /* reinitialize frequency table */
-        public static void ParamUpdatorInitFreqTable(IncrParamUpdateRec Updator)
-        {
-            for (int Scan = 0; Scan < 12; Scan += 1)
-            {
-                Updator.FrequencyTable[Scan] = Math.Pow(2, Scan / 12d);
-            }
-        }
-#endif
-
         // TODO: figure out how to support enharmonics in non-et tunings
 
         private enum PitchMode
@@ -578,12 +558,20 @@ namespace OutOfPhase
 
             PitchMode mode;
             double[] table;
-            int modelIndex = Array.BinarySearch(
-                PitchTables,
-                new PitchEntry(tableName),
-                new PitchTableComparer());
-            if (modelIndex >= 0)
+            if (!(tableName.StartsWith("!") || tableName.StartsWith("+!")))
             {
+                // built-in
+
+                int modelIndex = Array.BinarySearch(
+                    PitchTables,
+                    new PitchEntry(tableName),
+                    new PitchTableComparer());
+                if (modelIndex < 0)
+                {
+                    SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUndefinedPitchTable;
+                    SynthParams.ErrorInfo.GenericName = tableName;
+                    return SynthErrorCodes.eSynthErrorEx;
+                }
                 mode = PitchTables[modelIndex].Mode;
                 table = PitchTables[modelIndex].Table;
             }
@@ -597,21 +585,25 @@ namespace OutOfPhase
                     mode = PitchMode.CentsRelative;
                     tableName = tableName.Substring(1);
                 }
+                Debug.Assert(tableName.StartsWith("!"));
+                tableName = tableName.Substring(1);
 
                 FuncCodeRec userFunction = SynthParams.CodeCenter.ObtainFunctionHandle(tableName);
                 if (userFunction == null)
                 {
                     SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
-                    SynthParams.ErrorInfo.userEvalErrorCode = EvalErrors.eEvalUndefinedFunction;
-                    SynthParams.ErrorInfo.userEvalErrorInfo = new EvalErrInfoRec();
+                    SynthParams.ErrorInfo.GenericName = tableName;
+                    SynthParams.ErrorInfo.UserEvalErrorCode = EvalErrors.eEvalUndefinedFunction;
+                    SynthParams.ErrorInfo.UserEvalErrorInfo = new EvalErrInfoRec();
                     return SynthErrorCodes.eSynthErrorEx;
                 }
                 if ((userFunction.GetFunctionReturnType() != DataTypes.eArrayOfDouble)
                     || (userFunction.GetFunctionParameterTypeList().Length != 0))
                 {
                     SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
-                    SynthParams.ErrorInfo.userEvalErrorCode = EvalErrors.eEvalFunctionSignatureMismatch;
-                    SynthParams.ErrorInfo.userEvalErrorInfo = new EvalErrInfoRec();
+                    SynthParams.ErrorInfo.GenericName = tableName;
+                    SynthParams.ErrorInfo.UserEvalErrorCode = EvalErrors.eEvalFunctionSignatureMismatch;
+                    SynthParams.ErrorInfo.UserEvalErrorInfo = new EvalErrInfoRec();
                     return SynthErrorCodes.eSynthErrorEx;
                 }
 
@@ -637,8 +629,8 @@ namespace OutOfPhase
                 if (Error != EvalErrors.eEvalNoError)
                 {
                     SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
-                    SynthParams.ErrorInfo.userEvalErrorCode = Error;
-                    SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
+                    SynthParams.ErrorInfo.UserEvalErrorCode = Error;
+                    SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                     return SynthErrorCodes.eSynthErrorEx;
                 }
                 Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
@@ -647,15 +639,15 @@ namespace OutOfPhase
                 if (table == null)
                 {
                     SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
-                    SynthParams.ErrorInfo.userEvalErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
-                    SynthParams.ErrorInfo.userEvalErrorInfo = new EvalErrInfoRec();
+                    SynthParams.ErrorInfo.UserEvalErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
+                    SynthParams.ErrorInfo.UserEvalErrorInfo = new EvalErrInfoRec();
                     return SynthErrorCodes.eSynthErrorEx;
                 }
                 if (table.Length != 12)
                 {
                     SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
-                    SynthParams.ErrorInfo.userEvalErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
-                    SynthParams.ErrorInfo.userEvalErrorInfo = new EvalErrInfoRec();
+                    SynthParams.ErrorInfo.UserEvalErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
+                    SynthParams.ErrorInfo.UserEvalErrorInfo = new EvalErrInfoRec();
                     return SynthErrorCodes.eSynthErrorEx;
                 }
             }

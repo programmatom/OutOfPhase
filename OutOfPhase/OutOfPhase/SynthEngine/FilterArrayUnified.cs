@@ -69,9 +69,10 @@ namespace OutOfPhase
         public class FilterRec
         {
             /* common state info */
-            public float CurrentMultiplier;
-            public bool LeftEnabled;
-            public bool RightEnabled;
+            public float CurrentMultiplier; // aka outputscaling
+            public float PreviousMultiplier;
+            public bool LeftEnabled; // TODO: remove - use Left != null
+            public bool RightEnabled; // TODO: remove - use Right != null
             public FilterTypes FilterType;
             public FilterScalings FilterScaling;
             public IFilter Left;
@@ -331,6 +332,12 @@ namespace OutOfPhase
                     {
                         MaxPreOrigin = OnePreOrigin;
                     }
+
+                    // initial value for envelope smoothing
+                    Filter.CurrentMultiplier = (float)LFOGenInitialValue(
+                        Filter.OscFilter.OutputMultiplierLFO,
+                        EnvelopeInitialValue(
+                           Filter.OscFilter.OutputMultiplierEnvelope));
 
                     switch (Filter.FilterType)
                     {
@@ -643,6 +650,7 @@ namespace OutOfPhase
                     FilterRec Scan = this.FilterVector[i];
 
                     error = SynthErrorCodes.eSynthDone;
+                    Scan.PreviousMultiplier = Scan.CurrentMultiplier;
                     Scan.CurrentMultiplier = (float)LFOGenUpdateCycle(
                         Scan.OscFilter.OutputMultiplierLFO,
                         EnvelopeUpdate(
@@ -1332,6 +1340,7 @@ namespace OutOfPhase
                     {
                         return error;
                     }
+                    Scan.PreviousMultiplier = Scan.CurrentMultiplier;
                     Scan.CurrentMultiplier = (float)DoubleTemp;
 
                     error = ScalarParamEval(
@@ -1904,9 +1913,18 @@ namespace OutOfPhase
 #if DEBUG
                 Debug.Assert(!synthParams.ScratchWorkspace1InUse);
                 synthParams.ScratchWorkspace1InUse = true;
+                Debug.Assert(!synthParams.ScratchWorkspace4InUse);
+                synthParams.ScratchWorkspace4InUse = true;
 #endif
                 int LeftCopyOffset = synthParams.ScratchWorkspace1LOffset;
                 int RightCopyOffset = synthParams.ScratchWorkspace1ROffset;
+                int LoudnessWorkspaceOffset = synthParams.ScratchWorkspace4LOffset;
+                int TemporaryOutputWorkspaceOffset = synthParams.ScratchWorkspace4ROffset;
+
+                // NOTE: filter implementations are entitled to use ScratchWorkspace2.
+#if DEBUG
+                Debug.Assert(!synthParams.ScratchWorkspace2InUse);
+#endif
 
                 /* get input data and initialize output data */
                 FloatVectorCopy(
@@ -1935,32 +1953,122 @@ namespace OutOfPhase
                 {
                     FilterRec FilterScan = this.FilterVector[i];
 
-                    if (FilterScan.LeftEnabled)
+#if true // TODO:experimental - smoothing
+                    if (Program.Config.EnableEnvelopeSmoothing
+                        // case of no motion in smoothed axis can use fast code path
+                        && (FilterScan.CurrentMultiplier != FilterScan.PreviousMultiplier))
                     {
-                        FilterScan.Left.Apply(
-                            workspace,
-                            LeftCopyOffset,
-                            workspace,
-                            lOffset,
-                            nActualFrames,
-                            FilterScan.CurrentMultiplier,
-                            synthParams);
+                        // envelope smoothing
+
+                        float LocalPreviousMultiplier = FilterScan.PreviousMultiplier;
+
+                        // intentional discretization by means of sample-and-hold lfo should not be smoothed.
+                        if ((FilterScan.OscFilter != null) && IsLFOSampleAndHold(FilterScan.OscFilter.OutputMultiplierLFO))
+                        {
+                            LocalPreviousMultiplier = FilterScan.CurrentMultiplier;
+                        }
+
+                        if ((FilterScan.OscFilter == null)
+                            || !EnvelopeCurrentSegmentExponential(FilterScan.OscFilter.OutputMultiplierEnvelope))
+                        {
+                            FloatVectorAdditiveRecurrence(
+                                workspace,
+                                LoudnessWorkspaceOffset,
+                                LocalPreviousMultiplier,
+                                FilterScan.CurrentMultiplier,
+                                nActualFrames);
+                        }
+                        else
+                        {
+                            FloatVectorMultiplicativeRecurrence(
+                                workspace,
+                                LoudnessWorkspaceOffset,
+                                LocalPreviousMultiplier,
+                                FilterScan.CurrentMultiplier,
+                                nActualFrames);
+                        }
+
+                        if (FilterScan.LeftEnabled)
+                        {
+                            FloatVectorZero(
+                                workspace,
+                                TemporaryOutputWorkspaceOffset,
+                                nActualFrames);
+                            FilterScan.Left.Apply(
+                                workspace,
+                                LeftCopyOffset,
+                                workspace,
+                                TemporaryOutputWorkspaceOffset,
+                                nActualFrames,
+                                1f,
+                                synthParams);
+                            FloatVectorProductAccumulate(
+                                workspace,
+                                TemporaryOutputWorkspaceOffset,
+                                workspace,
+                                LoudnessWorkspaceOffset,
+                                workspace,
+                                lOffset,
+                                nActualFrames);
+                        }
+                        if (FilterScan.RightEnabled)
+                        {
+                            FloatVectorZero(
+                                workspace,
+                                TemporaryOutputWorkspaceOffset,
+                                nActualFrames);
+                            FilterScan.Right.Apply(
+                                workspace,
+                                RightCopyOffset,
+                                workspace,
+                                TemporaryOutputWorkspaceOffset,
+                                nActualFrames,
+                                1f,
+                                synthParams);
+                            FloatVectorProductAccumulate(
+                                workspace,
+                                TemporaryOutputWorkspaceOffset,
+                                workspace,
+                                LoudnessWorkspaceOffset,
+                                workspace,
+                                rOffset,
+                                nActualFrames);
+                        }
                     }
-                    if (FilterScan.RightEnabled)
+                    else
+#endif
                     {
-                        FilterScan.Right.Apply(
-                            workspace,
-                            RightCopyOffset,
-                            workspace,
-                            rOffset,
-                            nActualFrames,
-                            FilterScan.CurrentMultiplier,
-                            synthParams);
+                        if (FilterScan.LeftEnabled)
+                        {
+                            FilterScan.Left.Apply(
+                                workspace,
+                                LeftCopyOffset,
+                                workspace,
+                                lOffset,
+                                nActualFrames,
+                                FilterScan.CurrentMultiplier,
+                                synthParams);
+                        }
+                        if (FilterScan.RightEnabled)
+                        {
+                            FilterScan.Right.Apply(
+                                workspace,
+                                RightCopyOffset,
+                                workspace,
+                                rOffset,
+                                nActualFrames,
+                                FilterScan.CurrentMultiplier,
+                                synthParams);
+                        }
                     }
                 }
 
 #if DEBUG
+                Debug.Assert(!synthParams.ScratchWorkspace2InUse); // ensure filter implementations cleared it
+#endif
+#if DEBUG
                 synthParams.ScratchWorkspace1InUse = false;
+                synthParams.ScratchWorkspace4InUse = false;
 #endif
 
                 return SynthErrorCodes.eSynthDone;

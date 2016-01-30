@@ -232,6 +232,9 @@ namespace OutOfPhase
                     case OscillatorTypes.eOscillatorFMSynth:
                         Osc1.TemplateReference = FMSynthTemplateRec.NewFMSynthTemplate(Osc, SynthParams);
                         break;
+                    case OscillatorTypes.eOscillatorPluggable:
+                        Osc1.TemplateReference = new PluggableOscillatorTemplate(Osc, SynthParams);
+                        break;
                 }
             }
 
@@ -343,7 +346,7 @@ namespace OutOfPhase
                 }
             }
 
-            if (null != Template.CombinedOscillatorEffects)
+            if ((Template.CombinedOscillatorEffects != null) && (GetEffectSpecListLength(Template.CombinedOscillatorEffects)>0))
             {
                 SynthErrorCodes Result = NewOscEffectGenerator(
                    Template.CombinedOscillatorEffects,
@@ -866,6 +869,14 @@ namespace OutOfPhase
                     SynthParams,
                     writeOutputLogs);
                 OneStateScan = OneStateScan.Next;
+            }
+
+            if (State.CombinedOscEffectGenerator != null)
+            {
+                FinalizeOscEffectGenerator(
+                    State.CombinedOscEffectGenerator,
+                    SynthParams,
+                    writeOutputLogs);
             }
         }
 

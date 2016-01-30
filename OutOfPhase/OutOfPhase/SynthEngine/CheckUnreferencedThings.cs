@@ -210,6 +210,12 @@ namespace OutOfPhase
                             GetUserEffectFromEffectSpecList(EffectList, Scan),
                             Param);
                         break;
+                    case EffectTypes.ePluggableEffect:
+                        PluggableSpec PluggableEffect = GetPluggableEffectFromEffectSpecList(EffectList, Scan);
+                        Error = PluggableEffect.PluggableTemplate.CheckUnreferencedObjects(
+                            PluggableEffect.GetStaticStrings(),
+                            Param);
+                        break;
                 }
 
                 if (Error != SynthErrorCodes.eSynthDone)
@@ -248,6 +254,12 @@ namespace OutOfPhase
                 case OscillatorTypes.eOscillatorFMSynth:
                     Error = CheckFMNetworkForUnreferencedSamples(
                         OscillatorGetFMSynthSpec(Oscillator),
+                        Param);
+                    break;
+                case OscillatorTypes.eOscillatorPluggable:
+                    IPluggableProcessorTemplate pluggable = GetOscillatorPluggableSpec(Oscillator).PluggableTemplate;
+                    Error = pluggable.CheckUnreferencedObjects(
+                        GetOscillatorPluggableSpec(Oscillator).GetStaticStrings(),
                         Param);
                     break;
             }
@@ -948,21 +960,21 @@ namespace OutOfPhase
             }
         }
         private static readonly ConvolverCheckRec[] ConvolverCheckMono = new ConvolverCheckRec[]
-	    {
-		    new ConvolverCheckRec(ConvolverSpecGetImpulseResponseMono),
-	    };
+        {
+            new ConvolverCheckRec(ConvolverSpecGetImpulseResponseMono),
+        };
         private static readonly ConvolverCheckRec[] ConvolverCheckStereo = new ConvolverCheckRec[]
-	    {
-		    new ConvolverCheckRec(ConvolverSpecGetImpulseResponseStereoLeft),
-		    new ConvolverCheckRec(ConvolverSpecGetImpulseResponseStereoRight),
-	    };
+        {
+            new ConvolverCheckRec(ConvolverSpecGetImpulseResponseStereoLeft),
+            new ConvolverCheckRec(ConvolverSpecGetImpulseResponseStereoRight),
+        };
         private static readonly ConvolverCheckRec[] ConvolverCheckBiStereo = new ConvolverCheckRec[]
-	    {
-		    new ConvolverCheckRec(ConvolverSpecGetImpulseResponseBiStereoLeftIntoLeft),
-		    new ConvolverCheckRec(ConvolverSpecGetImpulseResponseBiStereoRightIntoLeft),
-		    new ConvolverCheckRec(ConvolverSpecGetImpulseResponseBiStereoLeftIntoRight),
-		    new ConvolverCheckRec(ConvolverSpecGetImpulseResponseBiStereoRightIntoRight),
-	    };
+        {
+            new ConvolverCheckRec(ConvolverSpecGetImpulseResponseBiStereoLeftIntoLeft),
+            new ConvolverCheckRec(ConvolverSpecGetImpulseResponseBiStereoRightIntoLeft),
+            new ConvolverCheckRec(ConvolverSpecGetImpulseResponseBiStereoLeftIntoRight),
+            new ConvolverCheckRec(ConvolverSpecGetImpulseResponseBiStereoRightIntoRight),
+        };
         public static SynthErrorCodes CheckConvolverEffectForUnreferencedSamples(
             ConvolverSpecRec ConvolverEffect,
             CheckUnrefParamRec Param)
@@ -1009,63 +1021,84 @@ namespace OutOfPhase
             UserEffectSpecRec UserEffect,
             CheckUnrefParamRec Param)
         {
-            string FuncName;
-            FuncCodeRec FuncCode;
-
             /* init func */
-            FuncName = GetUserEffectSpecInitFuncName(UserEffect);
-            if (FuncName != null) /* optional */
             {
-                FuncCode = Param.CodeCenter.ObtainFunctionHandle(FuncName);
-                if (FuncCode == null)
+                string FuncName = GetUserEffectSpecInitFuncName(UserEffect);
+                if (FuncName != null) /* optional */
                 {
-                    Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUndefinedFunction;
-                    Param.ErrorInfo.FunctionName = FuncName;
-                    return SynthErrorCodes.eSynthErrorEx;
-                }
-                if (!UserEffectValidateTypeInit(FuncCode))
-                {
-                    Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExTypeMismatchFunction;
-                    Param.ErrorInfo.FunctionName = FuncName;
-                    return SynthErrorCodes.eSynthErrorEx;
-                }
-            }
+                    FuncCodeRec FuncCode = Param.CodeCenter.ObtainFunctionHandle(FuncName);
+                    if (FuncCode == null)
+                    {
+                        Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUndefinedFunction;
+                        Param.ErrorInfo.FunctionName = FuncName;
+                        return SynthErrorCodes.eSynthErrorEx;
+                    }
 
-            /* update func */
-            FuncName = GetUserEffectSpecArgUpdateFuncName(UserEffect);
-            if (FuncName != null) /* optional */
-            {
-                FuncCode = Param.CodeCenter.ObtainFunctionHandle(FuncName);
-                if (FuncCode == null)
-                {
-                    Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUndefinedFunction;
-                    Param.ErrorInfo.FunctionName = FuncName;
-                    return SynthErrorCodes.eSynthErrorEx;
-                }
-                if (!UserEffectValidateTypeUpdate(FuncCode,
-                    GetUserEffectSpecParamCount(UserEffect)))
-                {
-                    Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExTypeMismatchFunction;
-                    Param.ErrorInfo.FunctionName = FuncName;
-                    return SynthErrorCodes.eSynthErrorEx;
+                    DataTypes[] argsTypes;
+                    DataTypes returnType;
+                    UserEffectGetInitSignature(UserEffect, out argsTypes, out returnType);
+                    FunctionSignature expectedSignature = new FunctionSignature(argsTypes, returnType);
+                    FunctionSignature actualSignature = new FunctionSignature(
+                        FuncCode.GetFunctionParameterTypeList(),
+                        FuncCode.GetFunctionReturnType());
+                    if (!FunctionSignature.Equals(expectedSignature, actualSignature))
+                    {
+                        Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExTypeMismatchFunction;
+                        Param.ErrorInfo.FunctionName = FuncName;
+                        Param.ErrorInfo.ExtraInfo = String.Format(
+                            "{0}{0}Expected:{0}{1}{0}{0}Actual:{0}{2}",
+                            Environment.NewLine,
+                            expectedSignature,
+                            actualSignature);
+                        return SynthErrorCodes.eSynthErrorEx;
+                    }
                 }
             }
 
             /* data func */
-            FuncName = GetUserEffectSpecProcessDataFuncName(UserEffect);
-            /* this one is required */
-            FuncCode = Param.CodeCenter.ObtainFunctionHandle(FuncName);
-            if (FuncCode == null)
             {
-                Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUndefinedFunction;
-                Param.ErrorInfo.FunctionName = FuncName;
-                return SynthErrorCodes.eSynthErrorEx;
-            }
-            if (!UserEffectValidateTypeData(FuncCode))
-            {
-                Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExTypeMismatchFunction;
-                Param.ErrorInfo.FunctionName = FuncName;
-                return SynthErrorCodes.eSynthErrorEx;
+                DataTypes[] argsTypes;
+                DataTypes returnType;
+                UserEffectGetDataSignature(UserEffect, out argsTypes, out returnType);
+                FunctionSignature expectedSignature = new FunctionSignature(argsTypes, returnType);
+
+                bool matched = false;
+                List<KeyValuePair<string, FunctionSignature>> actualSignatures = new List<KeyValuePair<string, FunctionSignature>>();
+                foreach (string FuncName in GetUserEffectSpecProcessDataFuncNames(UserEffect))
+                {
+                    FuncCodeRec FuncCode = Param.CodeCenter.ObtainFunctionHandle(FuncName);
+                    if (FuncCode == null)
+                    {
+                        Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUndefinedFunction;
+                        Param.ErrorInfo.FunctionName = FuncName;
+                        return SynthErrorCodes.eSynthErrorEx;
+                    }
+
+                    FunctionSignature actualSignature = new FunctionSignature(
+                        FuncCode.GetFunctionParameterTypeList(),
+                        FuncCode.GetFunctionReturnType());
+                    actualSignatures.Add(new KeyValuePair<string, FunctionSignature>(FuncName, actualSignature));
+                    if (FunctionSignature.Equals(expectedSignature, actualSignature))
+                    {
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched)
+                {
+                    StringBuilder extraInfo = new StringBuilder();
+                    extraInfo.AppendLine();
+                    extraInfo.AppendLine();
+                    extraInfo.AppendLine(String.Format("Expected - {0}", expectedSignature));
+                    foreach (KeyValuePair<string, FunctionSignature> actualSignature in actualSignatures)
+                    {
+                        extraInfo.AppendLine();
+                        extraInfo.AppendLine(String.Format("Actual - {0}{1}", actualSignature.Key, actualSignature.Value));
+                    }
+                    Param.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExTypeMismatchFunctionMultiple;
+                    Param.ErrorInfo.ExtraInfo = extraInfo.ToString();
+                    return SynthErrorCodes.eSynthErrorEx;
+                }
             }
 
             return SynthErrorCodes.eSynthDone;

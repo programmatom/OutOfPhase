@@ -60,8 +60,8 @@ namespace OutOfPhase
 #if true // prevents "Add New Data Source..." from working
             state = AudioFilePlayGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 mainWindow.DisplayName,
-                OutputDeviceDestinationHandler.OutputDeviceGetDestination,
-                OutputDeviceDestinationHandler.CreateOutputDeviceDestinationHandler,
+                OutputDeviceEnumerator.OutputDeviceGetDestination,
+                OutputDeviceEnumerator.CreateOutputDeviceDestinationHandler,
                 new OutputDeviceArguments(BufferDuration),
                 AudioFilePlayGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.MainLoop,
                 generatorParams = new AudioFilePlayGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>(

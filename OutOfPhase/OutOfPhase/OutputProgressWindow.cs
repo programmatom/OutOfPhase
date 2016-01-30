@@ -71,6 +71,12 @@ namespace OutOfPhase
             this.Text = String.Format("{0} - {1}", baseName, "Synthesis");
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
         protected override void OnShown(EventArgs e)
         {
             if ((lastX >= 0) && (lastY >= 0))
@@ -199,7 +205,9 @@ namespace OutOfPhase
 
         public void WaitFinished()
         {
-            waitThreadExited.WaitOne();
+            while (!waitThreadExited.WaitOne(1000))
+            {
+            }
         }
 
         public void NotifyFinished()

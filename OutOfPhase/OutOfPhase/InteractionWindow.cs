@@ -42,6 +42,9 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            this.textBox.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
+
+            // Place interaction window across bottom of screen.
             const int Margin = 50;
             int width = Screen.PrimaryScreen.Bounds.Width - 2 * Margin;
             Size = new Size(width, Height);
@@ -74,6 +77,12 @@ namespace OutOfPhase
         {
             menuStripManager.SetActiveHandler(null);
             base.OnDeactivate(e);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
         }
 
         // MainWindow does hooking of Disposed event to handle InteractionWindow being closed

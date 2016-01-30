@@ -39,7 +39,7 @@ namespace OutOfPhase
         private readonly Stack<WaveTableStorageRec> undo = new Stack<WaveTableStorageRec>();
         private readonly Stack<WaveTableStorageRec> redo = new Stack<WaveTableStorageRec>();
 
-        private bool suppressTableOrFrameChange;
+        private bool suppressTableOrFrameChange = true; // suppress until after form is loaded - since init fires notifications
 
         public WaveTableWindow(Registration registration, WaveTableObjectRec waveTableObject, MainWindow mainWindow)
         {
@@ -50,6 +50,7 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            this.textBoxFormula.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxFormula.AutoIndent = Program.Config.AutoIndent;
 
             menuStripManager.SetGlobalHandler(mainWindow);
@@ -64,8 +65,14 @@ namespace OutOfPhase
                 comboBoxNumFrames.Items.Add(i.ToString());
             }
 
+            foreach (string item in EnumUtility.GetDescriptions(WaveTableObjectRec.NumBitsAllowedValues))
+            {
+                comboBoxNumBits.Items.Add(item);
+            }
+
             documentBindingSource.Add(mainWindow.Document);
             waveTableObjectRecBindingSource.Add(waveTableObject);
+            waveTableObject.PropertyChanged += WaveTableObject_PropertyChanged;
 
             textBoxName.TextChanged += new EventHandler(textBoxName_TextChanged);
             GlobalNameChanged();
@@ -75,6 +82,7 @@ namespace OutOfPhase
 
             textBoxNumTables.Validated += new EventHandler(textBoxNumTables_TextChanged);
             comboBoxNumFrames.TextChanged += new EventHandler(comboBoxNumFrames_TextChanged);
+            comboBoxNumBits.TextChanged += new EventHandler(ComboBoxNumBits_TextChanged);
 
             tabControlWave.SelectedIndexChanged += TabControlWave_SelectedIndexChanged;
             //
@@ -91,6 +99,7 @@ namespace OutOfPhase
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            waveTableObject.PropertyChanged -= WaveTableObject_PropertyChanged;
             registration.Unregister(waveTableObject, this);
             base.OnFormClosed(e);
         }
@@ -99,6 +108,13 @@ namespace OutOfPhase
         {
             PersistWindowRect.OnShown(this, waveTableObject.SavedWindowXLoc, waveTableObject.SavedWindowYLoc, waveTableObject.SavedWindowWidth, waveTableObject.SavedWindowHeight);
             base.OnShown(e);
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            suppressTableOrFrameChange = false; // ui element changes now due to user action
         }
 
         private void ResizeMove()
@@ -138,6 +154,12 @@ namespace OutOfPhase
             base.OnDeactivate(e);
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
 
         //
 
@@ -173,28 +195,19 @@ namespace OutOfPhase
                 /* this one handles interpolating between entries to expand the table */
 
                 int ExpansionFactor = NewNumFrames / OriginalNumFrames;
-                for (int TableScan = 0; TableScan < NumberOfTables; TableScan += 1)
+                for (int TableScan = 0; TableScan < NumberOfTables; TableScan++)
                 {
-                    for (int NewFrameScan = 0; NewFrameScan < NewNumFrames; NewFrameScan += 1)
+                    for (int NewFrameScan = 0; NewFrameScan < NewNumFrames; NewFrameScan++)
                     {
-                        double LeftWeight;
-                        double RightWeight;
-                        int LeftIndex;
-                        int RightIndex;
-                        double PrecisePositioning;
-                        double LeftValue;
-                        double RightValue;
-                        double ResultantComposite;
-
-                        PrecisePositioning = (double)NewFrameScan / (double)NewNumFrames
+                        double PrecisePositioning = (double)NewFrameScan / (double)NewNumFrames
                             * (double)OriginalNumFrames;
-                        LeftIndex = (int)PrecisePositioning;
-                        RightIndex = LeftIndex + 1;
-                        RightWeight = PrecisePositioning - LeftIndex;
-                        LeftWeight = 1 - RightWeight;
-                        LeftValue = waveTableObject.WaveTableData.ListOfTables[TableScan][LeftIndex];
-                        RightValue = waveTableObject.WaveTableData.ListOfTables[TableScan][RightIndex % OriginalNumFrames];
-                        ResultantComposite = LeftValue * LeftWeight + RightValue * RightWeight;
+                        int LeftIndex = (int)PrecisePositioning;
+                        int RightIndex = LeftIndex + 1;
+                        double RightWeight = PrecisePositioning - LeftIndex;
+                        double LeftWeight = 1 - RightWeight;
+                        double LeftValue = waveTableObject.WaveTableData.ListOfTables[TableScan][LeftIndex];
+                        double RightValue = waveTableObject.WaveTableData.ListOfTables[TableScan][RightIndex % OriginalNumFrames];
+                        double ResultantComposite = LeftValue * LeftWeight + RightValue * RightWeight;
                         NewTable.ListOfTables[TableScan][NewFrameScan] = (float)ResultantComposite;
                     }
                 }
@@ -203,33 +216,28 @@ namespace OutOfPhase
             {
                 /* this one handles averaging the frames for table compression */
 
-                int FoldingFactor;
-
-                FoldingFactor = OriginalNumFrames / NewNumFrames;
-                for (int TableScan = 0; TableScan < NumberOfTables; TableScan += 1)
+                int FoldingFactor = OriginalNumFrames / NewNumFrames;
+                for (int TableScan = 0; TableScan < NumberOfTables; TableScan++)
                 {
-                    for (int NewFrameScan = 0; NewFrameScan < NewNumFrames; NewFrameScan += 1)
+                    for (int NewFrameScan = 0; NewFrameScan < NewNumFrames; NewFrameScan++)
                     {
-                        double Accumulator;
-                        double Average;
-
-                        Accumulator = 0;
-                        for (int SumScan = 0; SumScan < FoldingFactor; SumScan += 1)
+                        double Accumulator = 0;
+                        for (int SumScan = 0; SumScan < FoldingFactor; SumScan++)
                         {
                             Accumulator += waveTableObject.WaveTableData
                                 .ListOfTables[TableScan][NewFrameScan * FoldingFactor + SumScan];
                         }
-                        Average = Accumulator / FoldingFactor;
+                        double Average = Accumulator / FoldingFactor;
                         NewTable.ListOfTables[TableScan][NewFrameScan] = (float)Average;
                     }
                 }
             }
 
+            NewTable.TruncateBits();
+
             undo.Push(waveTableObject.WaveTableData);
             redo.Clear();
             waveTableObject.WaveTableData = NewTable;
-
-            RebuildDataGrid();
         }
 
         private void textBoxNumTables_TextChanged(object sender, EventArgs e)
@@ -256,7 +264,7 @@ namespace OutOfPhase
                 {
                     int NumFrames = NewTable.NumFrames;
                     /* we use linear interpolation between adjacent tables to create new tables. */
-                    for (int TableScan = 0; TableScan < NewNumTables; TableScan += 1)
+                    for (int TableScan = 0; TableScan < NewNumTables; TableScan++)
                     {
                         double LeftWeight;
                         double RightWeight;
@@ -277,7 +285,7 @@ namespace OutOfPhase
                         RightIndex = LeftIndex + 1;
                         RightWeight = PrecisePositioning - LeftIndex;
                         LeftWeight = 1 - RightWeight;
-                        for (int FrameScan = 0; FrameScan < NumFrames; FrameScan += 1)
+                        for (int FrameScan = 0; FrameScan < NumFrames; FrameScan++)
                         {
                             double LeftValue;
                             double RightValue;
@@ -299,12 +307,51 @@ namespace OutOfPhase
                     }
                 }
 
+                NewTable.TruncateBits();
+
                 undo.Push(waveTableObject.WaveTableData);
                 redo.Clear();
                 waveTableObject.WaveTableData = NewTable;
-
-                RebuildDataGrid();
             }
+        }
+
+        private void ComboBoxNumBits_TextChanged(object sender, EventArgs e)
+        {
+            if (suppressTableOrFrameChange)
+            {
+                return;
+            }
+
+            NumBitsType numBits;
+            foreach (Enum candidate in WaveTableStorageRec.NumBitsAllowedValues)
+            {
+                if (String.Equals(comboBoxNumBits.Text, EnumUtility.GetDescription(candidate)))
+                {
+                    numBits = (NumBitsType)candidate;
+                    goto Found;
+                }
+            }
+            Debug.Assert(false);
+            throw new ArgumentException();
+        Found:
+
+            // copy table with bit conversion
+            WaveTableStorageRec newTable = new WaveTableStorageRec(
+                waveTableObject.NumTables,
+                waveTableObject.NumFrames,
+                numBits);
+            for (int i = 0; i < waveTableObject.NumTables; i++)
+            {
+                for (int j = 0; j < waveTableObject.NumFrames; j++)
+                {
+                    newTable.ListOfTables[i][j] = waveTableObject.WaveTableData.ListOfTables[i][j];
+                }
+            }
+            newTable.TruncateBits();
+
+            undo.Push(waveTableObject.WaveTableData);
+            redo.Clear();
+            waveTableObject.WaveTableData = newTable;
         }
 
         private void Eval()
@@ -334,6 +381,7 @@ namespace OutOfPhase
                 out AST);
             if (CompileError != CompileErrors.eCompileNoError)
             {
+                textBoxFormula.Focus();
                 textBoxFormula.SetSelectionLine(ErrorLineNumberCompilation - 1);
                 LiteralBuildErrorInfo errorInfo = new LiteralBuildErrorInfo(Compiler.GetCompileErrorString(CompileError), ErrorLineNumberCompilation);
                 MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
@@ -418,8 +466,6 @@ namespace OutOfPhase
                 WaveTableStorageRec w = undo.Pop();
                 redo.Push(waveTableObject.WaveTableData);
                 waveTableObject.WaveTableData = w;
-
-                RebuildDataGrid();
             }
             finally
             {
@@ -435,8 +481,6 @@ namespace OutOfPhase
                 WaveTableStorageRec w = redo.Pop();
                 undo.Push(waveTableObject.WaveTableData);
                 waveTableObject.WaveTableData = w;
-
-                RebuildDataGrid();
             }
             finally
             {
@@ -457,6 +501,14 @@ namespace OutOfPhase
                 dataGridViewWave.Columns.Add(j.ToString(), j.ToString());
             }
             dataGridViewWave.RowCount = waveTableObject.WaveTableData.NumFrames;
+        }
+
+        private void WaveTableObject_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (String.Equals(e.PropertyName, WaveTableObjectRec.WaveTableData_PropertyName))
+            {
+                RebuildDataGrid();
+            }
         }
 
         private void DataGridViewWave_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
@@ -562,6 +614,11 @@ namespace OutOfPhase
             menuStrip.evaluateToolStripMenuItem.Enabled = true;
             menuStrip.undoToolStripMenuItem.Enabled = undo.Count != 0;
             menuStrip.redoToolStripMenuItem.Enabled = redo.Count != 0;
+
+            menuStrip.insertTableToolStripMenuItem.Visible = true;
+            menuStrip.insertTableToolStripMenuItem.Enabled = true;
+            menuStrip.deleteTableToolStripMenuItem.Visible = true;
+            menuStrip.deleteTableToolStripMenuItem.Enabled = waveTableObject.NumTables != 0;
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -579,6 +636,40 @@ namespace OutOfPhase
             else if (menuItem == menuStrip.redoToolStripMenuItem)
             {
                 Redo();
+                return true;
+            }
+            else if (menuItem == menuStrip.insertTableToolStripMenuItem)
+            {
+                using (CmdDlgOneParam dialog = new CmdDlgOneParam("Insert new wave table at which index?", "Index:", hScrollBarWaveTable.Value.ToString(), CmdDlgOneParam.Options.None))
+                {
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        int index;
+                        if (Int32.TryParse(dialog.Value, out index) && unchecked((uint)index) <= (uint)waveTableObject.NumTables)
+                        {
+                            undo.Push(waveTableObject.WaveTableData);
+                            redo.Clear();
+                            waveTableObject.WaveTableData = WaveTableStorageRec.InsertTable(waveTableObject.WaveTableData, index);
+                        }
+                    }
+                }
+                return true;
+            }
+            else if (menuItem == menuStrip.deleteTableToolStripMenuItem)
+            {
+                using (CmdDlgOneParam dialog = new CmdDlgOneParam("Delete wave table at which index?", "Index:", hScrollBarWaveTable.Value.ToString(), CmdDlgOneParam.Options.None))
+                {
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        int index;
+                        if (Int32.TryParse(dialog.Value, out index) && unchecked((uint)index) < (uint)waveTableObject.NumTables)
+                        {
+                            undo.Push(waveTableObject.WaveTableData);
+                            redo.Clear();
+                            waveTableObject.WaveTableData = WaveTableStorageRec.DeleteTable(waveTableObject.WaveTableData, index);
+                        }
+                    }
+                }
                 return true;
             }
 
@@ -611,8 +702,8 @@ namespace OutOfPhase
 #if true // prevents "Add New Data Source..." from working
             state = WaveTableTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 mainWindow.DisplayName,
-                OutputDeviceDestinationHandler.OutputDeviceGetDestination,
-                OutputDeviceDestinationHandler.CreateOutputDeviceDestinationHandler,
+                OutputDeviceEnumerator.OutputDeviceGetDestination,
+                OutputDeviceEnumerator.CreateOutputDeviceDestinationHandler,
                 new OutputDeviceArguments(BufferDuration),
                 WaveTableTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.MainLoop,
                 generatorParams = new WaveTableTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>(

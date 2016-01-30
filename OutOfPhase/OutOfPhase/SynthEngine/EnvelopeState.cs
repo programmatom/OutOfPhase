@@ -578,12 +578,16 @@ namespace OutOfPhase
             return State.LastOutputtedValue;
         }
 
-        // used by loop-envelope lfo initialization (kind of a hack)
+        // Used by loop-envelope lfo initialization (kind of a hack)
+        // Also used by envelope smoothing
         private static double EnvelopeInitialValue(EvalEnvelopeRec State)
         {
-            double v = 0;
+            double v = State.LastOutputtedValue; // covers default/zero and ConstantShortcut cases
             for (int i = 0; i < State.PhaseVector.Length; i++)
             {
+                // TODO: If envelope rate is low, this could be zero when it was really a small number that rounded to
+                // zero. In that case, we ought to treat it as non-zero and smooth the transition, since that is probably
+                // what was intended.
                 if (State.PhaseVector[i].Duration != 0)
                 {
                     break;
@@ -592,7 +596,6 @@ namespace OutOfPhase
             }
             return v;
         }
-
 
         /* routine to step to the next non-zero width interval */
         private static void EnvStepToNextInterval(EvalEnvelopeRec State)

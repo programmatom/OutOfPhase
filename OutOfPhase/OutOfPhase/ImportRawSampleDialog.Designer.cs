@@ -51,12 +51,12 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
+            this.label2 = new OutOfPhase.MyLabel();
+            this.label3 = new OutOfPhase.MyLabel();
+            this.label4 = new OutOfPhase.MyLabel();
+            this.label5 = new OutOfPhase.MyLabel();
+            this.label6 = new OutOfPhase.MyLabel();
             this.textBoxInitialSkip = new System.Windows.Forms.TextBox();
             this.importRawSettingsBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.textBoxFramePadding = new System.Windows.Forms.TextBox();
@@ -66,12 +66,13 @@ namespace OutOfPhase
             this.comboBoxEndianness = new System.Windows.Forms.ComboBox();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.buttonCancel = new System.Windows.Forms.Button();
-            this.label7 = new System.Windows.Forms.Label();
+            this.label7 = new OutOfPhase.MyLabel();
             this.buttonImport = new System.Windows.Forms.Button();
-            this.label8 = new System.Windows.Forms.Label();
-            this.labelFileName = new System.Windows.Forms.Label();
+            this.label8 = new OutOfPhase.MyLabel();
+            this.labelFileName = new OutOfPhase.MyLabel();
             this.sampleView = new OutOfPhase.SampleControl();
-            this.label9 = new System.Windows.Forms.Label();
+            this.label9 = new OutOfPhase.MyLabel();
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.importRawSettingsBindingSource)).BeginInit();
             this.flowLayoutPanel1.SuspendLayout();
@@ -308,11 +309,13 @@ namespace OutOfPhase
             // 
             // sampleView
             // 
+            this.sampleView.BackColor = System.Drawing.SystemColors.Window;
             this.tableLayoutPanel1.SetColumnSpan(this.sampleView, 8);
             this.sampleView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.sampleView.Location = new System.Drawing.Point(3, 135);
+            this.sampleView.LoopEndLabel = null;
+            this.sampleView.LoopStartLabel = null;
             this.sampleView.Name = "sampleView";
-            this.sampleView.SampleObject = null;
             this.sampleView.Size = new System.Drawing.Size(652, 220);
             this.sampleView.TabIndex = 15;
             // 
@@ -325,6 +328,10 @@ namespace OutOfPhase
             this.label9.Size = new System.Drawing.Size(108, 13);
             this.label9.TabIndex = 16;
             this.label9.Text = "Preview:";
+            // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
             // 
             // ImportRawSampleDialog
             // 
@@ -345,12 +352,12 @@ namespace OutOfPhase
         #endregion
 
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label6;
+        private MyLabel label1;
+        private MyLabel label2;
+        private MyLabel label3;
+        private MyLabel label4;
+        private MyLabel label5;
+        private MyLabel label6;
         private System.Windows.Forms.TextBox textBoxInitialSkip;
         private System.Windows.Forms.TextBox textBoxFramePadding;
         private System.Windows.Forms.ComboBox comboBoxBits;
@@ -359,12 +366,13 @@ namespace OutOfPhase
         private System.Windows.Forms.ComboBox comboBoxEndianness;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button buttonCancel;
-        private System.Windows.Forms.Label label7;
+        private MyLabel label7;
         private System.Windows.Forms.Button buttonImport;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.Label labelFileName;
+        private MyLabel label8;
+        private MyLabel labelFileName;
         private System.Windows.Forms.BindingSource importRawSettingsBindingSource;
         private SampleControl sampleView;
-        private System.Windows.Forms.Label label9;
+        private MyLabel label9;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

@@ -890,7 +890,7 @@ namespace OutOfPhase
                                 }
                             }
 
-                        EndFrameScanPoint:
+                            EndFrameScanPoint:
                             ;
                         }
                     }
@@ -1375,10 +1375,14 @@ namespace OutOfPhase
             switch (CmdOpcode)
             {
                 default:
-                    ExecuteParamCommandFrame(
+                    Error = ExecuteParamCommandFrame(
                         TrackInfo.ParameterController,
                         Command,
                         SynthParams);
+                    if (Error != SynthErrorCodes.eSynthDone)
+                    {
+                        return Error;
+                    }
                     break;
 
                 case NoteCommands.eCmdSetEffectParam1:
@@ -2014,6 +2018,8 @@ namespace OutOfPhase
             int CombinedOscillatorWorkspaceROffset,
             SynthParamRec SynthParams)
         {
+            SynthErrorCodes error;
+
             /* generate waveforms, etc. */
             if (UpdateEnvelopes)
             {
@@ -2037,7 +2043,7 @@ namespace OutOfPhase
                     OscBankConsCell OscBankScan = InstrScan.ExecutingOscillatorBanks;
                     while (OscBankScan != null)
                     {
-                        ApplyOscStateBank(
+                        error = ApplyOscStateBank(
                             OscBankScan.OscBank,
                             workspace,
                             nActualFrames,
@@ -2048,12 +2054,16 @@ namespace OutOfPhase
                             CombinedOscillatorWorkspaceLOffset,
                             CombinedOscillatorWorkspaceROffset,
                             SynthParams);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
 
                         OscBankScan = OscBankScan.Next;
                     }
 
                     /* apply effects to local array */
-                    SynthErrorCodes error = ApplyTrackEffectGenerator(
+                    error = ApplyTrackEffectGenerator(
                         InstrScan.EffectGenerator,
                         workspace,
                         nActualFrames,
@@ -2242,10 +2252,25 @@ namespace OutOfPhase
             SynthParamRec SynthParams,
             bool writeOutputLogs)
         {
+            OscBankConsCell OscBankScan;
+
+            // finalize oscillator banks scheduled but not yet running
+            OscBankScan = TrackInfo.ScanningGapListHead;
+            while (OscBankScan != null)
+            {
+                FinalizeOscStateBank(
+                    OscBankScan.OscBank,
+                    SynthParams,
+                    writeOutputLogs);
+
+                OscBankScan = OscBankScan.Next;
+            }
+
+            // finalize all running objects
             PerInstrRec InstrScan = TrackInfo.Instrs;
             while (InstrScan != null)
             {
-                OscBankConsCell OscBankScan = InstrScan.ExecutingOscillatorBanks;
+                OscBankScan = InstrScan.ExecutingOscillatorBanks;
                 while (OscBankScan != null)
                 {
                     FinalizeOscStateBank(

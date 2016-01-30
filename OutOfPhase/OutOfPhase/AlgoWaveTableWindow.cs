@@ -45,6 +45,7 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            this.textBoxFunction.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxFunction.AutoIndent = Program.Config.AutoIndent;
 
             menuStripManager.SetGlobalHandler(mainWindow);
@@ -116,6 +117,12 @@ namespace OutOfPhase
             base.OnDeactivate(e);
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
 
         //
 
@@ -135,7 +142,7 @@ namespace OutOfPhase
             return algoWaveTableObject.EnsureBuilt(
                 force,
                 new PcodeExterns(mainWindow),
-                delegate(object source, BuildErrorInfo errorInfo)
+                delegate (object source, BuildErrorInfo errorInfo)
                 {
                     Debug.Assert(source == algoWaveTableObject);
                     HighlightLine(errorInfo.LineNumber);
@@ -173,6 +180,7 @@ namespace OutOfPhase
         public void HighlightLine(int line)
         {
             line--;
+            textBoxFunction.Focus();
             textBoxFunction.SetSelectionLine(line);
         }
 
@@ -226,7 +234,7 @@ namespace OutOfPhase
                 if (BuildThis(false/*force*/))
                 {
                     float[] raw = algoWaveTableObject.WaveTableData.GetRawCopy();
-                    SampConv.QuantizeAndClampVector(raw, algoWaveTableObject.WaveTableData.NumBits);
+                    SampConv.QuantizeAndClampVector(raw, algoWaveTableObject.WaveTableData.NumBits); // ensure target bit depth is honored
                     WaveTableObjectRec waveTableObject = new WaveTableObjectRec(
                         mainWindow.Document,
                         new WaveTableStorageRec(

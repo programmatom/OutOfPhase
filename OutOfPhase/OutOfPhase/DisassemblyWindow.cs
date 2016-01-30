@@ -42,11 +42,16 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            // By default make disassembly window tkae up most of the vertical screen height.
+            const int Margin = 20;
+            Size = new Size(Size.Width, Screen.PrimaryScreen.WorkingArea.Height - Margin);
+
             menuStripManager.SetGlobalHandler(mainWindow);
             menuStripManager.HookUpTextEditorWindowHelper(this.textEditorWindowHelper);
 
             mainWindow.AddMiscForm(this);
 
+            textBoxDisassembly.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             textBoxDisassembly.Text = text;
             textBoxDisassembly.SetInsertionPoint(0, 0);
 
@@ -59,6 +64,14 @@ namespace OutOfPhase
             base.OnFormClosed(e);
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            // Ensure bottom of form isn't under task bar
+            Location = new Point(Location.X, Location.Y - Math.Max(0, Location.Y + Size.Height - Screen.PrimaryScreen.WorkingArea.Height));
+
+            base.OnShown(e);
+        }
+
         protected override void OnActivated(EventArgs e)
         {
             base.OnActivated(e);
@@ -69,6 +82,12 @@ namespace OutOfPhase
         {
             menuStripManager.SetActiveHandler(null);
             base.OnDeactivate(e);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
         }
 
 

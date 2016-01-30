@@ -21,6 +21,7 @@
 */
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Text;
 using System.Xml;
@@ -29,26 +30,78 @@ using System.Windows.Forms;
 
 namespace OutOfPhase
 {
-    public class GlobalPrefs
+    public class GlobalPrefs : INotifyPropertyChanged
     {
         // Publicly supported and advertized properties.
-        public int TabSize = 4;
-        public bool AutoIndent = true;
-        public bool AutosaveEnabled = true;
-        public int AutosaveInterval = 5 * 60; // seconds
-        public string OutputDevice = ERole.eMultimedia.ToString();
-        public string OutputDeviceFriendlyName = String.Empty;
-        public string FFTWWisdom = null;
-        public int Concurrency = 0; // 0: default, 1: sequential, >1: use C procs, <0: use N-(-C) procs [i.e. reserve]
-        public int RecentDocumentsMax = 10;
-        public readonly List<string> RecentDocuments = new List<string>();
+
+        private int _TabSize = 4;
+        public int TabSize { get { return _TabSize; } set { _TabSize = value; Notify("TabSize"); } }
+
+        private bool _AutoIndent = true;
+        public bool AutoIndent { get { return _AutoIndent; } set { _AutoIndent = value; Notify("AutoIndent"); } }
+
+        private bool _AutosaveEnabled = true;
+        public bool AutosaveEnabled { get { return _AutosaveEnabled; } set { _AutosaveEnabled = value; Notify("AutosaveEnabled"); } }
+
+        private int _AutosaveInterval = 5 * 60; // seconds
+        public int AutosaveInterval { get { return _AutosaveInterval; } set { _AutosaveInterval = value; Notify("AutosaveInterval"); } }
+
+        private string _OutputDevice = ERole.eMultimedia.ToString();
+        public string OutputDevice { get { return _OutputDevice; } set { _OutputDevice = value; Notify("OutputDevice"); } }
+
+        private string _OutputDeviceFriendlyName = String.Empty;
+        public string OutputDeviceFriendlyName { get { return _OutputDeviceFriendlyName; } set { _OutputDeviceFriendlyName = value; Notify("OutputDeviceFriendlyName"); } }
+
+        private string _FFTWWisdom = null;
+        public string FFTWWisdom { get { return _FFTWWisdom; } set { _FFTWWisdom = value; Notify("FFTWWisdom"); } }
+
+        private int _Concurrency = 0; // 0: default, 1: sequential, >1: use C procs, <0: use N-(-C) procs [i.e. reserve]
+        public int Concurrency { get { return _Concurrency; } set { _Concurrency = value; Notify("Concurrency"); } }
+
+        private int _RecentDocumentsMax = 10;
+        public int RecentDocumentsMax { get { return _RecentDocumentsMax; } set { _RecentDocumentsMax = value; Notify("RecentDocumentsMax"); } }
+
+        private readonly BindingList<string> _RecentDocuments = new BindingList<string>();
+        public BindingList<string> RecentDocuments { get { return _RecentDocuments; } }
 
         // Unadvertised properties used for diagnostics and controlling experimental features.
         // As a rule, these properties are set at startup and must not change for the duration or broken behavior may occur.
-        private bool EnableCILSet;
-        public bool EnableCIL = true; // enable for .NET jitted code generation (disable for pcode)
-        private bool EnableEnvelopeSmoothingSet;
-        public bool EnableEnvelopeSmoothing = true; // enable for oscillator envelope smoothing (of loudness and index envelopes)
+
+        private bool _EnableCILSet;
+        private bool _EnableCIL = true; // enable for .NET jitted code generation (disable for pcode)
+        public bool EnableCIL { get { return _EnableCIL; } }
+
+        private bool _EnableEnvelopeSmoothingSet;
+        private bool _EnableEnvelopeSmoothing = true; // enable for oscillator envelope smoothing (of loudness and index envelopes)
+        public bool EnableEnvelopeSmoothing { get { return _EnableEnvelopeSmoothing; } }
+
+        private bool _EnablePriorityBoostSet;
+        private bool _EnablePriorityBoost = true; // enable for synth engine threads priority boost during synthesis
+        public bool EnablePriorityBoost { get { return _EnablePriorityBoost; } }
+
+        private bool _EnableDirectWriteSet;
+        private bool _EnableDirectWrite = false; // enable DirectWrite rendering of UI instead of GDI rendering
+        public bool EnableDirectWrite { get { return _EnableDirectWrite; } }
+
+        private bool _MaximumSmoothedParameterCountSet;
+        private int _MaximumSmoothedParameterCount = 16;
+        public int MaximumSmoothedParameterCount { get { return _MaximumSmoothedParameterCount; } }
+
+
+        //
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void Notify(string propertyName)
+        {
+            if (PropertyChanged != null)
+            {
+                PropertyChanged.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+
+
+        //
 
         public void ReferenceRecentDocument(string path)
         {
@@ -58,11 +111,21 @@ namespace OutOfPhase
                 RecentDocuments.RemoveAt(i);
             }
             RecentDocuments.Insert(0, path);
+#if false // BindingList doesn't support RemoveRange()
             if (RecentDocuments.Count > RecentDocumentsMax)
             {
                 RecentDocuments.RemoveRange(RecentDocumentsMax, RecentDocuments.Count - RecentDocumentsMax);
             }
+#else
+            while (RecentDocuments.Count > RecentDocumentsMax)
+            {
+                RecentDocuments.RemoveAt(RecentDocuments.Count - 1);
+            }
+#endif
         }
+
+
+        //
 
         public GlobalPrefs()
         {
@@ -79,36 +142,51 @@ namespace OutOfPhase
                 xml.Load(path);
                 XPathNavigator root = xml.CreateNavigator();
 
-                TabSize = Math.Min(Math.Max(root.SelectSingleNode("/settings/tabSize").ValueAsInt, Constants.MINTABCOUNT), Constants.MAXTABCOUNT);
-                AutoIndent = root.SelectSingleNode("/settings/autoIndent").ValueAsBoolean;
-                AutosaveEnabled = root.SelectSingleNode("/settings/autosave").ValueAsBoolean;
-                AutosaveInterval = Math.Min(Math.Max(root.SelectSingleNode("/settings/autosaveInterval").ValueAsInt, Constants.MINAUTOSAVEINTERVAL), Constants.MAXAUTOSAVEINTERVAL);
-                OutputDevice = root.SelectSingleNode("/settings/outputDevice").Value;
-                OutputDeviceFriendlyName = root.SelectSingleNode("/settings/outputDevice/@name").Value;
-                Concurrency = root.SelectSingleNode("/settings/concurrency").ValueAsInt;
+                _TabSize = Math.Min(Math.Max(root.SelectSingleNode("/settings/tabSize").ValueAsInt, Constants.MINTABCOUNT), Constants.MAXTABCOUNT);
+                _AutoIndent = root.SelectSingleNode("/settings/autoIndent").ValueAsBoolean;
+                _AutosaveEnabled = root.SelectSingleNode("/settings/autosave").ValueAsBoolean;
+                _AutosaveInterval = Math.Min(Math.Max(root.SelectSingleNode("/settings/autosaveInterval").ValueAsInt, Constants.MINAUTOSAVEINTERVAL), Constants.MAXAUTOSAVEINTERVAL);
+                _OutputDevice = root.SelectSingleNode("/settings/outputDevice").Value;
+                _OutputDeviceFriendlyName = root.SelectSingleNode("/settings/outputDevice/@name").Value;
+                _Concurrency = root.SelectSingleNode("/settings/concurrency").ValueAsInt;
                 if ((nav = root.SelectSingleNode("/settings/fftwfWisdom")) != null)
                 {
-                    FFTWWisdom = nav.Value;
+                    _FFTWWisdom = nav.Value;
                 }
                 nav = root.SelectSingleNode("/settings/recentDocuments/@max");
                 if (nav != null)
                 {
-                    RecentDocumentsMax = Math.Max(0, nav.ValueAsInt);
+                    _RecentDocumentsMax = Math.Max(0, nav.ValueAsInt);
                 }
                 foreach (XPathNavigator recentNav in root.Select("/settings/recentDocuments/recentDocument"))
                 {
-                    RecentDocuments.Add(recentNav.Value);
+                    _RecentDocuments.Add(recentNav.Value);
                 }
 
                 if ((nav = root.SelectSingleNode("/settings/enableCIL")) != null)
                 {
-                    EnableCILSet = true;
-                    EnableCIL = nav.ValueAsBoolean;
+                    _EnableCILSet = true;
+                    _EnableCIL = nav.ValueAsBoolean;
                 }
                 if ((nav = root.SelectSingleNode("/settings/enableEnvelopeSmoothing")) != null)
                 {
-                    EnableEnvelopeSmoothingSet = true;
-                    EnableEnvelopeSmoothing = nav.ValueAsBoolean;
+                    _EnableEnvelopeSmoothingSet = true;
+                    _EnableEnvelopeSmoothing = nav.ValueAsBoolean;
+                }
+                if ((nav = root.SelectSingleNode("/settings/enablePriorityBoost")) != null)
+                {
+                    _EnablePriorityBoostSet = true;
+                    _EnablePriorityBoost = nav.ValueAsBoolean;
+                }
+                if ((nav = root.SelectSingleNode("/settings/enableDirectWrite")) != null)
+                {
+                    _EnableDirectWriteSet = true;
+                    _EnableDirectWrite = nav.ValueAsBoolean;
+                }
+                if ((nav = root.SelectSingleNode("/settings/maximumSmoothedParameterCount")) != null)
+                {
+                    _MaximumSmoothedParameterCountSet = true;
+                    _MaximumSmoothedParameterCount = nav.ValueAsInt;
                 }
             }
             catch (Exception exception)
@@ -131,42 +209,42 @@ namespace OutOfPhase
                     // advertised settings
 
                     writer.WriteStartElement("tabSize");
-                    writer.WriteValue(TabSize);
+                    writer.WriteValue(_TabSize);
                     writer.WriteEndElement();
 
                     writer.WriteStartElement("autoIndent");
-                    writer.WriteValue(AutoIndent);
+                    writer.WriteValue(_AutoIndent);
                     writer.WriteEndElement();
 
                     writer.WriteStartElement("autosave");
-                    writer.WriteValue(AutosaveEnabled);
+                    writer.WriteValue(_AutosaveEnabled);
                     writer.WriteEndElement();
 
                     writer.WriteStartElement("autosaveInterval");
-                    writer.WriteValue(AutosaveInterval);
+                    writer.WriteValue(_AutosaveInterval);
                     writer.WriteEndElement();
 
                     writer.WriteStartElement("outputDevice");
                     writer.WriteStartAttribute("name", null);
-                    writer.WriteValue(OutputDeviceFriendlyName);
+                    writer.WriteValue(_OutputDeviceFriendlyName);
                     writer.WriteEndAttribute();
-                    writer.WriteValue(OutputDevice);
+                    writer.WriteValue(_OutputDevice);
                     writer.WriteEndElement();
 
                     writer.WriteStartElement("concurrency");
-                    writer.WriteValue(Concurrency);
+                    writer.WriteValue(_Concurrency);
                     writer.WriteEndElement();
 
                     if (!String.IsNullOrEmpty(FFTWWisdom))
                     {
                         writer.WriteStartElement("fftwfWisdom");
-                        writer.WriteValue(FFTWWisdom);
+                        writer.WriteValue(_FFTWWisdom);
                         writer.WriteEndElement();
                     }
 
                     writer.WriteStartElement("recentDocuments");
                     writer.WriteStartAttribute("max");
-                    writer.WriteValue(RecentDocumentsMax);
+                    writer.WriteValue(_RecentDocumentsMax);
                     writer.WriteEndAttribute();
                     foreach (string recent in RecentDocuments)
                     {
@@ -179,17 +257,38 @@ namespace OutOfPhase
 
                     // unadvertised settings
 
-                    if (EnableCILSet)
+                    if (_EnableCILSet)
                     {
                         writer.WriteStartElement("enableCIL");
-                        writer.WriteValue(EnableCIL);
+                        writer.WriteValue(_EnableCIL);
                         writer.WriteEndElement();
                     }
 
-                    if (EnableEnvelopeSmoothingSet)
+                    if (_EnableEnvelopeSmoothingSet)
                     {
                         writer.WriteStartElement("enableEnvelopeSmoothing");
-                        writer.WriteValue(EnableEnvelopeSmoothing);
+                        writer.WriteValue(_EnableEnvelopeSmoothing);
+                        writer.WriteEndElement();
+                    }
+
+                    if (_EnablePriorityBoostSet)
+                    {
+                        writer.WriteStartElement("enablePriorityBoost");
+                        writer.WriteValue(_EnablePriorityBoost);
+                        writer.WriteEndElement();
+                    }
+
+                    if (_EnableDirectWriteSet)
+                    {
+                        writer.WriteStartElement("enableDirectWrite");
+                        writer.WriteValue(_EnableDirectWrite);
+                        writer.WriteEndElement();
+                    }
+
+                    if (_MaximumSmoothedParameterCountSet)
+                    {
+                        writer.WriteStartElement("maximumSmoothedParameterCount");
+                        writer.WriteValue(_MaximumSmoothedParameterCount);
                         writer.WriteEndElement();
                     }
 

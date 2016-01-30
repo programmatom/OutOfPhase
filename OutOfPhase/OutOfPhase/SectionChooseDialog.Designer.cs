@@ -49,13 +49,15 @@ namespace OutOfPhase
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.buttonCancel = new System.Windows.Forms.Button();
-            this.label1 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
             this.buttonOK = new System.Windows.Forms.Button();
-            this.label2 = new System.Windows.Forms.Label();
+            this.label2 = new OutOfPhase.MyLabel();
             this.myListBoxSections = new OutOfPhase.MyListBox();
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             this.flowLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
@@ -128,13 +130,17 @@ namespace OutOfPhase
             // 
             // myListBoxSections
             // 
-            this.myListBoxSections.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.myListBoxSections.BackColor = System.Drawing.SystemColors.Window;
             this.myListBoxSections.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.myListBoxSections.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxSections.Location = new System.Drawing.Point(3, 26);
             this.myListBoxSections.Name = "myListBoxSections";
             this.myListBoxSections.Size = new System.Drawing.Size(304, 251);
             this.myListBoxSections.TabIndex = 2;
+            // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
             // 
             // SectionChooseDialog
             // 
@@ -161,9 +167,10 @@ namespace OutOfPhase
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button buttonCancel;
-        private System.Windows.Forms.Label label1;
+        private MyLabel label1;
         private System.Windows.Forms.Button buttonOK;
-        private System.Windows.Forms.Label label2;
+        private MyLabel label2;
         private MyListBox myListBoxSections;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

@@ -343,6 +343,105 @@ namespace OutOfPhase
             }
         }
 
+        public static void FloatVectorCopyUnaligned(
+            float[] source,
+            int sourceOffset,
+            float[] target,
+            int targetOffset,
+            int count)
+        {
+            int i = 0;
+
+#if VECTOR
+            if (EnableVector)
+            {
+                // .NET uses movups instruction, so vector has some perf gain even when unaligned
+                for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
+                {
+                    Vector<float> s = new Vector<float>(source, i + sourceOffset);
+                    s.CopyTo(target, i + targetOffset);
+                }
+            }
+            else
+#endif
+            {
+                for (; i <= count - 4; i += 4)
+                {
+                    float Source0 = source[i + 0 + sourceOffset];
+                    float Source1 = source[i + 1 + sourceOffset];
+                    float Source2 = source[i + 2 + sourceOffset];
+                    float Source3 = source[i + 3 + sourceOffset];
+                    target[i + 0 + targetOffset] = Source0;
+                    target[i + 1 + targetOffset] = Source1;
+                    target[i + 2 + targetOffset] = Source2;
+                    target[i + 3 + targetOffset] = Source3;
+                }
+            }
+
+            for (; i < count; i++)
+            {
+                target[i + targetOffset] = source[i + sourceOffset];
+            }
+        }
+
+        // target[i] += source1[i] * source2[i]
+        public static void FloatVectorProductAccumulate(
+            float[] source1,
+            int source1Offset,
+            float[] source2,
+            int source2Offset,
+            float[] target,
+            int targetOffset,
+            int count)
+        {
+            int i = 0;
+
+#if DEBUG
+            AssertVectorAligned(source1, source1Offset);
+            AssertVectorAligned(source2, source2Offset);
+            AssertVectorAligned(target, targetOffset);
+#endif
+#if VECTOR
+            if (EnableVector)
+            {
+                for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
+                {
+                    Vector<float> s = new Vector<float>(source1, i + source1Offset)
+                        * new Vector<float>(source2, i + source2Offset)
+                        + new Vector<float>(target, i + targetOffset);
+                    s.CopyTo(target, i + targetOffset);
+                }
+            }
+            else
+#endif
+            {
+                for (; i <= count - 4; i += 4)
+                {
+                    float Source10 = source1[i + source1Offset + 0];
+                    float Source11 = source1[i + source1Offset + 1];
+                    float Source12 = source1[i + source1Offset + 2];
+                    float Source13 = source1[i + source1Offset + 3];
+                    float Source20 = source2[i + source2Offset + 0];
+                    float Source21 = source2[i + source2Offset + 1];
+                    float Source22 = source2[i + source2Offset + 2];
+                    float Source23 = source2[i + source2Offset + 3];
+                    float Target0 = target[i + targetOffset + 0];
+                    float Target1 = target[i + targetOffset + 1];
+                    float Target2 = target[i + targetOffset + 2];
+                    float Target3 = target[i + targetOffset + 3];
+                    target[i + targetOffset + 0] = Target0 + Source10 * Source20;
+                    target[i + targetOffset + 1] = Target1 + Source11 * Source21;
+                    target[i + targetOffset + 2] = Target2 + Source12 * Source22;
+                    target[i + targetOffset + 3] = Target3 + Source13 * Source23;
+                }
+            }
+
+            for (; i < count; i++)
+            {
+                target[i + targetOffset] = target[i + targetOffset] + source1[i + source1Offset] * source2[i + source2Offset];
+            }
+        }
+
         /* interleave two split channels */
         public static void FloatVectorMakeInterleaved(
             float[] leftSource,

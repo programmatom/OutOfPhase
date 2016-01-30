@@ -78,6 +78,11 @@ namespace OutOfPhase
                     continue;
                 }
 
+                if (!HasDescription(fieldInfo))
+                {
+                    continue;
+                }
+
                 if (!IsInCategory(fieldInfo, category))
                 {
                     continue;
@@ -239,6 +244,12 @@ namespace OutOfPhase
                 }
             }
             return false;
+        }
+
+        private static bool HasDescription(FieldInfo fieldInfo)
+        {
+            object[] descriptionAttributes = fieldInfo.GetCustomAttributes(typeof(DescriptionAttribute), false/*inherit*/);
+            return (descriptionAttributes != null) && (descriptionAttributes.Length > 0);
         }
     }
 
@@ -492,6 +503,7 @@ namespace OutOfPhase
         private string _CommentInfo = String.Empty;
         public const string CommentInfo_PropertyName = "CommentInfo";
         [Bindable(true)]
+        [Searchable]
         public string CommentInfo { get { return _CommentInfo; } set { Patch(value, ref _CommentInfo, CommentInfo_PropertyName); } }
 
 
@@ -500,36 +512,43 @@ namespace OutOfPhase
         private readonly MyBindingList<SampleObjectRec> _SampleList = new MyBindingList<SampleObjectRec>();
         public const string SampleList_PropertyName = "SampleList";
         [Bindable(true)]
+        [Searchable]
         public MyBindingList<SampleObjectRec> SampleList { get { return _SampleList; } }
 
         private readonly MyBindingList<FunctionObjectRec> _FunctionList = new MyBindingList<FunctionObjectRec>();
         public const string FunctionList_PropertyName = "FunctionList";
         [Bindable(true)]
+        [Searchable]
         public MyBindingList<FunctionObjectRec> FunctionList { get { return _FunctionList; } }
 
         private readonly MyBindingList<AlgoSampObjectRec> _AlgoSampList = new MyBindingList<AlgoSampObjectRec>();
         public const string AlgoSampList_PropertyName = "AlgoSampList";
         [Bindable(true)]
+        [Searchable]
         public MyBindingList<AlgoSampObjectRec> AlgoSampList { get { return _AlgoSampList; } }
 
         private readonly MyBindingList<WaveTableObjectRec> _WaveTableList = new MyBindingList<WaveTableObjectRec>();
         public const string WaveTableList_PropertyName = "WaveTableList";
         [Bindable(true)]
+        [Searchable]
         public MyBindingList<WaveTableObjectRec> WaveTableList { get { return _WaveTableList; } }
 
         private readonly MyBindingList<AlgoWaveTableObjectRec> _AlgoWaveTableList = new MyBindingList<AlgoWaveTableObjectRec>();
         public const string AlgoWaveTableList_PropertyName = "AlgoWaveTableList";
         [Bindable(true)]
+        [Searchable]
         public MyBindingList<AlgoWaveTableObjectRec> AlgoWaveTableList { get { return _AlgoWaveTableList; } }
 
         public readonly MyBindingList<InstrObjectRec> _InstrumentList = new MyBindingList<InstrObjectRec>();
         public const string InstrumentList_PropertyName = "InstrumentList";
         [Bindable(true)]
+        [Searchable]
         public MyBindingList<InstrObjectRec> InstrumentList { get { return _InstrumentList; } }
 
         public readonly MyBindingList<TrackObjectRec> _TrackList = new MyTrackList();
         public const string TrackList_PropertyName = "TrackList";
         [Bindable(true)]
+        [Searchable]
         public MyBindingList<TrackObjectRec> TrackList { get { return _TrackList; } }
 
 
@@ -610,24 +629,28 @@ namespace OutOfPhase
         public ScoreEffectsRec _ScoreEffects;
         public const string ScoreEffects_PropertyName = "ScoreEffects";
         [Bindable(true)]
+        [Searchable]
         public ScoreEffectsRec ScoreEffects { get { return _ScoreEffects; } }
 
 
         private SequencerRec _Sequencer;
         public const string Sequencer_PropertyName = "Sequencer";
         [Bindable(true)]
+        [Searchable]
         public SequencerRec Sequencer { get { return _Sequencer; } }
 
 
         private readonly MyBindingList<SectionObjectRec> _SectionList = new MyBindingList<SectionObjectRec>();
         public const string SectionList_PropertyName = "SectionList";
         [Bindable(true)]
+        [Searchable]
         public MyBindingList<SectionObjectRec> SectionList { get { return _SectionList; } }
 
 
         private NewSchoolRec _NewSchool;
         public const string NewSchool_PropertyName = "NewSchool";
         [Bindable(true)]
+        [Searchable]
         public NewSchoolRec NewSchool { get { return _NewSchool; } }
 
 
@@ -1687,6 +1710,7 @@ namespace OutOfPhase
         private string _Name = String.Empty;
         public const string Name_PropertyName = "Name";
         [Bindable(true)]
+        [Searchable]
         public string Name { get { return _Name; } set { Patch(value, ref _Name, Name_PropertyName); } }
 
 
@@ -1746,6 +1770,7 @@ namespace OutOfPhase
             "# naturalfrequency : double; [leftdata, rightdata | data] : fixedarray" + Environment.NewLine;
         public const string SampleFormula_PropertyName = "SampleFormula";
         [Bindable(true)]
+        [Searchable]
         public string SampleFormula { get { return _SampleFormula; } set { Patch(value, ref _SampleFormula, SampleFormula_PropertyName); } }
 
         private int _Origin;
@@ -2272,11 +2297,13 @@ namespace OutOfPhase
         private string _Source = String.Empty;
         public const string Source_PropertyName = "Source";
         [Bindable(true)]
+        [Searchable]
         public string Source { get { return _Source; } set { Patch(value, ref _Source, Source_PropertyName); } }
 
         private string _Name = String.Empty;
         public const string Name_PropertyName = "Name";
         [Bindable(true)]
+        [Searchable]
         public string Name { get { return _Name; } set { Patch(value, ref _Name, Name_PropertyName); } }
 
 
@@ -2383,6 +2410,7 @@ namespace OutOfPhase
         private string _Name = String.Empty;
         public const string Name_PropertyName = "Name";
         [Bindable(true)]
+        [Searchable]
         public string Name { get { return _Name; } set { Patch(value, ref _Name, Name_PropertyName); } }
 
         private string _AlgoSampFormula =
@@ -2391,6 +2419,7 @@ namespace OutOfPhase
             "# naturalfrequency : double; [data | leftdata, rightdata] : fixedarray" + Environment.NewLine;
         public const string AlgoSampFormula_PropertyName = "AlgoSampFormula";
         [Bindable(true)]
+        [Searchable]
         public string AlgoSampFormula { get { return _AlgoSampFormula; } set { Patch(value, ref _AlgoSampFormula, AlgoSampFormula_PropertyName); } }
 
         private NumChannelsType _NumChannels = NumChannelsType.eSampleMono;
@@ -2823,6 +2852,8 @@ namespace OutOfPhase
             }
         }
 
+        public static Enum[] NumBitsAllowedValues { get { return EnumUtility.GetValues(NumBitsType.eSample8bit.GetType()); } }
+
         public struct Table
         {
             public readonly float[] frames;
@@ -2899,6 +2930,13 @@ namespace OutOfPhase
             }
         }
 
+        public WaveTableStorageRec(WaveTableStorageRec orig, Table[] tables)
+        {
+            this.NumFrames = orig.NumFrames;
+            this.NumBits = orig.NumBits;
+            this.ListOfTables = tables;
+        }
+
 
         public float[] GetRawCopy()
         {
@@ -2913,6 +2951,68 @@ namespace OutOfPhase
             }
             return Array;
         }
+
+        public static WaveTableStorageRec InsertTable(WaveTableStorageRec orig, int index)
+        {
+            List<Table> tables = new List<Table>();
+            for (int i = 0; i < orig.NumTables; i++)
+            {
+                if (i == index)
+                {
+                    tables.Add(new Table(orig.NumFrames));
+                }
+                tables.Add(orig.ListOfTables[i]);
+            }
+            if (orig.NumTables == index)
+            {
+                tables.Add(new Table(orig.NumFrames));
+            }
+            return new WaveTableStorageRec(orig, tables.ToArray());
+        }
+
+        public static WaveTableStorageRec DeleteTable(WaveTableStorageRec orig, int index)
+        {
+            List<Table> tables = new List<Table>();
+            for (int i = 0; i < orig.NumTables; i++)
+            {
+                if (i != index)
+                {
+                    tables.Add(orig.ListOfTables[i]);
+                }
+            }
+            return new WaveTableStorageRec(orig, tables.ToArray());
+        }
+
+        public void TruncateBits() // ensure bit depth is respected
+        {
+            foreach (Table table in ListOfTables)
+            {
+                for (int i = 0; i < table.frames.Length; i++)
+                {
+                    float v = table.frames[i];
+                    float v2;
+                    switch (NumBits)
+                    {
+                        default:
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        case NumBitsType.eSample8bit:
+                            v2 = SampConv.SignedByteToFloat(SampConv.FloatToSignedByte(v));
+                            Debug.Assert(v2 == SampConv.SignedByteToFloat(SampConv.FloatToSignedByte(v2))); // verify conversion idempotency (i.e. stability)
+                            break;
+                        case NumBitsType.eSample16bit:
+                            v2 = SampConv.SignedShortToFloat(SampConv.FloatToSignedShort(v));
+                            Debug.Assert(v2 == SampConv.SignedShortToFloat(SampConv.FloatToSignedShort(v))); // verify conversion idempotency (i.e. stability)
+                            break;
+                        case NumBitsType.eSample24bit:
+                            v2 = SampConv.SignedTribyteToFloat(SampConv.FloatToSignedTribyte(v));
+                            Debug.Assert(v2 == SampConv.SignedTribyteToFloat(SampConv.FloatToSignedTribyte(v))); // verify conversion idempotency (i.e. stability)
+                            break;
+                    }
+                    table.frames[i] = v2;
+                }
+            }
+        }
     }
 
     public class WaveTableObjectRec : HierarchicalBindingBase
@@ -2920,6 +3020,7 @@ namespace OutOfPhase
         private string _Name = String.Empty;
         public const string Name_PropertyName = "Name";
         [Bindable(true)]
+        [Searchable]
         public string Name { get { return _Name; } set { Patch(value, ref _Name, Name_PropertyName); } }
 
 
@@ -2956,6 +3057,7 @@ namespace OutOfPhase
         public event WaveTableStorageEventHandler WaveTableDataChanged;
 
         public const string NumBits_PropertyName = "NumBits";
+        public static Enum[] NumBitsAllowedValues { get { return WaveTableStorageRec.NumBitsAllowedValues; } }
         [Bindable(true)]
         public NumBitsType NumBits { get { return _WaveTableData.NumBits; } /* set { PatchObject(value, ref WaveTableData.NumBits, NumBits_PropertyName); } */ }
         public string NumBitsAsString { get { return EnumUtility.GetDescription(_WaveTableData.NumBits); } /* set { string old = EnumDescription.GetDescription(WaveTableData.NumBits); WaveTableData.NumBits = (NumBitsType)EnumDescription.GetValue(NumBitsType.eSample8bit, value); PatchObject(value, ref old, NumBits_PropertyName); } */ }
@@ -2974,6 +3076,7 @@ namespace OutOfPhase
             "# data : fixedarray; frames : integer; tables : integer" + Environment.NewLine;
         public const string WaveTableFormula_PropertyName = "WaveTableFormula";
         [Bindable(true)]
+        [Searchable]
         public string WaveTableFormula { get { return _WaveTableFormula; } set { Patch(value, ref _WaveTableFormula, WaveTableFormula_PropertyName); } }
 
         private double _TestAttackDuration = 1;
@@ -3298,12 +3401,14 @@ namespace OutOfPhase
         private string _Name = String.Empty;
         public const string Name_PropertyName = "Name";
         [Bindable(true)]
+        [Searchable]
         public string Name { get { return _Name; } set { Patch(value, ref _Name, Name_PropertyName); } }
 
         private string _AlgoWaveTableFormula =
             "# frames : integer; tables : integer; data : fixedarray" + Environment.NewLine;
         public const string AlgoWaveTableFormula_PropertyName = "AlgoWaveTableFormula";
         [Bindable(true)]
+        [Searchable]
         public string AlgoWaveTableFormula { get { return _AlgoWaveTableFormula; } set { Patch(value, ref _AlgoWaveTableFormula, AlgoWaveTableFormula_PropertyName); } }
 
         private int _NumFrames = 4096;
@@ -3450,11 +3555,13 @@ namespace OutOfPhase
         private string _Name = String.Empty;
         public const string Name_PropertyName = "Name";
         [Bindable(true)]
+        [Searchable]
         public string Name { get { return _Name; } set { Patch(value, ref _Name, Name_PropertyName); } }
 
         private string _InstrDefinition = String.Empty;
         public const string InstrDefinition_PropertyName = "InstrDefinition";
         [Bindable(true)]
+        [Searchable]
         public string InstrDefinition { get { return _InstrDefinition; } set { Patch(value, ref _InstrDefinition, InstrDefinition_PropertyName); } }
 
         private short _SavedWindowXLoc;
@@ -3551,11 +3658,13 @@ namespace OutOfPhase
         private string _Source = String.Empty;
         public const string Source_PropertyName = "Source";
         [Bindable(true)]
+        [Searchable]
         public string Source { get { return _Source; } set { Patch(value, ref _Source, Source_PropertyName); } }
 
         private string _Name = String.Empty;
         public const string Name_PropertyName = "Name";
         [Bindable(true)]
+        [Searchable]
         public string Name { get { return _Name; } set { Patch(value, ref _Name, Name_PropertyName); } }
 
 
@@ -3644,6 +3753,7 @@ namespace OutOfPhase
             "#score effects" + Environment.NewLine;
         public const string Source_PropertyName = "Source";
         [Bindable(true)]
+        [Searchable]
         public string Source { get { return _Source; } set { Patch(value, ref _Source, Source_PropertyName); } }
 
 
@@ -3727,6 +3837,7 @@ namespace OutOfPhase
             "#sequencer configuration" + Environment.NewLine;
         public const string Source_PropertyName = "Source";
         [Bindable(true)]
+        [Searchable]
         public string Source { get { return _Source; } set { Patch(value, ref _Source, Source_PropertyName); } }
 
 
@@ -4300,11 +4411,86 @@ namespace OutOfPhase
         e1String1LargeBCDParameters /* <string1> <1l> */
     }
 
+    [Flags]
+    public enum InlineParamVis : uint
+    {
+        None = 0,
+
+        [Description("Accent 1")]
+        Accent1 = 1U << 0,
+        [Description("Accent 2")]
+        Accent2 = 1U << 1,
+        [Description("Accent 3")]
+        Accent3 = 1U << 2,
+        [Description("Accent 4")]
+        Accent4 = 1U << 3,
+        [Description("Accent 5")]
+        Accent5 = 1U << 4,
+        [Description("Accent 6")]
+        Accent6 = 1U << 5,
+        [Description("Accent 7")]
+        Accent7 = 1U << 6,
+        [Description("Accent 8")]
+        Accent8 = 1U << 7,
+
+        [Description("Loudness")]
+        Loudness = 1U << 8,
+        [Description("Early/Late Adjust")]
+        EarlyLateAdjust = 1U << 9,
+        [Description("Duration Adjust")]
+        DurationAdjust = 1U << 10,
+        [Description("Duration Adjust Mode")]
+        DurationAdjustMode = 1U << 11,
+        [Description("Release Point 1")]
+        ReleasePoint1 = 1U << 12,
+        [Description("Release Point 1 Origin")]
+        ReleasePoint1Origin = 1U << 13,
+        [Description("Release Point 2")]
+        ReleasePoint2 = 1U << 14,
+        [Description("Release Point 2 Origin")]
+        ReleasePoint2Origin = 1U << 15,
+        [Description("Release Point  Origin")]
+        ReleasePoint3Origin = 1U << 16,
+        [Description("Portamento Duration")]
+        PortamentoDuration = 1U << 17,
+        [Description("Portamento Units")]
+        PortamentoUnits = 1U << 18,
+        [Description("Portamento Leads/Follows")]
+        PortamentoLeadsFollows = 1U << 19,
+        [Description("Stereo Position")]
+        StereoPosition = 1U << 20,
+        [Description("Hurry-Up Factor")]
+        HurryUp = 1U << 21,
+        [Description("Retrigger Envelopes on Tie")]
+        Retrigger = 1U << 22,
+        [Description("Detune Amount")]
+        Detune = 1U << 23,
+        [Description("Detune Units")]
+        DetuneUnits = 1U << 24,
+        [Description("Pitch Displacement Depth Adjust")]
+        PitchDisplacementDepthAdjust = 1U << 25,
+        [Description("Pitch Displacement Rate Adjust")]
+        PitchDisplacementRateAdjust = 1U << 26,
+        [Description("Pitch Displacement Start Point")]
+        PitchDisplacementStartPoint = 1U << 27,
+        [Description("Pitch Displacement Start Origin")]
+        PitchDisplacementStartOrigin = 1U << 28,
+        [Description("Pitch Override For Multisample Selection")]
+        PitchOverrideForMultisampleSelection = 1U << 29,
+        [Description("Note/Rest")]
+        NoteRest = 1U << 30,
+        [Description("Surround Position")]
+        SurroundPosition = 1U << 31,
+
+        MaximumExponent = 31,
+    }
+
     public class TrackObjectRec : HierarchicalBindingBase
     {
         private string _Name = String.Empty;
         public const string Name_PropertyName = "Name";
         [Bindable(true)]
+        [Searchable]
         public string Name { get { return _Name; } set { Patch(value, ref _Name, Name_PropertyName); } }
 
 
@@ -4542,11 +4728,13 @@ namespace OutOfPhase
         private string _InstrumentName = String.Empty;
         public const string InstrumentName_PropertyName = "InstrumentName";
         [Bindable(true)]
+        [Searchable]
         public string InstrumentName { get { return _InstrumentName; } set { Patch(value, ref _InstrumentName, InstrumentName_PropertyName); } }
 
         private MyBindingList<FrameObjectRec> _FrameArray = new MyBindingList<FrameObjectRec>();
         public const string FrameArray_PropertyName = "FrameArray";
         [Bindable(true)]
+        [Searchable]
         public MyBindingList<FrameObjectRec> FrameArray { get { return _FrameArray; } }
 
         private MyBindingList<TrackObjectRec> _BackgroundObjects = new MyBindingList<TrackObjectRec>();
@@ -4574,6 +4762,12 @@ namespace OutOfPhase
         public const string SavedWindowHeight_PropertyName = "SavedWindowHeight";
         [Bindable(true)]
         public short SavedWindowHeight { get { return _SavedWindowHeight; } set { Patch(value, ref _SavedWindowHeight, SavedWindowHeight_PropertyName, false/*modified*/); } }
+
+
+        private InlineParamVis _inlineParamVis;
+        public const string InlineParamVis_PropertyName = "InlineParamVis";
+        [Bindable(true)]
+        public InlineParamVis InlineParamVis { get { return _inlineParamVis; } set { PatchObject(value, ref _inlineParamVis, InlineParamVis_PropertyName, false/*modified*/); } }
 
 
         // the H and V scroll offsets are not persisted
@@ -4608,6 +4802,18 @@ namespace OutOfPhase
             PatchObject((NoteFlags)(((int)_flags & ~(int)mask) | (int)value), ref _flags, propertyName);
         }
 
+        // fired on changes to note properties
+        public event PropertyChangedEventHandler FrameArrayChanged;
+
+        protected override void NotifyFromChild(string propertyName, bool modified)
+        {
+            base.NotifyFromChild(propertyName, modified);
+            if ((propertyName == FrameArray_PropertyName) && (FrameArrayChanged != null))
+            {
+                FrameArrayChanged.Invoke(this, new PropertyChangedEventArgs(FrameArray_PropertyName));
+            }
+        }
+
 
 
 
@@ -4620,9 +4826,9 @@ namespace OutOfPhase
             : this(loadContext.document)
         {
             /*   1-byte format version number */
-            /*       should be 1, 2, 3, 4, or 5 */
+            /*       should be 1, 2, 3, 4, 5, or 6 */
             int FormatVersionNumber = reader.ReadByte();
-            if ((FormatVersionNumber < 1) || (FormatVersionNumber > 5))
+            if ((FormatVersionNumber < 1) || (FormatVersionNumber > 6))
             {
                 throw new InvalidDataException();
             }
@@ -4875,6 +5081,12 @@ namespace OutOfPhase
                         break;
                 }
             }
+
+            // 4-byte bitflags of which note properties are visible in the inline property strip editor
+            if (FormatVersionNumber >= 6)
+            {
+                _inlineParamVis = (InlineParamVis)reader.ReadUInt32();
+            }
         }
 
         public void ReadNoteVector(BinaryReader reader, LoadContext loadContext)
@@ -5072,8 +5284,8 @@ namespace OutOfPhase
         public void Save(BinaryWriter writer, SaveContext saveContext)
         {
             /*   1-byte format version number */
-            /*       should be 1, 2, 3, 4, or 5 */
-            writer.WriteByte(5);
+            /*       should be 1, 2, 3, 4, 5, or 6 */
+            writer.WriteByte(6);
 
             /*   2-byte little endian window X position (signed; from top-left corner of screen) */
             writer.WriteInt16(SavedWindowXLoc);
@@ -5262,6 +5474,9 @@ namespace OutOfPhase
             /*       1 = multiple instruments */
             /*       only in format versions 5 and later */
             writer.WriteByte(_MultiInstrument ? (byte)1 : (byte)0);
+
+            // 4-byte bitflags of which note properties are visible in the inline property strip editor
+            writer.WriteUInt32((uint)_inlineParamVis);
         }
 
         public static void StaticSave(BinaryWriter writer, object o, SaveContext saveContext)
@@ -5585,16 +5800,33 @@ namespace OutOfPhase
             this.MultiInstrument = source._MultiInstrument;
             this.Name = source._Name;
         }
+
+
+        // utility
+
+        public bool FindNote(NoteObjectRec note, out int frameIndexOut, out int noteIndexOut)
+        {
+            frameIndexOut = -1;
+            noteIndexOut = -1;
+            for (int frameIndex = 0; frameIndex < FrameArray.Count; frameIndex++)
+            {
+                int noteIndex = FrameArray[frameIndex].IndexOf(note);
+                if (noteIndex >= 0)
+                {
+                    frameIndexOut = frameIndex;
+                    noteIndexOut = noteIndex;
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
-    public class FrameObjectRec
+    public class FrameObjectRec : IList
     {
         private List<NoteObjectRec> NoteArray = new List<NoteObjectRec>();
 
         public int Count { get { return NoteArray.Count; } }
-
-        // cached value is used in FrameDrawUtility
-        public int Width; /* cached width value; 0 == unknown */
 
         public bool IsThisACommandFrame
         {
@@ -5607,13 +5839,11 @@ namespace OutOfPhase
         public void Add(NoteObjectRec note)
         {
             NoteArray.Add(note);
-            ForceFrameLengthChange();
         }
 
         public void RemoveAt(int index) // DeleteNoteFromFrame
         {
             NoteArray.RemoveAt(index);
-            ForceFrameLengthChange();
         }
 
         public NoteObjectRec this[int index]
@@ -5625,7 +5855,6 @@ namespace OutOfPhase
             set
             {
                 NoteArray[index] = value;
-                ForceFrameLengthChange();
             }
         }
 
@@ -5685,11 +5914,64 @@ namespace OutOfPhase
             }
         }
 
-        /* remove cached width value */
-        public void ForceFrameLengthChange()
+        #region IList
+        bool IList.IsReadOnly { get { return false; } }
+        bool IList.IsFixedSize { get { return false; } }
+        int ICollection.Count { get { return Count; } }
+        object ICollection.SyncRoot { get { return this; } }
+        bool ICollection.IsSynchronized { get { return false; } }
+
+        object IList.this[int index] { get { return this[index]; } set { this[index] = (NoteObjectRec)value; } }
+
+        int IList.Add(object value)
         {
-            Width = 0;
+            Add((NoteObjectRec)value);
+            return Count - 1;
         }
+
+        bool IList.Contains(object value)
+        {
+            return IndexOf((NoteObjectRec)value) >= 0;
+        }
+
+        void IList.Clear()
+        {
+            NoteArray.Clear();
+        }
+
+        int IList.IndexOf(object value)
+        {
+            return IndexOf((NoteObjectRec)value);
+        }
+
+        void IList.Insert(int index, object value)
+        {
+            NoteArray.Insert(index, (NoteObjectRec)value);
+        }
+
+        void IList.Remove(object value)
+        {
+            RemoveAt(IndexOf((NoteObjectRec)value));
+        }
+
+        void IList.RemoveAt(int index)
+        {
+            RemoveAt(index);
+        }
+
+        void ICollection.CopyTo(Array array, int index)
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                array.SetValue(this[i], i);
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return NoteArray.GetEnumerator();
+        }
+        #endregion
     }
 
     public abstract class NoteObjectRec : HierarchicalBindingBase
@@ -5750,11 +6032,13 @@ namespace OutOfPhase
         public string _StringArgument1 = String.Empty;
         public const string StringArgument1_PropertyName = "StringArgument1";
         [Bindable(true)]
+        [Searchable]
         public string StringArgument1 { get { return _StringArgument1; } set { Patch(value, ref _StringArgument1, StringArgument1_PropertyName); } }
         //
         public string _StringArgument2 = String.Empty;
         public const string StringArgument2_PropertyName = "StringArgument2";
         [Bindable(true)]
+        [Searchable]
         public string StringArgument2 { get { return _StringArgument2; } set { Patch(value, ref _StringArgument2, StringArgument2_PropertyName); } }
 
         /* numeric arguments for commands */
@@ -7473,6 +7757,171 @@ namespace OutOfPhase
         public void PutNoteMultisampleFalsePitch(short NewFalsePitch)
         {
             MultisamplePitchAsIf = NewFalsePitch;
+        }
+
+        public void PutNoteOverallLoudnessAdjustment(double NewLoudnessAdjust)
+        {
+            this.OverallLoudnessAdjustment = NewLoudnessAdjust;
+        }
+
+        public void PutNoteEarlyLateAdjust(double NewEarlyLate)
+        {
+            this.EarlyLateAdjust = NewEarlyLate;
+        }
+
+        public void PutNoteDurationAdjust(double NewDurationAdjust)
+        {
+            this.DurationAdjust = NewDurationAdjust;
+        }
+
+        public void PutNoteDurationAdjustMode(NoteFlags NewDurationAdjustMode)
+        {
+            Debug.Assert((NewDurationAdjustMode == NoteFlags.eDurationAdjustDefault)
+                || (NewDurationAdjustMode == NoteFlags.eDurationAdjustAdditive)
+                || (NewDurationAdjustMode == NoteFlags.eDurationAdjustMultiplicative));
+            this.DurationAdjustMode = NewDurationAdjustMode;
+        }
+
+        public void PutNoteReleasePoint1(double NewReleasePoint1)
+        {
+            this.ReleasePoint1 = NewReleasePoint1;
+        }
+
+        public void PutNoteRelease1Origin(NoteFlags NewReleasePoint1Origin)
+        {
+            Debug.Assert((NewReleasePoint1Origin == NoteFlags.eRelease1FromDefault)
+                || (NewReleasePoint1Origin == NoteFlags.eRelease1FromStart)
+                || (NewReleasePoint1Origin == NoteFlags.eRelease1FromEnd));
+            this.ReleasePoint1Origin = NewReleasePoint1Origin;
+        }
+
+        public void PutNoteReleasePoint2(double NewReleasePoint2)
+        {
+            this.ReleasePoint2 = NewReleasePoint2;
+        }
+
+        public void PutNoteRelease2Origin(NoteFlags NewReleasePoint2Origin)
+        {
+            Debug.Assert((NewReleasePoint2Origin == NoteFlags.eRelease2FromDefault)
+                || (NewReleasePoint2Origin == NoteFlags.eRelease2FromStart)
+                || (NewReleasePoint2Origin == NoteFlags.eRelease2FromEnd));
+            this.ReleasePoint2Origin = NewReleasePoint2Origin;
+        }
+
+        public void PutNoteRelease3FromStartInsteadOfEnd(bool ShouldWeReleasePoint3FromStartInsteadOfEnd)
+        {
+            this.ReleasePoint3Origin = ShouldWeReleasePoint3FromStartInsteadOfEnd ? NoteFlags.eRelease3FromStartNotEnd : 0;
+        }
+
+        public void PutNotePortamentoDuration(double NewPortamentoDuration)
+        {
+            this.PortamentoDuration = NewPortamentoDuration;
+        }
+
+        public void PutNotePortamentoHertzNotHalfstepsFlag(bool ShouldWeUseHertzInsteadOfHalfsteps)
+        {
+            this.PortamentoUnits = ShouldWeUseHertzInsteadOfHalfsteps ? NoteFlags.ePortamentoUnitsHertzNotHalfsteps : 0;
+        }
+
+        public void PutNoteStereoPositioning(double NewStereoPosition)
+        {
+            this.StereoPositionAdjustment = NewStereoPosition;
+        }
+
+        public void PutNotePitchDisplacementDepthAdjust(double NewPitchDisplacementDepthAdjust)
+        {
+            this.PitchDisplacementDepthAdjustment = NewPitchDisplacementDepthAdjust;
+        }
+
+        public void PutNotePitchDisplacementStartOrigin(NoteFlags NewPitchDisplacementStartOrigin)
+        {
+            Debug.Assert((NewPitchDisplacementStartOrigin == NoteFlags.ePitchDisplacementStartFromDefault)
+                || (NewPitchDisplacementStartOrigin == NoteFlags.ePitchDisplacementStartFromStart)
+                || (NewPitchDisplacementStartOrigin == NoteFlags.ePitchDisplacementStartFromEnd));
+            this.PitchDisplacementOrigin = NewPitchDisplacementStartOrigin;
+        }
+
+        public void PutNotePitchDisplacementRateAdjust(double NewPitchDisplacementRateAdjust)
+        {
+            this.PitchDisplacementRateAdjustment = NewPitchDisplacementRateAdjust;
+        }
+
+        public void PutNotePitchDisplacementStartPoint(double NewPitchDisplacementStartPoint)
+        {
+            this.PitchDisplacementStartPoint = NewPitchDisplacementStartPoint;
+        }
+
+        public void PutNoteHurryUpFactor(double NewHurryUpFactor)
+        {
+            this.HurryUpFactor = NewHurryUpFactor;
+        }
+
+        public void PutNoteDetuning(double NewDetuning)
+        {
+            this.Detuning = NewDetuning;
+        }
+
+        public void PutNoteDetuneConversionMode(NoteFlags NewDetuneConversionMode)
+        {
+            Debug.Assert((NewDetuneConversionMode == NoteFlags.eDetuningModeDefault)
+                || (NewDetuneConversionMode == NoteFlags.eDetuningModeHalfSteps)
+                || (NewDetuneConversionMode == NoteFlags.eDetuningModeHertz));
+            this.DetuningMode = NewDetuneConversionMode;
+        }
+
+        public void PutNoteSurroundPositioning(double NewSurroundPosition)
+        {
+            this.SurroundPositionAdjustment = NewSurroundPosition;
+        }
+
+        public void PutNotePortamentoLeadsBeatFlag(bool ShouldPortamentoLeadBeat)
+        {
+            this.PortamentoLeadsBeat = ShouldPortamentoLeadBeat;
+        }
+
+        public void PutNoteRetriggerEnvelopesOnTieStatus(bool ShouldWeRetriggerEnvelopesOnTie)
+        {
+            this.RetriggerEnvelopesOnTie = ShouldWeRetriggerEnvelopesOnTie;
+        }
+
+        public void PutNoteAccent1(double NewAccent1)
+        {
+            this.Accent1 = NewAccent1;
+        }
+
+        public void PutNoteAccent2(double NewAccent2)
+        {
+            this.Accent2 = NewAccent2;
+        }
+
+        public void PutNoteAccent3(double NewAccent3)
+        {
+            this.Accent3 = NewAccent3;
+        }
+
+        public void PutNoteAccent4(double NewAccent4)
+        {
+            this.Accent4 = NewAccent4;
+        }
+
+        public void PutNoteAccent5(double NewAccent5)
+        {
+            this.Accent5 = NewAccent5;
+        }
+
+        public void PutNoteAccent6(double NewAccent6)
+        {
+            this.Accent6 = NewAccent6;
+        }
+
+        public void PutNoteAccent7(double NewAccent7)
+        {
+            this.Accent7 = NewAccent7;
+        }
+
+        public void PutNoteAccent8(double NewAccent8)
+        {
+            this.Accent8 = NewAccent8;
         }
 
         public void CopyFrom(NoteNoteObjectRec source)

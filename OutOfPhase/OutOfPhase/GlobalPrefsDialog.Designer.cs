@@ -49,24 +49,26 @@ namespace OutOfPhase
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(GlobalPrefsDialog));
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.buttonOK = new System.Windows.Forms.Button();
             this.buttonCancel = new System.Windows.Forms.Button();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
+            this.label2 = new OutOfPhase.MyLabel();
+            this.label3 = new OutOfPhase.MyLabel();
             this.textBoxTabSize = new System.Windows.Forms.TextBox();
             this.checkBoxAutosaveEnabled = new System.Windows.Forms.CheckBox();
             this.textBoxAutosaveInterval = new System.Windows.Forms.TextBox();
-            this.label4 = new System.Windows.Forms.Label();
+            this.label4 = new OutOfPhase.MyLabel();
             this.comboBoxOutputDevice = new System.Windows.Forms.ComboBox();
-            this.label5 = new System.Windows.Forms.Label();
+            this.label5 = new OutOfPhase.MyLabel();
             this.comboBoxConcurrency = new System.Windows.Forms.ComboBox();
             this.textBoxConcurrency = new System.Windows.Forms.TextBox();
-            this.label6 = new System.Windows.Forms.Label();
+            this.label6 = new OutOfPhase.MyLabel();
             this.checkBoxAutoIndent = new System.Windows.Forms.CheckBox();
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             this.flowLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
@@ -269,6 +271,10 @@ namespace OutOfPhase
             this.checkBoxAutoIndent.TabIndex = 13;
             this.checkBoxAutoIndent.UseVisualStyleBackColor = true;
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // GlobalPrefsDialog
             // 
             this.AcceptButton = this.buttonOK;
@@ -296,18 +302,19 @@ namespace OutOfPhase
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button buttonOK;
         private System.Windows.Forms.Button buttonCancel;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
+        private MyLabel label1;
+        private MyLabel label2;
+        private MyLabel label3;
         private System.Windows.Forms.TextBox textBoxTabSize;
         private System.Windows.Forms.CheckBox checkBoxAutosaveEnabled;
         private System.Windows.Forms.TextBox textBoxAutosaveInterval;
-        private System.Windows.Forms.Label label4;
+        private MyLabel label4;
         private System.Windows.Forms.ComboBox comboBoxOutputDevice;
-        private System.Windows.Forms.Label label5;
+        private MyLabel label5;
         private System.Windows.Forms.ComboBox comboBoxConcurrency;
         private System.Windows.Forms.TextBox textBoxConcurrency;
-        private System.Windows.Forms.Label label6;
+        private MyLabel label6;
         private System.Windows.Forms.CheckBox checkBoxAutoIndent;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

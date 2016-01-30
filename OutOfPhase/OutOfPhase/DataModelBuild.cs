@@ -201,23 +201,6 @@ namespace OutOfPhase
             PcodeSystem.IEvaluationContext pcodeEnvironment,
             BuildFailedCallback failedCallback)
         {
-#if false // TODO:remove
-            List<IBuildable> sequence = new List<IBuildable>();
-            foreach (FunctionObjectRec function in FunctionList)
-            {
-                sequence.Add(function);
-            }
-
-            foreach (IBuildable buildable in sequence)
-            {
-                if (!buildable.EnsureBuilt(false/*force*/, pcodeEnvironment, failedCallback))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-#endif
             return functionBuilderProxy.EnsureBuilt(false/*force*/, pcodeEnvironment, failedCallback);
         }
 
@@ -301,40 +284,6 @@ namespace OutOfPhase
             PcodeSystem.IEvaluationContext pcodeEnvironment,
             BuildFailedCallback failedCallback)
         {
-#if false // TODO:remove
-            foreach (FunctionObjectRec function in functionList)
-            {
-                if (function.Built1 && force)
-                {
-                    function.Unbuild1();
-                }
-
-                if (!function.Built1)
-                {
-                    int ErrorLine;
-                    CompileErrors Error = Compiler.CompileModule(
-                        out ErrorLine,
-                        function.Source,
-                        function/*signature*/,
-                        CodeCenter,
-                        function.Name);
-                    if (Error == CompileErrors.eCompileNoError)
-                    {
-                        function.Built1 = true;
-                    }
-                    else
-                    {
-                        failedCallback(function, new LiteralBuildErrorInfo(Compiler.GetCompileErrorString(Error), ErrorLine));
-                    }
-                }
-
-                if (!function.Built1)
-                {
-                    return false;
-                }
-            }
-#endif
-
             if (!force && Built)
             {
                 return true;
@@ -409,33 +358,6 @@ namespace OutOfPhase
                 force,
                 pcodeEnvironment,
                 failedCallback);
-#if false // TODO:remove
-            if (built && force)
-            {
-                Unbuild();
-            }
-
-            if (!built)
-            {
-                int ErrorLine;
-                CompileErrors Error = Compiler.CompileModule(
-                    out ErrorLine,
-                    Source,
-                    this/*signature*/,
-                    codeCenter,
-                    Name);
-                if (Error == CompileErrors.eCompileNoError)
-                {
-                    built = true;
-                }
-                else
-                {
-                    failedCallback(this, new LiteralBuildErrorInfo(Compiler.GetCompileErrorString(Error), ErrorLine));
-                }
-            }
-
-            return built;
-#endif
         }
 
         /* unconditionally unbuild the functions */
@@ -473,30 +395,30 @@ namespace OutOfPhase
                 NumChannels == NumChannelsType.eSampleStereo
                 ? new FunctionParamRec[]
                 {
-		            new FunctionParamRec("loopstart1", DataTypes.eInteger),
-		            new FunctionParamRec("loopstart2", DataTypes.eInteger),
-		            new FunctionParamRec("loopstart3", DataTypes.eInteger),
-		            new FunctionParamRec("loopend1", DataTypes.eInteger),
-		            new FunctionParamRec("loopend2", DataTypes.eInteger),
-		            new FunctionParamRec("loopend3", DataTypes.eInteger),
-		            new FunctionParamRec("origin", DataTypes.eInteger),
-		            new FunctionParamRec("samplingrate", DataTypes.eInteger),
-		            new FunctionParamRec("naturalfrequency", DataTypes.eDouble),
-		            new FunctionParamRec("leftdata", DataTypes.eArrayOfFloat),
-		            new FunctionParamRec("rightdata", DataTypes.eArrayOfFloat),
+                    new FunctionParamRec("loopstart1", DataTypes.eInteger),
+                    new FunctionParamRec("loopstart2", DataTypes.eInteger),
+                    new FunctionParamRec("loopstart3", DataTypes.eInteger),
+                    new FunctionParamRec("loopend1", DataTypes.eInteger),
+                    new FunctionParamRec("loopend2", DataTypes.eInteger),
+                    new FunctionParamRec("loopend3", DataTypes.eInteger),
+                    new FunctionParamRec("origin", DataTypes.eInteger),
+                    new FunctionParamRec("samplingrate", DataTypes.eInteger),
+                    new FunctionParamRec("naturalfrequency", DataTypes.eDouble),
+                    new FunctionParamRec("leftdata", DataTypes.eArrayOfFloat),
+                    new FunctionParamRec("rightdata", DataTypes.eArrayOfFloat),
                 }
                 : new FunctionParamRec[]
                 {
-		            new FunctionParamRec("loopstart1", DataTypes.eInteger),
-		            new FunctionParamRec("loopstart2", DataTypes.eInteger),
-		            new FunctionParamRec("loopstart3", DataTypes.eInteger),
-		            new FunctionParamRec("loopend1", DataTypes.eInteger),
-		            new FunctionParamRec("loopend2", DataTypes.eInteger),
-		            new FunctionParamRec("loopend3", DataTypes.eInteger),
-		            new FunctionParamRec("origin", DataTypes.eInteger),
-		            new FunctionParamRec("samplingrate", DataTypes.eInteger),
-		            new FunctionParamRec("naturalfrequency", DataTypes.eDouble),
-		            new FunctionParamRec("data", DataTypes.eArrayOfFloat),
+                    new FunctionParamRec("loopstart1", DataTypes.eInteger),
+                    new FunctionParamRec("loopstart2", DataTypes.eInteger),
+                    new FunctionParamRec("loopstart3", DataTypes.eInteger),
+                    new FunctionParamRec("loopend1", DataTypes.eInteger),
+                    new FunctionParamRec("loopend2", DataTypes.eInteger),
+                    new FunctionParamRec("loopend3", DataTypes.eInteger),
+                    new FunctionParamRec("origin", DataTypes.eInteger),
+                    new FunctionParamRec("samplingrate", DataTypes.eInteger),
+                    new FunctionParamRec("naturalfrequency", DataTypes.eDouble),
+                    new FunctionParamRec("data", DataTypes.eArrayOfFloat),
                 },
                 out ErrorLineNumberCompilation,
                 out ReturnType,
@@ -524,57 +446,11 @@ namespace OutOfPhase
             }
             SampleData = null;
 
-#if false // tODO:remove
-            int ErrorLineNumberCompilation;
-            DataTypes ReturnType;
-            PcodeRec FuncCode;
-            Compiler.ASTExpressionRec AST;
-            CompileErrors CompileError = Compiler.CompileSpecialFunction(
-                NumChannels == NumChannelsType.eSampleStereo
-                ? new FunctionParamRec[]
-                {
-		            new FunctionParamRec("loopstart1", DataTypes.eInteger),
-		            new FunctionParamRec("loopstart2", DataTypes.eInteger),
-		            new FunctionParamRec("loopstart3", DataTypes.eInteger),
-		            new FunctionParamRec("loopend1", DataTypes.eInteger),
-		            new FunctionParamRec("loopend2", DataTypes.eInteger),
-		            new FunctionParamRec("loopend3", DataTypes.eInteger),
-		            new FunctionParamRec("origin", DataTypes.eInteger),
-		            new FunctionParamRec("samplingrate", DataTypes.eInteger),
-		            new FunctionParamRec("naturalfrequency", DataTypes.eDouble),
-		            new FunctionParamRec("leftdata", DataTypes.eArrayOfFloat),
-		            new FunctionParamRec("rightdata", DataTypes.eArrayOfFloat),
-                }
-                : new FunctionParamRec[]
-                {
-		            new FunctionParamRec("loopstart1", DataTypes.eInteger),
-		            new FunctionParamRec("loopstart2", DataTypes.eInteger),
-		            new FunctionParamRec("loopstart3", DataTypes.eInteger),
-		            new FunctionParamRec("loopend1", DataTypes.eInteger),
-		            new FunctionParamRec("loopend2", DataTypes.eInteger),
-		            new FunctionParamRec("loopend3", DataTypes.eInteger),
-		            new FunctionParamRec("origin", DataTypes.eInteger),
-		            new FunctionParamRec("samplingrate", DataTypes.eInteger),
-		            new FunctionParamRec("naturalfrequency", DataTypes.eDouble),
-		            new FunctionParamRec("data", DataTypes.eArrayOfFloat),
-                },
-                out ErrorLineNumberCompilation,
-                out ReturnType,
-                AlgoSampFormula,
-                out FuncCode,
-                out AST);
-            if (CompileError != CompileErrors.eCompileNoError)
-            {
-                failedCallback(this, new LiteralBuildErrorInfo(Compiler.GetCompileErrorString(CompileError), ErrorLineNumberCompilation));
-                return false;
-            }
-#else
             PcodeRec FuncCode;
             if (!BuildCode(failedCallback, out FuncCode))
             {
                 return false;
             }
-#endif
 
             using (ParamStackRec ParamList = new ParamStackRec())
             {
@@ -689,11 +565,11 @@ namespace OutOfPhase
             CompileErrors CompileError = Compiler.CompileSpecialFunction(
                 ((Document)Parent).CodeCenter,
                 new FunctionParamRec[]
-	            {
+                {
                     new FunctionParamRec("frames", DataTypes.eInteger),
-		            new FunctionParamRec("tables", DataTypes.eInteger),
-		            new FunctionParamRec("data", DataTypes.eArrayOfFloat),
-	            },
+                    new FunctionParamRec("tables", DataTypes.eInteger),
+                    new FunctionParamRec("data", DataTypes.eArrayOfFloat),
+                },
                 out ErrorLineNumberCompilation,
                 out ReturnType,
                 AlgoWaveTableFormula,
@@ -819,14 +695,16 @@ namespace OutOfPhase
             Synthesizer.InstrumentRec TheInstrument;
 
             int ErrorLine;
+            string ErrorExtraMessage;
             Synthesizer.BuildInstrErrors Error = Synthesizer.BuildInstrumentFromText(
                 InstrDefinition,
                 ((Document)Parent).CodeCenter,
                 out ErrorLine,
+                out ErrorExtraMessage,
                 out TheInstrument);
             if (Error != Synthesizer.BuildInstrErrors.eBuildInstrNoError)
             {
-                failedCallback(this, new LiteralBuildErrorInfo(Synthesizer.BuildInstrGetErrorMessageText(Error), ErrorLine));
+                failedCallback(this, new LiteralBuildErrorInfo(Synthesizer.BuildInstrGetErrorMessageText(Error, ErrorExtraMessage), ErrorLine));
                 return false;
             }
 
@@ -869,15 +747,17 @@ namespace OutOfPhase
             _effectSpec = null;
 
             int ErrorLine;
+            string ErrorExtraMessage;
             Synthesizer.EffectSpecListRec LocalEffectSpec;
             Synthesizer.BuildInstrErrors Error = Synthesizer.BuildSectionEffectList(
                 Source,
                 ((Document)Parent).CodeCenter,
                 out ErrorLine,
+                out ErrorExtraMessage,
                 out LocalEffectSpec);
             if (Error != Synthesizer.BuildInstrErrors.eBuildInstrNoError)
             {
-                failedCallback(this, new LiteralBuildErrorInfo(Synthesizer.BuildInstrGetErrorMessageText(Error), ErrorLine));
+                failedCallback(this, new LiteralBuildErrorInfo(Synthesizer.BuildInstrGetErrorMessageText(Error, ErrorExtraMessage), ErrorLine));
                 return false;
             }
 
@@ -920,15 +800,17 @@ namespace OutOfPhase
             _scoreEffectSpec = null;
 
             int ErrorLine;
+            string ErrorExtraMessage;
             Synthesizer.EffectSpecListRec LocalEffectSpec;
             Synthesizer.BuildInstrErrors Error = Synthesizer.BuildScoreEffectList(
                 this.Source,
                 ((Document)Parent).CodeCenter,
                 out ErrorLine,
+                out ErrorExtraMessage,
                 out LocalEffectSpec);
             if (Error != Synthesizer.BuildInstrErrors.eBuildInstrNoError)
             {
-                failedCallback(this, new LiteralBuildErrorInfo(Synthesizer.BuildInstrGetErrorMessageText(Error), ErrorLine));
+                failedCallback(this, new LiteralBuildErrorInfo(Synthesizer.BuildInstrGetErrorMessageText(Error, ErrorExtraMessage), ErrorLine));
                 return false;
             }
 

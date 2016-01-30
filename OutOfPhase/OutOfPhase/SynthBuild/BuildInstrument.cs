@@ -41,6 +41,7 @@ namespace OutOfPhase
             eBuildInstr_Start,
 
             eBuildInstrNoError = eBuildInstr_Start,
+            eBuildInstrGenericError,
             eBuildInstrUnexpectedInput,
             eBuildInstrExpectedInstrument,
             eBuildInstrExpectedOpenParen,
@@ -62,6 +63,7 @@ namespace OutOfPhase
             eBuildInstrMultipleOscType,
             eBuildInstrMultipleOscSampleList,
             eBuildInstrMultipleOscLoudness,
+            eBuildInstrMultipleOscLoudnessFactor,
             eBuildInstrMultipleOscFreqMultiplier,
             eBuildInstrMultipleOscFreqDivisor,
             eBuildInstrMultipleOscLoudnessEnvelope,
@@ -433,8 +435,6 @@ namespace OutOfPhase
             eBuildInstrLatencyMustBeAtLeastZero,
             eBuildInstrExpectedInitfunc,
             eBuildInstrExpectedInitfuncString,
-            eBuildInstrExpectedUpdatefunc,
-            eBuildInstrExpectedUpdatefuncString,
             eBuildInstrExpectedDatafunc,
             eBuildInstrExpectedDatafuncString,
             eBuildInstrExpectedParamOrCParen,
@@ -453,6 +453,25 @@ namespace OutOfPhase
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
             eBuildInstrMultipleLFOLoopEnvelope,
 #endif
+            eBuildInstrReferencedUnknownPluggableProcessor,
+            eBuildInstrExpectedPluggableParameterIdentifier,
+            eBuildInstrPluggableProcessorMultiplyReferenced,
+            eBuildInstrPluggableRequiredParameterNotSpecified,
+            eBuildInstrInvalidPluggableEnumIdentifier,
+            eBuildInstrExpectedOpenParenOrColon,
+            eBuildInstrExpectedEnvelopeLfoOrSemicolon,
+            eBuildInstrPluggableNotCapableOfOscillator,
+            eBuildInstrPluggableNotCapableOfEffect,
+            eBuildInstrExpectedWorkspaces,
+            eBuildInstrExpectedWorkspaceElementOrSemicolon,
+            eBuildInstrPluggableConfigAlreadySpecified,
+            eBuildInstrPluggableConfigParamsAlreadySpecified,
+            eBuildInstrPluggableConfigParamsExpectedColon,
+            eBuildInstrPluggableConfigParamsExpectedEquals,
+            eBuildInstrPluggableConfigParamsExpectedNumber,
+            eBuildInstrPluggableConfigParamsExpectedCommaOrSemicolon,
+            eBuildInstrPluggableRequiredConfigParamIsMissing,
+            eBuildInstrPluggableConfigParamsWrongNumberOfItems,
 
             eBuildInstr_End,
         }
@@ -539,6 +558,7 @@ namespace OutOfPhase
             new KeywordRec<InstrKeywordType>("discard", InstrKeywordType.eKeywordDiscard),
             new KeywordRec<InstrKeywordType>("discardunders", InstrKeywordType.eKeywordDiscardunders),
             new KeywordRec<InstrKeywordType>("displacement", InstrKeywordType.eKeywordDisplacement),
+            new KeywordRec<InstrKeywordType>("doublearray", InstrKeywordType.eKeywordDoublearray),
             new KeywordRec<InstrKeywordType>("effect", InstrKeywordType.eKeywordEffect),
             new KeywordRec<InstrKeywordType>("envelope", InstrKeywordType.eKeywordEnvelope),
             new KeywordRec<InstrKeywordType>("estimatepower", InstrKeywordType.eKeywordEstimatepower),
@@ -555,6 +575,7 @@ namespace OutOfPhase
             new KeywordRec<InstrKeywordType>("filtercutoffaccent8", InstrKeywordType.eKeywordFiltercutoffaccent8),
             new KeywordRec<InstrKeywordType>("filtercutoffenvelope", InstrKeywordType.eKeywordFiltercutoffenvelope),
             new KeywordRec<InstrKeywordType>("filtercutofflfo", InstrKeywordType.eKeywordFiltercutofflfo),
+            new KeywordRec<InstrKeywordType>("floatarray", InstrKeywordType.eKeywordFloatarray),
             new KeywordRec<InstrKeywordType>("fof", InstrKeywordType.eKeywordFof),
             new KeywordRec<InstrKeywordType>("fofcompress", InstrKeywordType.eKeywordFofcompress),
             new KeywordRec<InstrKeywordType>("fofexpand", InstrKeywordType.eKeywordFofexpand),
@@ -618,6 +639,7 @@ namespace OutOfPhase
             new KeywordRec<InstrKeywordType>("inputscalingenvelope", InstrKeywordType.eKeywordInputscalingenvelope),
             new KeywordRec<InstrKeywordType>("inputscalinglfo", InstrKeywordType.eKeywordInputscalinglfo),
             new KeywordRec<InstrKeywordType>("instrument", InstrKeywordType.eKeywordInstrument),
+            new KeywordRec<InstrKeywordType>("integerarray", InstrKeywordType.eKeywordIntegerarray),
             new KeywordRec<InstrKeywordType>("interpolate", InstrKeywordType.eKeywordInterpolate),
             new KeywordRec<InstrKeywordType>("inversemult", InstrKeywordType.eKeywordInversemult),
             new KeywordRec<InstrKeywordType>("latency", InstrKeywordType.eKeywordLatency),
@@ -645,6 +667,7 @@ namespace OutOfPhase
 #endif
             new KeywordRec<InstrKeywordType>("loudness", InstrKeywordType.eKeywordLoudness),
             new KeywordRec<InstrKeywordType>("loudnessenvelope", InstrKeywordType.eKeywordLoudnessenvelope),
+            new KeywordRec<InstrKeywordType>("loudnessfactor", InstrKeywordType.eKeywordLoudnessfactor),
             new KeywordRec<InstrKeywordType>("loudnesslfo", InstrKeywordType.eKeywordLoudnesslfo),
             new KeywordRec<InstrKeywordType>("lowpass", InstrKeywordType.eKeywordLowpass),
             new KeywordRec<InstrKeywordType>("lowpassfilter", InstrKeywordType.eKeywordLowpassfilter),
@@ -778,6 +801,7 @@ namespace OutOfPhase
             new KeywordRec<InstrKeywordType>("slopeaccent8", InstrKeywordType.eKeywordSlopeaccent8),
             new KeywordRec<InstrKeywordType>("slopeenvelope", InstrKeywordType.eKeywordSlopeenvelope),
             new KeywordRec<InstrKeywordType>("slopelfo", InstrKeywordType.eKeywordSlopelfo),
+            new KeywordRec<InstrKeywordType>("smoothed", InstrKeywordType.eKeywordSmoothed),
             new KeywordRec<InstrKeywordType>("smoothedabsval", InstrKeywordType.eKeywordSmoothedabsval),
             new KeywordRec<InstrKeywordType>("smoothedrms", InstrKeywordType.eKeywordSmoothedrms),
             new KeywordRec<InstrKeywordType>("sourceaccent1", InstrKeywordType.eKeywordSourceaccent1),
@@ -828,13 +852,13 @@ namespace OutOfPhase
             new KeywordRec<InstrKeywordType>("unitymidbandgain", InstrKeywordType.eKeywordUnitymidbandgain),
             new KeywordRec<InstrKeywordType>("unitynoisegain", InstrKeywordType.eKeywordUnitynoisegain),
             new KeywordRec<InstrKeywordType>("unityzerohertzgain", InstrKeywordType.eKeywordUnityzerohertzgain),
-            new KeywordRec<InstrKeywordType>("updatefunc", InstrKeywordType.eKeywordUpdatefunc),
             new KeywordRec<InstrKeywordType>("usereffect", InstrKeywordType.eKeywordUsereffect),
             new KeywordRec<InstrKeywordType>("vocoder", InstrKeywordType.eKeywordVocoder),
             new KeywordRec<InstrKeywordType>("wave", InstrKeywordType.eKeywordWave),
             new KeywordRec<InstrKeywordType>("wavetable", InstrKeywordType.eKeywordWavetable),
             new KeywordRec<InstrKeywordType>("wavetableindex", InstrKeywordType.eKeywordWavetableindex),
             new KeywordRec<InstrKeywordType>("windowduration", InstrKeywordType.eKeywordWindowduration),
+            new KeywordRec<InstrKeywordType>("workspaces", InstrKeywordType.eKeywordWorkspaces),
             new KeywordRec<InstrKeywordType>("wrap", InstrKeywordType.eKeywordWrap),
             new KeywordRec<InstrKeywordType>("zero", InstrKeywordType.eKeywordZero),
         };
@@ -859,6 +883,8 @@ namespace OutOfPhase
         {
             new InstrErrorRec(BuildInstrErrors.eBuildInstrNoError,
                 "No error"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrGenericError,
+                ""), // the text of this error provided by the ErrorExtraMessage field of the parse context
             new InstrErrorRec(BuildInstrErrors.eBuildInstrUnexpectedInput,
                 "Illegal characters beyond end of input"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInstrument,
@@ -917,6 +943,8 @@ namespace OutOfPhase
                 "Oscillator parameter 'samplelist' has already been specified"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscLoudness,
                 "Oscillator parameter 'loudness' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscLoudnessFactor,
+                "Oscillator parameter 'loudnessfactor' has already been specified"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFreqMultiplier,
                 "Oscillator parameter 'freqmultiplier' has already been specified"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOscFreqDivisor,
@@ -1685,13 +1713,9 @@ namespace OutOfPhase
             new InstrErrorRec(BuildInstrErrors.eBuildInstrLatencyMustBeAtLeastZero,
                 "Value for 'latency' must be zero or greater"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInitfunc,
-                "Expected 'initfunc', 'updatefunc', 'datafunc', or 'oversamplingdisabled'"),
+                "Expected 'initfunc', 'datafunc', or 'oversamplingdisabled'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedInitfuncString,
                 "Expected name of initialization function, as string"),
-            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedUpdatefunc,
-                "Expected 'updatefunc' or 'datafunc'"),
-            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedUpdatefuncString,
-                "Expected name of update function, as string"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDatafunc,
                 "Expected 'datafunc'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedDatafuncString,
@@ -1726,12 +1750,51 @@ namespace OutOfPhase
             new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleLFOLoopEnvelope,
                 "LFO component 'loopenvelope' has already been specified"),
 #endif
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrReferencedUnknownPluggableProcessor,
+                "Reference to an unknown pluggable processor type"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedPluggableParameterIdentifier,
+                "Expected parameter identifier"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableProcessorMultiplyReferenced,
+                "Parameter has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableRequiredParameterNotSpecified,
+                "Required parameter has not been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrInvalidPluggableEnumIdentifier,
+                "Value is not valid for that parameter"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOpenParenOrColon,
+                "Expected ':' or '('"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedEnvelopeLfoOrSemicolon,
+                "Expected 'envelope', 'lfo' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableNotCapableOfOscillator,
+                "The specified processor is not capable of operating as an oscillator"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableNotCapableOfEffect,
+                "The specified processor is not capable of operating as an effect"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWorkspaces,
+                "Expected 'workspaces', 'initfunc', 'datafunc', or 'oversamplingdisabled'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWorkspaceElementOrSemicolon,
+                "Expected 'integerarray', 'floatarray', 'doublearray', or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigAlreadySpecified,
+                "Configuration parameter has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigParamsAlreadySpecified,
+                "Configuration parameter item has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigParamsExpectedColon,
+                "Configuration parameter item key and value must be separated by ':'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigParamsExpectedEquals,
+                "Configuration parameter item key and value must be separated by '='"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigParamsExpectedNumber,
+                "Configuration parameter item value must be a number"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigParamsExpectedCommaOrSemicolon,
+                "Expected ',' or ';'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableRequiredConfigParamIsMissing,
+                "Required configuration parameter is missing"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigParamsWrongNumberOfItems,
+                "Configuration parameter contains an invalid number of items"),
         };
 
         public class BuildInstrumentContext
         {
             public readonly ScannerRec<InstrKeywordType> Scanner;
             public readonly CodeCenterRec CodeCenter;
+            public string ErrorExtraMessage;
 
             public BuildInstrumentContext(
                 ScannerRec<InstrKeywordType> Scanner,
@@ -1751,6 +1814,7 @@ namespace OutOfPhase
             string TextFile,
             CodeCenterRec CodeCenter,
             out int ErrorLine,
+            out string ErrorExtraMessage,
             out InstrumentRec InstrOut)
         {
             ScannerRec<InstrKeywordType> Scanner;
@@ -1760,6 +1824,7 @@ namespace OutOfPhase
 
             InstrOut = null;
             ErrorLine = -1;
+            ErrorExtraMessage = null;
 
             Scanner = new ScannerRec<InstrKeywordType>(TextFile, InstrKeywordTable);
 
@@ -1773,6 +1838,7 @@ namespace OutOfPhase
                 out ErrorLine);
             if (Error != BuildInstrErrors.eBuildInstrNoError)
             {
+                ErrorExtraMessage = Context.ErrorExtraMessage;
                 return Error;
             }
 
@@ -1795,6 +1861,7 @@ namespace OutOfPhase
             string TextFile,
             CodeCenterRec CodeCenter,
             out int ErrorLine,
+            out string ErrorExtraMessage,
             out EffectSpecListRec EffectOut,
             InstrKeywordType LeadingKeywordTag,
             BuildInstrErrors LeadingKeywordError)
@@ -1806,6 +1873,7 @@ namespace OutOfPhase
 
             EffectOut = null;
             ErrorLine = -1;
+            ErrorExtraMessage = null;
 
             Scanner = new ScannerRec<InstrKeywordType>(TextFile, InstrKeywordTable);
 
@@ -1831,6 +1899,7 @@ namespace OutOfPhase
                         LeadingKeywordTag);
                     if (Error != BuildInstrErrors.eBuildInstrNoError)
                     {
+                        ErrorExtraMessage = Context.ErrorExtraMessage;
                         return Error;
                     }
                     Token = Context.Scanner.GetNextToken();
@@ -1854,12 +1923,14 @@ namespace OutOfPhase
             string TextFile,
             CodeCenterRec CodeCenter,
             out int ErrorLine,
+            out string ErrorExtraMessage,
             out EffectSpecListRec EffectOut)
         {
             return BuildEffectList(
                 TextFile,
                 CodeCenter,
                 out ErrorLine,
+                out ErrorExtraMessage,
                 out EffectOut,
                 InstrKeywordType.eKeywordScoreeffect,
                 BuildInstrErrors.eBuildInstrExpectedScoreEffect);
@@ -1873,12 +1944,14 @@ namespace OutOfPhase
             string TextFile,
             CodeCenterRec CodeCenter,
             out int ErrorLine,
+            out string ErrorExtraMessage,
             out EffectSpecListRec EffectOut)
         {
             return BuildEffectList(
                 TextFile,
                 CodeCenter,
                 out ErrorLine,
+                out ErrorExtraMessage,
                 out EffectOut,
                 InstrKeywordType.eKeywordSectioneffect,
                 BuildInstrErrors.eBuildInstrExpectedSectionEffect);
@@ -1888,7 +1961,9 @@ namespace OutOfPhase
 
 
         /* get a static null terminated string describing the error */
-        public static string BuildInstrGetErrorMessageText(BuildInstrErrors ErrorCode)
+        public static string BuildInstrGetErrorMessageText(
+            BuildInstrErrors ErrorCode,
+            string extraText)
         {
 #if DEBUG
             /* verify structure */
@@ -1910,7 +1985,19 @@ namespace OutOfPhase
                 throw new ArgumentException();
             }
             Debug.Assert(InstrErrors[index].ErrorCode == ErrorCode);
-            return InstrErrors[index].Message;
+            string message = InstrErrors[index].Message;
+            if (!String.IsNullOrEmpty(extraText))
+            {
+                if (!String.IsNullOrEmpty(message))
+                {
+                    message = String.Format("{0} ({1})", message, extraText);
+                }
+                else
+                {
+                    message = extraText;
+                }
+            }
+            return message;
         }
 
 
@@ -1953,6 +2040,7 @@ namespace OutOfPhase
             eKeywordFreqdivisor,
             eKeywordFreqadder,
             eKeywordLoudnessenvelope,
+            eKeywordLoudnessfactor,
             eKeywordTotalscaling,
             eKeywordExponential,
             eKeywordLinear,
@@ -2282,7 +2370,6 @@ namespace OutOfPhase
             eKeywordPeaklookahead,
             eKeywordUsereffect,
             eKeywordInitfunc,
-            eKeywordUpdatefunc,
             eKeywordDatafunc,
             eKeywordParam,
             eKeywordAccent1,
@@ -2303,6 +2390,11 @@ namespace OutOfPhase
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
             eKeywordLoopenvelope,
 #endif
+            eKeywordWorkspaces,
+            eKeywordIntegerarray,
+            eKeywordFloatarray,
+            eKeywordDoublearray,
+            eKeywordSmoothed,
         }
 
         /* symbols for detecting redundant or missing declarations in instruments */
@@ -2730,14 +2822,15 @@ namespace OutOfPhase
 
                 /* get the oscillator's name or open paren */
                 Token = Context.Scanner.GetNextToken();
-                if (Token.GetTokenType() == TokenTypes.eTokenOpenParen)
+                if ((Token.GetTokenType() == TokenTypes.eTokenOpenParen)
+                    || (Token.GetTokenType() == TokenTypes.eTokenColon))
                 {
                     /* open paren gets pushed back */
                     Context.Scanner.UngetToken(Token);
                 }
                 else
                 {
-                    /* name just gets ignored, as int as it's the right type */
+                    /* name just gets ignored, as long as it's the right type */
                     if (!((Token.GetTokenType() == TokenTypes.eTokenKeyword)
                         || (Token.GetTokenType() == TokenTypes.eTokenIdentifier)
                         || (Token.GetTokenType() == TokenTypes.eTokenString)))
@@ -2747,13 +2840,60 @@ namespace OutOfPhase
                     }
                 }
 
-                Error = ScanOscillatorDefinition(
-                    Oscillator,
-                    Context,
-                    out ErrorLine);
-                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() == TokenTypes.eTokenOpenParen)
                 {
-                    return Error;
+                    // legacy form
+                    Context.Scanner.UngetToken(Token);
+                    Error = ScanOscillatorDefinition(
+                        Oscillator,
+                        Context,
+                        out ErrorLine);
+                    if (Error != BuildInstrErrors.eBuildInstrNoError)
+                    {
+                        return Error;
+                    }
+                }
+                else if (Token.GetTokenType() == TokenTypes.eTokenColon)
+                {
+                    string classIdentifier;
+
+                    Token = Context.Scanner.GetNextToken();
+                    Error = ParseGlobalIdentifierString(
+                        Context,
+                        Token,
+                        out ErrorLine,
+                        out classIdentifier);
+                    if (Error != BuildInstrErrors.eBuildInstrNoError)
+                    {
+                        Context.ErrorExtraMessage = GetPluggableClassListForError();
+                        return Error;
+                    }
+
+                    int startLine = Context.Scanner.GetCurrentLineNumber();
+
+                    // pluggable form
+                    PluggableOscSpec spec;
+                    Error = ParsePluggableOscProcessor(
+                        Context,
+                        Oscillator,
+                        out ErrorLine,
+                        true/*enabled*/,
+                        classIdentifier,
+                        PluggableRole.Oscillator,
+                        out spec);
+                    if (Error != BuildInstrErrors.eBuildInstrNoError)
+                    {
+                        return Error;
+                    }
+
+                    OscillatorSetTheType(Oscillator, OscillatorTypes.eOscillatorPluggable);
+                    PutOscillatorPluggableSpec(Oscillator, spec);
+                }
+                else
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrExpectedOpenParenOrColon;
                 }
 
                 MarkPresent(RequiredOnceOnly, Req.INSTRLIST_REQUIRED_OSCILLATOR);
@@ -4037,11 +4177,53 @@ namespace OutOfPhase
             BuildInstrumentContext Context,
             out int ErrorLine)
         {
-            bool EnabledFlag;
             TokenRec<InstrKeywordType> Token;
-            ParseOscillatorEffectMethod Parser;
 
-            EnabledFlag = true;
+            bool EnabledFlag = true;
+
+
+            // shunt for pluggable form (1)
+            Token = Context.Scanner.GetNextToken();
+        ParsePluggable:
+            if (Token.GetTokenType() == TokenTypes.eTokenColon)
+            {
+                string classIdentifier;
+
+                Token = Context.Scanner.GetNextToken();
+                BuildInstrErrors Error = ParseGlobalIdentifierString(
+                    Context,
+                    Token,
+                    out ErrorLine,
+                    out classIdentifier);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    Context.ErrorExtraMessage = GetPluggableClassListForError();
+                    return Error;
+                }
+
+                int startLine = Context.Scanner.GetCurrentLineNumber();
+
+                PluggableOscSpec pluggable;
+                Error = ParsePluggableOscProcessor(
+                    Context,
+                    null/*Oscillator*/,
+                    out ErrorLine,
+                    true/*enabled*/,
+                    classIdentifier,
+                    PluggableRole.Effect,
+                    out pluggable);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    return Error;
+                }
+
+                AddPluggableEffectToEffectSpecList(OscEffectList, pluggable, EnabledFlag);
+
+                return BuildInstrErrors.eBuildInstrNoError;
+            }
+            Context.Scanner.UngetToken(Token);
+
+
             Token = Context.Scanner.GetNextToken();
             if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
             {
@@ -4072,11 +4254,16 @@ namespace OutOfPhase
             }
 
             Token = Context.Scanner.GetNextToken();
+            if (Token.GetTokenType() == TokenTypes.eTokenColon)
+            {
+                goto ParsePluggable; // shunt for pluggable form (2)
+            }
             if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
             {
                 ErrorLine = Context.Scanner.GetCurrentLineNumber();
                 return BuildInstrErrors.eBuildInstrExpectedOscillatorEffect;
             }
+            ParseOscillatorEffectMethod Parser;
             switch (Token.GetTokenKeywordTag())
             {
                 default:
@@ -4509,13 +4696,6 @@ namespace OutOfPhase
                     double Level = 0;
                     PcodeRec LevelFunction = null;
 
-#if false // TODO: remove old
-                    Error = ParseNumber(Context, out ErrorLine, out Delay);
-                    if (Error != BuildInstrErrors.eBuildInstrNoError)
-                    {
-                        return Error;
-                    }
-#else
                     Token = Context.Scanner.GetNextToken();
                     if (Token.GetTokenType() != TokenTypes.eTokenString)
                     {
@@ -4577,7 +4757,6 @@ namespace OutOfPhase
                             // expression must be evaluated at performance time
                         }
                     }
-#endif
 
                     Token = Context.Scanner.GetNextToken();
                     if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
@@ -4589,13 +4768,6 @@ namespace OutOfPhase
                     }
                     InstrKeywordType levelOrScale = Token.GetTokenKeywordTag();
 
-#if false // TODO: remove old
-                    Error = ParseNumber(Context, out ErrorLine, out Level);
-                    if (Error != BuildInstrErrors.eBuildInstrNoError)
-                    {
-                        return Error;
-                    }
-#else
                     Token = Context.Scanner.GetNextToken();
                     if (Token.GetTokenType() != TokenTypes.eTokenString)
                     {
@@ -4657,7 +4829,6 @@ namespace OutOfPhase
                             // expression must be evaluated at performance time
                         }
                     }
-#endif
 
                     EnvelopeInsertPhase(Envelope, GetEnvelopeNumFrames(Envelope));
                     if (levelOrScale == InstrKeywordType.eKeywordScale)
@@ -5313,12 +5484,52 @@ namespace OutOfPhase
             InstrKeywordType EffectListType)
         {
             TokenRec<InstrKeywordType> Token;
-            bool EnabledFlag;
-            ParseTrackEffectMethod Parser;
 
             ErrorLine = -1;
 
-            EnabledFlag = true;
+            bool EnabledFlag = true;
+
+
+            // shunt for pluggable form (1)
+            Token = Context.Scanner.GetNextToken();
+        ParsePluggable:
+            if (Token.GetTokenType() == TokenTypes.eTokenColon)
+            {
+                string classIdentifier;
+
+                Token = Context.Scanner.GetNextToken();
+                BuildInstrErrors Error = ParseGlobalIdentifierString(
+                    Context,
+                    Token,
+                    out ErrorLine,
+                    out classIdentifier);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    Context.ErrorExtraMessage = GetPluggableClassListForError();
+                    return Error;
+                }
+
+                int startLine = Context.Scanner.GetCurrentLineNumber();
+
+                PluggableTrackSpec pluggable;
+                Error = ParsePluggableTrackProcessor(
+                    Context,
+                    out ErrorLine,
+                    true/*enabled*/,
+                    classIdentifier,
+                    out pluggable);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    return Error;
+                }
+
+                AddPluggableEffectToEffectSpecList(EffectList, pluggable, EnabledFlag);
+
+                return BuildInstrErrors.eBuildInstrNoError;
+            }
+            Context.Scanner.UngetToken(Token);
+
+
             Token = Context.Scanner.GetNextToken();
             if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
             {
@@ -5368,11 +5579,16 @@ namespace OutOfPhase
             }
 
             Token = Context.Scanner.GetNextToken();
+            if (Token.GetTokenType() == TokenTypes.eTokenColon)
+            {
+                goto ParsePluggable; // shunt for pluggable form (2)
+            }
             if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
             {
                 ErrorLine = Context.Scanner.GetCurrentLineNumber();
                 return BuildInstrErrors.eBuildInstrExpectedEffectName;
             }
+            ParseTrackEffectMethod Parser;
             switch (Token.GetTokenKeywordTag())
             {
                 default:
@@ -5500,20 +5716,12 @@ namespace OutOfPhase
                             ErrorLine = Context.Scanner.GetCurrentLineNumber();
                             return BuildInstrErrors.eBuildInstrMultipleMaxDelayTime;
                         }
-#if false // TODO: remove old
-                        Error = ParseNumber(Context, out ErrorLine, out Number);
-                        if (Error != BuildInstrErrors.eBuildInstrNoError)
-                        {
-                            return Error;
-                        }
-#else
                         PcodeRec Formula;
                         Error = ParseTrackEffectNumber(Context, out ErrorLine, out Formula, out Number);
                         if (Error != BuildInstrErrors.eBuildInstrNoError)
                         {
                             return Error;
                         }
-#endif
                         SetDelayMaxTime(DelayEffect, Number);
                         SetDelayMaxTimeFormula(DelayEffect, Formula);
                     }
@@ -6753,11 +6961,10 @@ namespace OutOfPhase
                             }
                             else
                             {
-#if false
+#if false // TODO: reenable for broken=false
                                 Context.Scanner.UngetToken(Token);
-                                // default to broken behavior
-                                // TODO: disable this else branch to require specifying mode
-                                broken = true;
+                                // default to good behavior
+                                broken = false;
 #else
                                 ErrorLine = Context.Scanner.GetCurrentLineNumber();
                                 return BuildInstrErrors.eBuildInstrMustSpecifyGoodOrBroken;
@@ -7448,11 +7655,10 @@ namespace OutOfPhase
                             }
                             else
                             {
-#if false
+#if false // TODO: reenable for broken=false
                                 Context.Scanner.UngetToken(Token);
-                                // default to broken behavior
-                                // TODO: disable this else branch to require specifying mode
-                                broken = true;
+                                // default to good behavior
+                                broken = false;
 #else
                                 ErrorLine = Context.Scanner.GetCurrentLineNumber();
                                 return BuildInstrErrors.eBuildInstrMustSpecifyGoodOrBroken;
@@ -8138,20 +8344,12 @@ namespace OutOfPhase
                             ErrorLine = Context.Scanner.GetCurrentLineNumber();
                             return BuildInstrErrors.eBuildInstrMultipleMaxDelayTime;
                         }
-#if false // tODO: remove old
-                        Error = ParseNumber(Context, out ErrorLine, out Number);
-                        if (Error != BuildInstrErrors.eBuildInstrNoError)
-                        {
-                            return Error;
-                        }
-#else
                         PcodeRec Formula;
                         Error = ParseTrackEffectNumber(Context, out ErrorLine, out Formula, out Number);
                         if (Error != BuildInstrErrors.eBuildInstrNoError)
                         {
                             return Error;
                         }
-#endif
                         SetDelayMaxTime(DelayEffect, Number);
                         SetDelayMaxTimeFormula(DelayEffect, Formula);
                     }
@@ -13399,8 +13597,8 @@ namespace OutOfPhase
 
 
         /* usereffect */
-        /*  <usereffect>          ::= ( [initfunc <string> ;] */
-        /*                            [updatefunc <string> ;] */
+        /*  <usereffect>          ::= ( [workspaces {integerarray | floatarray | doublearray}* ;] */
+        /*                            [initfunc <string> ;] */
         /*                            datafunc <string> ; */
         /*                            [param <number> [accent{1-8} <number>] ;]* ) */
         public static BuildInstrErrors ParseTrackUserEffect(
@@ -13410,11 +13608,11 @@ namespace OutOfPhase
             bool EnabledFlag)
         {
             TokenRec<InstrKeywordType> Token;
-            TokenRec<InstrKeywordType> InitFuncIdentifier = null;
-            TokenRec<InstrKeywordType> UpdateFuncIdentifier = null;
-            TokenRec<InstrKeywordType> DataFuncIdentifier = null;
+            string InitFuncIdentifier = null;
+            List<string> DataFuncIdentifiers = new List<string>();
             BuildInstrErrors Error;
             UserEffectSpecRec UserEffect;
+            List<DataTypes> workspaces = new List<DataTypes>();
 
             ErrorLine = -1;
 
@@ -13445,11 +13643,56 @@ namespace OutOfPhase
                 Context.Scanner.UngetToken(Token);
             }
 
+            /*  <usereffect>          ::= [workspaces ... ;] */
+            Token = Context.Scanner.GetNextToken();
+            if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                || ((Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordWorkspaces)
+                    && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordInitfunc)
+                    && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordDatafunc)))
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrExpectedWorkspaces;
+            }
+            if (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordWorkspaces)
+            {
+                Context.Scanner.UngetToken(Token);
+            }
+            else
+            {
+                while (true)
+                {
+                    Token = Context.Scanner.GetNextToken();
+                    if (Token.GetTokenType() == TokenTypes.eTokenSemicolon)
+                    {
+                        break;
+                    }
+                    if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrExpectedWorkspaceElementOrSemicolon;
+                    }
+                    switch (Token.GetTokenKeywordTag())
+                    {
+                        default:
+                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                            return BuildInstrErrors.eBuildInstrExpectedWorkspaceElementOrSemicolon;
+                        case InstrKeywordType.eKeywordIntegerarray:
+                            workspaces.Add(DataTypes.eArrayOfInteger);
+                            break;
+                        case InstrKeywordType.eKeywordFloatarray:
+                            workspaces.Add(DataTypes.eArrayOfFloat);
+                            break;
+                        case InstrKeywordType.eKeywordDoublearray:
+                            workspaces.Add(DataTypes.eArrayOfDouble);
+                            break;
+                    }
+                }
+            }
+
             /*  <usereffect>          ::= [initfunc <string> ;] */
             Token = Context.Scanner.GetNextToken();
             if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
                 || ((Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordInitfunc)
-                    && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordUpdatefunc)
                     && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordDatafunc)))
             {
                 ErrorLine = Context.Scanner.GetCurrentLineNumber();
@@ -13461,10 +13704,10 @@ namespace OutOfPhase
             }
             else
             {
-                InitFuncIdentifier = Context.Scanner.GetNextToken();
-                if (InitFuncIdentifier.GetTokenType() != TokenTypes.eTokenString)
+                Token = Context.Scanner.GetNextToken();
+                Error = ParseGlobalIdentifierString(Context, Token, out ErrorLine, out InitFuncIdentifier);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
                 {
-                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
                     return BuildInstrErrors.eBuildInstrExpectedInitfuncString;
                 }
 
@@ -13476,37 +13719,7 @@ namespace OutOfPhase
                 }
             }
 
-            /*                            [updatefunc <string> ;] */
-            Token = Context.Scanner.GetNextToken();
-            if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
-                || ((Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordUpdatefunc)
-                    && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordDatafunc)))
-            {
-                ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                return BuildInstrErrors.eBuildInstrExpectedUpdatefunc;
-            }
-            if (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordUpdatefunc)
-            {
-                Context.Scanner.UngetToken(Token);
-            }
-            else
-            {
-                UpdateFuncIdentifier = Context.Scanner.GetNextToken();
-                if (UpdateFuncIdentifier.GetTokenType() != TokenTypes.eTokenString)
-                {
-                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                    return BuildInstrErrors.eBuildInstrExpectedUpdatefuncString;
-                }
-
-                Token = Context.Scanner.GetNextToken();
-                if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
-                {
-                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                    return BuildInstrErrors.eBuildInstrExpectedSemicolon;
-                }
-            }
-
-            /*                            datafunc <string> ; */
+            /*                            datafunc {<string>}+ ; */
             Token = Context.Scanner.GetNextToken();
             if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
                 || (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordDatafunc))
@@ -13514,29 +13727,36 @@ namespace OutOfPhase
                 ErrorLine = Context.Scanner.GetCurrentLineNumber();
                 return BuildInstrErrors.eBuildInstrExpectedDatafunc;
             }
-            DataFuncIdentifier = Context.Scanner.GetNextToken();
-            if (DataFuncIdentifier.GetTokenType() != TokenTypes.eTokenString)
+            while (true)
             {
-                ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                return BuildInstrErrors.eBuildInstrExpectedDatafuncString;
-            }
+                string DataFuncIdentifier;
 
-            Token = Context.Scanner.GetNextToken();
-            if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
-            {
-                ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                return BuildInstrErrors.eBuildInstrExpectedSemicolon;
+                Token = Context.Scanner.GetNextToken();
+                Error = ParseGlobalIdentifierString(Context, Token, out ErrorLine, out DataFuncIdentifier);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    return BuildInstrErrors.eBuildInstrExpectedDatafuncString;
+                }
+
+                DataFuncIdentifiers.Add(DataFuncIdentifier);
+
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() == TokenTypes.eTokenSemicolon)
+                {
+                    break;
+                }
+                Context.Scanner.UngetToken(Token);
             }
 
             UserEffect = NewUserEffectSpec(
-                (InitFuncIdentifier == null) ? null : InitFuncIdentifier.GetTokenStringValue(),
-                (UpdateFuncIdentifier == null) ? null : UpdateFuncIdentifier.GetTokenStringValue(),
-                DataFuncIdentifier.GetTokenStringValue());
+                InitFuncIdentifier,
+                DataFuncIdentifiers.ToArray(),
+                workspaces.ToArray());
             AddUserEffectToEffectSpecList(EffectList, UserEffect, EnabledFlag);
 
             SetUserEffectSpecNoOversampling(UserEffect, noOversampling);
 
-            /*                            [param <number> [accent{1-8} <number>] ;]* */
+            /*                            [param [smoothed] <number> [accent{1-8} <number>] ;]* */
             while (true)
             {
                 double Number;
@@ -13560,6 +13780,18 @@ namespace OutOfPhase
                 }
 
                 AddUserEffectSpecParam(UserEffect, out Index);
+
+                // [smoothed]
+                Token = Context.Scanner.GetNextToken();
+                if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
+                    && (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordSmoothed))
+                {
+                    SetUserEffectSpecParamSmoothed(UserEffect, Index, true/*smoothed*/);
+                }
+                else
+                {
+                    Context.Scanner.UngetToken(Token);
+                }
 
                 RequiredOnceOnly = NewRequiredOnceOnly();
                 AddOnceOnlyCode(RequiredOnceOnly, Req.USEREFFECTPARAM_ONCEONLY_ACCENT1);
@@ -13682,9 +13914,8 @@ namespace OutOfPhase
 
 
 
-        /* usereffect */
-        /*  <usereffect>          ::= ( [initfunc <string> ;] */
-        /*                            [updatefunc <string> ;] */
+        /*  <usereffect>          ::= ( [workspaces {integerarray | floatarray | doublearray}* ;] */
+        /*                            [initfunc <string> ;] */
         /*                            datafunc <string> ; */
         /*                            param envelope () [lfo()...] ; ) */
         public static BuildInstrErrors ParseOscUserEffect(
@@ -13694,11 +13925,11 @@ namespace OutOfPhase
             bool EnabledFlag)
         {
             TokenRec<InstrKeywordType> Token;
-            TokenRec<InstrKeywordType> InitFuncIdentifier = null;
-            TokenRec<InstrKeywordType> UpdateFuncIdentifier = null;
-            TokenRec<InstrKeywordType> DataFuncIdentifier = null;
+            string InitFuncIdentifier = null;
+            List<string> DataFuncIdentifiers = new List<string>();
             BuildInstrErrors Error;
             UserEffectSpecRec UserEffect;
+            List<DataTypes> workspaces = new List<DataTypes>();
 
             ErrorLine = -1;
 
@@ -13729,11 +13960,56 @@ namespace OutOfPhase
                 Context.Scanner.UngetToken(Token);
             }
 
+            /*  <usereffect>          ::= [workspaces ... ;] */
+            Token = Context.Scanner.GetNextToken();
+            if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                || ((Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordWorkspaces)
+                    && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordInitfunc)
+                    && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordDatafunc)))
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrExpectedWorkspaces;
+            }
+            if (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordWorkspaces)
+            {
+                Context.Scanner.UngetToken(Token);
+            }
+            else
+            {
+                while (true)
+                {
+                    Token = Context.Scanner.GetNextToken();
+                    if (Token.GetTokenType() == TokenTypes.eTokenSemicolon)
+                    {
+                        break;
+                    }
+                    if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrExpectedWorkspaceElementOrSemicolon;
+                    }
+                    switch (Token.GetTokenKeywordTag())
+                    {
+                        default:
+                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                            return BuildInstrErrors.eBuildInstrExpectedWorkspaceElementOrSemicolon;
+                        case InstrKeywordType.eKeywordIntegerarray:
+                            workspaces.Add(DataTypes.eArrayOfInteger);
+                            break;
+                        case InstrKeywordType.eKeywordFloatarray:
+                            workspaces.Add(DataTypes.eArrayOfFloat);
+                            break;
+                        case InstrKeywordType.eKeywordDoublearray:
+                            workspaces.Add(DataTypes.eArrayOfDouble);
+                            break;
+                    }
+                }
+            }
+
             /*  <usereffect>          ::= [initfunc <string> ;] */
             Token = Context.Scanner.GetNextToken();
             if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
                 || ((Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordInitfunc)
-                    && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordUpdatefunc)
                     && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordDatafunc)))
             {
                 ErrorLine = Context.Scanner.GetCurrentLineNumber();
@@ -13745,41 +14021,11 @@ namespace OutOfPhase
             }
             else
             {
-                InitFuncIdentifier = Context.Scanner.GetNextToken();
-                if (InitFuncIdentifier.GetTokenType() != TokenTypes.eTokenString)
-                {
-                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                    return BuildInstrErrors.eBuildInstrExpectedInitfuncString;
-                }
-
                 Token = Context.Scanner.GetNextToken();
-                if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
+                Error = ParseGlobalIdentifierString(Context, Token, out ErrorLine, out InitFuncIdentifier);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
                 {
-                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                    return BuildInstrErrors.eBuildInstrExpectedSemicolon;
-                }
-            }
-
-            /*                            [updatefunc <string> ;] */
-            Token = Context.Scanner.GetNextToken();
-            if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
-                || ((Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordUpdatefunc)
-                    && (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordDatafunc)))
-            {
-                ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                return BuildInstrErrors.eBuildInstrExpectedUpdatefunc;
-            }
-            if (Token.GetTokenKeywordTag() != InstrKeywordType.eKeywordUpdatefunc)
-            {
-                Context.Scanner.UngetToken(Token);
-            }
-            else
-            {
-                UpdateFuncIdentifier = Context.Scanner.GetNextToken();
-                if (UpdateFuncIdentifier.GetTokenType() != TokenTypes.eTokenString)
-                {
-                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                    return BuildInstrErrors.eBuildInstrExpectedUpdatefuncString;
+                    return Error;
                 }
 
                 Token = Context.Scanner.GetNextToken();
@@ -13798,24 +14044,31 @@ namespace OutOfPhase
                 ErrorLine = Context.Scanner.GetCurrentLineNumber();
                 return BuildInstrErrors.eBuildInstrExpectedDatafunc;
             }
-            DataFuncIdentifier = Context.Scanner.GetNextToken();
-            if (DataFuncIdentifier.GetTokenType() != TokenTypes.eTokenString)
+            while (true)
             {
-                ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                return BuildInstrErrors.eBuildInstrExpectedDatafuncString;
-            }
+                string DataFuncIdentifier;
 
-            Token = Context.Scanner.GetNextToken();
-            if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
-            {
-                ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                return BuildInstrErrors.eBuildInstrExpectedSemicolon;
+                Token = Context.Scanner.GetNextToken();
+                Error = ParseGlobalIdentifierString(Context, Token, out ErrorLine, out DataFuncIdentifier);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    return BuildInstrErrors.eBuildInstrExpectedDatafuncString;
+                }
+
+                DataFuncIdentifiers.Add(DataFuncIdentifier);
+
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() == TokenTypes.eTokenSemicolon)
+                {
+                    break;
+                }
+                Context.Scanner.UngetToken(Token);
             }
 
             UserEffect = NewUserEffectSpec(
-                (InitFuncIdentifier == null) ? null : InitFuncIdentifier.GetTokenStringValue(),
-                (UpdateFuncIdentifier == null) ? null : UpdateFuncIdentifier.GetTokenStringValue(),
-                DataFuncIdentifier.GetTokenStringValue());
+                InitFuncIdentifier,
+                DataFuncIdentifiers.ToArray(),
+                workspaces.ToArray());
             AddUserEffectToEffectSpecList(EffectList, UserEffect, EnabledFlag);
 
             SetUserEffectSpecNoOversampling(UserEffect, noOversampling);
@@ -13841,6 +14094,18 @@ namespace OutOfPhase
                 }
 
                 AddUserEffectSpecParam(UserEffect, out Index);
+
+                // [smoothed]
+                Token = Context.Scanner.GetNextToken();
+                if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
+                    && (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordSmoothed))
+                {
+                    SetUserEffectSpecParamSmoothed(UserEffect, Index, true/*smoothed*/);
+                }
+                else
+                {
+                    Context.Scanner.UngetToken(Token);
+                }
 
                 /* envelope */
                 Token = Context.Scanner.GetNextToken();
@@ -14952,6 +15217,1429 @@ namespace OutOfPhase
             Debug.Assert(false);
 #endif
             throw new ArgumentException();
+        }
+
+
+
+
+        public static BuildInstrErrors ParsePluggableTrackProcessor(
+            BuildInstrumentContext Context,
+            out int ErrorLine,
+            bool EnabledFlag,
+            string classId,
+            out PluggableTrackSpec spec)
+        {
+            BuildInstrErrors Error;
+            TokenRec<InstrKeywordType> Token;
+
+
+            ErrorLine = -1;
+            spec = null;
+
+
+            IPluggableProcessorFactory classObject;
+            if (!QueryPluggableProcessorClass(classId, out classObject))
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrReferencedUnknownPluggableProcessor;
+            }
+            if ((classObject.Roles & PluggableRole.Effect) == 0)
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrPluggableNotCapableOfEffect;
+            }
+
+            // oparen
+            Token = Context.Scanner.GetNextToken();
+            if (Token.GetTokenType() != TokenTypes.eTokenOpenParen)
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrExpectedOpenParen;
+            }
+
+            KeyValuePair<string, string[]>[] configs;
+            Error = ParsePluggableConfigs(Context, classObject, out configs, out ErrorLine);
+            if (Error != BuildInstrErrors.eBuildInstrNoError)
+            {
+                return Error;
+            }
+
+            IPluggableProcessorTemplate templateObject;
+            Error = classObject.Create(
+                configs,
+                PluggableRole.Effect,
+                out templateObject,
+                out Context.ErrorExtraMessage);
+            if (Error != BuildInstrErrors.eBuildInstrNoError)
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return Error;
+            }
+
+            spec = new PluggableTrackSpec(templateObject);
+            spec.Enabled = EnabledFlag;
+
+
+            // TODO: better error messaging in this section
+            // sub-item parsing loop
+            while (true)
+            {
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() == TokenTypes.eTokenCloseParen)
+                {
+                    Context.Scanner.UngetToken(Token);
+                    break;
+                }
+
+                string paramId;
+                Error = ParseGlobalIdentifierString(
+                    Context,
+                    Token,
+                    out ErrorLine,
+                    out paramId);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    Context.ErrorExtraMessage = GetPluggableParameterListForError(templateObject); // add contextually helpful description
+                    return Error;
+                }
+
+                int paramIndex = spec.FindParameter(paramId);
+                if (paramIndex < 0)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    Context.ErrorExtraMessage = GetPluggableParameterListForError(templateObject); // add contextually helpful description
+                    return BuildInstrErrors.eBuildInstrReferencedUnknownPluggableProcessor;
+                }
+                if (spec.IsParameterSpecified(paramIndex))
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrPluggableProcessorMultiplyReferenced;
+                }
+
+
+                PluggableParameterType type = spec.GetParameterBaseType(paramIndex);
+                Debug.Assert((type & PluggableParameterType.TypeMask) == type);
+                switch (type)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new InvalidOperationException();
+
+                    case PluggableParameterType.StaticInteger:
+                        {
+                            int value;
+
+                            if (spec.IsIntegerParameterEnumerated(paramIndex))
+                            {
+                                string enumIdentifier;
+                                Error = ParseGlobalIdentifierString(
+                                    Context,
+                                    Token,
+                                    out ErrorLine,
+                                    out enumIdentifier);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    Context.ErrorExtraMessage = GetPluggableParameterEnumValueListForError(templateObject, paramIndex); // add contextually helpful description
+                                    return Error;
+                                }
+                                Error = GetPluggableEnumValueForEnumIdentifier(
+                                    templateObject,
+                                    paramIndex,
+                                    enumIdentifier,
+                                    out value);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    Context.ErrorExtraMessage = GetPluggableParameterEnumValueListForError(templateObject, paramIndex); // add contextually helpful description
+                                    return Error;
+                                }
+                                spec.SetStaticIntegerParameter(paramIndex, value);
+                            }
+                            else
+                            {
+                                double number;
+
+                                Error = ParseNumber(Context, out ErrorLine, out number);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    return Error;
+                                }
+                                value = (int)number;
+                                if (number != value)
+                                {
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    return BuildInstrErrors.eBuildInstrExpectedInteger;
+                                }
+                            }
+
+                            string errorMessage;
+                            if (!spec.PluggableTemplate.StaticRangeCheck(paramIndex, value, out errorMessage))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                Context.ErrorExtraMessage = errorMessage;
+                                return BuildInstrErrors.eBuildInstrExpectedInteger;
+                            }
+
+                            spec.SetStaticIntegerParameter(paramIndex, value);
+                        }
+                        break;
+
+                    case PluggableParameterType.StaticString:
+                        string stringLiteral;
+                        Error = ParseIdentifier(Context, out ErrorLine, out stringLiteral);
+                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                        {
+                            return Error;
+                        }
+                        spec.SetStaticStringParameter(paramIndex, stringLiteral);
+                        break;
+
+                    case PluggableParameterType.StaticDouble:
+                    case PluggableParameterType.DynamicDouble:
+                        {
+                            double value;
+                            PcodeRec function;
+                            AccentRec accents = new AccentRec();
+
+                            Error = ParseTrackEffectNumber(
+                                Context,
+                                out ErrorLine,
+                                out function,
+                                out value);
+                            if (Error != BuildInstrErrors.eBuildInstrNoError)
+                            {
+                                return Error;
+                            }
+
+                            bool accent1 = false;
+                            bool accent2 = false;
+                            bool accent3 = false;
+                            bool accent4 = false;
+                            bool accent5 = false;
+                            bool accent6 = false;
+                            bool accent7 = false;
+                            bool accent8 = false;
+                            while (true)
+                            {
+                                Token = Context.Scanner.GetNextToken();
+                                if (Token.GetTokenType() == TokenTypes.eTokenSemicolon)
+                                {
+                                    Context.Scanner.UngetToken(Token);
+                                    break;
+                                }
+                                if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                                {
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    return BuildInstrErrors.eBuildInstrExpectedAccentOrSemicolon;
+                                }
+                                switch (Token.GetTokenKeywordTag())
+                                {
+                                    default:
+                                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                        return BuildInstrErrors.eBuildInstrExpectedAccentOrSemicolon;
+                                    case InstrKeywordType.eKeywordAccent1:
+                                        if (accent1)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent1;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent0);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent1 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent2:
+                                        if (accent2)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent2;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent1);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent2 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent3:
+                                        if (accent3)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent3;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent2);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent3 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent4:
+                                        if (accent4)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent4;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent3);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent4 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent5:
+                                        if (accent5)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent5;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent4);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent5 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent6:
+                                        if (accent6)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent6;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent5);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent6 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent7:
+                                        if (accent7)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent7;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent6);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent7 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent8:
+                                        if (accent8)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent8;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent7);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent8 = true;
+                                        break;
+                                }
+                            }
+
+                            if (type == PluggableParameterType.StaticDouble)
+                            {
+                                spec.SetStaticDoubleParameter(
+                                    paramIndex,
+                                    new PluggableEvaluableParam(
+                                        value,
+                                        accents,
+                                        function));
+                            }
+                            else
+                            {
+                                spec.SetDynamicDoubleParameter(
+                                    paramIndex,
+                                    new PluggableEvaluableParam(
+                                        value,
+                                        accents,
+                                        function));
+                            }
+                        }
+                        break;
+                }
+
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrExpectedSemicolon;
+                }
+            }
+
+
+            // cparen
+            Token = Context.Scanner.GetNextToken();
+            if (Token.GetTokenType() != TokenTypes.eTokenCloseParen)
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrExpectedCloseParen;
+            }
+
+            // check for missing required parameters
+            for (int i = 0; i < spec.ParameterCount; i++)
+            {
+                if (!spec.IsParameterOptional(i) && !spec.IsParameterSpecified(i))
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    Context.ErrorExtraMessage = String.Format("'{0}'", templateObject.ParametersDefinition[i].ParserName);
+                    return BuildInstrErrors.eBuildInstrPluggableRequiredParameterNotSpecified;
+                }
+            }
+
+
+            return BuildInstrErrors.eBuildInstrNoError;
+        }
+
+        // double-duty as oscillator and osceffect parser
+        public static BuildInstrErrors ParsePluggableOscProcessor(
+            BuildInstrumentContext Context,
+            OscillatorRec Oscillator, // null for osceffect
+            out int ErrorLine,
+            bool EnabledFlag,
+            string classId,
+            PluggableRole role,
+            out PluggableOscSpec spec)
+        {
+            BuildInstrErrors Error;
+            TokenRec<InstrKeywordType> Token;
+
+
+            ErrorLine = -1;
+            spec = null;
+
+
+            IPluggableProcessorFactory classObject;
+            if (!QueryPluggableProcessorClass(classId, out classObject))
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrReferencedUnknownPluggableProcessor;
+            }
+            if ((classObject.Roles & role) == 0)
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                switch (role)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case PluggableRole.Effect:
+                        return BuildInstrErrors.eBuildInstrPluggableNotCapableOfEffect;
+                    case PluggableRole.Oscillator:
+                        return BuildInstrErrors.eBuildInstrPluggableNotCapableOfOscillator;
+                }
+            }
+
+            // oparen
+            Token = Context.Scanner.GetNextToken();
+            if (Token.GetTokenType() != TokenTypes.eTokenOpenParen)
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrExpectedOpenParen;
+            }
+
+            KeyValuePair<string, string[]>[] configs;
+            Error = ParsePluggableConfigs(Context, classObject, out configs, out ErrorLine);
+            if (Error != BuildInstrErrors.eBuildInstrNoError)
+            {
+                return Error;
+            }
+
+            IPluggableProcessorTemplate templateObject;
+            Error = classObject.Create(
+                configs,
+                role,
+                out templateObject,
+                out Context.ErrorExtraMessage);
+            if (Error != BuildInstrErrors.eBuildInstrNoError)
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return Error;
+            }
+
+            spec = new PluggableOscSpec(templateObject);
+            spec.Enabled = EnabledFlag;
+
+
+            // TODO: better error messaging in this section
+            // sub-item parsing loop
+            RequiredOnceOnlyRec OscillatorRequiredOnceOnly = null;
+            if (Oscillator != null)
+            {
+                OscillatorRequiredOnceOnly = NewRequiredOnceOnly();
+                AddOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_LOUDNESS);
+                AddOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_FREQMULTIPLIER);
+                AddOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_FREQDIVISOR);
+                AddOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_STEREOBIAS);
+                AddOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_TIMEDISPLACEMENT);
+                AddOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_SURROUNDBIAS);
+                AddOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_FREQADDER);
+            }
+            while (true)
+            {
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() == TokenTypes.eTokenCloseParen)
+                {
+                    Context.Scanner.UngetToken(Token);
+                    break;
+                }
+
+                if ((Oscillator != null) && (Token.GetTokenType() == TokenTypes.eTokenKeyword))
+                {
+                    double Number;
+
+                    switch (Token.GetTokenKeywordTag())
+                    {
+                        default:
+                            break;
+
+                        case InstrKeywordType.eKeywordLoudnessfactor:
+                            if (MarkOnceOnlyPresent(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_LOUDNESS))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                return BuildInstrErrors.eBuildInstrMultipleOscLoudnessFactor;
+                            }
+
+                            Error = ParseNumber(Context, out ErrorLine, out Number);
+                            if (Error != BuildInstrErrors.eBuildInstrNoError)
+                            {
+                                return Error;
+                            }
+                            PutOscillatorNewOutputLoudness(Oscillator, Number);
+
+                            goto SemicolonAndContinue;
+
+                        case InstrKeywordType.eKeywordFreqmultiplier:
+                            if (MarkOnceOnlyPresent(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_FREQMULTIPLIER))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                return BuildInstrErrors.eBuildInstrMultipleOscFreqMultiplier;
+                            }
+
+                            Error = ParseNumber(Context, out ErrorLine, out Number);
+                            if (Error != BuildInstrErrors.eBuildInstrNoError)
+                            {
+                                return Error;
+                            }
+                            PutOscillatorNewFrequencyFactors(Oscillator, Number,
+                                OscillatorGetFrequencyDivisor(Oscillator));
+
+                            goto SemicolonAndContinue;
+
+                        case InstrKeywordType.eKeywordFreqdivisor:
+                            if (MarkOnceOnlyPresent(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_FREQDIVISOR))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                return BuildInstrErrors.eBuildInstrMultipleOscFreqDivisor;
+                            }
+
+                            Token = Context.Scanner.GetNextToken();
+                            if (Token.GetTokenType() != TokenTypes.eTokenInteger)
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                return BuildInstrErrors.eBuildInstrExpectedInteger;
+                            }
+                            PutOscillatorNewFrequencyFactors(Oscillator,
+                                OscillatorGetFrequencyMultiplier(Oscillator), Token.GetTokenIntegerValue());
+
+                            goto SemicolonAndContinue;
+
+                        case InstrKeywordType.eKeywordFreqadder:
+                            if (MarkOnceOnlyPresent(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_FREQADDER))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                return BuildInstrErrors.eBuildInstrMultipleOscFreqAdder;
+                            }
+
+                            Error = ParseNumber(Context, out ErrorLine, out Number);
+                            if (Error != BuildInstrErrors.eBuildInstrNoError)
+                            {
+                                return Error;
+                            }
+                            PutOscillatorFrequencyAdder(Oscillator, Number);
+
+                            goto SemicolonAndContinue;
+
+                        case InstrKeywordType.eKeywordStereobias:
+                            if (MarkOnceOnlyPresent(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_STEREOBIAS))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                return BuildInstrErrors.eBuildInstrMultipleOscStereoBias;
+                            }
+
+                            Error = ParseNumber(Context, out ErrorLine, out Number);
+                            if (Error != BuildInstrErrors.eBuildInstrNoError)
+                            {
+                                return Error;
+                            }
+                            OscillatorPutStereoBias(Oscillator, Number);
+
+                            goto SemicolonAndContinue;
+
+                        case InstrKeywordType.eKeywordDisplacement:
+                            if (MarkOnceOnlyPresent(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_TIMEDISPLACEMENT))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                return BuildInstrErrors.eBuildInstrMultipleOscDisplacement;
+                            }
+
+                            Error = ParseNumber(Context, out ErrorLine, out Number);
+                            if (Error != BuildInstrErrors.eBuildInstrNoError)
+                            {
+                                return Error;
+                            }
+                            OscillatorPutTimeDisplacement(Oscillator, Number);
+
+                            goto SemicolonAndContinue;
+
+                        case InstrKeywordType.eKeywordSurroundbias:
+                            if (MarkOnceOnlyPresent(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_SURROUNDBIAS))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                return BuildInstrErrors.eBuildInstrMultipleOscSurroundBias;
+                            }
+
+                            Error = ParseNumber(Context, out ErrorLine, out Number);
+                            if (Error != BuildInstrErrors.eBuildInstrNoError)
+                            {
+                                return Error;
+                            }
+                            OscillatorPutSurroundBias(Oscillator, Number);
+
+                            goto SemicolonAndContinue;
+
+                        case InstrKeywordType.eKeywordEffect:
+                            Error = ParseOscillatorEffect(GetOscillatorEffectList(Oscillator), Context, out ErrorLine);
+                            if (Error != BuildInstrErrors.eBuildInstrNoError)
+                            {
+                                return Error;
+                            }
+                            goto SemicolonAndContinue;
+                    }
+                }
+
+                string paramId;
+                Error = ParseGlobalIdentifierString(
+                    Context,
+                    Token,
+                    out ErrorLine,
+                    out paramId);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    Context.ErrorExtraMessage = GetPluggableParameterListForError(templateObject); // add contextually helpful description
+                    return Error;
+                }
+
+                int paramIndex = spec.FindParameter(paramId);
+                if (paramIndex < 0)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    Context.ErrorExtraMessage = GetPluggableParameterListForError(templateObject); // add contextually helpful description
+                    return BuildInstrErrors.eBuildInstrReferencedUnknownPluggableProcessor;
+                }
+                if (spec.IsParameterSpecified(paramIndex))
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrPluggableProcessorMultiplyReferenced;
+                }
+
+                PluggableParameterType type = spec.GetParameterBaseType(paramIndex);
+                Debug.Assert((type & PluggableParameterType.TypeMask) == type);
+                switch (type)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new InvalidOperationException();
+
+                    case PluggableParameterType.StaticInteger:
+                        {
+                            int value;
+
+                            if (spec.IsIntegerParameterEnumerated(paramIndex))
+                            {
+                                string enumIdentifier;
+                                Error = ParseGlobalIdentifierString(
+                                    Context,
+                                    Token,
+                                    out ErrorLine,
+                                    out enumIdentifier);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    Context.ErrorExtraMessage = GetPluggableParameterEnumValueListForError(templateObject, paramIndex); // add contextually helpful description
+                                    return Error;
+                                }
+
+                                Error = GetPluggableEnumValueForEnumIdentifier(
+                                    templateObject,
+                                    paramIndex,
+                                    enumIdentifier,
+                                    out value);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    Context.ErrorExtraMessage = GetPluggableParameterEnumValueListForError(templateObject, paramIndex); // add contextually helpful description
+                                    return Error;
+                                }
+
+                            }
+                            else
+                            {
+                                double number;
+
+                                Error = ParseNumber(Context, out ErrorLine, out number);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    return Error;
+                                }
+                                value = (int)number;
+                                if (number != value)
+                                {
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    return BuildInstrErrors.eBuildInstrExpectedInteger;
+                                }
+                            }
+
+                            string errorMessage;
+                            if (!spec.PluggableTemplate.StaticRangeCheck(paramIndex, value, out errorMessage))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                Context.ErrorExtraMessage = errorMessage;
+                                return BuildInstrErrors.eBuildInstrExpectedInteger;
+                            }
+
+                            spec.SetStaticIntegerParameter(paramIndex, value);
+                        }
+                        break;
+
+                    case PluggableParameterType.StaticString:
+                        {
+                            string stringLiteral;
+                            Error = ParseIdentifier(Context, out ErrorLine, out stringLiteral);
+                            if (Error != BuildInstrErrors.eBuildInstrNoError)
+                            {
+                                return Error;
+                            }
+
+                            string errorMessage;
+                            if (!spec.PluggableTemplate.StaticRangeCheck(paramIndex, stringLiteral, out errorMessage))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                Context.ErrorExtraMessage = errorMessage;
+                                return BuildInstrErrors.eBuildInstrExpectedInteger;
+                            }
+
+                            spec.SetStaticStringParameter(paramIndex, stringLiteral);
+                        }
+                        break;
+
+                    case PluggableParameterType.StaticDouble:
+                        {
+                            double value = 0;
+                            PcodeRec function = null;
+                            AccentRec accents = new AccentRec();
+
+                            Token = Context.Scanner.GetNextToken();
+                            if (Token.GetTokenType() != TokenTypes.eTokenString)
+                            {
+                                Context.Scanner.UngetToken(Token);
+                                Error = ParseNumber(Context, out ErrorLine, out value);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    return Error;
+                                }
+                            }
+                            else
+                            {
+                                int CompileErrorLine;
+                                DataTypes ReturnType;
+                                Compiler.ASTExpressionRec Expr;
+
+                                CompileErrors CompileError = Compiler.CompileSpecialFunction(
+                                    Context.CodeCenter,
+                                    EnvelopeInitFormulaArgsDefs,
+                                    out CompileErrorLine,
+                                    out ReturnType,
+                                    Token.GetTokenStringValue(),
+                                    false/*suppressCILEmission -- this code path always generates function*/,
+                                    out function,
+                                    out Expr);
+                                if (CompileError != CompileErrors.eCompileNoError)
+                                {
+                                    ErrorLine = CompileErrorLine + Context.Scanner.GetCurrentLineNumber() - 1;
+                                    return BuildInstrErrors.eBuildInstrEnvFormulaSyntaxError;
+                                }
+                                if (ReturnType != DataTypes.eDouble)
+                                {
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
+                                }
+
+                                if (Compiler.ExprTypes.eExprOperand == Compiler.WhatKindOfExpressionIsThis(Expr))
+                                {
+                                    // expression evaluates at compile time to a constant
+                                    switch (ReturnType)
+                                    {
+                                        default:
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
+                                        case DataTypes.eInteger:
+                                            value = Compiler.GetOperandIntegerLiteral(Compiler.GetOperandFromExpression(Expr));
+                                            break;
+                                        case DataTypes.eFloat:
+                                            value = Compiler.GetOperandSingleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                            break;
+                                        case DataTypes.eDouble:
+                                            value = Compiler.GetOperandDoubleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                            break;
+                                    }
+                                    function = null; // force use constant
+                                }
+                                else
+                                {
+                                    // expression must be evaluated at performance time
+                                }
+                            }
+
+                            bool accent1 = false;
+                            bool accent2 = false;
+                            bool accent3 = false;
+                            bool accent4 = false;
+                            bool accent5 = false;
+                            bool accent6 = false;
+                            bool accent7 = false;
+                            bool accent8 = false;
+                            while (true)
+                            {
+                                Token = Context.Scanner.GetNextToken();
+                                if (Token.GetTokenType() == TokenTypes.eTokenSemicolon)
+                                {
+                                    Context.Scanner.UngetToken(Token);
+                                    break;
+                                }
+                                if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                                {
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    return BuildInstrErrors.eBuildInstrExpectedAccentOrSemicolon;
+                                }
+                                switch (Token.GetTokenKeywordTag())
+                                {
+                                    default:
+                                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                        return BuildInstrErrors.eBuildInstrExpectedAccentOrSemicolon;
+                                    case InstrKeywordType.eKeywordAccent1:
+                                        if (accent1)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent1;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent0);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent1 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent2:
+                                        if (accent2)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent2;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent1);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent2 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent3:
+                                        if (accent3)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent3;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent2);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent3 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent4:
+                                        if (accent4)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent4;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent3);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent4 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent5:
+                                        if (accent5)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent5;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent4);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent5 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent6:
+                                        if (accent6)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent6;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent5);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent6 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent7:
+                                        if (accent7)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent7;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent6);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent7 = true;
+                                        break;
+                                    case InstrKeywordType.eKeywordAccent8:
+                                        if (accent8)
+                                        {
+                                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                            return BuildInstrErrors.eBuildInstrMultipleAccent8;
+                                        }
+                                        Error = ParseNumber(Context, out ErrorLine, out accents.Accent7);
+                                        if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                        {
+                                            return Error;
+                                        }
+                                        accent8 = true;
+                                        break;
+                                }
+                            }
+
+                            // StaticRangeCheck() must be deferred to execution time due to dynamic calculation
+
+                            spec.SetStaticDoubleParameter(
+                                paramIndex,
+                                new PluggableEvaluableParam(
+                                    value,
+                                    accents,
+                                    function));
+                        }
+                        break;
+
+                    case PluggableParameterType.DynamicDouble:
+                        {
+                            EnvelopeRec envelope = NewEnvelope();
+                            LFOListSpecRec lfos = NewLFOListSpecifier();
+                            bool matchedAny = false;
+
+                            Token = Context.Scanner.GetNextToken();
+                            if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
+                                && (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordEnvelope))
+                            {
+                                matchedAny = true;
+                                Error = ScanEnvelopeSpec(
+                                    envelope,
+                                    Context,
+                                    out ErrorLine);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    return Error;
+                                }
+
+                                Token = Context.Scanner.GetNextToken();
+                            }
+
+                            while ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
+                                && (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordLfo))
+                            {
+                                matchedAny = true;
+                                LFOSpecRec lfo = NewLFOSpecifier();
+                                LFOListSpecAppendNewEntry(lfos, lfo);
+                                Error = ScanLfoSpec(
+                                    lfo,
+                                    Context,
+                                    out ErrorLine);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    return Error;
+                                }
+
+                                Token = Context.Scanner.GetNextToken();
+                            }
+
+                            if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                return matchedAny ? BuildInstrErrors.eBuildInstrExpectedSemicolon : BuildInstrErrors.eBuildInstrExpectedEnvelopeLfoOrSemicolon;
+                            }
+                            Context.Scanner.UngetToken(Token);
+
+                            spec.SetDynamicDoubleParameter(
+                                paramIndex,
+                                new PluggableEvaluableOscParam(
+                                    envelope,
+                                    lfos));
+                        }
+                        break;
+                }
+
+            SemicolonAndContinue:
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrExpectedSemicolon;
+                }
+            }
+
+
+            // cparen
+            Token = Context.Scanner.GetNextToken();
+            if (Token.GetTokenType() != TokenTypes.eTokenCloseParen)
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrExpectedCloseParen;
+            }
+
+            // special case for missing 'pitch' parameter -- constant 1
+            if (role == PluggableRole.Oscillator)
+            {
+                Debug.Assert(spec.PitchParamOffset >= 0);
+                if (!spec.IsParameterOptional(spec.PitchParamOffset) && !spec.IsParameterSpecified(spec.PitchParamOffset))
+                {
+                    EnvelopeRec envelope = NewEnvelope();
+                    LFOListSpecRec lfos = NewLFOListSpecifier();
+
+                    EnvelopeSetConstantShortcut(envelope, 1d);
+                    spec.SetDynamicDoubleParameter(
+                        spec.PitchParamOffset,
+                        new PluggableEvaluableOscParam(
+                            envelope,
+                            lfos));
+                }
+            }
+
+            // check for missing required parameters
+            for (int i = 0; i < spec.ParameterCount; i++)
+            {
+                if (!spec.IsParameterOptional(i) && !spec.IsParameterSpecified(i))
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    Context.ErrorExtraMessage = String.Format("'{0}'", templateObject.ParametersDefinition[i].ParserName);
+                    return BuildInstrErrors.eBuildInstrPluggableRequiredParameterNotSpecified;
+                }
+            }
+
+
+            return BuildInstrErrors.eBuildInstrNoError;
+        }
+
+        private static BuildInstrErrors ParseGlobalIdentifierString(
+            BuildInstrumentContext Context,
+            TokenRec<InstrKeywordType> Token,
+            out int ErrorLine,
+            out string identifier)
+        {
+            identifier = null;
+            ErrorLine = -1;
+
+            if ((Token.GetTokenType() != TokenTypes.eTokenIdentifier)
+                && (Token.GetTokenType() != TokenTypes.eTokenString)
+                && (Token.GetTokenType() != TokenTypes.eTokenKeyword))
+            {
+                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                return BuildInstrErrors.eBuildInstrExpectedPluggableParameterIdentifier;
+            }
+
+            if (Token.GetTokenType() == TokenTypes.eTokenIdentifier)
+            {
+                identifier = Token.GetTokenIdentifierString();
+            }
+            else if (Token.GetTokenType() == TokenTypes.eTokenString)
+            {
+                identifier = Token.GetTokenStringValue();
+            }
+            else
+            {
+                Debug.Assert(Token.GetTokenType() == TokenTypes.eTokenKeyword);
+                identifier = KeywordTypeToString(Token.GetTokenKeywordTag());
+            }
+
+            return BuildInstrErrors.eBuildInstrNoError;
+        }
+
+        private static string KeywordTypeToString(InstrKeywordType keywordTag)
+        {
+            for (int i = 0; i < InstrKeywordTable.Length; i++)
+            {
+                if (InstrKeywordTable[i].TagValue == keywordTag)
+                {
+                    return InstrKeywordTable[i].KeywordName;
+                }
+            }
+            Debug.Assert(false);
+            throw new ArgumentException();
+        }
+
+        private static bool QueryPluggableProcessorClass(
+            string classIdentifier,
+            out IPluggableProcessorFactory classObject)
+        {
+            classObject = null;
+            if (classIdentifier.StartsWith("{"))
+            {
+                // guid
+                Guid classGuid;
+                if (Guid.TryParse(classIdentifier, out classGuid))
+                {
+                    for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
+                    {
+                        if (classGuid == BuiltInPluggableProcessors[i].Value.UniqueId)
+                        {
+                            classObject = BuiltInPluggableProcessors[i].Value;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // friendly name - built-in table first
+                for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
+                {
+                    if (String.Equals(classIdentifier, BuiltInPluggableProcessors[i].Key))
+                    {
+                        classObject = BuiltInPluggableProcessors[i].Value;
+                        break;
+                    }
+                }
+                // name property next
+                for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
+                {
+                    if (String.Equals(classIdentifier, BuiltInPluggableProcessors[i].Value.ParserName))
+                    {
+                        classObject = BuiltInPluggableProcessors[i].Value;
+                        break;
+                    }
+                }
+            }
+            return (classObject != null);
+        }
+
+        private static string GetPluggableClassListForError()
+        {
+            List<string> strings = new List<string>();
+            for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
+            {
+                strings.Add(BuiltInPluggableProcessors[i].Key);
+            }
+            return GetPluggableIdentifierListForError(strings);
+        }
+
+        private static string GetPluggableParameterListForError(
+            IPluggableProcessorTemplate classObject)
+        {
+            PluggableParameter[] parameters = classObject.ParametersDefinition;
+            List<string> strings = new List<string>();
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                strings.Add(parameters[i].ParserName);
+            }
+            return GetPluggableIdentifierListForError(strings);
+        }
+
+        private static string GetPluggableParameterEnumValueListForError(
+            IPluggableProcessorTemplate classObject,
+            int paramIndex)
+        {
+            KeyValuePair<string, int>[] enums = classObject.GetEnumeratedIntegerTokens(paramIndex);
+            List<string> strings = new List<string>();
+            for (int i = 0; i < enums.Length; i++)
+            {
+                strings.Add(enums[i].Key);
+            }
+            return GetPluggableIdentifierListForError(strings);
+        }
+
+        private static BuildInstrErrors GetPluggableEnumValueForEnumIdentifier(
+            IPluggableProcessorTemplate classObject,
+            int paramIndex,
+            string identifier,
+            out int value)
+        {
+            value = Int32.MinValue;
+            KeyValuePair<string, int>[] enums = classObject.GetEnumeratedIntegerTokens(paramIndex);
+            List<string> strings = new List<string>();
+            for (int i = 0; i < enums.Length; i++)
+            {
+                if (String.Equals(identifier, enums[i].Key))
+                {
+                    value = enums[i].Value;
+                    return BuildInstrErrors.eBuildInstrNoError;
+                }
+            }
+            return BuildInstrErrors.eBuildInstrInvalidPluggableEnumIdentifier;
+        }
+
+        private static string GetPluggableIdentifierListForError(IList<string> strings)
+        {
+            StringBuilder list = new StringBuilder();
+            for (int i = 0; i < strings.Count; i++)
+            {
+                if (list.Length != 0)
+                {
+                    if (i == strings.Count - 1)
+                    {
+                        list.Append(" or ");
+                    }
+                    else
+                    {
+                        list.Append(", ");
+                    }
+                }
+                list.AppendFormat("'{0}'", strings[i]);
+            }
+            if (list.Length != 0)
+            {
+                return String.Format(" ({0})", list);
+            }
+            return String.Empty;
+        }
+
+        private static BuildInstrErrors ParsePluggableConfigs(
+            BuildInstrumentContext Context,
+            IPluggableProcessorFactory classObject,
+            out KeyValuePair<string, string[]>[] configs,
+            out int ErrorLine)
+        {
+            ErrorLine = 0;
+            configs = null;
+
+            ConfigInfo[] configInfos = classObject.Configs;
+            if (configInfos == null)
+            {
+                configInfos = new ConfigInfo[0];
+            }
+            List<KeyValuePair<string, string[]>> configsList = new List<KeyValuePair<string, string[]>>(configInfos.Length);
+
+            while (true)
+            {
+                BuildInstrErrors Error;
+                TokenRec<InstrKeywordType> Token;
+
+                Token = Context.Scanner.GetNextToken();
+                string configName;
+                Error = ParseGlobalIdentifierString(Context, Token, out ErrorLine, out configName);
+                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                {
+                    Context.Scanner.UngetToken(Token);
+                    break;
+                }
+                int configInfoIndex = Array.FindIndex(configInfos, delegate (ConfigInfo candidate) { return String.Equals(candidate.ParserName, configName); });
+                if (configInfoIndex < 0)
+                {
+                    Context.Scanner.UngetToken(Token);
+                    break;
+                }
+
+                if (configsList.FindIndex(delegate (KeyValuePair<string, string[]> candidate) { return String.Equals(candidate.Key, configName); }) >= 0)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    Context.ErrorExtraMessage = String.Format("parameter: '{0}'", configName);
+                    return BuildInstrErrors.eBuildInstrPluggableConfigAlreadySpecified;
+                }
+
+                List<string> tokens = new List<string>();
+                List<string> keys = new List<string>();
+                while (true)
+                {
+                    Token = Context.Scanner.GetNextToken();
+                    if (Token.GetTokenType() == TokenTypes.eTokenSemicolon)
+                    {
+                        break;
+                    }
+                    string tokenName;
+                    Error = ParseGlobalIdentifierString(Context, Token, out ErrorLine, out tokenName);
+                    if (Error != BuildInstrErrors.eBuildInstrNoError)
+                    {
+                        return Error;
+                    }
+
+                    // key constraints
+                    if (((configInfos[configInfoIndex].Form & ConfigForm.Unique) != 0)
+                        && (keys.IndexOf(tokenName) >= 0))
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        Context.ErrorExtraMessage = String.Format("'{0}'", tokenName);
+                        return BuildInstrErrors.eBuildInstrPluggableConfigParamsAlreadySpecified;
+                    }
+
+                    tokens.Add(tokenName);
+                    keys.Add(tokenName);
+
+                    // value/format constraints
+                    switch (configInfos[configInfoIndex].Form & ConfigForm.BaseMask)
+                    {
+                        default:
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+
+                        case ConfigForm.List:
+                            // finished
+                            break;
+
+                        case ConfigForm.KeyValuePairs:
+                            if ((configInfos[configInfoIndex].Form & ConfigForm.KeyValuePairColonDelimited) != 0)
+                            {
+                                Token = Context.Scanner.GetNextToken();
+                                if (Token.GetTokenType() != TokenTypes.eTokenColon)
+                                {
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    return BuildInstrErrors.eBuildInstrPluggableConfigParamsExpectedColon;
+                                }
+                            }
+                            else if ((configInfos[configInfoIndex].Form & ConfigForm.KeyValuePairEqualsDelimited) != 0)
+                            {
+                                Token = Context.Scanner.GetNextToken();
+                                if (Token.GetTokenType() != TokenTypes.eTokenColon)
+                                {
+                                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                    return BuildInstrErrors.eBuildInstrPluggableConfigParamsExpectedEquals;
+                                }
+                            }
+                            // else no key/value separator
+
+                            Token = Context.Scanner.GetNextToken();
+                            string value;
+                            bool number = false;
+                            if (Token.GetTokenType() == TokenTypes.eTokenDouble)
+                            {
+                                value = Token.GetTokenDoubleValue().ToString();
+                                number = true;
+                            }
+                            else if (Token.GetTokenType() == TokenTypes.eTokenSingle)
+                            {
+                                value = Token.GetTokenSingleValue().ToString();
+                                number = true;
+                            }
+                            else if (Token.GetTokenType() == TokenTypes.eTokenInteger)
+                            {
+                                value = Token.GetTokenIntegerValue().ToString();
+                                number = true;
+                            }
+                            else
+                            {
+                                Error = ParseGlobalIdentifierString(Context, Token, out ErrorLine, out value);
+                                if (Error != BuildInstrErrors.eBuildInstrNoError)
+                                {
+                                    return Error;
+                                }
+                            }
+
+                            if (!number && ((configInfos[configInfoIndex].Form & ConfigForm.ValueAsDouble) != 0))
+                            {
+                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                                Context.ErrorExtraMessage = String.Format("'{0}'", value);
+                                return BuildInstrErrors.eBuildInstrPluggableConfigParamsExpectedNumber;
+                            }
+
+                            tokens.Add(value);
+
+                            break;
+                    }
+
+                    if ((configInfos[configInfoIndex].Form & ConfigForm.CommaSeparated) != 0)
+                    {
+                        Token = Context.Scanner.GetNextToken();
+                        if (Token.GetTokenType() == TokenTypes.eTokenColon)
+                        {
+                            Context.Scanner.UngetToken(Token);
+                        }
+                        else if (Token.GetTokenType() != TokenTypes.eTokenComma)
+                        {
+                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                            return BuildInstrErrors.eBuildInstrPluggableConfigParamsExpectedCommaOrSemicolon;
+                        }
+                    }
+                }
+
+                int min = Int32.MinValue, max = Int32.MaxValue;
+                if ((configInfos[configInfoIndex].MinCount.HasValue
+                        && (keys.Count < (min = configInfos[configInfoIndex].MinCount.Value)))
+                    || (configInfos[configInfoIndex].MaxCount.HasValue
+                        && (keys.Count > (max = configInfos[configInfoIndex].MaxCount.Value))))
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    if ((min == 1) && (max == 1))
+                    {
+                        Context.ErrorExtraMessage = "must have exactly one item";
+                    }
+                    else if ((min == 0) && (max == 0))
+                    {
+                        Context.ErrorExtraMessage = "must not have any items";
+                    }
+                    else
+                    {
+                        if (configInfos[configInfoIndex].MinCount.HasValue && configInfos[configInfoIndex].MaxCount.HasValue)
+                        {
+                            Context.ErrorExtraMessage = String.Format("must contain at least {0} items and no more than {1} items", min, max);
+                        }
+                        else if (configInfos[configInfoIndex].MinCount.HasValue)
+                        {
+                            Context.ErrorExtraMessage = String.Format("must contain at least {0} items", min);
+                        }
+                        else
+                        {
+                            Debug.Assert(configInfos[configInfoIndex].MaxCount.HasValue);
+                            Context.ErrorExtraMessage = String.Format("must contain no more than {0} items", max);
+                        }
+                    }
+                    return BuildInstrErrors.eBuildInstrPluggableConfigParamsWrongNumberOfItems;
+                }
+
+                configsList.Add(new KeyValuePair<string, string[]>(configInfos[configInfoIndex].ParserName, tokens.ToArray()));
+            }
+
+            // check required
+            for (int i = 0; i < configInfos.Length; i++)
+            {
+                if (((configInfos[i].Form & ConfigForm.Required) != 0)
+                    && (configsList.FindIndex(delegate (KeyValuePair<string, string[]> candidate) { return String.Equals(candidate.Key, configInfos[i].ParserName); }) < 0))
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    Context.ErrorExtraMessage = String.Format("'{0}'", configInfos[i].ParserName);
+                    return BuildInstrErrors.eBuildInstrPluggableRequiredConfigParamIsMissing;
+                }
+            }
+
+            configs = configsList.ToArray();
+
+            return BuildInstrErrors.eBuildInstrNoError;
         }
     }
 }

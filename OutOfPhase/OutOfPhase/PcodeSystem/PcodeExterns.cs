@@ -321,13 +321,13 @@ namespace OutOfPhase
             // this is not a performance-critical code path but the filter function requires vector alignment.
             using (Synthesizer.AlignedWorkspace aligned = new Synthesizer.AlignedWorkspace(length))
             {
-                Array.Copy(vector.floats, start, aligned.Base, aligned.Offset, length);
+                Synthesizer.FloatVectorCopyUnaligned(vector.floats, start, aligned.Base, aligned.Offset, length);
                 Synthesizer.FirstOrderLowpassRec.ApplyFirstOrderLowpassVectorModify(
                     Filter,
                     aligned.Base,
                     aligned.Offset,
                     length);
-                Array.Copy(aligned.Base, aligned.Offset, vector.floats, start, length);
+                Synthesizer.FloatVectorCopyUnaligned(aligned.Base, aligned.Offset, vector.floats, start, length);
             }
 
             return vector;
@@ -352,13 +352,13 @@ namespace OutOfPhase
             // this is not a performance-critical code path but the filter function requires vector alignment.
             using (Synthesizer.AlignedWorkspace aligned = new Synthesizer.AlignedWorkspace(length))
             {
-                Array.Copy(vector.floats, start, aligned.Base, aligned.Offset, length);
+                Synthesizer.FloatVectorCopyUnaligned(vector.floats, start, aligned.Base, aligned.Offset, length);
                 Synthesizer.ButterworthBandpassRec.ApplyButterworthBandpassVectorModify(
                     Filter,
                     aligned.Base,
                     aligned.Offset,
                     length);
-                Array.Copy(aligned.Base, aligned.Offset, vector.floats, start, length);
+                Synthesizer.FloatVectorCopyUnaligned(aligned.Base, aligned.Offset, vector.floats, start, length);
             }
 
             return vector;

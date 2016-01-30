@@ -34,16 +34,26 @@ namespace OutOfPhase
         private WaveTableObjectRec waveTableObject;
         private int tableIndex;
 
+        private Color axisColor = SystemColors.GrayText;
+
+        private Brush backBrush;
+        private Brush foreBrush;
+        private Pen axisPen;
+
         public WaveTableControl()
         {
             ResizeRedraw = true;
             DoubleBuffered = true;
 
             InitializeComponent();
-            
+
             Disposed += new EventHandler(WaveTableControl_Disposed);
         }
 
+        [Category("Appearance"), DefaultValue(typeof(Color), "GrayText")]
+        public Color AxisColor { get { return axisColor; } set { axisColor = value; } }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public WaveTableObjectRec WaveTableObject
         {
             get
@@ -68,11 +78,40 @@ namespace OutOfPhase
             }
         }
 
-        void WaveTableControl_Disposed(object sender, EventArgs e)
+        private void WaveTableControl_Disposed(object sender, EventArgs e)
         {
             if (waveTableObject != null)
             {
                 waveTableObject.WaveTableDataChanged -= new WaveTableObjectRec.WaveTableStorageEventHandler(OnWaveTableDataChanged);
+            }
+
+            if (backBrush != null)
+            {
+                backBrush.Dispose();
+            }
+            if (foreBrush != null)
+            {
+                foreBrush.Dispose();
+            }
+            if (axisPen != null)
+            {
+                axisPen.Dispose();
+            }
+        }
+
+        private void EnsureGraphicsObjects()
+        {
+            if (backBrush == null)
+            {
+                backBrush = new SolidBrush(BackColor);
+            }
+            if (foreBrush == null)
+            {
+                foreBrush = new SolidBrush(ForeColor);
+            }
+            if (axisPen == null)
+            {
+                axisPen = new Pen(axisColor);
             }
         }
 
@@ -92,12 +131,14 @@ namespace OutOfPhase
 
         protected override void OnPaint(PaintEventArgs pe)
         {
+            EnsureGraphicsObjects();
+
             // custom paint code
-            pe.Graphics.FillRectangle(Brushes.White, ClientRectangle);
+            pe.Graphics.FillRectangle(backBrush, ClientRectangle);
 
             if (waveTableObject != null)
             {
-                pe.Graphics.DrawLine(Pens.LightGray, 0, .5f * (Height - 1), Width, .5f * (Height - 1));
+                pe.Graphics.DrawLine(axisPen, 0, .5f * (Height - 1), Width, .5f * (Height - 1));
 
                 int ti = Math.Max(Math.Min(tableIndex, waveTableObject.WaveTableData.NumTables - 1), 0);
                 if ((ti >= 0) && (ti < waveTableObject.WaveTableData.NumTables))
@@ -108,7 +149,7 @@ namespace OutOfPhase
                     {
                         float x = ((float)i * Width) / numFrames;
                         float y = ((-table[i] + 1) / 2 * (Height - 1));
-                        pe.Graphics.FillRectangle(Brushes.Black, x, y, 1, 1);
+                        pe.Graphics.FillRectangle(foreBrush, x, y, 1, 1);
                     }
                 }
             }

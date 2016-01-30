@@ -75,6 +75,12 @@ namespace OutOfPhase
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
         [Browsable(false)]
         public string Value
         {

@@ -48,5 +48,11 @@ namespace OutOfPhase
         {
             Process.Start("explorer.exe", e.LinkText);
         }
+
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
     }
 }

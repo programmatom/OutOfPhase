@@ -45,6 +45,7 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            this.textBoxInstrumentBody.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxInstrumentBody.AutoIndent = Program.Config.AutoIndent;
 
             menuStripManager.SetGlobalHandler(mainWindow);
@@ -111,6 +112,12 @@ namespace OutOfPhase
             base.OnDeactivate(e);
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
 
         //
 
@@ -138,6 +145,7 @@ namespace OutOfPhase
         public void HighlightLine(int line)
         {
             line--;
+            textBoxInstrumentBody.Focus();
             textBoxInstrumentBody.SetSelectionLine(line);
         }
 

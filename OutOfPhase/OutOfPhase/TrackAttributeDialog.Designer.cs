@@ -51,17 +51,18 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label27 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
-            this.label8 = new System.Windows.Forms.Label();
-            this.label9 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
+            this.label2 = new OutOfPhase.MyLabel();
+            this.label3 = new OutOfPhase.MyLabel();
+            this.label27 = new OutOfPhase.MyLabel();
+            this.label4 = new OutOfPhase.MyLabel();
+            this.label5 = new OutOfPhase.MyLabel();
+            this.label6 = new OutOfPhase.MyLabel();
+            this.label7 = new OutOfPhase.MyLabel();
+            this.label8 = new OutOfPhase.MyLabel();
+            this.label9 = new OutOfPhase.MyLabel();
             this.textBoxDefaultAccent1 = new System.Windows.Forms.TextBox();
+            this.trackObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.textBoxDefaultAccent2 = new System.Windows.Forms.TextBox();
             this.textBoxDefaultAccent3 = new System.Windows.Forms.TextBox();
             this.textBoxDefaultAccent4 = new System.Windows.Forms.TextBox();
@@ -69,54 +70,54 @@ namespace OutOfPhase
             this.textBoxDefaultAccent6 = new System.Windows.Forms.TextBox();
             this.textBoxDefaultAccent7 = new System.Windows.Forms.TextBox();
             this.textBoxDefaultAccent8 = new System.Windows.Forms.TextBox();
-            this.label10 = new System.Windows.Forms.Label();
+            this.label10 = new OutOfPhase.MyLabel();
             this.textBoxInstrumentName = new System.Windows.Forms.TextBox();
-            this.label11 = new System.Windows.Forms.Label();
+            this.label11 = new OutOfPhase.MyLabel();
             this.textBoxTrackName = new System.Windows.Forms.TextBox();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.buttonCancel = new System.Windows.Forms.Button();
-            this.label12 = new System.Windows.Forms.Label();
+            this.label12 = new OutOfPhase.MyLabel();
             this.buttonOK = new System.Windows.Forms.Button();
-            this.label13 = new System.Windows.Forms.Label();
-            this.label14 = new System.Windows.Forms.Label();
-            this.label15 = new System.Windows.Forms.Label();
+            this.label13 = new OutOfPhase.MyLabel();
+            this.label14 = new OutOfPhase.MyLabel();
+            this.label15 = new OutOfPhase.MyLabel();
             this.textBoxDefaultLoudness = new System.Windows.Forms.TextBox();
             this.textBoxDefaultStereoPosition = new System.Windows.Forms.TextBox();
             this.textBoxDefaultSurroundPosition = new System.Windows.Forms.TextBox();
-            this.label16 = new System.Windows.Forms.Label();
+            this.label16 = new OutOfPhase.MyLabel();
             this.textBoxDefaultNoteStartAdjust = new System.Windows.Forms.TextBox();
-            this.label17 = new System.Windows.Forms.Label();
+            this.label17 = new OutOfPhase.MyLabel();
             this.textBoxDefaultReleasePoint1 = new System.Windows.Forms.TextBox();
-            this.label18 = new System.Windows.Forms.Label();
+            this.label18 = new OutOfPhase.MyLabel();
             this.comboBoxDefaultReleasePoint1Flags = new System.Windows.Forms.ComboBox();
-            this.label19 = new System.Windows.Forms.Label();
-            this.label20 = new System.Windows.Forms.Label();
+            this.label19 = new OutOfPhase.MyLabel();
+            this.label20 = new OutOfPhase.MyLabel();
             this.textBoxDefaultReleasePoint2 = new System.Windows.Forms.TextBox();
             this.comboBoxDefaultReleasePoint2Flags = new System.Windows.Forms.ComboBox();
-            this.label21 = new System.Windows.Forms.Label();
+            this.label21 = new OutOfPhase.MyLabel();
             this.textBoxDefaultPitchDisplacementStart = new System.Windows.Forms.TextBox();
-            this.label22 = new System.Windows.Forms.Label();
+            this.label22 = new OutOfPhase.MyLabel();
             this.comboBoxDefaultPitchDisplacementStartFlags = new System.Windows.Forms.ComboBox();
-            this.label23 = new System.Windows.Forms.Label();
-            this.label24 = new System.Windows.Forms.Label();
+            this.label23 = new OutOfPhase.MyLabel();
+            this.label24 = new OutOfPhase.MyLabel();
             this.textBoxDefaultPitchDisplacementDepthAdjust = new System.Windows.Forms.TextBox();
             this.textBoxDefaultPitchDisplacementRateAdjust = new System.Windows.Forms.TextBox();
-            this.label25 = new System.Windows.Forms.Label();
+            this.label25 = new OutOfPhase.MyLabel();
             this.checkBoxMultiInstrument = new System.Windows.Forms.CheckBox();
-            this.label26 = new System.Windows.Forms.Label();
+            this.label26 = new OutOfPhase.MyLabel();
             this.textBoxDefaultDurationAdjust = new System.Windows.Forms.TextBox();
-            this.label30 = new System.Windows.Forms.Label();
+            this.label30 = new OutOfPhase.MyLabel();
             this.comboBoxDefaultDurationAdjustModeFlags = new System.Windows.Forms.ComboBox();
             this.textBoxDefaultHurryUpFactor = new System.Windows.Forms.TextBox();
-            this.label31 = new System.Windows.Forms.Label();
-            this.label28 = new System.Windows.Forms.Label();
+            this.label31 = new OutOfPhase.MyLabel();
+            this.label28 = new OutOfPhase.MyLabel();
             this.comboBoxDefaultDetuningModeFlags = new System.Windows.Forms.ComboBox();
             this.textBoxDefaultDetuning = new System.Windows.Forms.TextBox();
-            this.label29 = new System.Windows.Forms.Label();
-            this.trackObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            this.label29 = new OutOfPhase.MyLabel();
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
-            this.flowLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trackObjectRecBindingSource)).BeginInit();
+            this.flowLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -323,7 +324,11 @@ namespace OutOfPhase
             this.textBoxDefaultAccent1.Location = new System.Drawing.Point(388, 83);
             this.textBoxDefaultAccent1.Name = "textBoxDefaultAccent1";
             this.textBoxDefaultAccent1.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultAccent1.TabIndex = 9;
+            this.textBoxDefaultAccent1.TabIndex = 12;
+            // 
+            // trackObjectRecBindingSource
+            // 
+            this.trackObjectRecBindingSource.DataSource = typeof(OutOfPhase.TrackObjectRec);
             // 
             // textBoxDefaultAccent2
             // 
@@ -332,7 +337,7 @@ namespace OutOfPhase
             this.textBoxDefaultAccent2.Location = new System.Drawing.Point(388, 109);
             this.textBoxDefaultAccent2.Name = "textBoxDefaultAccent2";
             this.textBoxDefaultAccent2.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultAccent2.TabIndex = 10;
+            this.textBoxDefaultAccent2.TabIndex = 13;
             // 
             // textBoxDefaultAccent3
             // 
@@ -341,7 +346,7 @@ namespace OutOfPhase
             this.textBoxDefaultAccent3.Location = new System.Drawing.Point(388, 136);
             this.textBoxDefaultAccent3.Name = "textBoxDefaultAccent3";
             this.textBoxDefaultAccent3.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultAccent3.TabIndex = 11;
+            this.textBoxDefaultAccent3.TabIndex = 14;
             // 
             // textBoxDefaultAccent4
             // 
@@ -350,7 +355,7 @@ namespace OutOfPhase
             this.textBoxDefaultAccent4.Location = new System.Drawing.Point(388, 162);
             this.textBoxDefaultAccent4.Name = "textBoxDefaultAccent4";
             this.textBoxDefaultAccent4.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultAccent4.TabIndex = 12;
+            this.textBoxDefaultAccent4.TabIndex = 15;
             // 
             // textBoxDefaultAccent5
             // 
@@ -359,7 +364,7 @@ namespace OutOfPhase
             this.textBoxDefaultAccent5.Location = new System.Drawing.Point(388, 189);
             this.textBoxDefaultAccent5.Name = "textBoxDefaultAccent5";
             this.textBoxDefaultAccent5.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultAccent5.TabIndex = 13;
+            this.textBoxDefaultAccent5.TabIndex = 16;
             // 
             // textBoxDefaultAccent6
             // 
@@ -368,7 +373,7 @@ namespace OutOfPhase
             this.textBoxDefaultAccent6.Location = new System.Drawing.Point(388, 216);
             this.textBoxDefaultAccent6.Name = "textBoxDefaultAccent6";
             this.textBoxDefaultAccent6.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultAccent6.TabIndex = 14;
+            this.textBoxDefaultAccent6.TabIndex = 17;
             // 
             // textBoxDefaultAccent7
             // 
@@ -377,7 +382,7 @@ namespace OutOfPhase
             this.textBoxDefaultAccent7.Location = new System.Drawing.Point(388, 243);
             this.textBoxDefaultAccent7.Name = "textBoxDefaultAccent7";
             this.textBoxDefaultAccent7.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultAccent7.TabIndex = 15;
+            this.textBoxDefaultAccent7.TabIndex = 18;
             // 
             // textBoxDefaultAccent8
             // 
@@ -386,7 +391,7 @@ namespace OutOfPhase
             this.textBoxDefaultAccent8.Location = new System.Drawing.Point(388, 269);
             this.textBoxDefaultAccent8.Name = "textBoxDefaultAccent8";
             this.textBoxDefaultAccent8.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultAccent8.TabIndex = 16;
+            this.textBoxDefaultAccent8.TabIndex = 19;
             // 
             // label10
             // 
@@ -406,7 +411,7 @@ namespace OutOfPhase
             this.textBoxInstrumentName.Location = new System.Drawing.Point(168, 52);
             this.textBoxInstrumentName.Name = "textBoxInstrumentName";
             this.textBoxInstrumentName.Size = new System.Drawing.Size(214, 20);
-            this.textBoxInstrumentName.TabIndex = 18;
+            this.textBoxInstrumentName.TabIndex = 2;
             // 
             // label11
             // 
@@ -426,7 +431,7 @@ namespace OutOfPhase
             this.textBoxTrackName.Location = new System.Drawing.Point(168, 26);
             this.textBoxTrackName.Name = "textBoxTrackName";
             this.textBoxTrackName.Size = new System.Drawing.Size(214, 20);
-            this.textBoxTrackName.TabIndex = 20;
+            this.textBoxTrackName.TabIndex = 1;
             // 
             // flowLayoutPanel1
             // 
@@ -438,7 +443,7 @@ namespace OutOfPhase
             this.flowLayoutPanel1.Location = new System.Drawing.Point(388, 384);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Size = new System.Drawing.Size(377, 100);
-            this.flowLayoutPanel1.TabIndex = 21;
+            this.flowLayoutPanel1.TabIndex = 29;
             // 
             // buttonCancel
             // 
@@ -446,7 +451,7 @@ namespace OutOfPhase
             this.buttonCancel.Location = new System.Drawing.Point(3, 3);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(125, 23);
-            this.buttonCancel.TabIndex = 0;
+            this.buttonCancel.TabIndex = 31;
             this.buttonCancel.Text = "Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
             // 
@@ -462,7 +467,7 @@ namespace OutOfPhase
             this.buttonOK.Location = new System.Drawing.Point(190, 3);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(125, 23);
-            this.buttonOK.TabIndex = 2;
+            this.buttonOK.TabIndex = 30;
             this.buttonOK.Text = "OK";
             this.buttonOK.UseVisualStyleBackColor = true;
             this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
@@ -504,7 +509,7 @@ namespace OutOfPhase
             this.textBoxDefaultLoudness.Location = new System.Drawing.Point(388, 295);
             this.textBoxDefaultLoudness.Name = "textBoxDefaultLoudness";
             this.textBoxDefaultLoudness.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultLoudness.TabIndex = 25;
+            this.textBoxDefaultLoudness.TabIndex = 20;
             // 
             // textBoxDefaultStereoPosition
             // 
@@ -513,7 +518,7 @@ namespace OutOfPhase
             this.textBoxDefaultStereoPosition.Location = new System.Drawing.Point(388, 321);
             this.textBoxDefaultStereoPosition.Name = "textBoxDefaultStereoPosition";
             this.textBoxDefaultStereoPosition.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultStereoPosition.TabIndex = 26;
+            this.textBoxDefaultStereoPosition.TabIndex = 21;
             // 
             // textBoxDefaultSurroundPosition
             // 
@@ -522,7 +527,7 @@ namespace OutOfPhase
             this.textBoxDefaultSurroundPosition.Location = new System.Drawing.Point(388, 347);
             this.textBoxDefaultSurroundPosition.Name = "textBoxDefaultSurroundPosition";
             this.textBoxDefaultSurroundPosition.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultSurroundPosition.TabIndex = 27;
+            this.textBoxDefaultSurroundPosition.TabIndex = 22;
             // 
             // label16
             // 
@@ -541,7 +546,7 @@ namespace OutOfPhase
             this.textBoxDefaultNoteStartAdjust.Location = new System.Drawing.Point(633, 216);
             this.textBoxDefaultNoteStartAdjust.Name = "textBoxDefaultNoteStartAdjust";
             this.textBoxDefaultNoteStartAdjust.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultNoteStartAdjust.TabIndex = 29;
+            this.textBoxDefaultNoteStartAdjust.TabIndex = 25;
             // 
             // label17
             // 
@@ -560,7 +565,7 @@ namespace OutOfPhase
             this.textBoxDefaultReleasePoint1.Location = new System.Drawing.Point(168, 83);
             this.textBoxDefaultReleasePoint1.Name = "textBoxDefaultReleasePoint1";
             this.textBoxDefaultReleasePoint1.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultReleasePoint1.TabIndex = 31;
+            this.textBoxDefaultReleasePoint1.TabIndex = 4;
             // 
             // label18
             // 
@@ -581,7 +586,7 @@ namespace OutOfPhase
             this.comboBoxDefaultReleasePoint1Flags.Location = new System.Drawing.Point(168, 109);
             this.comboBoxDefaultReleasePoint1Flags.Name = "comboBoxDefaultReleasePoint1Flags";
             this.comboBoxDefaultReleasePoint1Flags.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxDefaultReleasePoint1Flags.TabIndex = 33;
+            this.comboBoxDefaultReleasePoint1Flags.TabIndex = 5;
             // 
             // label19
             // 
@@ -610,7 +615,7 @@ namespace OutOfPhase
             this.textBoxDefaultReleasePoint2.Location = new System.Drawing.Point(168, 136);
             this.textBoxDefaultReleasePoint2.Name = "textBoxDefaultReleasePoint2";
             this.textBoxDefaultReleasePoint2.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultReleasePoint2.TabIndex = 36;
+            this.textBoxDefaultReleasePoint2.TabIndex = 6;
             // 
             // comboBoxDefaultReleasePoint2Flags
             // 
@@ -621,7 +626,7 @@ namespace OutOfPhase
             this.comboBoxDefaultReleasePoint2Flags.Location = new System.Drawing.Point(168, 162);
             this.comboBoxDefaultReleasePoint2Flags.Name = "comboBoxDefaultReleasePoint2Flags";
             this.comboBoxDefaultReleasePoint2Flags.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxDefaultReleasePoint2Flags.TabIndex = 37;
+            this.comboBoxDefaultReleasePoint2Flags.TabIndex = 7;
             // 
             // label21
             // 
@@ -640,7 +645,7 @@ namespace OutOfPhase
             this.textBoxDefaultPitchDisplacementStart.Location = new System.Drawing.Point(168, 189);
             this.textBoxDefaultPitchDisplacementStart.Name = "textBoxDefaultPitchDisplacementStart";
             this.textBoxDefaultPitchDisplacementStart.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultPitchDisplacementStart.TabIndex = 39;
+            this.textBoxDefaultPitchDisplacementStart.TabIndex = 8;
             // 
             // label22
             // 
@@ -661,7 +666,7 @@ namespace OutOfPhase
             this.comboBoxDefaultPitchDisplacementStartFlags.Location = new System.Drawing.Point(168, 216);
             this.comboBoxDefaultPitchDisplacementStartFlags.Name = "comboBoxDefaultPitchDisplacementStartFlags";
             this.comboBoxDefaultPitchDisplacementStartFlags.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxDefaultPitchDisplacementStartFlags.TabIndex = 41;
+            this.comboBoxDefaultPitchDisplacementStartFlags.TabIndex = 9;
             // 
             // label23
             // 
@@ -690,7 +695,7 @@ namespace OutOfPhase
             this.textBoxDefaultPitchDisplacementDepthAdjust.Location = new System.Drawing.Point(168, 243);
             this.textBoxDefaultPitchDisplacementDepthAdjust.Name = "textBoxDefaultPitchDisplacementDepthAdjust";
             this.textBoxDefaultPitchDisplacementDepthAdjust.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultPitchDisplacementDepthAdjust.TabIndex = 44;
+            this.textBoxDefaultPitchDisplacementDepthAdjust.TabIndex = 10;
             // 
             // textBoxDefaultPitchDisplacementRateAdjust
             // 
@@ -699,7 +704,7 @@ namespace OutOfPhase
             this.textBoxDefaultPitchDisplacementRateAdjust.Location = new System.Drawing.Point(168, 269);
             this.textBoxDefaultPitchDisplacementRateAdjust.Name = "textBoxDefaultPitchDisplacementRateAdjust";
             this.textBoxDefaultPitchDisplacementRateAdjust.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultPitchDisplacementRateAdjust.TabIndex = 45;
+            this.textBoxDefaultPitchDisplacementRateAdjust.TabIndex = 11;
             // 
             // label25
             // 
@@ -719,7 +724,7 @@ namespace OutOfPhase
             this.checkBoxMultiInstrument.Location = new System.Drawing.Point(633, 55);
             this.checkBoxMultiInstrument.Name = "checkBoxMultiInstrument";
             this.checkBoxMultiInstrument.Size = new System.Drawing.Size(94, 14);
-            this.checkBoxMultiInstrument.TabIndex = 47;
+            this.checkBoxMultiInstrument.TabIndex = 3;
             this.checkBoxMultiInstrument.UseVisualStyleBackColor = true;
             // 
             // label26
@@ -738,7 +743,7 @@ namespace OutOfPhase
             this.textBoxDefaultDurationAdjust.Location = new System.Drawing.Point(633, 162);
             this.textBoxDefaultDurationAdjust.Name = "textBoxDefaultDurationAdjust";
             this.textBoxDefaultDurationAdjust.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultDurationAdjust.TabIndex = 49;
+            this.textBoxDefaultDurationAdjust.TabIndex = 23;
             // 
             // label30
             // 
@@ -759,7 +764,7 @@ namespace OutOfPhase
             this.comboBoxDefaultDurationAdjustModeFlags.Location = new System.Drawing.Point(633, 189);
             this.comboBoxDefaultDurationAdjustModeFlags.Name = "comboBoxDefaultDurationAdjustModeFlags";
             this.comboBoxDefaultDurationAdjustModeFlags.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxDefaultDurationAdjustModeFlags.TabIndex = 63;
+            this.comboBoxDefaultDurationAdjustModeFlags.TabIndex = 24;
             // 
             // textBoxDefaultHurryUpFactor
             // 
@@ -768,7 +773,7 @@ namespace OutOfPhase
             this.textBoxDefaultHurryUpFactor.Location = new System.Drawing.Point(633, 243);
             this.textBoxDefaultHurryUpFactor.Name = "textBoxDefaultHurryUpFactor";
             this.textBoxDefaultHurryUpFactor.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultHurryUpFactor.TabIndex = 68;
+            this.textBoxDefaultHurryUpFactor.TabIndex = 26;
             // 
             // label31
             // 
@@ -799,7 +804,7 @@ namespace OutOfPhase
             this.comboBoxDefaultDetuningModeFlags.Location = new System.Drawing.Point(633, 347);
             this.comboBoxDefaultDetuningModeFlags.Name = "comboBoxDefaultDetuningModeFlags";
             this.comboBoxDefaultDetuningModeFlags.Size = new System.Drawing.Size(94, 21);
-            this.comboBoxDefaultDetuningModeFlags.TabIndex = 67;
+            this.comboBoxDefaultDetuningModeFlags.TabIndex = 28;
             // 
             // textBoxDefaultDetuning
             // 
@@ -808,7 +813,7 @@ namespace OutOfPhase
             this.textBoxDefaultDetuning.Location = new System.Drawing.Point(633, 321);
             this.textBoxDefaultDetuning.Name = "textBoxDefaultDetuning";
             this.textBoxDefaultDetuning.Size = new System.Drawing.Size(94, 20);
-            this.textBoxDefaultDetuning.TabIndex = 65;
+            this.textBoxDefaultDetuning.TabIndex = 27;
             // 
             // label29
             // 
@@ -820,9 +825,9 @@ namespace OutOfPhase
             this.label29.Size = new System.Drawing.Size(709, 1);
             this.label29.TabIndex = 69;
             // 
-            // trackObjectRecBindingSource
+            // dpiChangeHelper
             // 
-            this.trackObjectRecBindingSource.DataSource = typeof(OutOfPhase.TrackObjectRec);
+            this.dpiChangeHelper.Form = this;
             // 
             // TrackAttributeDialog
             // 
@@ -838,8 +843,8 @@ namespace OutOfPhase
             this.Text = "Edit Track Attributes";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
-            this.flowLayoutPanel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.trackObjectRecBindingSource)).EndInit();
+            this.flowLayoutPanel1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -847,15 +852,15 @@ namespace OutOfPhase
         #endregion
 
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.Label label9;
+        private MyLabel label1;
+        private MyLabel label2;
+        private MyLabel label3;
+        private MyLabel label4;
+        private MyLabel label5;
+        private MyLabel label6;
+        private MyLabel label7;
+        private MyLabel label8;
+        private MyLabel label9;
         private System.Windows.Forms.TextBox textBoxDefaultAccent1;
         private System.Windows.Forms.TextBox textBoxDefaultAccent2;
         private System.Windows.Forms.TextBox textBoxDefaultAccent3;
@@ -864,51 +869,52 @@ namespace OutOfPhase
         private System.Windows.Forms.TextBox textBoxDefaultAccent6;
         private System.Windows.Forms.TextBox textBoxDefaultAccent7;
         private System.Windows.Forms.TextBox textBoxDefaultAccent8;
-        private System.Windows.Forms.Label label10;
+        private MyLabel label10;
         private System.Windows.Forms.TextBox textBoxInstrumentName;
         private System.Windows.Forms.BindingSource trackObjectRecBindingSource;
-        private System.Windows.Forms.Label label11;
+        private MyLabel label11;
         private System.Windows.Forms.TextBox textBoxTrackName;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button buttonCancel;
-        private System.Windows.Forms.Label label12;
+        private MyLabel label12;
         private System.Windows.Forms.Button buttonOK;
-        private System.Windows.Forms.Label label13;
-        private System.Windows.Forms.Label label14;
-        private System.Windows.Forms.Label label15;
+        private MyLabel label13;
+        private MyLabel label14;
+        private MyLabel label15;
         private System.Windows.Forms.TextBox textBoxDefaultLoudness;
         private System.Windows.Forms.TextBox textBoxDefaultStereoPosition;
         private System.Windows.Forms.TextBox textBoxDefaultSurroundPosition;
-        private System.Windows.Forms.Label label16;
+        private MyLabel label16;
         private System.Windows.Forms.TextBox textBoxDefaultNoteStartAdjust;
-        private System.Windows.Forms.Label label17;
+        private MyLabel label17;
         private System.Windows.Forms.TextBox textBoxDefaultReleasePoint1;
-        private System.Windows.Forms.Label label18;
+        private MyLabel label18;
         private System.Windows.Forms.ComboBox comboBoxDefaultReleasePoint1Flags;
-        private System.Windows.Forms.Label label19;
-        private System.Windows.Forms.Label label20;
+        private MyLabel label19;
+        private MyLabel label20;
         private System.Windows.Forms.TextBox textBoxDefaultReleasePoint2;
         private System.Windows.Forms.ComboBox comboBoxDefaultReleasePoint2Flags;
-        private System.Windows.Forms.Label label21;
+        private MyLabel label21;
         private System.Windows.Forms.TextBox textBoxDefaultPitchDisplacementStart;
-        private System.Windows.Forms.Label label22;
+        private MyLabel label22;
         private System.Windows.Forms.ComboBox comboBoxDefaultPitchDisplacementStartFlags;
-        private System.Windows.Forms.Label label23;
-        private System.Windows.Forms.Label label24;
+        private MyLabel label23;
+        private MyLabel label24;
         private System.Windows.Forms.TextBox textBoxDefaultPitchDisplacementDepthAdjust;
         private System.Windows.Forms.TextBox textBoxDefaultPitchDisplacementRateAdjust;
-        private System.Windows.Forms.Label label25;
+        private MyLabel label25;
         private System.Windows.Forms.CheckBox checkBoxMultiInstrument;
-        private System.Windows.Forms.Label label26;
+        private MyLabel label26;
         private System.Windows.Forms.TextBox textBoxDefaultDurationAdjust;
-        private System.Windows.Forms.Label label30;
+        private MyLabel label30;
         private System.Windows.Forms.ComboBox comboBoxDefaultDurationAdjustModeFlags;
-        private System.Windows.Forms.Label label28;
+        private MyLabel label28;
         private System.Windows.Forms.TextBox textBoxDefaultDetuning;
-        private System.Windows.Forms.Label label31;
+        private MyLabel label31;
         private System.Windows.Forms.ComboBox comboBoxDefaultDetuningModeFlags;
-        private System.Windows.Forms.Label label27;
+        private MyLabel label27;
         private System.Windows.Forms.TextBox textBoxDefaultHurryUpFactor;
-        private System.Windows.Forms.Label label29;
+        private MyLabel label29;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

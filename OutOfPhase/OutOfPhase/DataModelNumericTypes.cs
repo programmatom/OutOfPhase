@@ -83,19 +83,28 @@ namespace OutOfPhase
                 case NumBitsType.eSample8bit:
                     for (int i = 0; i < vector.Length; i++)
                     {
-                        vector[i] = SignedByteToFloat(FloatToSignedByte(vector[i]));
+                        float v = vector[i];
+                        float v2 = SignedByteToFloat(FloatToSignedByte(vector[i]));
+                        Debug.Assert(v2 == SignedByteToFloat(FloatToSignedByte(vector[i]))); // verify conversion idempotency (i.e. stability)
+                        vector[i] = v2;
                     }
                     break;
                 case NumBitsType.eSample16bit:
                     for (int i = 0; i < vector.Length; i++)
                     {
-                        vector[i] = SignedShortToFloat(FloatToSignedShort(vector[i]));
+                        float v = vector[i];
+                        float v2 = SignedShortToFloat(FloatToSignedShort(vector[i]));
+                        Debug.Assert(v2 == SignedShortToFloat(FloatToSignedShort(vector[i]))); // verify conversion idempotency (i.e. stability)
+                        vector[i] = v2;
                     }
                     break;
                 case NumBitsType.eSample24bit:
                     for (int i = 0; i < vector.Length; i++)
                     {
-                        vector[i] = SignedTribyteToFloat(FloatToSignedTribyte(vector[i]));
+                        float v = vector[i];
+                        float v2 = SignedTribyteToFloat(FloatToSignedTribyte(vector[i]));
+                        Debug.Assert(v2 == SignedTribyteToFloat(FloatToSignedTribyte(vector[i]))); // verify conversion idempotency (i.e. stability)
+                        vector[i] = v2;
                     }
                     break;
             }

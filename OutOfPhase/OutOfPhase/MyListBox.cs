@@ -29,6 +29,7 @@ using System.Drawing.Design;
 using System.Drawing.Drawing2D;
 using System.Text;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 
 namespace OutOfPhase
 {
@@ -302,7 +303,7 @@ namespace OutOfPhase
                         {
                             text = "(no name)";
                         }
-                        TextRenderer.DrawText(
+                        MyTextRenderer.DrawText(
                             graphics2,
                             text,
                             Font,
@@ -471,20 +472,14 @@ namespace OutOfPhase
 
         protected override void OnGotFocus(EventArgs e)
         {
+            Invalidate(); // selection color and decoration changes
             base.OnGotFocus(e);
-            if (cursor >= 0)
-            {
-                DrawOne(cursor);
-            }
         }
 
         protected override void OnLostFocus(EventArgs e)
         {
+            Invalidate(); // selection color and decoration changes
             base.OnLostFocus(e);
-            if (cursor >= 0)
-            {
-                DrawOne(cursor);
-            }
         }
 
         protected override void OnMouseDown(MouseEventArgs e)

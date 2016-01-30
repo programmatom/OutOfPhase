@@ -49,10 +49,12 @@ namespace OutOfPhase
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.buttonOK = new System.Windows.Forms.Button();
-            this.listBoxCommands = new System.Windows.Forms.ListBox();
             this.buttonCancel = new System.Windows.Forms.Button();
+            this.listBoxCommands = new System.Windows.Forms.ListBox();
+            this.buttonOK = new System.Windows.Forms.Button();
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -74,15 +76,16 @@ namespace OutOfPhase
             this.tableLayoutPanel1.Size = new System.Drawing.Size(372, 356);
             this.tableLayoutPanel1.TabIndex = 0;
             // 
-            // buttonOK
+            // buttonCancel
             // 
-            this.buttonOK.Location = new System.Drawing.Point(219, 330);
-            this.buttonOK.Name = "buttonOK";
-            this.buttonOK.Size = new System.Drawing.Size(75, 23);
-            this.buttonOK.TabIndex = 0;
-            this.buttonOK.Text = "OK";
-            this.buttonOK.UseVisualStyleBackColor = true;
-            this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
+            this.buttonCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+            this.buttonCancel.Location = new System.Drawing.Point(78, 330);
+            this.buttonCancel.Name = "buttonCancel";
+            this.buttonCancel.Size = new System.Drawing.Size(75, 23);
+            this.buttonCancel.TabIndex = 3;
+            this.buttonCancel.Text = "Cancel";
+            this.buttonCancel.UseVisualStyleBackColor = true;
             // 
             // listBoxCommands
             // 
@@ -95,16 +98,19 @@ namespace OutOfPhase
             this.listBoxCommands.Size = new System.Drawing.Size(366, 321);
             this.listBoxCommands.TabIndex = 2;
             // 
-            // buttonCancel
+            // buttonOK
             // 
-            this.buttonCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.buttonCancel.Location = new System.Drawing.Point(78, 330);
-            this.buttonCancel.Name = "buttonCancel";
-            this.buttonCancel.Size = new System.Drawing.Size(75, 23);
-            this.buttonCancel.TabIndex = 3;
-            this.buttonCancel.Text = "Cancel";
-            this.buttonCancel.UseVisualStyleBackColor = true;
+            this.buttonOK.Location = new System.Drawing.Point(219, 330);
+            this.buttonOK.Name = "buttonOK";
+            this.buttonOK.Size = new System.Drawing.Size(75, 23);
+            this.buttonOK.TabIndex = 0;
+            this.buttonOK.Text = "OK";
+            this.buttonOK.UseVisualStyleBackColor = true;
+            this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
+            // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
             // 
             // CommandChooser
             // 
@@ -130,5 +136,6 @@ namespace OutOfPhase
         private System.Windows.Forms.Button buttonOK;
         private System.Windows.Forms.ListBox listBoxCommands;
         private System.Windows.Forms.Button buttonCancel;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

@@ -51,14 +51,17 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.label1 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
             this.menuStripManager = new OutOfPhase.MenuStripManager();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxSequencerConfig = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.sequencerRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
+            this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.sequencerRecBindingSource)).BeginInit();
             this.SuspendLayout();
@@ -69,7 +72,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Controls.Add(this.label1, 0, 1);
             this.tableLayoutPanel1.Controls.Add(this.menuStripManager, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.textBoxSequencerConfig, 0, 2);
+            this.tableLayoutPanel1.Controls.Add(this.panel1, 0, 2);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -84,7 +87,7 @@ namespace OutOfPhase
             // 
             this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(3, 35);
+            this.label1.Location = new System.Drawing.Point(3, 29);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(612, 13);
             this.label1.TabIndex = 0;
@@ -93,25 +96,36 @@ namespace OutOfPhase
             // menuStripManager
             // 
             this.menuStripManager.AutoSize = true;
-            this.menuStripManager.Location = new System.Drawing.Point(3, 3);
+            this.menuStripManager.Location = new System.Drawing.Point(0, 0);
+            this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(612, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(618, 24);
             this.menuStripManager.TabIndex = 2;
+            // 
+            // panel1
+            // 
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.textBoxSequencerConfig);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(3, 50);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(612, 291);
+            this.panel1.TabIndex = 4;
             // 
             // textBoxSequencerConfig
             // 
             this.textBoxSequencerConfig.AutoScroll = true;
             this.textBoxSequencerConfig.AutoScrollMinSize = new System.Drawing.Size(612, 13);
-            this.textBoxSequencerConfig.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.textBoxSequencerConfig.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textBoxSequencerConfig.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxSequencerConfig.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxSequencerConfig.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sequencerRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxSequencerConfig.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxSequencerConfig.Location = new System.Drawing.Point(3, 56);
+            this.textBoxSequencerConfig.Location = new System.Drawing.Point(0, 0);
             this.textBoxSequencerConfig.Name = "textBoxSequencerConfig";
-            this.textBoxSequencerConfig.Size = new System.Drawing.Size(612, 285);
+            this.textBoxSequencerConfig.Size = new System.Drawing.Size(610, 289);
             this.textBoxSequencerConfig.TabIndex = 3;
             this.textBoxSequencerConfig.TextService = TextEditor.TextService.Simple;
+            this.textBoxSequencerConfig.SimpleNavigation = true;
             this.textBoxSequencerConfig.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
@@ -143,6 +157,10 @@ namespace OutOfPhase
             this.textEditorWindowHelper.TrimTrailingSpacesToolStripMenuItem = null;
             this.textEditorWindowHelper.UndoToolStripMenuItem = null;
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // SequencerConfigWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -152,6 +170,7 @@ namespace OutOfPhase
             this.Name = "SequencerConfigWindow";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
+            this.panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.sequencerRecBindingSource)).EndInit();
             this.ResumeLayout(false);
@@ -161,12 +180,14 @@ namespace OutOfPhase
         #endregion
 
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.Label label1;
+        private MyLabel label1;
         private System.Windows.Forms.BindingSource sequencerRecBindingSource;
         private MenuStripManager menuStripManager;
         private TextEditor.TextEditControl textBoxSequencerConfig;
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextEditor.StringStorageFactory stringStorageFactory;
+        private System.Windows.Forms.Panel panel1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

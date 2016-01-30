@@ -51,15 +51,15 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.label1 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
             this.tableLayoutPanel3 = new System.Windows.Forms.TableLayoutPanel();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
-            this.label7 = new System.Windows.Forms.Label();
+            this.label2 = new OutOfPhase.MyLabel();
+            this.label3 = new OutOfPhase.MyLabel();
+            this.label4 = new OutOfPhase.MyLabel();
+            this.label5 = new OutOfPhase.MyLabel();
+            this.label6 = new OutOfPhase.MyLabel();
+            this.label7 = new OutOfPhase.MyLabel();
             this.textBoxLoop1Start = new System.Windows.Forms.TextBox();
             this.algoSampObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.textBoxLoop1End = new System.Windows.Forms.TextBox();
@@ -71,27 +71,30 @@ namespace OutOfPhase
             this.comboBoxLoop2Bidirectional = new System.Windows.Forms.ComboBox();
             this.comboBoxLoop3Bidirectional = new System.Windows.Forms.ComboBox();
             this.tableLayoutPanel4 = new System.Windows.Forms.TableLayoutPanel();
-            this.label8 = new System.Windows.Forms.Label();
-            this.label11 = new System.Windows.Forms.Label();
+            this.label8 = new OutOfPhase.MyLabel();
+            this.label11 = new OutOfPhase.MyLabel();
             this.textBoxName = new System.Windows.Forms.TextBox();
             this.textBoxOrigin = new System.Windows.Forms.TextBox();
             this.comboBoxChannels = new System.Windows.Forms.ComboBox();
-            this.label10 = new System.Windows.Forms.Label();
-            this.label12 = new System.Windows.Forms.Label();
+            this.label10 = new OutOfPhase.MyLabel();
+            this.label12 = new OutOfPhase.MyLabel();
             this.textBoxSamplingRate = new System.Windows.Forms.TextBox();
-            this.label13 = new System.Windows.Forms.Label();
+            this.label13 = new OutOfPhase.MyLabel();
             this.textBoxNaturalFrequency = new System.Windows.Forms.TextBox();
             this.menuStripManager = new OutOfPhase.MenuStripManager();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxFormula = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.textBoxWindowHelper = new OutOfPhase.TextBoxWindowHelper(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             this.tableLayoutPanel2.SuspendLayout();
             this.tableLayoutPanel3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.algoSampObjectRecBindingSource)).BeginInit();
             this.tableLayoutPanel4.SuspendLayout();
+            this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
@@ -102,7 +105,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.Controls.Add(this.label1, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.tableLayoutPanel2, 0, 1);
             this.tableLayoutPanel1.Controls.Add(this.menuStripManager, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.textBoxFormula, 0, 3);
+            this.tableLayoutPanel1.Controls.Add(this.panel1, 0, 3);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -118,7 +121,7 @@ namespace OutOfPhase
             // 
             this.label1.AutoSize = true;
             this.label1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.label1.Location = new System.Drawing.Point(3, 225);
+            this.label1.Location = new System.Drawing.Point(3, 219);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(573, 13);
             this.label1.TabIndex = 1;
@@ -131,7 +134,7 @@ namespace OutOfPhase
             this.tableLayoutPanel2.Controls.Add(this.tableLayoutPanel3, 0, 1);
             this.tableLayoutPanel2.Controls.Add(this.tableLayoutPanel4, 0, 0);
             this.tableLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel2.Location = new System.Drawing.Point(3, 33);
+            this.tableLayoutPanel2.Location = new System.Drawing.Point(3, 27);
             this.tableLayoutPanel2.Name = "tableLayoutPanel2";
             this.tableLayoutPanel2.RowCount = 2;
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 90F));
@@ -451,26 +454,37 @@ namespace OutOfPhase
             // menuStripManager
             // 
             this.menuStripManager.AutoSize = true;
-            this.menuStripManager.Location = new System.Drawing.Point(3, 3);
+            this.menuStripManager.Location = new System.Drawing.Point(0, 0);
+            this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(573, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(579, 24);
             this.menuStripManager.TabIndex = 4;
+            // 
+            // panel1
+            // 
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.textBoxFormula);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(3, 235);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(573, 135);
+            this.panel1.TabIndex = 6;
             // 
             // textBoxFormula
             // 
             this.textBoxFormula.AutoScroll = true;
             this.textBoxFormula.AutoScrollMinSize = new System.Drawing.Size(571, 13);
-            this.textBoxFormula.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.textBoxFormula.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textBoxFormula.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxFormula.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxFormula.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.algoSampObjectRecBindingSource, "AlgoSampFormula", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxFormula.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxFormula.Location = new System.Drawing.Point(3, 241);
+            this.textBoxFormula.Location = new System.Drawing.Point(0, 0);
             this.textBoxFormula.Name = "textBoxFormula";
-            this.textBoxFormula.Size = new System.Drawing.Size(573, 129);
+            this.textBoxFormula.Size = new System.Drawing.Size(571, 133);
             this.textBoxFormula.TabIndex = 5;
             this.textBoxFormula.TextService = TextEditor.TextService.Simple;
             this.textBoxFormula.TextStorageFactory = this.stringStorageFactory;
+            this.textBoxFormula.SimpleNavigation = true;
             // 
             // documentBindingSource
             // 
@@ -507,6 +521,10 @@ namespace OutOfPhase
             this.textBoxWindowHelper.SelectAllToolStripMenuItem = null;
             this.textBoxWindowHelper.UndoToolStripMenuItem = null;
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // AlgoSampWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -522,6 +540,7 @@ namespace OutOfPhase
             ((System.ComponentModel.ISupportInitialize)(this.algoSampObjectRecBindingSource)).EndInit();
             this.tableLayoutPanel4.ResumeLayout(false);
             this.tableLayoutPanel4.PerformLayout();
+            this.panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).EndInit();
             this.ResumeLayout(false);
 
@@ -530,15 +549,15 @@ namespace OutOfPhase
         #endregion
 
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-        private System.Windows.Forms.Label label1;
+        private MyLabel label1;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel3;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Label label7;
+        private MyLabel label2;
+        private MyLabel label3;
+        private MyLabel label4;
+        private MyLabel label5;
+        private MyLabel label6;
+        private MyLabel label7;
         private System.Windows.Forms.TextBox textBoxLoop1Start;
         private System.Windows.Forms.TextBox textBoxLoop1End;
         private System.Windows.Forms.TextBox textBoxLoop2Start;
@@ -549,11 +568,11 @@ namespace OutOfPhase
         private System.Windows.Forms.ComboBox comboBoxLoop2Bidirectional;
         private System.Windows.Forms.ComboBox comboBoxLoop3Bidirectional;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel4;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.Label label10;
-        private System.Windows.Forms.Label label11;
-        private System.Windows.Forms.Label label12;
-        private System.Windows.Forms.Label label13;
+        private MyLabel label8;
+        private MyLabel label10;
+        private MyLabel label11;
+        private MyLabel label12;
+        private MyLabel label13;
         private System.Windows.Forms.TextBox textBoxName;
         private System.Windows.Forms.ComboBox comboBoxChannels;
         private System.Windows.Forms.TextBox textBoxOrigin;
@@ -566,5 +585,7 @@ namespace OutOfPhase
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextBoxWindowHelper textBoxWindowHelper;
         private TextEditor.StringStorageFactory stringStorageFactory;
+        private System.Windows.Forms.Panel panel1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;   
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -1051,6 +1052,15 @@ namespace OutOfPhase
             }
         }
 
+        //[DllImport("shcore.dll")]
+        //private static extern int/*HRESULT*/ SetProcessDpiAwareness(PROCESS_DPI_AWARENESS value);
+        //private enum PROCESS_DPI_AWARENESS
+        //{
+        //    PROCESS_DPI_UNAWARE = 0,
+        //    PROCESS_SYSTEM_DPI_AWARE = 1,
+        //    PROCESS_PER_MONITOR_DPI_AWARE = 2
+        //}
+
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -1088,6 +1098,8 @@ namespace OutOfPhase
                 }
             }
             #endregion
+
+            //SetProcessDpiAwareness(PROCESS_DPI_AWARENESS.PROCESS_PER_MONITOR_DPI_AWARE);
 
             LoadSettings();
             Synthesizer.FFTW.StaticInitialization(Config.FFTWWisdom);

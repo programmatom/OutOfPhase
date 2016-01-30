@@ -52,23 +52,24 @@ namespace OutOfPhase
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
+            this.label1 = new OutOfPhase.MyLabel();
+            this.label2 = new OutOfPhase.MyLabel();
+            this.label3 = new OutOfPhase.MyLabel();
             this.myListBoxTracks = new OutOfPhase.MyListBox();
             this.myListBoxWaveTables = new OutOfPhase.MyListBox();
             this.myListBoxSamples = new OutOfPhase.MyListBox();
             this.tableLayoutPanel3 = new System.Windows.Forms.TableLayoutPanel();
-            this.label4 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
+            this.label4 = new OutOfPhase.MyLabel();
+            this.label5 = new OutOfPhase.MyLabel();
+            this.label6 = new OutOfPhase.MyLabel();
             this.myListBoxInstruments = new OutOfPhase.MyListBox();
             this.myListBoxAlgoWaveTables = new OutOfPhase.MyListBox();
             this.myListBoxAlgoSamples = new OutOfPhase.MyListBox();
             this.tableLayoutPanel5 = new System.Windows.Forms.TableLayoutPanel();
-            this.label10 = new System.Windows.Forms.Label();
-            this.label11 = new System.Windows.Forms.Label();
+            this.label10 = new OutOfPhase.MyLabel();
+            this.label11 = new OutOfPhase.MyLabel();
             this.myListBoxFunctions = new OutOfPhase.MyListBox();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.textEditComment = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.stringStorageFactory = new TextEditor.StringStorageFactory();
@@ -82,10 +83,12 @@ namespace OutOfPhase
             this.functionListBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.timerAutosave = new System.Windows.Forms.Timer(this.components);
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
             this.tableLayoutPanel2.SuspendLayout();
             this.tableLayoutPanel3.SuspendLayout();
             this.tableLayoutPanel5.SuspendLayout();
+            this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackListBindingSource)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.waveTableListBindingSource)).BeginInit();
@@ -128,12 +131,12 @@ namespace OutOfPhase
             this.tableLayoutPanel2.Controls.Add(this.myListBoxWaveTables, 1, 1);
             this.tableLayoutPanel2.Controls.Add(this.myListBoxSamples, 2, 1);
             this.tableLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel2.Location = new System.Drawing.Point(3, 33);
+            this.tableLayoutPanel2.Location = new System.Drawing.Point(3, 27);
             this.tableLayoutPanel2.Name = "tableLayoutPanel2";
             this.tableLayoutPanel2.RowCount = 2;
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel2.Size = new System.Drawing.Size(667, 123);
+            this.tableLayoutPanel2.Size = new System.Drawing.Size(667, 125);
             this.tableLayoutPanel2.TabIndex = 0;
             // 
             // label1
@@ -168,35 +171,35 @@ namespace OutOfPhase
             // 
             // myListBoxTracks
             // 
-            this.myListBoxTracks.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.myListBoxTracks.BackColor = System.Drawing.SystemColors.Window;
             this.myListBoxTracks.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.myListBoxTracks.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxTracks.Location = new System.Drawing.Point(3, 16);
             this.myListBoxTracks.Name = "myListBoxTracks";
             this.myListBoxTracks.ShowBlankItemsDifferently = true;
-            this.myListBoxTracks.Size = new System.Drawing.Size(216, 104);
+            this.myListBoxTracks.Size = new System.Drawing.Size(216, 106);
             this.myListBoxTracks.TabIndex = 1;
             // 
             // myListBoxWaveTables
             // 
-            this.myListBoxWaveTables.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.myListBoxWaveTables.BackColor = System.Drawing.SystemColors.Window;
             this.myListBoxWaveTables.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.myListBoxWaveTables.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxWaveTables.Location = new System.Drawing.Point(225, 16);
             this.myListBoxWaveTables.Name = "myListBoxWaveTables";
             this.myListBoxWaveTables.ShowBlankItemsDifferently = true;
-            this.myListBoxWaveTables.Size = new System.Drawing.Size(216, 104);
+            this.myListBoxWaveTables.Size = new System.Drawing.Size(216, 106);
             this.myListBoxWaveTables.TabIndex = 2;
             // 
             // myListBoxSamples
             // 
-            this.myListBoxSamples.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.myListBoxSamples.BackColor = System.Drawing.SystemColors.Window;
             this.myListBoxSamples.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.myListBoxSamples.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxSamples.Location = new System.Drawing.Point(447, 16);
             this.myListBoxSamples.Name = "myListBoxSamples";
             this.myListBoxSamples.ShowBlankItemsDifferently = true;
-            this.myListBoxSamples.Size = new System.Drawing.Size(217, 104);
+            this.myListBoxSamples.Size = new System.Drawing.Size(217, 106);
             this.myListBoxSamples.TabIndex = 3;
             // 
             // tableLayoutPanel3
@@ -212,12 +215,12 @@ namespace OutOfPhase
             this.tableLayoutPanel3.Controls.Add(this.myListBoxAlgoWaveTables, 1, 1);
             this.tableLayoutPanel3.Controls.Add(this.myListBoxAlgoSamples, 2, 1);
             this.tableLayoutPanel3.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel3.Location = new System.Drawing.Point(3, 162);
+            this.tableLayoutPanel3.Location = new System.Drawing.Point(3, 158);
             this.tableLayoutPanel3.Name = "tableLayoutPanel3";
             this.tableLayoutPanel3.RowCount = 2;
             this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel3.Size = new System.Drawing.Size(667, 123);
+            this.tableLayoutPanel3.Size = new System.Drawing.Size(667, 125);
             this.tableLayoutPanel3.TabIndex = 1;
             // 
             // label4
@@ -252,35 +255,35 @@ namespace OutOfPhase
             // 
             // myListBoxInstruments
             // 
-            this.myListBoxInstruments.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.myListBoxInstruments.BackColor = System.Drawing.SystemColors.Window;
             this.myListBoxInstruments.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.myListBoxInstruments.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxInstruments.Location = new System.Drawing.Point(3, 16);
             this.myListBoxInstruments.Name = "myListBoxInstruments";
             this.myListBoxInstruments.ShowBlankItemsDifferently = true;
-            this.myListBoxInstruments.Size = new System.Drawing.Size(216, 104);
+            this.myListBoxInstruments.Size = new System.Drawing.Size(216, 106);
             this.myListBoxInstruments.TabIndex = 4;
             // 
             // myListBoxAlgoWaveTables
             // 
-            this.myListBoxAlgoWaveTables.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.myListBoxAlgoWaveTables.BackColor = System.Drawing.SystemColors.Window;
             this.myListBoxAlgoWaveTables.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.myListBoxAlgoWaveTables.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxAlgoWaveTables.Location = new System.Drawing.Point(225, 16);
             this.myListBoxAlgoWaveTables.Name = "myListBoxAlgoWaveTables";
             this.myListBoxAlgoWaveTables.ShowBlankItemsDifferently = true;
-            this.myListBoxAlgoWaveTables.Size = new System.Drawing.Size(216, 104);
+            this.myListBoxAlgoWaveTables.Size = new System.Drawing.Size(216, 106);
             this.myListBoxAlgoWaveTables.TabIndex = 5;
             // 
             // myListBoxAlgoSamples
             // 
-            this.myListBoxAlgoSamples.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.myListBoxAlgoSamples.BackColor = System.Drawing.SystemColors.Window;
             this.myListBoxAlgoSamples.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.myListBoxAlgoSamples.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxAlgoSamples.Location = new System.Drawing.Point(447, 16);
             this.myListBoxAlgoSamples.Name = "myListBoxAlgoSamples";
             this.myListBoxAlgoSamples.ShowBlankItemsDifferently = true;
-            this.myListBoxAlgoSamples.Size = new System.Drawing.Size(217, 104);
+            this.myListBoxAlgoSamples.Size = new System.Drawing.Size(217, 106);
             this.myListBoxAlgoSamples.TabIndex = 6;
             // 
             // tableLayoutPanel5
@@ -291,14 +294,14 @@ namespace OutOfPhase
             this.tableLayoutPanel5.Controls.Add(this.label10, 0, 0);
             this.tableLayoutPanel5.Controls.Add(this.label11, 1, 0);
             this.tableLayoutPanel5.Controls.Add(this.myListBoxFunctions, 0, 1);
-            this.tableLayoutPanel5.Controls.Add(this.textEditComment, 1, 1);
+            this.tableLayoutPanel5.Controls.Add(this.panel1, 1, 1);
             this.tableLayoutPanel5.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel5.Location = new System.Drawing.Point(3, 291);
+            this.tableLayoutPanel5.Location = new System.Drawing.Point(3, 289);
             this.tableLayoutPanel5.Name = "tableLayoutPanel5";
             this.tableLayoutPanel5.RowCount = 2;
             this.tableLayoutPanel5.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel5.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel5.Size = new System.Drawing.Size(667, 125);
+            this.tableLayoutPanel5.Size = new System.Drawing.Size(667, 127);
             this.tableLayoutPanel5.TabIndex = 3;
             // 
             // label10
@@ -323,27 +326,36 @@ namespace OutOfPhase
             // 
             // myListBoxFunctions
             // 
-            this.myListBoxFunctions.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.myListBoxFunctions.BackColor = System.Drawing.SystemColors.Window;
             this.myListBoxFunctions.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.myListBoxFunctions.Dock = System.Windows.Forms.DockStyle.Fill;
             this.myListBoxFunctions.Location = new System.Drawing.Point(3, 16);
             this.myListBoxFunctions.Name = "myListBoxFunctions";
             this.myListBoxFunctions.ShowBlankItemsDifferently = true;
-            this.myListBoxFunctions.Size = new System.Drawing.Size(216, 106);
+            this.myListBoxFunctions.Size = new System.Drawing.Size(216, 108);
             this.myListBoxFunctions.TabIndex = 7;
+            // 
+            // panel1
+            // 
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.textEditComment);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(225, 16);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(439, 108);
+            this.panel1.TabIndex = 8;
             // 
             // textEditComment
             // 
             this.textEditComment.AutoScroll = true;
             this.textEditComment.AutoScrollMinSize = new System.Drawing.Size(437, 13);
-            this.textEditComment.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.textEditComment.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textEditComment.BackColor = System.Drawing.SystemColors.Window;
             this.textEditComment.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textEditComment.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.documentBindingSource, "CommentInfo", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textEditComment.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textEditComment.Location = new System.Drawing.Point(225, 16);
+            this.textEditComment.Location = new System.Drawing.Point(0, 0);
             this.textEditComment.Name = "textEditComment";
-            this.textEditComment.Size = new System.Drawing.Size(439, 106);
+            this.textEditComment.Size = new System.Drawing.Size(437, 106);
             this.textEditComment.TabIndex = 8;
             this.textEditComment.TextStorageFactory = this.stringStorageFactory;
             // 
@@ -354,9 +366,10 @@ namespace OutOfPhase
             // menuStripManager
             // 
             this.menuStripManager.AutoSize = true;
-            this.menuStripManager.Location = new System.Drawing.Point(3, 3);
+            this.menuStripManager.Location = new System.Drawing.Point(0, 0);
+            this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(667, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(673, 24);
             this.menuStripManager.TabIndex = 4;
             // 
             // trackListBindingSource
@@ -422,6 +435,10 @@ namespace OutOfPhase
             this.timerAutosave.Interval = 5000;
             this.timerAutosave.Tick += new System.EventHandler(this.timerAutosave_Tick);
             // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
+            // 
             // MainWindow
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -437,6 +454,7 @@ namespace OutOfPhase
             this.tableLayoutPanel3.PerformLayout();
             this.tableLayoutPanel5.ResumeLayout(false);
             this.tableLayoutPanel5.PerformLayout();
+            this.panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.documentBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackListBindingSource)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.waveTableListBindingSource)).EndInit();
@@ -455,14 +473,14 @@ namespace OutOfPhase
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel3;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel5;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Label label10;
-        private System.Windows.Forms.Label label11;
+        private MyLabel label1;
+        private MyLabel label2;
+        private MyLabel label3;
+        private MyLabel label4;
+        private MyLabel label5;
+        private MyLabel label6;
+        private MyLabel label10;
+        private MyLabel label11;
         private System.Windows.Forms.BindingSource documentBindingSource;
         private System.Windows.Forms.BindingSource sampleListBindingSource;
         private System.Windows.Forms.BindingSource functionListBindingSource;
@@ -483,5 +501,7 @@ namespace OutOfPhase
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.Timer timerAutosave;
+        private System.Windows.Forms.Panel panel1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }

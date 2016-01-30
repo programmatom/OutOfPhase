@@ -43,7 +43,7 @@ namespace OutOfPhase
             }
         }
 
-        private KeyValuePair<string, FunctionSignature>[] retainedFunctionSignatures = new KeyValuePair<string,FunctionSignature>[0];
+        private KeyValuePair<string, FunctionSignature>[] retainedFunctionSignatures = new KeyValuePair<string, FunctionSignature>[0];
 
 #if true // TODO:experimental
         public readonly ManagedFunctionLinkerRec ManagedFunctionLinker = new ManagedFunctionLinkerRec();
@@ -233,6 +233,51 @@ namespace OutOfPhase
                 h = h + argsTypes[i].GetHashCode();
             }
             return h;
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("(");
+            for (int i = 0; i < argsTypes.Length; i++)
+            {
+                if (i != 0)
+                {
+                    sb.Append(", ");
+                }
+                sb.AppendFormat("arg{0}:{1}", i + 1, GetKeywordForDataType(argsTypes[i]));
+            }
+            sb.Append("):");
+            sb.Append(GetKeywordForDataType(returnType));
+            return sb.ToString();
+        }
+
+        private static string GetKeywordForDataType(DataTypes type)
+        {
+            switch (type)
+            {
+                default:
+                    Debug.Assert(false);
+                    return String.Empty;
+                case DataTypes.eBoolean:
+                    return "bool";
+                case DataTypes.eInteger:
+                    return "int";
+                case DataTypes.eFloat:
+                    return "float";
+                case DataTypes.eDouble:
+                    return "double";
+                case DataTypes.eArrayOfBoolean:
+                    return "boolarray";
+                case DataTypes.eArrayOfByte:
+                    return "bytearray";
+                case DataTypes.eArrayOfInteger:
+                    return "intarray";
+                case DataTypes.eArrayOfFloat:
+                    return "floatarray";
+                case DataTypes.eArrayOfDouble:
+                    return "doublearray";
+            }
         }
     }
 

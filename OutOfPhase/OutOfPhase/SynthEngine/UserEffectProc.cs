@@ -43,8 +43,6 @@ namespace OutOfPhase
         {
             /* initialization formula.  null = not specified. */
             public PcodeRec InitFunc;
-            /* param update formula.  null = not specified. */
-            public PcodeRec UpdateFunc;
             /* data processing formula. */
             public PcodeRec DataFunc;
 
@@ -57,25 +55,33 @@ namespace OutOfPhase
             public float lastLeft, lastRight;
 
             /* parameter vector */
-            public int cParams;
+            public int paramCount;
             /* vector of parameter evaluations */
             // exactly one of these is non-null
-            public UserEffectParamRec_Track[] rgParams_Track;
-            public UserEffectParamRec_Osc[] rgParams_Osc;
+            public UserEffectParamRec_Track[] params_Track;
+            public UserEffectParamRec_Osc[] params_Osc;
             /* vector of parameter eval results */
-            public double[] rgParamResults;
+            public double[] paramResultsPrevious;
+            public double[] paramResults;
 
-            /* user's state */
-            public ArrayHandleDouble pLeftState;
-            public ArrayHandleDouble pRightState;
-            public ArrayHandleFloat fLeftState;
-            public ArrayHandleFloat fRightState;
-
-            // reused workspaces
+            // reused workspaces for staging sample data in/out during
             public float[] leftWorkspace;
             public ArrayHandleFloat leftWorkspaceHandle;
             public float[] rightWorkspace;
             public ArrayHandleFloat rightWorkspaceHandle;
+
+            // user-request state arrays
+            public ArrayHandle[] userState;
+
+            // smoothing workspaces
+            public SmoothingEntry[] smoothingBuffers;
+
+            public struct SmoothingEntry
+            {
+                public ArrayHandleFloat arrayHandle;
+                public float[] vector;
+                public bool degraded;
+            }
 
 
             /* shared initialization */
@@ -84,9 +90,6 @@ namespace OutOfPhase
                 UserEffectSpecRec Template,
                 SynthParamRec SynthParams)
             {
-                string FuncName;
-                FuncCodeRec FuncCode;
-
                 Proc.disableOversampling = GetUserEffectSpecNoOversampling(Template);
 
                 double sr = SynthParams.dSamplingRate;
@@ -96,92 +99,135 @@ namespace OutOfPhase
                 }
 
                 /* init func */
-                FuncName = GetUserEffectSpecInitFuncName(Template);
-                if (FuncName != null)
                 {
-                    FuncCode = SynthParams.CodeCenter.ObtainFunctionHandle(FuncName);
-                    if (FuncCode == null)
+                    string FuncName = GetUserEffectSpecInitFuncName(Template);
+                    if (FuncName != null)
                     {
-                        // Function missing; should have been found by CheckUnreferencedThings
-                        Debug.Assert(false);
-                        throw new ArgumentException();
-                    }
-                    if (!UserEffectValidateTypeInit(FuncCode))
-                    {
-                        // Function type mismatch; should have been found by CheckUnreferencedThings
-                        Debug.Assert(false);
-                        throw new ArgumentException();
-                    }
-                    Proc.InitFunc = FuncCode.GetFunctionPcode();
-                }
+                        FuncCodeRec FuncCode = SynthParams.CodeCenter.ObtainFunctionHandle(FuncName);
+                        if (FuncCode == null)
+                        {
+                            // Function missing; should have been found by CheckUnreferencedThings
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        }
 
-                /* update func */
-                FuncName = GetUserEffectSpecArgUpdateFuncName(Template);
-                if (FuncName != null)
-                {
-                    FuncCode = SynthParams.CodeCenter.ObtainFunctionHandle(FuncName);
-                    if (FuncCode == null)
-                    {
-                        // Function missing; should have been found by CheckUnreferencedThings
-                        Debug.Assert(false);
-                        throw new ArgumentException();
+                        DataTypes[] argsTypes;
+                        DataTypes returnType;
+                        UserEffectGetInitSignature(Template, out argsTypes, out returnType);
+                        FunctionSignature expectedSignature = new FunctionSignature(argsTypes, returnType);
+                        FunctionSignature actualSignature = new FunctionSignature(
+                            FuncCode.GetFunctionParameterTypeList(),
+                            FuncCode.GetFunctionReturnType());
+                        if (!FunctionSignature.Equals(expectedSignature, actualSignature))
+                        {
+                            // Function type mismatch; should have been found by CheckUnreferencedThings
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        }
+
+                        Proc.InitFunc = FuncCode.GetFunctionPcode();
                     }
-                    if (!UserEffectValidateTypeUpdate(FuncCode, GetUserEffectSpecParamCount(Template)))
-                    {
-                        // Function type mismatch; should have been found by CheckUnreferencedThings
-                        Debug.Assert(false);
-                        throw new ArgumentException();
-                    }
-                    Proc.UpdateFunc = FuncCode.GetFunctionPcode();
                 }
 
                 /* data func */
-                FuncName = GetUserEffectSpecProcessDataFuncName(Template);
-                FuncCode = SynthParams.CodeCenter.ObtainFunctionHandle(FuncName);
-                if (FuncCode == null)
                 {
-                    // Function missing; should have been found by CheckUnreferencedThings
-                    Debug.Assert(false);
-                    throw new ArgumentException();
-                }
-                if (!UserEffectValidateTypeData(FuncCode))
-                {
-                    // Function type mismatch; should have been found by CheckUnreferencedThings
-                    Debug.Assert(false);
-                    throw new ArgumentException();
-                }
-                Proc.DataFunc = FuncCode.GetFunctionPcode();
+                    DataTypes[] argsTypes;
+                    DataTypes returnType;
+                    UserEffectGetDataSignature(Template, out argsTypes, out returnType);
+                    FunctionSignature expectedSignature = new FunctionSignature(argsTypes, returnType);
 
-                Proc.cParams = GetUserEffectSpecParamCount(Template);
-                Proc.rgParamResults = new double[Proc.cParams];
+                    foreach (string FuncName in GetUserEffectSpecProcessDataFuncNames(Template))
+                    {
+                        FuncCodeRec FuncCode = SynthParams.CodeCenter.ObtainFunctionHandle(FuncName);
+                        if (FuncCode == null)
+                        {
+                            // Function missing; should have been found by CheckUnreferencedThings
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        }
+
+                        FunctionSignature actualSignature = new FunctionSignature(
+                            FuncCode.GetFunctionParameterTypeList(),
+                            FuncCode.GetFunctionReturnType());
+                        if (FunctionSignature.Equals(expectedSignature, actualSignature))
+                        {
+                            Proc.DataFunc = FuncCode.GetFunctionPcode();
+                            break;
+                        }
+                    }
+                    if (Proc.DataFunc == null)
+                    {
+                        // None matched -- should have been found by CheckUnreferencedThings
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    }
+                }
+
+                Proc.paramCount = GetUserEffectSpecParamCount(Template);
+                Proc.paramResults = new double[Proc.paramCount];
+                Proc.paramResultsPrevious = new double[Proc.paramCount];
 
                 // create state objects
-                Proc.pLeftState = new ArrayHandleDouble(new double[0]);
-                Proc.pRightState = new ArrayHandleDouble(new double[0]);
-                Proc.fLeftState = new ArrayHandleFloat(new float[0]);
-                Proc.fRightState = new ArrayHandleFloat(new float[0]);
+                DataTypes[] stateTypes = UserEffectGetWorkspaceTypes(Template);
+                Proc.userState = new ArrayHandle[stateTypes.Length];
+                for (int i = 0; i < Proc.userState.Length; i++)
+                {
+                    switch (stateTypes[i])
+                    {
+                        default:
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        case DataTypes.eArrayOfInteger:
+                            Proc.userState[i] = new ArrayHandleInt32(new int[0]);
+                            break;
+                        case DataTypes.eArrayOfFloat:
+                            Proc.userState[i] = new ArrayHandleFloat(new float[0]);
+                            break;
+                        case DataTypes.eArrayOfDouble:
+                            Proc.userState[i] = new ArrayHandleDouble(new double[0]);
+                            break;
+                    }
+                }
+
+                Proc.smoothingBuffers = new SmoothingEntry[Template.Items.Length];
+                for (int i = 0; i < Template.Items.Length; i++)
+                {
+                    if (Template.Items[i].Smoothed)
+                    {
+                        float[] vector = new float[SynthParams.nAllocatedPointsOneChannel];
+                        Proc.smoothingBuffers[i].vector = vector;
+                        Proc.smoothingBuffers[i].arrayHandle = new ArrayHandleFloat(vector);
+                    }
+                }
+
                 /* initialize user state */
                 if (Proc.InitFunc != null)
                 {
-                    SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
-                        1/*retval*/ + 1/*dleftstate*/ + 1/*drightstate*/ + 1/*fleftstate*/ + 1/*frightstate*/ +
-                        1/*t*/ + 1/*bpm*/ + 1/*sr*/ + 1/*retaddr*/);
+                    int argCount = 1/*retval*/
+                        + 1/*t*/
+                        + 1/*bpm*/
+                        + 1/*samplingRate*/
+                        + 1/*maxSampleCount*/
+                        + Proc.userState.Length/*user state arrays*/
+                        + 1/*retaddr*/;
+                    SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(argCount);
 
                     StackElement[] StackBase;
                     int StackNumElements;
                     SynthParams.FormulaEvalContext.GetRawStack(out StackBase, out StackNumElements);
 
-                    StackBase[StackNumElements++].reference.arrayHandleDouble = Proc.pLeftState;
-                    StackBase[StackNumElements++].reference.arrayHandleDouble = Proc.pRightState;
-
-                    StackBase[StackNumElements++].reference.arrayHandleFloat = Proc.fLeftState;
-                    StackBase[StackNumElements++].reference.arrayHandleFloat = Proc.fRightState;
-
                     StackBase[StackNumElements++].Data.Double = SynthParams.dElapsedTimeInSeconds; /* t */
 
                     StackBase[StackNumElements++].Data.Double = SynthParams.dCurrentBeatsPerMinute; /* bpm */
 
-                    StackBase[StackNumElements++].Data.Double = sr; /* sr */
+                    StackBase[StackNumElements++].Data.Double = sr; /* samplingRate */
+
+                    StackBase[StackNumElements++].Data.Integer = SynthParams.nAllocatedPointsOneChannel; /* maxSampleCount */
+
+                    for (int i = 0; i < Proc.userState.Length; i++)
+                    {
+                        StackBase[StackNumElements++].reference.arrayHandleGeneric = Proc.userState[i]; // user state
+                    }
 
                     StackNumElements++; /* return address placeholder */
 
@@ -198,8 +244,8 @@ namespace OutOfPhase
                     if (Error != EvalErrors.eEvalNoError)
                     {
                         SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserEffectFunctionEvalError;
-                        SynthParams.ErrorInfo.userEvalErrorCode = Error;
-                        SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
+                        SynthParams.ErrorInfo.UserEvalErrorCode = Error;
+                        SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                         return SynthErrorCodes.eSynthErrorEx;
                     }
                     Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
@@ -207,6 +253,7 @@ namespace OutOfPhase
                     SynthParams.FormulaEvalContext.Clear();
                 }
 
+                // initialize sample data in/out staging areas
                 Proc.leftWorkspace = new float[SynthParams.nAllocatedPointsOneChannel];
                 Proc.leftWorkspaceHandle = new ArrayHandleFloat(null);
                 Proc.rightWorkspace = new float[SynthParams.nAllocatedPointsOneChannel];
@@ -232,15 +279,15 @@ namespace OutOfPhase
                     return error;
                 }
 
-                Proc.rgParams_Track = new UserEffectParamRec_Track[Proc.cParams];
+                Proc.params_Track = new UserEffectParamRec_Track[Proc.paramCount];
 
                 /* initialize argument evaluators */
-                for (int i = 0; i < Proc.cParams; i += 1)
+                for (int i = 0; i < Proc.paramCount; i += 1)
                 {
                     GetUserEffectSpecParamAgg(
                         Template,
                         i,
-                        out Proc.rgParams_Track[i].Eval);
+                        out Proc.params_Track[i].Eval);
                 }
 
                 effectOut = Proc;
@@ -271,15 +318,15 @@ namespace OutOfPhase
                     return error;
                 }
 
-                Proc.rgParams_Osc = new UserEffectParamRec_Osc[Proc.cParams];
+                Proc.params_Osc = new UserEffectParamRec_Osc[Proc.paramCount];
 
                 /* initialize argument evaluators */
                 int MaxPreOrigin = 0;
-                for (int i = 0; i < Proc.cParams; i += 1)
+                for (int i = 0; i < Proc.paramCount; i += 1)
                 {
                     int OnePreOrigin;
 
-                    Proc.rgParams_Osc[i].Envelope = NewEnvelopeStateRecord(
+                    Proc.params_Osc[i].Envelope = NewEnvelopeStateRecord(
                         GetUserEffectSpecParamEnvelope(Template, i),
                         ref Accents,
                         InitialFrequency,
@@ -294,7 +341,7 @@ namespace OutOfPhase
                         MaxPreOrigin = OnePreOrigin;
                     }
 
-                    Proc.rgParams_Osc[i].LFO = NewLFOGenerator(
+                    Proc.params_Osc[i].LFO = NewLFOGenerator(
                         GetUserEffectSpecParamLFO(Template, i),
                         out OnePreOrigin,
                         ref Accents,
@@ -314,6 +361,18 @@ namespace OutOfPhase
 
                 PreOriginTimeOut = MaxPreOrigin;
 
+                for (int i = 0; i < Template.Items.Length; i++)
+                {
+                    if (Template.Items[i].Smoothed)
+                    {
+                        if (IsLFOSampleAndHold(Proc.params_Osc[i].LFO))
+                        {
+                            // degrade sample & hold, since smoothing is probably not what was intended
+                            Proc.smoothingBuffers[i].degraded = true;
+                        }
+                    }
+                }
+
                 effectOut = Proc;
                 return SynthErrorCodes.eSynthDone;
             }
@@ -322,78 +381,15 @@ namespace OutOfPhase
             public void OscFixEnvelopeOrigins(
                 int ActualPreOriginTime)
             {
-                for (int i = 0; i < this.cParams; i += 1)
+                for (int i = 0; i < this.paramCount; i += 1)
                 {
                     EnvelopeStateFixUpInitialDelay(
-                        this.rgParams_Osc[i].Envelope,
+                        this.params_Osc[i].Envelope,
                         ActualPreOriginTime);
                     LFOGeneratorFixEnvelopeOrigins(
-                        this.rgParams_Osc[i].LFO,
+                        this.params_Osc[i].LFO,
                         ActualPreOriginTime);
                 }
-            }
-
-            /* helper to execute update function */
-            /* assumes rgParamResults has been filled in */
-            private static SynthErrorCodes UserEffectUpdateFunctionHelper(
-                UserEffectProcRec Proc,
-                SynthParamRec SynthParams)
-            {
-                double sr = SynthParams.dSamplingRate;
-                if (!((SynthParams.iOversampling == 1) || !Proc.disableOversampling))
-                {
-                    sr /= SynthParams.iOversampling;
-                }
-
-                SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
-                    1/*retval*/ + 1/*leftstate*/ + 1/*rightstate*/ + 1/*fleftstate*/ + 1/*frightstate*/ +
-                    1/*t*/ + 1/*bpm*/ + 1/*sr*/ + Proc.cParams + 1/*retaddr*/);
-
-                int StackNumElements;
-                StackElement[] StackBase;
-                SynthParams.FormulaEvalContext.GetRawStack(out StackBase, out StackNumElements);
-
-                StackBase[StackNumElements++].reference.arrayHandleDouble = Proc.pLeftState;
-                StackBase[StackNumElements++].reference.arrayHandleDouble = Proc.pRightState;
-
-                StackBase[StackNumElements++].reference.arrayHandleFloat = Proc.fLeftState;
-                StackBase[StackNumElements++].reference.arrayHandleFloat = Proc.fRightState;
-
-                StackBase[StackNumElements++].Data.Double = SynthParams.dElapsedTimeInSeconds; /* t */
-
-                StackBase[StackNumElements++].Data.Double = SynthParams.dCurrentBeatsPerMinute; /* bpm */
-
-                StackBase[StackNumElements++].Data.Double = sr; /* sr */
-
-                for (int i = 0; i < Proc.cParams; i += 1)
-                {
-                    StackBase[StackNumElements++].Data.Double = Proc.rgParamResults[i];
-                }
-
-                StackNumElements++; /* return address placeholder */
-
-                SynthParams.FormulaEvalContext.UpdateRawStack(StackBase, StackNumElements);
-
-                EvalErrInfoRec ErrorInfo;
-                EvalErrors Error = PcodeSystem.EvaluatePcode(
-                    SynthParams.FormulaEvalContext,
-                    Proc.UpdateFunc,
-                    SynthParams.CodeCenter,
-                    out ErrorInfo,
-                    null/*EvaluateContext*/,
-                    ref SynthParams.pcodeThreadContext);
-                if (Error != EvalErrors.eEvalNoError)
-                {
-                    SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserEffectFunctionEvalError;
-                    SynthParams.ErrorInfo.userEvalErrorCode = Error;
-                    SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
-                    return SynthErrorCodes.eSynthErrorEx;
-                }
-                Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
-
-                SynthParams.FormulaEvalContext.Clear();
-
-                return SynthErrorCodes.eSynthDone;
             }
 
             /* update user effect processor state with accent information */
@@ -401,25 +397,17 @@ namespace OutOfPhase
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
-                if (this.UpdateFunc != null)
+                double[] paramResultsTemp = this.paramResultsPrevious;
+                this.paramResultsPrevious = this.paramResults;
+                this.paramResults = paramResultsTemp;
+
+                for (int i = 0; i < this.paramCount; i += 1)
                 {
-                    SynthErrorCodes error;
-
-                    /* compute additional arguments to the update function */
-                    for (int i = 0; i < this.cParams; i += 1)
-                    {
-                        error = ScalarParamEval(
-                            this.rgParams_Track[i].Eval,
-                            ref Accents,
-                            SynthParams,
-                            out this.rgParamResults[i]);
-                        if (error != SynthErrorCodes.eSynthDone)
-                        {
-                            return error;
-                        }
-                    }
-
-                    error = UserEffectUpdateFunctionHelper(this, SynthParams);
+                    SynthErrorCodes error = ScalarParamEval(
+                        this.params_Track[i].Eval,
+                        ref Accents,
+                        SynthParams,
+                        out this.paramResults[i]);
                     if (error != SynthErrorCodes.eSynthDone)
                     {
                         return error;
@@ -434,31 +422,23 @@ namespace OutOfPhase
                 double OscillatorFrequency,
                 SynthParamRec SynthParams)
             {
-                if (this.UpdateFunc != null)
-                {
-                    SynthErrorCodes error;
+                double[] paramResultsTemp = this.paramResultsPrevious;
+                this.paramResultsPrevious = this.paramResults;
+                this.paramResults = paramResultsTemp;
 
-                    /* compute additional arguments to the update function */
-                    for (int i = 0; i < this.cParams; i += 1)
-                    {
-                        error = SynthErrorCodes.eSynthDone;
-                        this.rgParamResults[i] = LFOGenUpdateCycle(
-                            this.rgParams_Osc[i].LFO,
-                            EnvelopeUpdate(
-                                this.rgParams_Osc[i].Envelope,
-                                OscillatorFrequency,
-                                SynthParams,
-                                ref error),
+                for (int i = 0; i < this.paramCount; i += 1)
+                {
+                    SynthErrorCodes error = SynthErrorCodes.eSynthDone;
+                    this.paramResults[i] = LFOGenUpdateCycle(
+                        this.params_Osc[i].LFO,
+                        EnvelopeUpdate(
+                            this.params_Osc[i].Envelope,
                             OscillatorFrequency,
                             SynthParams,
-                            ref error);
-                        if (error != SynthErrorCodes.eSynthDone)
-                        {
-                            return error;
-                        }
-                    }
-
-                    error = UserEffectUpdateFunctionHelper(this, SynthParams);
+                            ref error),
+                        OscillatorFrequency,
+                        SynthParams,
+                        ref error);
                     if (error != SynthErrorCodes.eSynthDone)
                     {
                         return error;
@@ -471,48 +451,36 @@ namespace OutOfPhase
             /* create key-up impulse */
             public void OscKeyUpSustain1()
             {
-                if (this.UpdateFunc != null)
+                for (int i = 0; i < this.paramCount; i += 1)
                 {
-                    /* compute additional arguments to the update function */
-                    for (int i = 0; i < this.cParams; i += 1)
-                    {
-                        EnvelopeKeyUpSustain1(
-                            this.rgParams_Osc[i].Envelope);
-                        LFOGeneratorKeyUpSustain1(
-                            this.rgParams_Osc[i].LFO);
-                    }
+                    EnvelopeKeyUpSustain1(
+                        this.params_Osc[i].Envelope);
+                    LFOGeneratorKeyUpSustain1(
+                        this.params_Osc[i].LFO);
                 }
             }
 
             /* create key-up impulse */
             public void OscKeyUpSustain2()
             {
-                if (this.UpdateFunc != null)
+                for (int i = 0; i < this.paramCount; i += 1)
                 {
-                    /* compute additional arguments to the update function */
-                    for (int i = 0; i < this.cParams; i += 1)
-                    {
-                        EnvelopeKeyUpSustain2(
-                            this.rgParams_Osc[i].Envelope);
-                        LFOGeneratorKeyUpSustain2(
-                            this.rgParams_Osc[i].LFO);
-                    }
+                    EnvelopeKeyUpSustain2(
+                        this.params_Osc[i].Envelope);
+                    LFOGeneratorKeyUpSustain2(
+                        this.params_Osc[i].LFO);
                 }
             }
 
             /* create key-up impulse */
             public void OscKeyUpSustain3()
             {
-                if (this.UpdateFunc != null)
+                for (int i = 0; i < this.paramCount; i += 1)
                 {
-                    /* compute additional arguments to the update function */
-                    for (int i = 0; i < this.cParams; i += 1)
-                    {
-                        EnvelopeKeyUpSustain3(
-                            this.rgParams_Osc[i].Envelope);
-                        LFOGeneratorKeyUpSustain3(
-                            this.rgParams_Osc[i].LFO);
-                    }
+                    EnvelopeKeyUpSustain3(
+                        this.params_Osc[i].Envelope);
+                    LFOGeneratorKeyUpSustain3(
+                        this.params_Osc[i].LFO);
                 }
             }
 
@@ -524,29 +492,25 @@ namespace OutOfPhase
                 bool ActuallyRetrigger,
                 SynthParamRec SynthParams)
             {
-                if (this.UpdateFunc != null)
+                for (int i = 0; i < this.paramCount; i += 1)
                 {
-                    /* compute additional arguments to the update function */
-                    for (int i = 0; i < this.cParams; i += 1)
-                    {
-                        EnvelopeRetriggerFromOrigin(
-                            this.rgParams_Osc[i].Envelope,
-                            ref NewAccents,
-                            NewInitialFrequency,
-                            1,
-                            NewHurryUp,
-                            ActuallyRetrigger,
-                            SynthParams);
-                        LFOGeneratorRetriggerFromOrigin(
-                            this.rgParams_Osc[i].LFO,
-                            ref NewAccents,
-                            NewInitialFrequency,
-                            NewHurryUp,
-                            1,
-                            1,
-                            ActuallyRetrigger,
-                            SynthParams);
-                    }
+                    EnvelopeRetriggerFromOrigin(
+                        this.params_Osc[i].Envelope,
+                        ref NewAccents,
+                        NewInitialFrequency,
+                        1,
+                        NewHurryUp,
+                        ActuallyRetrigger,
+                        SynthParams);
+                    LFOGeneratorRetriggerFromOrigin(
+                        this.params_Osc[i].LFO,
+                        ref NewAccents,
+                        NewInitialFrequency,
+                        NewHurryUp,
+                        1,
+                        1,
+                        ActuallyRetrigger,
+                        SynthParams);
                 }
             }
 
@@ -602,13 +566,13 @@ namespace OutOfPhase
 
                 if ((SynthParams.iOversampling == 1) || !disableOversampling)
                 {
-                    Array.Copy(
+                    FloatVectorCopyUnaligned(
                         workspace,
                         lOffset,
                         leftWorkspaceHandle.floats, // not vector-aligned
                         0,
                         nActualFrames);
-                    Array.Copy(
+                    FloatVectorCopyUnaligned(
                         workspace,
                         rOffset,
                         rightWorkspaceHandle.floats, // not vector-aligned
@@ -627,26 +591,95 @@ namespace OutOfPhase
                     }
                 }
 
-                SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
-                    1/*retval*/ + 1/*leftstate*/ + 1/*rightstate*/ + 1/*fleftstate*/ + 1/*frightstate*/ +
-                    1/*leftdata*/ + 1/*rightdata*/ + 1/*count*/ + 1/*sr*/ + 1/*retaddr*/);
+                int argCount = 1/*retval*/
+                    + 1/*t*/
+                    + 1/*bpm*/
+                    + 1/*samplingRate*/
+                    + 1/*leftdata*/
+                    + 1/*rightdata*/
+                    + 1/*count*/
+                    + userState.Length/*user state*/
+                    + paramCount/*user params*/
+                    + 1/*retaddr*/;
+                SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(argCount);
 
                 int StackNumElements;
                 StackElement[] StackBase;
                 SynthParams.FormulaEvalContext.GetRawStack(out StackBase, out StackNumElements);
 
-                StackBase[StackNumElements++].reference.arrayHandleDouble = pLeftState;
-                StackBase[StackNumElements++].reference.arrayHandleDouble = pRightState;
+                StackBase[StackNumElements++].Data.Double = SynthParams.dElapsedTimeInSeconds; /* t */
 
-                StackBase[StackNumElements++].reference.arrayHandleFloat = fLeftState;
-                StackBase[StackNumElements++].reference.arrayHandleFloat = fRightState;
+                StackBase[StackNumElements++].Data.Double = SynthParams.dCurrentBeatsPerMinute; /* bpm */
 
-                StackBase[StackNumElements++].reference.arrayHandleFloat = leftWorkspaceHandle;
-                StackBase[StackNumElements++].reference.arrayHandleFloat = rightWorkspaceHandle;
+                StackBase[StackNumElements++].Data.Double = sr; /* samplingRate */
+
+                StackBase[StackNumElements++].reference.arrayHandleFloat = leftWorkspaceHandle; // leftdata
+
+                StackBase[StackNumElements++].reference.arrayHandleFloat = rightWorkspaceHandle; // rightdata
 
                 StackBase[StackNumElements++].Data.Integer = c;
 
-                StackBase[StackNumElements++].Data.Double = sr;
+                for (int i = 0; i < userState.Length; i++)
+                {
+                    StackBase[StackNumElements++].reference.arrayHandleGeneric = userState[i]; // user state
+                }
+
+                for (int i = 0; i < paramCount; i += 1)
+                {
+                    if (smoothingBuffers[i].arrayHandle == null)
+                    {
+                        StackBase[StackNumElements++].Data.Double = paramResults[i]; // user params
+                    }
+                    else
+                    {
+                        // re-initialize handle in case user code cleared it last time
+                        smoothingBuffers[i].arrayHandle.floats = smoothingBuffers[i].vector;
+
+                        // compute smoothed data
+#if DEBUG
+                        Debug.Assert(!SynthParams.ScratchWorkspace1InUse);
+#endif
+                        if (smoothingBuffers[i].degraded)
+                        {
+                            FloatVectorSet(
+                                SynthParams.workspace,
+                                SynthParams.ScratchWorkspace1LOffset,
+                                nActualFrames,
+                                (float)paramResults[i]);
+                        }
+                        else
+                        {
+                            if ((params_Osc == null) || !EnvelopeCurrentSegmentExponential(params_Osc[i].Envelope))
+                            {
+                                // linear
+                                FloatVectorAdditiveRecurrence(
+                                    SynthParams.workspace,
+                                    SynthParams.ScratchWorkspace1LOffset,
+                                    (float)paramResultsPrevious[i],
+                                    (float)paramResults[i],
+                                    nActualFrames);
+                            }
+                            else
+                            {
+                                // geometric
+                                FloatVectorMultiplicativeRecurrence(
+                                    SynthParams.workspace,
+                                    SynthParams.ScratchWorkspace1LOffset,
+                                    (float)paramResultsPrevious[i],
+                                    (float)paramResults[i],
+                                    nActualFrames);
+                            }
+                        }
+                        FloatVectorCopyUnaligned(
+                            SynthParams.workspace,
+                            SynthParams.ScratchWorkspace1LOffset,
+                            smoothingBuffers[i].vector, // target not aligned
+                            0,
+                            nActualFrames);
+
+                        StackBase[StackNumElements++].reference.arrayHandleFloat = smoothingBuffers[i].arrayHandle; // user params
+                    }
+                }
 
                 StackNumElements++; /* return address placeholder */
 
@@ -663,8 +696,8 @@ namespace OutOfPhase
                 if (Error != EvalErrors.eEvalNoError)
                 {
                     SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserEffectFunctionEvalError;
-                    SynthParams.ErrorInfo.userEvalErrorCode = Error;
-                    SynthParams.ErrorInfo.userEvalErrorInfo = ErrorInfo;
+                    SynthParams.ErrorInfo.UserEvalErrorCode = Error;
+                    SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                     return SynthErrorCodes.eSynthErrorEx;
                 }
                 Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value

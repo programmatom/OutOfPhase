@@ -65,7 +65,13 @@ namespace OutOfPhase
             settings_PropertyChanged(this, null); // initial load
         }
 
-        void settings_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
+        private void settings_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             const int PreviewMaxFrames = 65536;
 

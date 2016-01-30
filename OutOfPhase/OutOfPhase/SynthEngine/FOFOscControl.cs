@@ -163,7 +163,7 @@ namespace OutOfPhase
                     /* we want the first grain to go on the first sampling point, so we */
                     /* set this up to start on the next interval. */
                     State.WaveTableSamplePosition = new Fixed64(State.FramesPerTable - State.FramesPerTable
-                        * (InitialFrequency / SynthParams.dSamplingRate));
+                        * (InitialFrequency * SynthParams.dSamplingRateReciprocal));
                 }
                 /* State.WaveTableSamplePositionDifferential specified in separate call */
 
@@ -456,7 +456,7 @@ namespace OutOfPhase
                     }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier + State.Template.FrequencyAdder;
-                Differential = NewFrequencyHertz / SynthParams.dSamplingRate * State.FramesPerTable;
+                Differential = NewFrequencyHertz * SynthParams.dSamplingRateReciprocal * State.FramesPerTable;
                 State.WaveTableSamplePositionDifferential = new Fixed64(Differential);
 
                 /* this is for the benefit of resampling only -- envelope generators do their */
@@ -945,7 +945,7 @@ namespace OutOfPhase
                         /* number of frames in the table. */
                         NewGrain.FOFSamplePositionDifferential = new Fixed64(
                             State.FOFSamplingRateContour * State.Template.FOFSamplingRate
-                                / SynthParams.dSamplingRate);
+                                * SynthParams.dSamplingRateReciprocal);
 
                         /* establish link, only if differential isn't really close to zero */
                         if ((NewGrain.FOFSamplePositionDifferential.FracI < 0x00010000)

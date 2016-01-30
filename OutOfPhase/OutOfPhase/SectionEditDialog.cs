@@ -52,11 +52,14 @@ namespace OutOfPhase
             myListBoxSections.DoubleClick2 += new MyListBox.DoubleClick2EventHandler(myListBoxSections_DoubleClick2);
 
             document.SectionList.ListChanged += SectionList_ListChanged;
+            document.TrackList.ListChanged += TrackList_ListChanged;
 
             RebuildScrollingList();
             OnSelectionChanged();
 
             Disposed += SectionEditDialog_Disposed;
+
+            registration.Register(document.SectionList, this);
         }
 
         private void SectionEditDialog_Disposed(object sender, EventArgs e)
@@ -64,12 +67,30 @@ namespace OutOfPhase
             document.SectionList.ListChanged -= SectionList_ListChanged;
         }
 
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            registration.Unregister(document.SectionList, this);
+            base.OnFormClosed(e);
+        }
+
+        private void TrackList_ListChanged(object sender, ListChangedEventArgs e)
+        {
+            RebuildScrollingList();
+        }
+
         private void SectionList_ListChanged(object sender, ListChangedEventArgs e)
         {
-            if (String.Equals(e.PropertyDescriptor.Name, SectionObjectRec.Name_PropertyName))
+            if ((e.PropertyDescriptor == null/*newitem*/)
+                || String.Equals(e.PropertyDescriptor.Name, SectionObjectRec.Name_PropertyName))
             {
                 RebuildScrollingList();
             }
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
         }
 
         private static string DisplayNameOfListEntry(object obj)
@@ -280,6 +301,11 @@ namespace OutOfPhase
             {
                 buttonChangeSection_Click(sender, e);
             }
+        }
+
+        private void buttonClose_Click(object sender, EventArgs e)
+        {
+            Close();
         }
     }
 }

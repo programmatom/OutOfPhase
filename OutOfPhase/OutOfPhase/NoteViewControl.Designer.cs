@@ -49,9 +49,42 @@ namespace OutOfPhase
         /// </summary>
         private void InitializeComponent()
         {
-            components = new System.ComponentModel.Container();
+            this.components = new System.ComponentModel.Container();
+            this.toolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.textEditControl = new TextEditor.TextEditControl();
+            this.stringStorageFactory = new TextEditor.StringStorageFactory();
+            this.SuspendLayout();
+            // 
+            // textEditControl
+            // 
+            this.textEditControl.AutoScroll = true;
+            this.textEditControl.AutoScrollMinSize = new System.Drawing.Size(1, 13);
+            this.textEditControl.AutoSize = true;
+            this.textEditControl.BackColor = System.Drawing.SystemColors.Window;
+            this.textEditControl.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.textEditControl.Location = new System.Drawing.Point(0, 0);
+            this.textEditControl.Margin = new System.Windows.Forms.Padding(0);
+            this.textEditControl.MinimumSize = new System.Drawing.Size(7, 13);
+            this.textEditControl.Name = "textEditControl";
+            this.textEditControl.Size = new System.Drawing.Size(7, 13);
+            this.textEditControl.TabIndex = 0;
+            this.textEditControl.TextStorageFactory = this.stringStorageFactory;
+            this.textEditControl.Visible = false;
+            // 
+            // NoteViewControl
+            // 
+            this.BackColor = System.Drawing.SystemColors.Control;
+            this.Controls.Add(this.textEditControl);
+            this.Name = "NoteViewControl";
+            this.ResumeLayout(false);
+            this.PerformLayout();
+
         }
 
         #endregion
+
+        private System.Windows.Forms.ToolTip toolTip;
+        private TextEditor.TextEditControl textEditControl;
+        private TextEditor.StringStorageFactory stringStorageFactory;
     }
 }

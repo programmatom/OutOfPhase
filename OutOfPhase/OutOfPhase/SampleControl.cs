@@ -48,16 +48,35 @@ namespace OutOfPhase
         private int loopEnd;
         private string loopEndLabel;
 
+        private Color selectedBackColor = SystemColors.Highlight;
+        private Color selectedForeColor = SystemColors.Control;
+        private Color selectedBackColorInactive = SystemColors.InactiveCaption;
+        private Color selectedForeColorInactive = SystemColors.ControlText;
+        private Color afterEndColor = SystemColors.Info;
+        private Color insertionPointColor = SystemColors.ButtonShadow;
+        private Color trimColor = SystemColors.ButtonShadow;
+
+        private Pen forePen;
+        private Brush foreBrush;
+        private Brush backBrush;
+        private Brush selectedBackBrush;
+        private Brush selectedForeBrush;
+        private Brush selectedBackBrushInactive;
+        private Brush selectedForeBrushInactive;
+        private Brush afterEndBrush;
+        private Brush insertionPointBrush;
+        private Pen trimPen;
+
         public SampleControl()
         {
             ResizeRedraw = true;
-            //DoubleBuffered = true;
 
             InitializeComponent();
 
             Disposed += new EventHandler(SampleControl_Disposed);
         }
 
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public SampleObjectRec SampleObject
         {
             get
@@ -84,14 +103,100 @@ namespace OutOfPhase
             }
         }
 
-        void SampleControl_Disposed(object sender, EventArgs e)
+        private void SampleControl_Disposed(object sender, EventArgs e)
         {
             if (sampleObject != null)
             {
                 sampleObject.SampleDataChanged -= new SampleObjectRec.SampleStorageEventHandler(OnSampleDataChanged);
             }
+
+            if (forePen != null)
+            {
+                forePen.Dispose();
+            }
+            if (foreBrush != null)
+            {
+                foreBrush.Dispose();
+            }
+            if (backBrush != null)
+            {
+                backBrush.Dispose();
+            }
+            if (selectedBackBrush != null)
+            {
+                selectedBackBrush.Dispose();
+            }
+            if (selectedForeBrush != null)
+            {
+                selectedForeBrush.Dispose();
+            }
+            if (selectedBackBrushInactive != null)
+            {
+                selectedBackBrushInactive.Dispose();
+            }
+            if (selectedForeBrushInactive != null)
+            {
+                selectedForeBrushInactive.Dispose();
+            }
+            if (afterEndBrush != null)
+            {
+                afterEndBrush.Dispose();
+            }
+            if (insertionPointBrush != null)
+            {
+                insertionPointBrush.Dispose();
+            }
+            if (trimPen != null)
+            {
+                trimPen.Dispose();
+            }
         }
 
+        private void EnsureGraphicsObjects()
+        {
+            if (forePen == null)
+            {
+                forePen = new Pen(ForeColor);
+            }
+            if (foreBrush == null)
+            {
+                foreBrush = new SolidBrush(ForeColor);
+            }
+            if (backBrush == null)
+            {
+                backBrush = new SolidBrush(BackColor);
+            }
+            if (selectedBackBrush == null)
+            {
+                selectedBackBrush = new SolidBrush(selectedBackColor);
+            }
+            if (selectedForeBrush == null)
+            {
+                selectedForeBrush = new SolidBrush(selectedForeColor);
+            }
+            if (selectedBackBrushInactive == null)
+            {
+                selectedBackBrushInactive = new SolidBrush(selectedBackColorInactive);
+            }
+            if (selectedForeBrushInactive == null)
+            {
+                selectedForeBrushInactive = new SolidBrush(selectedForeColorInactive);
+            }
+            if (afterEndBrush == null)
+            {
+                afterEndBrush = new SolidBrush(afterEndColor);
+            }
+            if (insertionPointBrush == null)
+            {
+                insertionPointBrush = new SolidBrush(insertionPointColor);
+            }
+            if (trimPen == null)
+            {
+                trimPen = new Pen(trimColor);
+            }
+        }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int ContentWidth { get { return sampleObject != null ? (int)Math.Ceiling(sampleObject.SampleData.NumFrames / xScale) : 0; } }
 
         public void OnSampleDataChanged(object sender, SampleObjectRec.SampleStorageEventArgs e)
@@ -111,6 +216,18 @@ namespace OutOfPhase
             Invalidate();
         }
 
+        protected override void OnLostFocus(EventArgs e)
+        {
+            Invalidate();
+            base.OnLostFocus(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e)
+        {
+            Invalidate();
+            base.OnGotFocus(e);
+        }
+
         protected override void OnPaintBackground(PaintEventArgs e)
         {
             // background erase not need - entire surface is painted
@@ -123,6 +240,8 @@ namespace OutOfPhase
 
         protected override void OnPaint(PaintEventArgs pe)
         {
+            EnsureGraphicsObjects();
+
             // custom paint code
             if (sampleObject != null)
             {
@@ -131,9 +250,9 @@ namespace OutOfPhase
             else
             {
                 // draw X to indicate control is operating but has no content (vs. failing to start)
-                pe.Graphics.FillRectangle(Brushes.White, ClientRectangle);
-                pe.Graphics.DrawLine(Pens.Black, 0, 0, Width, Height);
-                pe.Graphics.DrawLine(Pens.Black, Width, 0, 0, Height);
+                pe.Graphics.FillRectangle(backBrush, ClientRectangle);
+                pe.Graphics.DrawLine(forePen, 0, 0, Width, Height);
+                pe.Graphics.DrawLine(forePen, Width, 0, 0, Height);
             }
 
             // Calling the base class OnPaint
@@ -162,18 +281,20 @@ namespace OutOfPhase
 
         private void Redraw(Graphics graphics, bool drawSample)
         {
+            EnsureGraphicsObjects();
+
             SetScrollOffsetsForRendering(graphics);
 
 #if false
-            graphics.DrawRectangle(Pens.Black, -HorizontalIndex, 0, ContentWidth, OVERLINEHEIGHT + 1);
-            graphics.DrawRectangle(Pens.Black, -HorizontalIndex, OVERLINEHEIGHT, ContentWidth, OVERLINEHEIGHT + 1);
-            graphics.DrawRectangle(Pens.Black, -HorizontalIndex, 2 * OVERLINEHEIGHT, ContentWidth, OVERLINEHEIGHT + 1);
-            graphics.FillRectangle(Brushes.White, -HorizontalIndex + 1, 1, ContentWidth - 2, OVERLINEHEIGHT + 1 - 2);
-            graphics.FillRectangle(Brushes.White, -HorizontalIndex + 1, 1 + OVERLINEHEIGHT, ContentWidth - 2, OVERLINEHEIGHT + 1 - 2);
-            graphics.FillRectangle(Brushes.White, -HorizontalIndex + 1, 1 + 2 * OVERLINEHEIGHT, ContentWidth - 2, OVERLINEHEIGHT + 1 - 2);
-            graphics.DrawString("Origin", Font, Brushes.Black, -HorizontalIndex + 5, 1);
-            graphics.DrawString(loopStartLabel, Font, Brushes.Black, -HorizontalIndex + 5, 1 + OVERLINEHEIGHT);
-            graphics.DrawString(loopEndLabel, Font, Brushes.Black, -HorizontalIndex + 5, 1 + 2 * OVERLINEHEIGHT);
+            graphics.DrawRectangle(P`ens.Black, -HorizontalIndex, 0, ContentWidth, OVERLINEHEIGHT + 1);
+            graphics.DrawRectangle(Pe`ns.Black, -HorizontalIndex, OVERLINEHEIGHT, ContentWidth, OVERLINEHEIGHT + 1);
+            graphics.DrawRectangle(Pen`s.Black, -HorizontalIndex, 2 * OVERLINEHEIGHT, ContentWidth, OVERLINEHEIGHT + 1);
+            graphics.FillRectangle(Brus`hes.White, -HorizontalIndex + 1, 1, ContentWidth - 2, OVERLINEHEIGHT + 1 - 2);
+            graphics.FillRectangle(Brush`es.White, -HorizontalIndex + 1, 1 + OVERLINEHEIGHT, ContentWidth - 2, OVERLINEHEIGHT + 1 - 2);
+            graphics.FillRectangle(Brushe`s.White, -HorizontalIndex + 1, 1 + 2 * OVERLINEHEIGHT, ContentWidth - 2, OVERLINEHEIGHT + 1 - 2);
+            graphics.Draw_String("Origin", Font, Brush`es.Black, -HorizontalIndex + 5, 1);
+            graphics.Draw_String(loopStartLabel, Font, Br`ushes.Black, -HorizontalIndex + 5, 1 + OVERLINEHEIGHT);
+            graphics.Draw_String(loopEndLabel, Font, Brush`es.Black, -HorizontalIndex + 5, 1 + 2 * OVERLINEHEIGHT);
 #else
             {
                 string[] lines = new string[] { "Origin", loopStartLabel, loopEndLabel };
@@ -182,9 +303,9 @@ namespace OutOfPhase
                 {
                     const TextFormatFlags format = TextFormatFlags.Left | TextFormatFlags.LeftAndRightPadding
                         | TextFormatFlags.NoPrefix | TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.SingleLine;
-                    graphics.FillRectangle(Brushes.White, rect);
-                    TextRenderer.DrawText(graphics, line, Font, rect, Color.Black, Color.White, format);
-                    graphics.DrawLine(Pens.Black, 0, rect.Y + rect.Height, ClientSize.Width, rect.Y + rect.Height);
+                    graphics.FillRectangle(backBrush, rect);
+                    MyTextRenderer.DrawText(graphics, line, Font, rect, ForeColor, BackColor, format);
+                    graphics.DrawLine(forePen, 0, rect.Y + rect.Height, ClientSize.Width, rect.Y + rect.Height);
                     rect.Offset(0, OVERLINEHEIGHT);
                 }
             }
@@ -210,7 +331,7 @@ namespace OutOfPhase
                         new Rectangle(boundsWave.Y, boundsWave.Y + boundsWave.Height / 2 - 1 + 1, boundsWave.Width - 1, boundsWave.Height - boundsWave.Height / 2 - 1));
 #endif
                     graphics.DrawLine(
-                        Pens.Gray,
+                        trimPen,
                         0,
                         boundsWave.Y + boundsWave.Height / 2 - 1,
                         ContentWidth,
@@ -228,16 +349,16 @@ namespace OutOfPhase
             }
 
             int Location = (int)((origin - HorizontalIndex) / xScale);
-            graphics.FillPolygon(Brushes.Black, new Point[] { new Point(-4 + Location, 0), new Point(4 + Location, 0), new Point(Location, 8 - 1) });
-            graphics.DrawLine(Pens.Black, Location, 0, Location, Height);
+            graphics.FillPolygon(foreBrush, new Point[] { new Point(-4 + Location, 0), new Point(4 + Location, 0), new Point(Location, 8 - 1) });
+            graphics.DrawLine(forePen, Location, 0, Location, Height);
 
             Location = (int)((loopStart - HorizontalIndex) / xScale);
-            graphics.FillPolygon(Brushes.Black, new Point[] { new Point(-4 + Location, OVERLINEHEIGHT), new Point(4 + Location, OVERLINEHEIGHT), new Point(Location, 7 + OVERLINEHEIGHT) });
-            graphics.DrawLine(Pens.Black, Location, OVERLINEHEIGHT, Location, Height);
+            graphics.FillPolygon(foreBrush, new Point[] { new Point(-4 + Location, OVERLINEHEIGHT), new Point(4 + Location, OVERLINEHEIGHT), new Point(Location, 7 + OVERLINEHEIGHT) });
+            graphics.DrawLine(forePen, Location, OVERLINEHEIGHT, Location, Height);
 
             Location = (int)((loopEnd - HorizontalIndex) / xScale);
-            graphics.FillPolygon(Brushes.Black, new Point[] { new Point(-4 + Location, 2 * OVERLINEHEIGHT), new Point(4 + Location, 2 * OVERLINEHEIGHT), new Point(Location, 7 + 2 * OVERLINEHEIGHT) });
-            graphics.DrawLine(Pens.Black, Location, 2 * OVERLINEHEIGHT, Location, Height);
+            graphics.FillPolygon(foreBrush, new Point[] { new Point(-4 + Location, 2 * OVERLINEHEIGHT), new Point(4 + Location, 2 * OVERLINEHEIGHT), new Point(Location, 7 + 2 * OVERLINEHEIGHT) });
+            graphics.DrawLine(forePen, Location, 2 * OVERLINEHEIGHT, Location, Height);
         }
 
         private void RedrawSamplePartial(Graphics graphics, int x, int width)
@@ -283,18 +404,18 @@ namespace OutOfPhase
 
                 if ((Index >= selectionStart) && (Index < selectionEnd))
                 {
-                    DotColor = Brushes.White;
-                    BackgroundColor = Brushes.Black;
+                    DotColor = Focused ? selectedForeBrush : selectedForeBrushInactive;
+                    BackgroundColor = Focused ? selectedBackBrush : selectedBackBrushInactive;
                 }
                 else if ((selectionStart == selectionEnd) && (Index == selectionStart))
                 {
-                    DotColor = Brushes.Black;
-                    BackgroundColor = Brushes.LightGray;
+                    DotColor = foreBrush;
+                    BackgroundColor = insertionPointBrush;
                 }
                 else
                 {
-                    DotColor = Brushes.Black;
-                    BackgroundColor = Brushes.White;
+                    DotColor = foreBrush;
+                    BackgroundColor = backBrush;
                 }
 
                 if ((Index >= 0) && (Index < NumSampleFrames))
@@ -399,7 +520,7 @@ namespace OutOfPhase
                 else
                 {
                     graphics.FillRectangle(
-                        Brushes.Wheat,
+                        afterEndBrush,
                         X,
                         YMin,
                         1,
@@ -432,6 +553,7 @@ namespace OutOfPhase
             }
         }
 
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int VisibleFrames
         {
             get
@@ -469,7 +591,7 @@ namespace OutOfPhase
                         //SetSelection(BaseSelectionStart, BaseSelectionEnd, true/*startValidatePriority*/);
                     }
 
-                    mouseMoveMethod = delegate(MouseEventArgs e_, bool final)
+                    mouseMoveMethod = delegate (MouseEventArgs e_, bool final)
                     {
                         MouseMoveSelection(e_, final, BaseSelectionStart, BaseSelectionEnd);
                     };
@@ -700,6 +822,7 @@ namespace OutOfPhase
         }
         public event EventHandler SelectionEndChanged;
 
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool SelectionNonEmpty { get { return selectionStart < selectionEnd; } }
 
         public void SetSelection(int start, int end, bool startValidatePriority)
@@ -802,5 +925,29 @@ namespace OutOfPhase
 
         [Browsable(true), Category("Appearance"), DefaultValue("")]
         public string LoopEndLabel { get { return loopEndLabel; } set { loopEndLabel = value; Invalidate(); } }
+
+
+        //
+
+        [Category("Appearance"), DefaultValue(typeof(Color), "Highlight")]
+        public Color SelectedBackColor { get { return selectedBackColor; } set { selectedBackColor = value; } }
+
+        [Category("Appearance"), DefaultValue(typeof(Color), "Control")]
+        public Color SelectedForeColor { get { return selectedForeColor; } set { selectedForeColor = value; } }
+
+        [Category("Appearance"), DefaultValue(typeof(Color), "InactiveCaption")]
+        public Color SelectedBackColorInactive { get { return selectedBackColorInactive; } set { selectedBackColorInactive = value; } }
+
+        [Category("Appearance"), DefaultValue(typeof(Color), "ControlText")]
+        public Color SelectedForeColorInactive { get { return selectedForeColorInactive; } set { selectedForeColorInactive = value; } }
+
+        [Category("Appearance"), DefaultValue(typeof(Color), "Info")]
+        public Color AfterEndColor { get { return afterEndColor; } set { afterEndColor = value; } }
+
+        [Category("Appearance"), DefaultValue(typeof(Color), "ButtonShadow")]
+        public Color InsertionPointColor { get { return insertionPointColor; } set { insertionPointColor = value; } }
+
+        [Category("Appearance"), DefaultValue(typeof(Color), "ButtonShadow")]
+        public Color TrimColor { get { return trimColor; } set { trimColor = value; } }
     }
 }

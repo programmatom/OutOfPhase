@@ -72,6 +72,12 @@ namespace OutOfPhase
             noteNoteObjectRecBindingSource.Add(this.note);
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
         private void buttonOK_Click(object sender, EventArgs e)
         {
             if (!ValidateChildren())

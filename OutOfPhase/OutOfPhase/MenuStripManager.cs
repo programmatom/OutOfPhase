@@ -113,6 +113,7 @@ namespace OutOfPhase
             textEditorWindowHelper.BalanceToolStripMenuItem = this.balanceToolStripMenuItem;
             textEditorWindowHelper.FindToolStripMenuItem = this.findToolStripMenuItem;
             textEditorWindowHelper.FindAgainToolStripMenuItem = this.findNextToolStripMenuItem;
+            textEditorWindowHelper.EnterSelectionToolStripMenuItem = this.enterSelectionToolStripMenuItem;
             textEditorWindowHelper.ReplaceAndFindAgainToolStripMenuItem = this.replaceAndFindNextToolStripMenuItem;
             textEditorWindowHelper.GoToLineToolStripMenuItem = this.goToLineToolStripMenuItem;
         }

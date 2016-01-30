@@ -45,6 +45,7 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            this.textBoxFormula.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxFormula.AutoIndent = Program.Config.AutoIndent;
 
             menuStripManager.SetGlobalHandler(mainWindow);
@@ -123,6 +124,12 @@ namespace OutOfPhase
             base.OnDeactivate(e);
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            dpiChangeHelper.WndProcDelegate(ref m);
+            base.WndProc(ref m);
+        }
+
 
         //
 
@@ -142,7 +149,7 @@ namespace OutOfPhase
             return algoSampObject.EnsureBuilt(
                 force,
                 new PcodeExterns(mainWindow),
-                delegate(object source, BuildErrorInfo errorInfo)
+                delegate (object source, BuildErrorInfo errorInfo)
                 {
                     Debug.Assert(source == algoSampObject);
                     HighlightLine(errorInfo.LineNumber);
@@ -180,6 +187,7 @@ namespace OutOfPhase
         public void HighlightLine(int line)
         {
             line--;
+            textBoxFormula.Focus();
             textBoxFormula.SetSelectionLine(line);
         }
 
@@ -234,7 +242,7 @@ namespace OutOfPhase
                 {
                     NumBitsType numBits = NumBitsType.Max;
                     float[] buffer = (float[])algoSampObject.SampleData.Buffer.Clone();
-                    SampConv.QuantizeAndClampVector(buffer, numBits);
+                    SampConv.QuantizeAndClampVector(buffer, numBits); // ensure target bit depth is honored
                     SampleObjectRec sampleObject = new SampleObjectRec(
                         mainWindow.Document,
                         buffer,

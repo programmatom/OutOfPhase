@@ -55,22 +55,25 @@ namespace OutOfPhase
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.menuStripManager = new OutOfPhase.MenuStripManager();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.panel1 = new System.Windows.Forms.Panel();
+            this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
+            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // textBox
             // 
             this.textBox.AutoScroll = true;
             this.textBox.AutoScrollMinSize = new System.Drawing.Size(882, 13);
-            this.textBox.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.textBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textBox.BackColor = System.Drawing.SystemColors.Window;
             this.textBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBox.Font = new System.Drawing.Font("Consolas", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.textBox.Location = new System.Drawing.Point(3, 33);
+            this.textBox.Location = new System.Drawing.Point(0, 0);
             this.textBox.Name = "textBox";
-            this.textBox.Size = new System.Drawing.Size(884, 139);
+            this.textBox.Size = new System.Drawing.Size(882, 143);
             this.textBox.TabIndex = 0;
             this.textBox.TextService = TextEditor.TextService.Simple;
+            this.textBox.SimpleNavigation = true;
             this.textBox.TextStorageFactory = this.stringStorageFactory;
             // 
             // textEditorWindowHelper
@@ -97,9 +100,10 @@ namespace OutOfPhase
             // menuStripManager
             // 
             this.menuStripManager.AutoSize = true;
-            this.menuStripManager.Location = new System.Drawing.Point(3, 3);
+            this.menuStripManager.Location = new System.Drawing.Point(0, 0);
+            this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(884, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(890, 24);
             this.menuStripManager.TabIndex = 1;
             // 
             // tableLayoutPanel1
@@ -107,7 +111,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ColumnCount = 1;
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Controls.Add(this.menuStripManager, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.textBox, 0, 1);
+            this.tableLayoutPanel1.Controls.Add(this.panel1, 0, 1);
             this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -116,6 +120,20 @@ namespace OutOfPhase
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(890, 175);
             this.tableLayoutPanel1.TabIndex = 2;
+            // 
+            // panel1
+            // 
+            this.panel1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.panel1.Controls.Add(this.textBox);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(3, 27);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(884, 145);
+            this.panel1.TabIndex = 2;
+            // 
+            // dpiChangeHelper
+            // 
+            this.dpiChangeHelper.Form = this;
             // 
             // InteractionWindow
             // 
@@ -127,6 +145,7 @@ namespace OutOfPhase
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.tableLayoutPanel1.ResumeLayout(false);
             this.tableLayoutPanel1.PerformLayout();
+            this.panel1.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -138,6 +157,7 @@ namespace OutOfPhase
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private MenuStripManager menuStripManager;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
-
+        private System.Windows.Forms.Panel panel1;
+        private DpiChangeHelper dpiChangeHelper;
     }
 }
