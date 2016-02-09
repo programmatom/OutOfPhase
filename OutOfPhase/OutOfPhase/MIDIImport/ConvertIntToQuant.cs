@@ -347,7 +347,6 @@ namespace OutOfPhase
                     case IntEventType.eIntervalCommentEvent:
                         {
                             QuantEventRec QuantEvent;
-                            char[] StringCopy;
                             /* input values */
                             int StartTime;
                             string OriginalString;

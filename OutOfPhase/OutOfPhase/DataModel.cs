@@ -1767,7 +1767,7 @@ namespace OutOfPhase
             "# This expression applies to the ENTIRE sample." + Environment.NewLine +
             "# loopstart[1-3], loopend[1-3], origin, samplingrate, selectstart,  selectend : int" + Environment.NewLine +
             "# loopbidir[1-3] : bool" + Environment.NewLine +
-            "# naturalfrequency : double; [leftdata, rightdata | data] : fixedarray" + Environment.NewLine;
+            "# naturalfrequency : double; [leftdata, rightdata | data] : floatarray" + Environment.NewLine;
         public const string SampleFormula_PropertyName = "SampleFormula";
         [Bindable(true)]
         [Searchable]
@@ -2416,7 +2416,7 @@ namespace OutOfPhase
         private string _AlgoSampFormula =
             "# samplingrate, origin, loopstart1, loopstart2, loopstart3 : integer" + Environment.NewLine +
             "# loopend1, loopend2, loopend3 : integer" + Environment.NewLine +
-            "# naturalfrequency : double; [data | leftdata, rightdata] : fixedarray" + Environment.NewLine;
+            "# naturalfrequency : double; [data | leftdata, rightdata] : floatarray" + Environment.NewLine;
         public const string AlgoSampFormula_PropertyName = "AlgoSampFormula";
         [Bindable(true)]
         [Searchable]
@@ -3073,7 +3073,7 @@ namespace OutOfPhase
 
 
         private string _WaveTableFormula =
-            "# data : fixedarray; frames : integer; tables : integer" + Environment.NewLine;
+            "# data : floatarray; frames : integer; tables : integer" + Environment.NewLine;
         public const string WaveTableFormula_PropertyName = "WaveTableFormula";
         [Bindable(true)]
         [Searchable]
@@ -3116,10 +3116,12 @@ namespace OutOfPhase
             }
         }
 
-        private int _TestSamplingRate = 44100;
+        private int _TestSamplingRate = 44100; // TODO: deprecated - remove from file format
+#if false // TODO: deprecated - remove from file format
         public const string TestSamplingRate_PropertyName = "TestSamplingRate";
         [Bindable(true)]
         public int TestSamplingRate { get { return _TestSamplingRate; } set { Patch(value, ref _TestSamplingRate, TestSamplingRate_PropertyName); } }
+#endif
 
 
         private short _SavedWindowXLoc;
@@ -3405,7 +3407,7 @@ namespace OutOfPhase
         public string Name { get { return _Name; } set { Patch(value, ref _Name, Name_PropertyName); } }
 
         private string _AlgoWaveTableFormula =
-            "# frames : integer; tables : integer; data : fixedarray" + Environment.NewLine;
+            "# frames : integer; tables : integer; data : floatarray" + Environment.NewLine;
         public const string AlgoWaveTableFormula_PropertyName = "AlgoWaveTableFormula";
         [Bindable(true)]
         [Searchable]
@@ -3750,7 +3752,8 @@ namespace OutOfPhase
     public partial class ScoreEffectsRec : HierarchicalBindingBuildable
     {
         private string _Source =
-            "#score effects" + Environment.NewLine;
+            "#score effects" + Environment.NewLine + Environment.NewLine +
+            "scoreeffect suppressinitialsilence;" + Environment.NewLine;
         public const string Source_PropertyName = "Source";
         [Bindable(true)]
         [Searchable]
@@ -4614,13 +4617,6 @@ namespace OutOfPhase
         public const string DefaultPitchDisplacementDepthAdjust_PropertyName = "DefaultPitchDisplacementDepthAdjust";
         [Bindable(true)]
         public double DefaultPitchDisplacementDepthAdjust { get { return _DefaultPitchDisplacementDepthAdjust; } set { Patch(value, ref _DefaultPitchDisplacementDepthAdjust, DefaultPitchDisplacementDepthAdjust_PropertyName); } }
-
-#if false // TODO: remove - apparently never implemented
-        private NoteFlags _DefaultPitchDisplacementDepthAdjustModeFlag;
-        public const string DefaultPitchDisplacementDepthAdjustModeFlag_PropertyName = "DefaultPitchDisplacementDepthAdjustModeFlag";
-        [Bindable(true)]
-        public NoteFlags DefaultPitchDisplacementDepthAdjustModeFlag { get { return _DefaultPitchDisplacementDepthAdjustModeFlag; } set { PatchObject(value, ref _DefaultPitchDisplacementDepthAdjustModeFlag, DefaultPitchDisplacementDepthAdjustModeFlag_PropertyName); } }
-#endif
 
         private double _DefaultPitchDisplacementRateAdjust = 1;
         public const string DefaultPitchDisplacementRateAdjust_PropertyName = "DefaultPitchDisplacementRateAdjust";
@@ -5914,7 +5910,7 @@ namespace OutOfPhase
             }
         }
 
-        #region IList
+#region IList
         bool IList.IsReadOnly { get { return false; } }
         bool IList.IsFixedSize { get { return false; } }
         int ICollection.Count { get { return Count; } }
@@ -5971,7 +5967,7 @@ namespace OutOfPhase
         {
             return NoteArray.GetEnumerator();
         }
-        #endregion
+#endregion
     }
 
     public abstract class NoteObjectRec : HierarchicalBindingBase

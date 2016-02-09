@@ -38,17 +38,9 @@ namespace OutOfPhase
             double TableIndex,
             int NumTables,
             int Frames,
-            float[][] Matrix)
+            float[][] Matrix,
+            bool EnableCrossWaveTableInterpolation)
         {
-            Fixed64 FrameIndex;
-            float[] WaveData0;
-            int ArraySubscript;
-            float RightWeight;
-            float Result;
-            float Left0Value;
-            float Right0Value;
-            int IntegerTableIndex;
-
 #if DEBUG
             if ((TableIndex < 0) || (TableIndex > NumTables))
             {
@@ -58,35 +50,29 @@ namespace OutOfPhase
             }
 #endif
 
-            FrameIndex = (Fixed64)Phase;
+            Fixed64 FrameIndex = (Fixed64)Phase;
 
-            IntegerTableIndex = (int)TableIndex;
+            int IntegerTableIndex = (int)TableIndex;
 
-            WaveData0 = Matrix[IntegerTableIndex];
+            float[] WaveData0 = Matrix[IntegerTableIndex];
 
-            RightWeight = FrameIndex.FracF;
-            ArraySubscript = FrameIndex.Int & (Frames - 1);
+            float RightWeight = FrameIndex.FracF;
+            int ArraySubscript = FrameIndex.Int & (Frames - 1);
 
             /* L+F(R-L) */
-            Left0Value = WaveData0[ArraySubscript];
-            Right0Value = WaveData0[ArraySubscript + 1];
-            Result = Left0Value + (RightWeight * (Right0Value - Left0Value));
+            float Left0Value = WaveData0[ArraySubscript];
+            float Right0Value = WaveData0[ArraySubscript + 1];
+            float Result = Left0Value + (RightWeight * (Right0Value - Left0Value));
 
-            if (IntegerTableIndex != NumTables - 1)
+            if ((IntegerTableIndex != NumTables - 1) && EnableCrossWaveTableInterpolation)
             {
-                float[] WaveData1;
-                float Wave1Weight;
-                float Left1Value;
-                float Right1Value;
-                float Wave0Temp;
-
-                WaveData1 = Matrix[IntegerTableIndex + 1];
-                Wave1Weight = (int)(TableIndex - IntegerTableIndex);
+                float[] WaveData1 = Matrix[IntegerTableIndex + 1];
+                float Wave1Weight = (int)(TableIndex - IntegerTableIndex);
 
                 /* L+F(R-L) -- applied twice */
-                Left1Value = WaveData1[ArraySubscript];
-                Right1Value = WaveData1[ArraySubscript + 1];
-                Wave0Temp = Result;
+                float Left1Value = WaveData1[ArraySubscript];
+                float Right1Value = WaveData1[ArraySubscript + 1];
+                float Wave0Temp = Result;
                 Result = Wave0Temp + (Wave1Weight * (Left1Value + (RightWeight
                     * (Right1Value - Left1Value)) - Wave0Temp));
             }

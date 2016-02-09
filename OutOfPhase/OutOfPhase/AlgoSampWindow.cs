@@ -186,9 +186,9 @@ namespace OutOfPhase
 
         public void HighlightLine(int line)
         {
-            line--;
             textBoxFormula.Focus();
-            textBoxFormula.SetSelectionLine(line);
+            textBoxFormula.SetSelectionLine(line - 1);
+            textBoxFormula.ScrollToSelection();
         }
 
 

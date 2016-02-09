@@ -75,7 +75,7 @@ namespace OutOfPhase
         {
             this.FunctionName = FuncName;
 
-            this.NumParameters = SymbolListRec.GetSymbolListLength(Parameters);
+            this.NumParameters = SymbolListRec.GetLength(Parameters);
             this.ParameterTypeList = new DataTypes[this.NumParameters];
 
             this.Filename = Filename;
@@ -84,8 +84,8 @@ namespace OutOfPhase
             int ParamIndex = 0;
             while (FormalParameterScanner != null)
             {
-                this.ParameterTypeList[ParamIndex] = FormalParameterScanner.GetFirstFromSymbolList().GetSymbolVariableDataType();
-                FormalParameterScanner = FormalParameterScanner.GetRestListFromSymbolList();
+                this.ParameterTypeList[ParamIndex] = FormalParameterScanner.First.VariableDataType;
+                FormalParameterScanner = FormalParameterScanner.Rest;
                 ParamIndex++;
             }
 
@@ -94,7 +94,6 @@ namespace OutOfPhase
             this.ReturnType = ReturnType;
         }
 
-#if true // TODO:experimental
         public CILObject CILObject
         {
             get
@@ -106,6 +105,5 @@ namespace OutOfPhase
                 Code.cilObject = value;
             }
         }
-#endif
     }
 }

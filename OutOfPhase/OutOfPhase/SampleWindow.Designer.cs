@@ -261,7 +261,6 @@ namespace OutOfPhase
             // 
             // sampleControl
             // 
-            this.sampleControl.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.sampleControl.BackColor = System.Drawing.SystemColors.Window;
             this.tableLayoutPanel2.SetColumnSpan(this.sampleControl, 10);
             this.sampleControl.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -498,10 +497,10 @@ namespace OutOfPhase
             this.textBoxFunction.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxFunction.Location = new System.Drawing.Point(0, 0);
             this.textBoxFunction.Name = "textBoxFunction";
+            this.textBoxFunction.SimpleNavigation = true;
             this.textBoxFunction.Size = new System.Drawing.Size(960, 72);
             this.textBoxFunction.TabIndex = 28;
             this.textBoxFunction.TextService = TextEditor.TextService.Simple;
-            this.textBoxFunction.SimpleNavigation = true;
             this.textBoxFunction.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource

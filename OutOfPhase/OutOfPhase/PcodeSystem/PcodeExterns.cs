@@ -51,6 +51,8 @@ namespace OutOfPhase
             public EvalErrors Error { get { return error; } }
         }
 
+        // SECURITY: TODO: review - invoke is compiler-generated at this point. If it is ever opened up to user-specified
+        // names, there needs to be some security checks to prevent invocation of unintended methods on this object.
         public EvalErrors Invoke(string name, object[] args, out object returnValue)
         {
             returnValue = null;
@@ -276,92 +278,6 @@ namespace OutOfPhase
                 throw new EvalErrorException(EvalErrors.eEvalGetSampleNotDefined);
             }
             return waveTable.NumFrames;
-        }
-
-
-        private ArrayHandleFloat VectorSquare(
-            ArrayHandleFloat vector,
-            int start,
-            int length)
-        {
-            for (int i = 0; i < length; i++)
-            {
-                vector.floats[i + start] = vector.floats[i + start] * vector.floats[i + start];
-            }
-            return vector;
-        }
-
-        private ArrayHandleFloat VectorSquareRoot(
-            ArrayHandleFloat vector,
-            int start,
-            int length)
-        {
-            for (int i = 0; i < length; i++)
-            {
-                vector.floats[i + start] = (float)Math.Sqrt(vector.floats[i + start]);
-            }
-            return vector;
-        }
-
-
-        private ArrayHandleFloat FirstOrderLowpass(
-            ArrayHandleFloat vector,
-            int start,
-            int length,
-            double samplingRate,
-            double cutoff)
-        {
-            Synthesizer.FirstOrderLowpassRec Filter = new Synthesizer.FirstOrderLowpassRec();
-
-            Synthesizer.FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
-                Filter,
-                cutoff,
-                samplingRate);
-
-            // this is not a performance-critical code path but the filter function requires vector alignment.
-            using (Synthesizer.AlignedWorkspace aligned = new Synthesizer.AlignedWorkspace(length))
-            {
-                Synthesizer.FloatVectorCopyUnaligned(vector.floats, start, aligned.Base, aligned.Offset, length);
-                Synthesizer.FirstOrderLowpassRec.ApplyFirstOrderLowpassVectorModify(
-                    Filter,
-                    aligned.Base,
-                    aligned.Offset,
-                    length);
-                Synthesizer.FloatVectorCopyUnaligned(aligned.Base, aligned.Offset, vector.floats, start, length);
-            }
-
-            return vector;
-        }
-
-        private ArrayHandleFloat ButterworthBandpass(
-            ArrayHandleFloat vector,
-            int start,
-            int length,
-            double samplingRate,
-            double cutoff,
-            double bandwidth)
-        {
-            Synthesizer.ButterworthBandpassRec Filter = new Synthesizer.ButterworthBandpassRec();
-
-            Synthesizer.ButterworthBandpassRec.SetButterworthBandpassCoefficients(
-                Filter,
-                cutoff,
-                bandwidth,
-                samplingRate);
-
-            // this is not a performance-critical code path but the filter function requires vector alignment.
-            using (Synthesizer.AlignedWorkspace aligned = new Synthesizer.AlignedWorkspace(length))
-            {
-                Synthesizer.FloatVectorCopyUnaligned(vector.floats, start, aligned.Base, aligned.Offset, length);
-                Synthesizer.ButterworthBandpassRec.ApplyButterworthBandpassVectorModify(
-                    Filter,
-                    aligned.Base,
-                    aligned.Offset,
-                    length);
-                Synthesizer.FloatVectorCopyUnaligned(aligned.Base, aligned.Offset, vector.floats, start, length);
-            }
-
-            return vector;
         }
 
 

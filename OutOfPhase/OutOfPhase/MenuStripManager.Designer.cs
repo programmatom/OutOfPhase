@@ -97,6 +97,7 @@ namespace OutOfPhase
             this.findToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.findNextToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.replaceAndFindNextToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.enterSelectionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.findEverywhereToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem14 = new System.Windows.Forms.ToolStripSeparator();
             this.shiftLeftToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -150,7 +151,7 @@ namespace OutOfPhase
             this.globalSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem21 = new System.Windows.Forms.ToolStripSeparator();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.enterSelectionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.envelopeSegmentCalculatorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -516,6 +517,14 @@ namespace OutOfPhase
             this.replaceAndFindNextToolStripMenuItem.Size = new System.Drawing.Size(254, 22);
             this.replaceAndFindNextToolStripMenuItem.Text = "Replace and Find Next";
             // 
+            // enterSelectionToolStripMenuItem
+            // 
+            this.enterSelectionToolStripMenuItem.Name = "enterSelectionToolStripMenuItem";
+            this.enterSelectionToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)(((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift) 
+            | System.Windows.Forms.Keys.F)));
+            this.enterSelectionToolStripMenuItem.Size = new System.Drawing.Size(254, 22);
+            this.enterSelectionToolStripMenuItem.Text = "Enter Selection";
+            // 
             // findEverywhereToolStripMenuItem
             // 
             this.findEverywhereToolStripMenuItem.Name = "findEverywhereToolStripMenuItem";
@@ -585,6 +594,7 @@ namespace OutOfPhase
             this.buildObjectToolStripMenuItem,
             this.disassembleToolStripMenuItem,
             this.evaluateToolStripMenuItem,
+            this.envelopeSegmentCalculatorToolStripMenuItem,
             this.toolStripMenuItem8,
             this.insertTableToolStripMenuItem,
             this.deleteTableToolStripMenuItem,
@@ -613,148 +623,148 @@ namespace OutOfPhase
             // 
             this.buildAllToolStripMenuItem.Name = "buildAllToolStripMenuItem";
             this.buildAllToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.U)));
-            this.buildAllToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.buildAllToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.buildAllToolStripMenuItem.Text = "Build All";
             // 
             // unbuildAllToolStripMenuItem
             // 
             this.unbuildAllToolStripMenuItem.Name = "unbuildAllToolStripMenuItem";
-            this.unbuildAllToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.unbuildAllToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.unbuildAllToolStripMenuItem.Text = "Unbuild All";
             // 
             // buildObjectToolStripMenuItem
             // 
             this.buildObjectToolStripMenuItem.Name = "buildObjectToolStripMenuItem";
             this.buildObjectToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.K)));
-            this.buildObjectToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.buildObjectToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.buildObjectToolStripMenuItem.Text = "Build Object";
             // 
             // disassembleToolStripMenuItem
             // 
             this.disassembleToolStripMenuItem.Name = "disassembleToolStripMenuItem";
-            this.disassembleToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.disassembleToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.disassembleToolStripMenuItem.Text = "Disassemble";
             // 
             // evaluateToolStripMenuItem
             // 
             this.evaluateToolStripMenuItem.Name = "evaluateToolStripMenuItem";
             this.evaluateToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.E)));
-            this.evaluateToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.evaluateToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.evaluateToolStripMenuItem.Text = "Evaluate";
             // 
             // toolStripMenuItem8
             // 
             this.toolStripMenuItem8.Name = "toolStripMenuItem8";
-            this.toolStripMenuItem8.Size = new System.Drawing.Size(224, 6);
+            this.toolStripMenuItem8.Size = new System.Drawing.Size(226, 6);
             // 
             // insertTableToolStripMenuItem
             // 
             this.insertTableToolStripMenuItem.Name = "insertTableToolStripMenuItem";
-            this.insertTableToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.insertTableToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.insertTableToolStripMenuItem.Text = "Insert Table...";
             // 
             // deleteTableToolStripMenuItem
             // 
             this.deleteTableToolStripMenuItem.Name = "deleteTableToolStripMenuItem";
-            this.deleteTableToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.deleteTableToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.deleteTableToolStripMenuItem.Text = "Delete Table...";
             // 
             // toolStripMenuItem23
             // 
             this.toolStripMenuItem23.Name = "toolStripMenuItem23";
-            this.toolStripMenuItem23.Size = new System.Drawing.Size(224, 6);
+            this.toolStripMenuItem23.Size = new System.Drawing.Size(226, 6);
             // 
             // loop1ToolStripMenuItem
             // 
             this.loop1ToolStripMenuItem.Name = "loop1ToolStripMenuItem";
-            this.loop1ToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.loop1ToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.loop1ToolStripMenuItem.Text = "Loop 1";
             // 
             // loop2ToolStripMenuItem
             // 
             this.loop2ToolStripMenuItem.Name = "loop2ToolStripMenuItem";
-            this.loop2ToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.loop2ToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.loop2ToolStripMenuItem.Text = "Loop 2";
             // 
             // loop3ToolStripMenuItem
             // 
             this.loop3ToolStripMenuItem.Name = "loop3ToolStripMenuItem";
-            this.loop3ToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.loop3ToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.loop3ToolStripMenuItem.Text = "Loop 3";
             // 
             // toolStripMenuItem18
             // 
             this.toolStripMenuItem18.Name = "toolStripMenuItem18";
-            this.toolStripMenuItem18.Size = new System.Drawing.Size(224, 6);
+            this.toolStripMenuItem18.Size = new System.Drawing.Size(226, 6);
             // 
             // openAsWaveTableToolStripMenuItem
             // 
             this.openAsWaveTableToolStripMenuItem.Name = "openAsWaveTableToolStripMenuItem";
-            this.openAsWaveTableToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.openAsWaveTableToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.openAsWaveTableToolStripMenuItem.Text = "Open As Wave Table";
             // 
             // openAsSampleToolStripMenuItem
             // 
             this.openAsSampleToolStripMenuItem.Name = "openAsSampleToolStripMenuItem";
-            this.openAsSampleToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.openAsSampleToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.openAsSampleToolStripMenuItem.Text = "Open As Sample";
             // 
             // toolStripMenuItem12
             // 
             this.toolStripMenuItem12.Name = "toolStripMenuItem12";
-            this.toolStripMenuItem12.Size = new System.Drawing.Size(224, 6);
+            this.toolStripMenuItem12.Size = new System.Drawing.Size(226, 6);
             // 
             // newSampleToolStripMenuItem
             // 
             this.newSampleToolStripMenuItem.Name = "newSampleToolStripMenuItem";
-            this.newSampleToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.newSampleToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.newSampleToolStripMenuItem.Text = "New Sample";
             // 
             // newAlgorithmicSampleToolStripMenuItem
             // 
             this.newAlgorithmicSampleToolStripMenuItem.Name = "newAlgorithmicSampleToolStripMenuItem";
-            this.newAlgorithmicSampleToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.newAlgorithmicSampleToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.newAlgorithmicSampleToolStripMenuItem.Text = "New Algorithmic Sample";
             // 
             // newWaveTableToolStripMenuItem
             // 
             this.newWaveTableToolStripMenuItem.Name = "newWaveTableToolStripMenuItem";
-            this.newWaveTableToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.newWaveTableToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.newWaveTableToolStripMenuItem.Text = "New Wave Table";
             // 
             // newAlgorithmicWaveTableToolStripMenuItem
             // 
             this.newAlgorithmicWaveTableToolStripMenuItem.Name = "newAlgorithmicWaveTableToolStripMenuItem";
-            this.newAlgorithmicWaveTableToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.newAlgorithmicWaveTableToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.newAlgorithmicWaveTableToolStripMenuItem.Text = "New Algorithmic Wave Table";
             // 
             // newFunctionModuleToolStripMenuItem
             // 
             this.newFunctionModuleToolStripMenuItem.Name = "newFunctionModuleToolStripMenuItem";
-            this.newFunctionModuleToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.newFunctionModuleToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.newFunctionModuleToolStripMenuItem.Text = "New Function Module";
             // 
             // newInstrumentToolStripMenuItem
             // 
             this.newInstrumentToolStripMenuItem.Name = "newInstrumentToolStripMenuItem";
-            this.newInstrumentToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.newInstrumentToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.newInstrumentToolStripMenuItem.Text = "New Instrument";
             // 
             // newTrackToolStripMenuItem
             // 
             this.newTrackToolStripMenuItem.Name = "newTrackToolStripMenuItem";
-            this.newTrackToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.newTrackToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.newTrackToolStripMenuItem.Text = "New Track";
             // 
             // toolStripMenuItem9
             // 
             this.toolStripMenuItem9.Name = "toolStripMenuItem9";
-            this.toolStripMenuItem9.Size = new System.Drawing.Size(224, 6);
+            this.toolStripMenuItem9.Size = new System.Drawing.Size(226, 6);
             // 
             // deleteObjectToolStripMenuItem
             // 
             this.deleteObjectToolStripMenuItem.Name = "deleteObjectToolStripMenuItem";
-            this.deleteObjectToolStripMenuItem.Size = new System.Drawing.Size(227, 22);
+            this.deleteObjectToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.deleteObjectToolStripMenuItem.Text = "Delete Object";
             // 
             // trackToolStripMenuItem
@@ -872,12 +882,11 @@ namespace OutOfPhase
             this.aboutToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
             this.aboutToolStripMenuItem.Text = "About";
             // 
-            // enterSelectionToolStripMenuItem
+            // envelopeSegmentCalculatorToolStripMenuItem
             // 
-            this.enterSelectionToolStripMenuItem.Name = "enterSelectionToolStripMenuItem";
-            this.enterSelectionToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.E)));
-            this.enterSelectionToolStripMenuItem.Size = new System.Drawing.Size(254, 22);
-            this.enterSelectionToolStripMenuItem.Text = "Enter Selection";
+            this.envelopeSegmentCalculatorToolStripMenuItem.Name = "envelopeSegmentCalculatorToolStripMenuItem";
+            this.envelopeSegmentCalculatorToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
+            this.envelopeSegmentCalculatorToolStripMenuItem.Text = "Envelope Segment Calculator";
             // 
             // MenuStripManager
             // 
@@ -997,5 +1006,6 @@ namespace OutOfPhase
         public System.Windows.Forms.ToolStripMenuItem toolsToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem findEverywhereToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem enterSelectionToolStripMenuItem;
+        public System.Windows.Forms.ToolStripMenuItem envelopeSegmentCalculatorToolStripMenuItem;
     }
 }

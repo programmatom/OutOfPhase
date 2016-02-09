@@ -29,6 +29,8 @@ namespace OutOfPhase
 {
     public enum DataTypes
     {
+        eInvalidDataType = 0,
+
         eBoolean,
         eInteger,
         eFloat,
@@ -38,8 +40,6 @@ namespace OutOfPhase
         eArrayOfInteger,
         eArrayOfFloat,
         eArrayOfDouble,
-
-        eInvalidDataType,
     }
 
     /* Stack indices are non-positive:  0 is the word on the */
@@ -154,17 +154,40 @@ namespace OutOfPhase
         epOperationDoubleToBoolean,
         epOperationDoubleToInteger,
         epOperationDoubleToFloat,
-        epOperationDoubleSin,
-        epOperationDoubleCos,
-        epOperationDoubleTan,
-        epOperationDoubleAsin,
-        epOperationDoubleAcos,
-        epOperationDoubleAtan,
-        epOperationDoubleLn,
-        epOperationDoubleExp,
-        epOperationDoubleSqrt,
-        epOperationDoubleSqr,
-        epOperationDoublePower,
+        epOperationDoubleSinF,
+        epOperationDoubleSinD,
+        epOperationDoubleCosF,
+        epOperationDoubleCosD,
+        epOperationDoubleTanF,
+        epOperationDoubleTanD,
+        epOperationDoubleAsinF,
+        epOperationDoubleAsinD,
+        epOperationDoubleAcosF,
+        epOperationDoubleAcosD,
+        epOperationDoubleAtanF,
+        epOperationDoubleAtanD,
+        epOperationDoubleLnF,
+        epOperationDoubleLnD,
+        epOperationDoubleExpF,
+        epOperationDoubleExpD,
+        epOperationDoubleSqrtF,
+        epOperationDoubleSqrtD,
+        epOperationDoubleSqrF,
+        epOperationDoubleSqrD,
+        epOperationDoubleFloorF,
+        epOperationDoubleFloorD,
+        epOperationDoubleCeilF,
+        epOperationDoubleCeilD,
+        epOperationDoubleRoundF,
+        epOperationDoubleRoundD,
+        epOperationDoubleCoshF,
+        epOperationDoubleCoshD,
+        epOperationDoubleSinhF,
+        epOperationDoubleSinhD,
+        epOperationDoubleTanhF,
+        epOperationDoubleTanhD,
+        epOperationDoublePowerF,
+        epOperationDoublePowerD,
         epOperationTestDoubleNegative,
         epOperationGetSignDouble,
 
@@ -246,6 +269,19 @@ namespace OutOfPhase
         epCopyArrayInteger, /* <opcode> */
         epCopyArrayFloat, /* <opcode> */
         epCopyArrayDouble, /* <opcode> */
+
+        // built-in function additions
+        epMinInt, // <opcode>
+        epMinFloat, // <opcode>
+        epMinDouble, // <opcode>
+        epMaxInt, // <opcode>
+        epMaxFloat, // <opcode>
+        epMaxDouble, // <opcode>
+        epMinMaxInt, // <opcode>
+        epMinMaxFloat, // <opcode>
+        epMinMaxDouble, // <opcode>
+        epAtan2Float, // <opcode>
+        epAtan2Double, // <opcode>
     }
 
     [StructLayout(LayoutKind.Explicit)]
@@ -296,9 +332,7 @@ namespace OutOfPhase
 
         private List<int> LineNumberArray = new List<int>();
 
-#if true // TODO:experimental
         public CILObject cilObject;
-#endif
 
 
         // set-once property
@@ -694,14 +728,34 @@ namespace OutOfPhase
                 case Pcodes.epOperationDoubleToBoolean:
                 case Pcodes.epOperationDoubleToInteger:
                 case Pcodes.epOperationDoubleToFloat:
-                case Pcodes.epOperationDoubleSin:
-                case Pcodes.epOperationDoubleCos:
-                case Pcodes.epOperationDoubleTan:
-                case Pcodes.epOperationDoubleAtan:
-                case Pcodes.epOperationDoubleLn:
-                case Pcodes.epOperationDoubleExp:
-                case Pcodes.epOperationDoubleSqrt:
-                case Pcodes.epOperationDoublePower:
+                case Pcodes.epOperationDoubleSinF:
+                case Pcodes.epOperationDoubleSinD:
+                case Pcodes.epOperationDoubleCosF:
+                case Pcodes.epOperationDoubleCosD:
+                case Pcodes.epOperationDoubleTanF:
+                case Pcodes.epOperationDoubleTanD:
+                case Pcodes.epOperationDoubleAtanF:
+                case Pcodes.epOperationDoubleAtanD:
+                case Pcodes.epOperationDoubleLnF:
+                case Pcodes.epOperationDoubleLnD:
+                case Pcodes.epOperationDoubleExpF:
+                case Pcodes.epOperationDoubleExpD:
+                case Pcodes.epOperationDoubleSqrtF:
+                case Pcodes.epOperationDoubleSqrtD:
+                case Pcodes.epOperationDoubleFloorF:
+                case Pcodes.epOperationDoubleFloorD:
+                case Pcodes.epOperationDoubleCeilF:
+                case Pcodes.epOperationDoubleCeilD:
+                case Pcodes.epOperationDoubleRoundF:
+                case Pcodes.epOperationDoubleRoundD:
+                case Pcodes.epOperationDoubleCoshF:
+                case Pcodes.epOperationDoubleCoshD:
+                case Pcodes.epOperationDoubleSinhF:
+                case Pcodes.epOperationDoubleSinhD:
+                case Pcodes.epOperationDoubleTanhF:
+                case Pcodes.epOperationDoubleTanhD:
+                case Pcodes.epOperationDoublePowerF:
+                case Pcodes.epOperationDoublePowerD:
                 case Pcodes.epGetByteArraySize: /* <opcode> */
                 case Pcodes.epGetIntegerArraySize:
                 case Pcodes.epGetFloatArraySize:
@@ -730,9 +784,12 @@ namespace OutOfPhase
                 case Pcodes.epOperationIntegerOr:
                 case Pcodes.epOperationIntegerXor:
                 case Pcodes.epOperationIntegerNot:
-                case Pcodes.epOperationDoubleAsin:
-                case Pcodes.epOperationDoubleAcos:
-                case Pcodes.epOperationDoubleSqr:
+                case Pcodes.epOperationDoubleAsinF:
+                case Pcodes.epOperationDoubleAsinD:
+                case Pcodes.epOperationDoubleAcosF:
+                case Pcodes.epOperationDoubleAcosD:
+                case Pcodes.epOperationDoubleSqrF:
+                case Pcodes.epOperationDoubleSqrD:
                 case Pcodes.epOperationTestIntegerNegative:
                 case Pcodes.epOperationTestFloatNegative:
                 case Pcodes.epOperationTestDoubleNegative:
@@ -743,6 +800,17 @@ namespace OutOfPhase
                 case Pcodes.epCopyArrayInteger:
                 case Pcodes.epCopyArrayFloat:
                 case Pcodes.epCopyArrayDouble:
+                case Pcodes.epMinInt:
+                case Pcodes.epMinFloat:
+                case Pcodes.epMinDouble:
+                case Pcodes.epMaxInt:
+                case Pcodes.epMaxFloat:
+                case Pcodes.epMaxDouble:
+                case Pcodes.epMinMaxInt:
+                case Pcodes.epMinMaxFloat:
+                case Pcodes.epMinMaxDouble:
+                case Pcodes.epAtan2Float:
+                case Pcodes.epAtan2Double:
                     return 1;
                 case Pcodes.epReturnFromSubroutine: /* <opcode> <argcount> */
                 case Pcodes.epStackPopMultiple: /* <opcode> <numwords> */

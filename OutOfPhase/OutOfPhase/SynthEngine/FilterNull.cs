@@ -32,6 +32,11 @@ namespace OutOfPhase
         {
             public FilterTypes FilterType { get { return FilterTypes.eFilterNull; } }
 
+            public void UpdateParams(
+                ref FilterParams Params)
+            {
+            }
+
             /* apply filter to an array of values, adding result to output array */
             public void Apply(
                 float[] XinVector,

@@ -44,10 +44,17 @@ namespace OutOfPhase
             public float A1;
             public float A2;
 
+            public readonly FilterScalings Scaling;
+
+
+            public SecondOrderZeroRec(
+                FilterScalings Scaling)
+            {
+                this.Scaling = Scaling;
+            }
 
             public FilterTypes FilterType { get { return FilterTypes.eFilterSecondOrderZero; } }
 
-            /* adjust filter coefficients */
             public static void SetSecondOrderZeroCoefficients(
                 SecondOrderZeroRec Filter,
                 double Cutoff,
@@ -100,6 +107,17 @@ namespace OutOfPhase
                 Filter.A0 = (float)OneOverD;
                 Filter.A1 = (float)(C1 * OneOverD);
                 Filter.A2 = (float)(C2 * OneOverD);
+            }
+
+            public void UpdateParams(
+                ref FilterParams Params)
+            {
+                SetSecondOrderZeroCoefficients(
+                    this,
+                    Params.Cutoff,
+                    Params.BandwidthOrSlope,
+                    Scaling,
+                    Params.SamplingRate);
             }
 
             /* apply filter to an array of values, adding result to output array */

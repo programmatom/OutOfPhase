@@ -374,12 +374,42 @@ namespace OutOfPhase
                 built = false;
             }
         }
+
+        // Compile functions to find errors. Does not do a full build - compiles only this module and does
+        // not check function arg/return types for references to other modules.
+        public bool TestBuild(
+            bool force,
+            PcodeSystem.IEvaluationContext pcodeEnvironment,
+            BuildFailedCallback failedCallback,
+            CodeCenterRec throwAwayCodeCenter)
+        {
+            int ErrorLine;
+            int ErrorModuleIndex;
+            CompileErrors Error = Compiler.CompileWholeProgram(
+                out ErrorLine,
+                out ErrorModuleIndex,
+                new string[] { this.Source },
+                new object[] { this },
+                throwAwayCodeCenter, // use throw-away linker to not pollute the real one with unchecked function calls
+                new string[] { this.Name });
+            if ((Error != CompileErrors.eCompileNoError)
+                // these errors are permitted for test-build because without full function signatures known there will be
+                // arg-type inference ambiguities.
+                && (Error != CompileErrors.eCompileMultiplyDeclaredFunction))
+            {
+                failedCallback(
+                    this,
+                    new LiteralBuildErrorInfo(Compiler.GetCompileErrorString(Error), ErrorLine));
+                return false;
+            }
+            return true;
+        }
     }
 
 
     public partial class AlgoSampObjectRec : IBuildable
     {
-        // nonpersisted properties
+        // nonpersisted properties/
 
         public SampleStorageActualRec SampleData; // null = needs to be built
 
@@ -389,7 +419,7 @@ namespace OutOfPhase
         {
             int ErrorLineNumberCompilation;
             DataTypes ReturnType;
-            Compiler.ASTExpressionRec AST;
+            Compiler.ASTExpression AST;
             CompileErrors CompileError = Compiler.CompileSpecialFunction(
                 ((Document)Parent).CodeCenter,
                 NumChannels == NumChannelsType.eSampleStereo
@@ -561,7 +591,7 @@ namespace OutOfPhase
         {
             int ErrorLineNumberCompilation;
             DataTypes ReturnType;
-            Compiler.ASTExpressionRec AST;
+            Compiler.ASTExpression AST;
             CompileErrors CompileError = Compiler.CompileSpecialFunction(
                 ((Document)Parent).CodeCenter,
                 new FunctionParamRec[]

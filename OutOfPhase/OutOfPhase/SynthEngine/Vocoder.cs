@@ -96,6 +96,8 @@ namespace OutOfPhase
             /* size is 2 * BandCount * OrderCount. */
             public ButterworthBandpassRec[] FilterVector;
 
+            public bool EnableCrossWaveTableInterpolation;
+
 
             /* build common stuff */
             private static VocoderRec VocoderBuildCommonStructure(
@@ -141,8 +143,10 @@ namespace OutOfPhase
                 Vocoder.FramesPerTable = FramesPerTable;
                 Vocoder.NumberOfTablesMinus1 = NumberOfTables - 1;
 
+                Vocoder.EnableCrossWaveTableInterpolation = VocoderGetEnableCrossWaveTableInterpolation(Template);
+
                 /* initialize band matrix */
-                for (int i = 0; i < 2 * BandCount * OrderCount; i += 1)
+                for (int i = 0; i < 2 * BandCount * OrderCount; i++)
                 {
                     Vocoder.FilterVector[i] = new ButterworthBandpassRec();
                 }
@@ -475,41 +479,34 @@ namespace OutOfPhase
                 }
 #endif
 
-                if ((int)(Vocoder.CurrentWaveTableIndex) == Vocoder.NumberOfTablesMinus1)
+                if (((int)(Vocoder.CurrentWaveTableIndex) == Vocoder.NumberOfTablesMinus1)
+                    || !Vocoder.EnableCrossWaveTableInterpolation)
                 {
-                    float[] WaveData;
-
                     /* end interpolation */
 
-                    WaveData = WaveMatrix[(int)(Vocoder.CurrentWaveTableIndex)];
+                    float[] WaveData = WaveMatrix[(int)(Vocoder.CurrentWaveTableIndex)];
 
                     /* start at the beginning */
-                    for (int i = 0; i < BandCount; i += 1)
+                    for (int i = 0; i < BandCount; i++)
                     {
-                        float RawCenterFreq;
-                        float RawBandWidth;
-                        float RawUncombinedGain;
-                        double CookedCenterFreq;
-                        double CookedBandWidth;
-
                         /* L+F(R-L) */
 
                         /* consult wave table for center frequency */
-                        RawCenterFreq = WaveData[i * VOC_FIELDCOUNT + 0];
+                        float RawCenterFreq = WaveData[i * VOC_FIELDCOUNT + 0];
 
                         /* consult wave table for bandwidth */
-                        RawBandWidth = WaveData[i * VOC_FIELDCOUNT + 1];
+                        float RawBandWidth = WaveData[i * VOC_FIELDCOUNT + 1];
 
                         /* consult wave table for gain */
-                        RawUncombinedGain = WaveData[i * VOC_FIELDCOUNT + 2];
+                        float RawUncombinedGain = WaveData[i * VOC_FIELDCOUNT + 2];
 
                         /* do the mappings */
                         CombinedGainFactorVector[CombinedGainFactorVectorOffset + i] = RawUncombinedGain * OverallGain;
-                        CookedCenterFreq = (VOC_MAXFREQ * 0.5) * (1 + (double)RawCenterFreq);
-                        CookedBandWidth = (VOC_MAXFREQ * 0.5) * (1 + (double)RawBandWidth);
+                        double CookedCenterFreq = (VOC_MAXFREQ * 0.5) * (1 + (double)RawCenterFreq);
+                        double CookedBandWidth = (VOC_MAXFREQ * 0.5) * (1 + (double)RawBandWidth);
 
                         /* set the settings */
-                        for (int j = 0; j < OrderCount; j += 1)
+                        for (int j = 0; j < OrderCount; j++)
                         {
                             ButterworthBandpassRec.SetButterworthBandpassCoefficients(
                                 BandMatrix[BandMatrixOffset + i * OrderCount + j],
@@ -521,53 +518,43 @@ namespace OutOfPhase
                 }
                 else
                 {
-                    float Wave1Weight;
-                    float[] WaveData0;
-                    float[] WaveData1;
-
                     /* compute table weighting */
-                    Wave1Weight = (float)(Vocoder.CurrentWaveTableIndex - (int)(Vocoder.CurrentWaveTableIndex));
+                    float Wave1Weight = (float)(Vocoder.CurrentWaveTableIndex - (int)(Vocoder.CurrentWaveTableIndex));
 
                     /* full interpolation */
 
-                    WaveData0 = WaveMatrix[(int)(Vocoder.CurrentWaveTableIndex)];
-                    WaveData1 = WaveMatrix[(int)(Vocoder.CurrentWaveTableIndex) + 1];
+                    float[] WaveData0 = WaveMatrix[(int)(Vocoder.CurrentWaveTableIndex)];
+                    float[] WaveData1 = WaveMatrix[(int)(Vocoder.CurrentWaveTableIndex) + 1];
 
                     /* start at the beginning */
-                    for (int i = 0; i < BandCount; i += 1)
+                    for (int i = 0; i < BandCount; i++)
                     {
-                        float RawCenterFreq;
-                        float RawBandWidth;
-                        float RawUncombinedGain;
-                        double CookedCenterFreq;
-                        double CookedBandWidth;
-                        float Wave0Value;
-                        float Wave1Value;
+                        float Wave0Value, Wave1Value;
 
                         /* L+F(R-L) */
 
                         /* consult wave table for center frequency */
                         Wave0Value = WaveData0[i * VOC_FIELDCOUNT + 0];
                         Wave1Value = WaveData1[i * VOC_FIELDCOUNT + 0];
-                        RawCenterFreq = Wave0Value + (Wave1Weight * (Wave1Value - Wave0Value));
+                        float RawCenterFreq = Wave0Value + (Wave1Weight * (Wave1Value - Wave0Value));
 
                         /* consult wave table for bandwidth */
                         Wave0Value = WaveData0[i * VOC_FIELDCOUNT + 1];
                         Wave1Value = WaveData1[i * VOC_FIELDCOUNT + 1];
-                        RawBandWidth = Wave0Value + (Wave1Weight * (Wave1Value - Wave0Value));
+                        float RawBandWidth = Wave0Value + (Wave1Weight * (Wave1Value - Wave0Value));
 
                         /* consult wave table for gain */
                         Wave0Value = WaveData0[i * VOC_FIELDCOUNT + 2];
                         Wave1Value = WaveData1[i * VOC_FIELDCOUNT + 2];
-                        RawUncombinedGain = Wave0Value + (Wave1Weight * (Wave1Value - Wave0Value));
+                        float RawUncombinedGain = Wave0Value + (Wave1Weight * (Wave1Value - Wave0Value));
 
                         /* do the mappings */
                         CombinedGainFactorVector[CombinedGainFactorVectorOffset + i] = RawUncombinedGain * OverallGain;
-                        CookedCenterFreq = (VOC_MAXFREQ * 0.5) * (1 + (double)RawCenterFreq);
-                        CookedBandWidth = (VOC_MAXFREQ * 0.5) * (1 + (double)RawBandWidth);
+                        double CookedCenterFreq = (VOC_MAXFREQ * 0.5) * (1 + (double)RawCenterFreq);
+                        double CookedBandWidth = (VOC_MAXFREQ * 0.5) * (1 + (double)RawBandWidth);
 
                         /* set the settings */
-                        for (int j = 0; j < OrderCount; j += 1)
+                        for (int j = 0; j < OrderCount; j++)
                         {
                             ButterworthBandpassRec.SetButterworthBandpassCoefficients(
                                 BandMatrix[BandMatrixOffset + i * OrderCount + j],
@@ -611,7 +598,7 @@ namespace OutOfPhase
                     Length);
 
                 /* process matrix */
-                for (int i = 0; i < BandCount; i += 1)
+                for (int i = 0; i < BandCount; i++)
                 {
                     /* initialize mangle vector with raw data */
                     FloatVectorCopy(
@@ -622,7 +609,7 @@ namespace OutOfPhase
                         Length);
 
                     /* apply filters to succession, copying out on the last one */
-                    for (int j = 0; j < OrderCount; j += 1)
+                    for (int j = 0; j < OrderCount; j++)
                     {
                         if (j != OrderCount - 1)
                         {

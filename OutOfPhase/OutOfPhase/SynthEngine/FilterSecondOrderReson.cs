@@ -44,10 +44,17 @@ namespace OutOfPhase
             public float B1;
             public float B2;
 
+            public readonly FilterScalings Scaling;
+
+
+            public SecondOrderResonRec(
+                FilterScalings Scaling)
+            {
+                this.Scaling = Scaling;
+            }
 
             public FilterTypes FilterType { get { return FilterTypes.eFilterSecondOrderResonant; } }
 
-            /* adjust filter coefficients */
             public static void SetSecondOrderResonCoefficients(
                 SecondOrderResonRec Filter,
                 double Cutoff,
@@ -101,6 +108,17 @@ namespace OutOfPhase
                         Filter.A0 = (float)(Math.Sqrt((X * X - B1 * B1) * Y / X));
                         break;
                 }
+            }
+
+            public void UpdateParams(
+                ref FilterParams Params)
+            {
+                SetSecondOrderResonCoefficients(
+                    this,
+                    Params.Cutoff,
+                    Params.BandwidthOrSlope,
+                    Scaling,
+                    Params.SamplingRate);
             }
 
             /* apply filter to an array of values, adding result to output array */

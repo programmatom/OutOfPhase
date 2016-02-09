@@ -364,7 +364,6 @@ namespace OutOfPhase
                 Prep.GetRawStack(out Stack, out StackPtr);
                 StackPtr--;
 
-#if true // TODO:experimental
                 if (CILObject.EnableCIL && (Pcode.cilObject != null))
                 {
                     CILThreadLocalStorage.Push(
@@ -385,7 +384,6 @@ namespace OutOfPhase
                     }
                     goto TotallyDonePoint;
                 }
-#endif
 
                 // ensure stack capacity
                 Debug.Assert(Pcode.MaxStackDepth >= 0);
@@ -1194,68 +1192,208 @@ namespace OutOfPhase
 #endif
                             Stack[StackPtr].Data.Float = (float)Stack[StackPtr].Data.Double;
                             break;
-                        case Pcodes.epOperationDoubleSin:
+                        case Pcodes.epOperationDoubleSinF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Sin(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleSinD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
                             Stack[StackPtr].Data.Double = Math.Sin(Stack[StackPtr].Data.Double);
                             break;
-                        case Pcodes.epOperationDoubleCos:
+                        case Pcodes.epOperationDoubleCosF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Cos(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleCosD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
                             Stack[StackPtr].Data.Double = Math.Cos(Stack[StackPtr].Data.Double);
                             break;
-                        case Pcodes.epOperationDoubleTan:
+                        case Pcodes.epOperationDoubleTanF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Tan(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleTanD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
                             Stack[StackPtr].Data.Double = Math.Tan(Stack[StackPtr].Data.Double);
                             break;
-                        case Pcodes.epOperationDoubleAsin:
+                        case Pcodes.epOperationDoubleAsinF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Asin(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleAsinD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
                             Stack[StackPtr].Data.Double = Math.Asin(Stack[StackPtr].Data.Double);
                             break;
-                        case Pcodes.epOperationDoubleAcos:
+                        case Pcodes.epOperationDoubleAcosF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Acos(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleAcosD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
                             Stack[StackPtr].Data.Double = Math.Acos(Stack[StackPtr].Data.Double);
                             break;
-                        case Pcodes.epOperationDoubleAtan:
+                        case Pcodes.epOperationDoubleAtanF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Atan(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleAtanD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
                             Stack[StackPtr].Data.Double = Math.Atan(Stack[StackPtr].Data.Double);
                             break;
-                        case Pcodes.epOperationDoubleLn:
+                        case Pcodes.epOperationDoubleLnF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Log(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleLnD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
                             Stack[StackPtr].Data.Double = Math.Log(Stack[StackPtr].Data.Double);
                             break;
-                        case Pcodes.epOperationDoubleExp:
+                        case Pcodes.epOperationDoubleExpF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Exp(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleExpD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
                             Stack[StackPtr].Data.Double = Math.Exp(Stack[StackPtr].Data.Double);
                             break;
-                        case Pcodes.epOperationDoubleSqrt:
+                        case Pcodes.epOperationDoubleSqrtF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Sqrt(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleSqrtD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
                             Stack[StackPtr].Data.Double = Math.Sqrt(Stack[StackPtr].Data.Double);
                             break;
-                        case Pcodes.epOperationDoubleSqr:
+                        case Pcodes.epOperationDoubleSqrF:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
 #endif
-                            Stack[StackPtr].Data.Double = Stack[StackPtr].Data.Double
-                                * Stack[StackPtr].Data.Double;
+                            Stack[StackPtr].Data.Float = Stack[StackPtr].Data.Float * Stack[StackPtr].Data.Float;
                             break;
-                        case Pcodes.epOperationDoublePower:
+                        case Pcodes.epOperationDoubleSqrD:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Double = Stack[StackPtr].Data.Double * Stack[StackPtr].Data.Double;
+                            break;
+                        case Pcodes.epOperationDoubleFloorF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Floor(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleFloorD:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Double = Math.Floor(Stack[StackPtr].Data.Double);
+                            break;
+                        case Pcodes.epOperationDoubleCeilF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Ceiling(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleCeilD:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Double = Math.Ceiling(Stack[StackPtr].Data.Double);
+                            break;
+                        case Pcodes.epOperationDoubleRoundF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Round(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleRoundD:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Double = Math.Round(Stack[StackPtr].Data.Double);
+                            break;
+                        case Pcodes.epOperationDoubleCoshF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Cosh(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleCoshD:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Double = Math.Cosh(Stack[StackPtr].Data.Double);
+                            break;
+                        case Pcodes.epOperationDoubleSinhF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Sinh(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleSinhD:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Double = Math.Sinh(Stack[StackPtr].Data.Double);
+                            break;
+                        case Pcodes.epOperationDoubleTanhF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Float = (float)Math.Tanh(Stack[StackPtr].Data.Float);
+                            break;
+                        case Pcodes.epOperationDoubleTanhD:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+#endif
+                            Stack[StackPtr].Data.Double = Math.Tanh(Stack[StackPtr].Data.Double);
+                            break;
+                        case Pcodes.epOperationDoublePowerF:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+#endif
+                            Stack[StackPtr - 1].Data.Float = (float)Math.Pow(Stack[StackPtr - 1].Data.Float, Stack[StackPtr].Data.Float);
+                            Stack[StackPtr].ClearScalar();
+                            StackPtr--;
+                            break;
+                        case Pcodes.epOperationDoublePowerD:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
                             Stack[StackPtr - 1].AssertScalar();
@@ -1998,6 +2136,113 @@ namespace OutOfPhase
                                 double[] copy = (double[])Stack[StackPtr].reference.arrayHandleDouble.doubles.Clone();
                                 Stack[StackPtr].reference.arrayHandleDouble = new ArrayHandleDouble(copy);
                             }
+                            break;
+
+                        case Pcodes.epMinInt:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+#endif
+                            Stack[StackPtr - 1].Data.Integer = Math.Min(Stack[StackPtr - 1].Data.Integer, Stack[StackPtr].Data.Integer);
+                            Stack[StackPtr].ClearScalar();
+                            StackPtr--;
+                            break;
+                        case Pcodes.epMinFloat:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+#endif
+                            Stack[StackPtr - 1].Data.Float = Math.Min(Stack[StackPtr - 1].Data.Float, Stack[StackPtr].Data.Float);
+                            Stack[StackPtr].ClearScalar();
+                            StackPtr--;
+                            break;
+                        case Pcodes.epMinDouble:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+#endif
+                            Stack[StackPtr - 1].Data.Double = Math.Min(Stack[StackPtr - 1].Data.Double, Stack[StackPtr].Data.Double);
+                            Stack[StackPtr].ClearScalar();
+                            StackPtr--;
+                            break;
+                        case Pcodes.epMaxInt:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+#endif
+                            Stack[StackPtr - 1].Data.Integer = Math.Max(Stack[StackPtr - 1].Data.Integer, Stack[StackPtr].Data.Integer);
+                            Stack[StackPtr].ClearScalar();
+                            StackPtr--;
+                            break;
+                        case Pcodes.epMaxFloat:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+#endif
+                            Stack[StackPtr - 1].Data.Float = Math.Max(Stack[StackPtr - 1].Data.Float, Stack[StackPtr].Data.Float);
+                            Stack[StackPtr].ClearScalar();
+                            StackPtr--;
+                            break;
+                        case Pcodes.epMaxDouble:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+#endif
+                            Stack[StackPtr - 1].Data.Double = Math.Max(Stack[StackPtr - 1].Data.Double, Stack[StackPtr].Data.Double);
+                            Stack[StackPtr].ClearScalar();
+                            StackPtr--;
+                            break;
+
+                        case Pcodes.epMinMaxInt:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+                            Stack[StackPtr - 2].AssertScalar();
+#endif
+                            Stack[StackPtr - 2].Data.Integer = Math.Min(Math.Max(Stack[StackPtr - 2].Data.Integer, Stack[StackPtr - 1].Data.Integer), Stack[StackPtr].Data.Integer);
+                            Stack[StackPtr].ClearScalar();
+                            Stack[StackPtr - 1].ClearScalar();
+                            StackPtr -= 2;
+                            break;
+                        case Pcodes.epMinMaxFloat:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+                            Stack[StackPtr - 2].AssertScalar();
+#endif
+                            Stack[StackPtr - 2].Data.Float = Math.Min(Math.Max(Stack[StackPtr - 2].Data.Float, Stack[StackPtr - 1].Data.Float), Stack[StackPtr].Data.Float);
+                            Stack[StackPtr].ClearScalar();
+                            Stack[StackPtr - 1].ClearScalar();
+                            StackPtr -= 2;
+                            break;
+                        case Pcodes.epMinMaxDouble:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+                            Stack[StackPtr - 2].AssertScalar();
+#endif
+                            Stack[StackPtr - 2].Data.Double = Math.Min(Math.Max(Stack[StackPtr - 2].Data.Double, Stack[StackPtr - 1].Data.Double), Stack[StackPtr].Data.Double);
+                            Stack[StackPtr].ClearScalar();
+                            Stack[StackPtr - 1].ClearScalar();
+                            StackPtr -= 2;
+                            break;
+                        case Pcodes.epAtan2Float:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+#endif
+                            Stack[StackPtr - 1].Data.Float = (float)Math.Atan2(Stack[StackPtr - 1].Data.Float, Stack[StackPtr].Data.Float);
+                            Stack[StackPtr].ClearScalar();
+                            StackPtr--;
+                            break;
+                        case Pcodes.epAtan2Double:
+#if DEBUG
+                            Stack[StackPtr].AssertScalar();
+                            Stack[StackPtr - 1].AssertScalar();
+#endif
+                            Stack[StackPtr - 1].Data.Double = Math.Atan2(Stack[StackPtr - 1].Data.Double, Stack[StackPtr].Data.Double);
+                            Stack[StackPtr].ClearScalar();
+                            StackPtr--;
                             break;
 
                     } /* end switch */

@@ -31,7 +31,6 @@ namespace OutOfPhase
     {
         eCompileNoError,
         eCompileOutOfMemory,
-        eCompileExpectedFuncOrProto,
         eCompileExpectedFunc,
         eCompileExpectedIdentifier,
         eCompileExpectedOpenParen,
@@ -47,10 +46,8 @@ namespace OutOfPhase
         eCompileExpectedResumable,
         eCompileExpectedWhile,
         eCompileExpectedDo,
-        eCompileExpectedUntil,
         eCompileExpectedOpenParenOrEqual,
         eCompileExpectedThen,
-        eCompileExpectedWhileOrUntil,
         eCompileExpectedComma,
         eCompileExpectedCommaOrCloseParen,
         eCompileExpectedElseOrElseIf,
@@ -71,7 +68,7 @@ namespace OutOfPhase
         eCompileRightOperandMustBeInteger,
         eCompileArraySubscriptMustBeInteger,
         eCompileArrayRequiredForSubscription,
-        eCompileDoubleRequiredForExponentiation,
+        eCompileFloatOrDoubleRequiredForExponentiation,
         eCompileArrayRequiredForResize,
         eCompileIntegerRequiredForResize,
         eCompileConditionalMustBeBoolean,
@@ -83,6 +80,7 @@ namespace OutOfPhase
         eCompileMustBeAVariableIdentifier,
         eCompileOperandMustBeBooleanOrInteger,
         eCompileOperandMustBeDouble,
+        eCompileOperandMustBeFloatOrDouble,
         eCompileArrayRequiredForGetLength,
         eCompileTypeMismatchInAssignment,
         eCompileVoidExpressionIsNotAllowed,
@@ -94,12 +92,12 @@ namespace OutOfPhase
         eCompileOperandMustBeArrayOfFloat,
         eCompileExpectedStep,
         eCompileExpectedEqual,
+        eCompileFunctionNameConflictsWithBuiltIn,
     }
 
     public enum KeywordsType
     {
         eExprKwrdFunc,
-        eExprKwrdProto,
         eExprKwrdVoid,
         eExprKwrdBool,
         eExprKwrdInt,
@@ -118,7 +116,6 @@ namespace OutOfPhase
         eExprKwrdIf,
         eExprKwrdWhile,
         eExprKwrdDo,
-        eExprKwrdUntil,
         eExprKwrdSet,
         eExprKwrdResize,
         eExprKwrdTo,
@@ -157,23 +154,31 @@ namespace OutOfPhase
         eExprKwrdGetwavenumtables,
         eExprKwrdGetwavedata,
         eExprKwrdPrint,
-        eExprKwrdButterworthbandpass,
-        eExprKwrdFirstorderlowpass,
-        eExprKwrdVecsqr,
-        eExprKwrdVecsqrt,
         eExprKwrdDup,
         eExprKwrdLoadsampleleft,
         eExprKwrdLoadsampleright,
         eExprKwrdLoadsample,
         eExprKwrdFor,
         eExprKwrdStep,
+        eExprKwrdFloor,
+        eExprKwrdCeil,
+        eExprKwrdRound,
+        eExprKwrdCosh,
+        eExprKwrdSinh,
+        eExprKwrdTanh,
+        eExprKwrdClass,
+        eExprKwrdStruct,
+        eExprKwrdForeach,
+        eExprKwrdVector,
+        eExprKwrdLong,
+        eExprKwrdLongarray,
     }
 
     /* this function is used for specifying information about a parameter */
     public struct FunctionParamRec
     {
-        public string ParameterName;
-        public DataTypes ParameterType;
+        public readonly string ParameterName;
+        public readonly DataTypes ParameterType;
 
         public FunctionParamRec(string ParameterName, DataTypes ParameterType)
         {
@@ -185,82 +190,88 @@ namespace OutOfPhase
     public static partial class Compiler
     {
         private static readonly KeywordRec<KeywordsType>[] KeywordTable = new KeywordRec<KeywordsType>[]
-    	{
-		    new KeywordRec<KeywordsType>("abs", KeywordsType.eExprKwrdAbs),
-		    new KeywordRec<KeywordsType>("acos", KeywordsType.eExprKwrdAcos),
-		    new KeywordRec<KeywordsType>("and", KeywordsType.eExprKwrdAnd),
-		    new KeywordRec<KeywordsType>("asin", KeywordsType.eExprKwrdAsin),
-		    new KeywordRec<KeywordsType>("atan", KeywordsType.eExprKwrdAtan),
-		    new KeywordRec<KeywordsType>("bool", KeywordsType.eExprKwrdBool),
-		    new KeywordRec<KeywordsType>("boolarray", KeywordsType.eExprKwrdBoolarray),
-		    new KeywordRec<KeywordsType>("butterworthbandpass", KeywordsType.eExprKwrdButterworthbandpass),
-		    new KeywordRec<KeywordsType>("bytearray", KeywordsType.eExprKwrdBytearray),
-		    new KeywordRec<KeywordsType>("cos", KeywordsType.eExprKwrdCos),
-		    new KeywordRec<KeywordsType>("div", KeywordsType.eExprKwrdDiv),
-		    new KeywordRec<KeywordsType>("do", KeywordsType.eExprKwrdDo),
-		    new KeywordRec<KeywordsType>("double", KeywordsType.eExprKwrdDouble),
-		    new KeywordRec<KeywordsType>("doublearray", KeywordsType.eExprKwrdDoublearray),
-		    new KeywordRec<KeywordsType>("dup", KeywordsType.eExprKwrdDup),
-		    new KeywordRec<KeywordsType>("else", KeywordsType.eExprKwrdElse),
-		    new KeywordRec<KeywordsType>("elseif", KeywordsType.eExprKwrdElseif),
-		    new KeywordRec<KeywordsType>("error", KeywordsType.eExprKwrdError),
-		    new KeywordRec<KeywordsType>("exp", KeywordsType.eExprKwrdExp),
-		    new KeywordRec<KeywordsType>("false", KeywordsType.eExprKwrdFalse),
-		    new KeywordRec<KeywordsType>("firstorderlowpass", KeywordsType.eExprKwrdFirstorderlowpass),
-		    new KeywordRec<KeywordsType>("fixed", KeywordsType.eExprKwrdFixed),
-		    new KeywordRec<KeywordsType>("fixedarray", KeywordsType.eExprKwrdFixedarray),
-		    new KeywordRec<KeywordsType>("float", KeywordsType.eExprKwrdFloat),
-		    new KeywordRec<KeywordsType>("floatarray", KeywordsType.eExprKwrdFloatarray),
-		    new KeywordRec<KeywordsType>("for", KeywordsType.eExprKwrdFor),
-		    new KeywordRec<KeywordsType>("func", KeywordsType.eExprKwrdFunc),
-		    new KeywordRec<KeywordsType>("getsample", KeywordsType.eExprKwrdGetsample),
-		    new KeywordRec<KeywordsType>("getsampleleft", KeywordsType.eExprKwrdGetsampleleft),
-		    new KeywordRec<KeywordsType>("getsampleright", KeywordsType.eExprKwrdGetsampleright),
-		    new KeywordRec<KeywordsType>("getwavedata", KeywordsType.eExprKwrdGetwavedata),
-		    new KeywordRec<KeywordsType>("getwavenumframes", KeywordsType.eExprKwrdGetwavenumframes),
-		    new KeywordRec<KeywordsType>("getwavenumtables", KeywordsType.eExprKwrdGetwavenumtables),
-		    new KeywordRec<KeywordsType>("if", KeywordsType.eExprKwrdIf),
-		    new KeywordRec<KeywordsType>("int", KeywordsType.eExprKwrdInt),
-		    new KeywordRec<KeywordsType>("intarray", KeywordsType.eExprKwrdIntarray),
-		    new KeywordRec<KeywordsType>("length", KeywordsType.eExprKwrdLength),
-		    new KeywordRec<KeywordsType>("ln", KeywordsType.eExprKwrdLn),
-		    new KeywordRec<KeywordsType>("loadsample", KeywordsType.eExprKwrdLoadsample),
-		    new KeywordRec<KeywordsType>("loadsampleleft", KeywordsType.eExprKwrdLoadsampleleft),
-		    new KeywordRec<KeywordsType>("loadsampleright", KeywordsType.eExprKwrdLoadsampleright),
-		    new KeywordRec<KeywordsType>("mod", KeywordsType.eExprKwrdMod),
-		    new KeywordRec<KeywordsType>("neg", KeywordsType.eExprKwrdNeg),
-		    new KeywordRec<KeywordsType>("not", KeywordsType.eExprKwrdNot),
-		    new KeywordRec<KeywordsType>("or", KeywordsType.eExprKwrdOr),
-		    new KeywordRec<KeywordsType>("pi", KeywordsType.eExprKwrdPi),
-		    new KeywordRec<KeywordsType>("print", KeywordsType.eExprKwrdPrint),
-		    new KeywordRec<KeywordsType>("proto", KeywordsType.eExprKwrdProto),
-		    new KeywordRec<KeywordsType>("resize", KeywordsType.eExprKwrdResize),
-		    new KeywordRec<KeywordsType>("resumable", KeywordsType.eExprKwrdResumable),
-		    new KeywordRec<KeywordsType>("set", KeywordsType.eExprKwrdSet),
-		    new KeywordRec<KeywordsType>("sign", KeywordsType.eExprKwrdSign),
-		    new KeywordRec<KeywordsType>("sin", KeywordsType.eExprKwrdSin),
-		    new KeywordRec<KeywordsType>("single", KeywordsType.eExprKwrdSingle),
-		    new KeywordRec<KeywordsType>("singlearray", KeywordsType.eExprKwrdSinglearray),
-		    new KeywordRec<KeywordsType>("sqr", KeywordsType.eExprKwrdSqr),
-		    new KeywordRec<KeywordsType>("sqrt", KeywordsType.eExprKwrdSqrt),
-		    new KeywordRec<KeywordsType>("step", KeywordsType.eExprKwrdStep),
-		    new KeywordRec<KeywordsType>("tan", KeywordsType.eExprKwrdTan),
-		    new KeywordRec<KeywordsType>("then", KeywordsType.eExprKwrdThen),
-		    new KeywordRec<KeywordsType>("to", KeywordsType.eExprKwrdTo),
-		    new KeywordRec<KeywordsType>("true", KeywordsType.eExprKwrdTrue),
-		    new KeywordRec<KeywordsType>("until", KeywordsType.eExprKwrdUntil),
-		    new KeywordRec<KeywordsType>("var", KeywordsType.eExprKwrdVar),
-		    new KeywordRec<KeywordsType>("vecsqr", KeywordsType.eExprKwrdVecsqr),
-		    new KeywordRec<KeywordsType>("vecsqrt", KeywordsType.eExprKwrdVecsqrt),
-		    new KeywordRec<KeywordsType>("void", KeywordsType.eExprKwrdVoid),
-		    new KeywordRec<KeywordsType>("while", KeywordsType.eExprKwrdWhile),
-		    new KeywordRec<KeywordsType>("xor", KeywordsType.eExprKwrdXor),
-	    };
+        {
+            new KeywordRec<KeywordsType>("abs", KeywordsType.eExprKwrdAbs),
+            new KeywordRec<KeywordsType>("acos", KeywordsType.eExprKwrdAcos),
+            new KeywordRec<KeywordsType>("and", KeywordsType.eExprKwrdAnd),
+            new KeywordRec<KeywordsType>("asin", KeywordsType.eExprKwrdAsin),
+            new KeywordRec<KeywordsType>("atan", KeywordsType.eExprKwrdAtan),
+            new KeywordRec<KeywordsType>("bool", KeywordsType.eExprKwrdBool),
+            new KeywordRec<KeywordsType>("boolarray", KeywordsType.eExprKwrdBoolarray),
+            new KeywordRec<KeywordsType>("bytearray", KeywordsType.eExprKwrdBytearray),
+            new KeywordRec<KeywordsType>("ceil", KeywordsType.eExprKwrdCeil),
+            new KeywordRec<KeywordsType>("class", KeywordsType.eExprKwrdClass),
+            new KeywordRec<KeywordsType>("cos", KeywordsType.eExprKwrdCos),
+            new KeywordRec<KeywordsType>("cosh", KeywordsType.eExprKwrdCosh),
+            new KeywordRec<KeywordsType>("div", KeywordsType.eExprKwrdDiv),
+            new KeywordRec<KeywordsType>("do", KeywordsType.eExprKwrdDo),
+            new KeywordRec<KeywordsType>("double", KeywordsType.eExprKwrdDouble),
+            new KeywordRec<KeywordsType>("doublearray", KeywordsType.eExprKwrdDoublearray),
+            new KeywordRec<KeywordsType>("dup", KeywordsType.eExprKwrdDup),
+            new KeywordRec<KeywordsType>("else", KeywordsType.eExprKwrdElse),
+            new KeywordRec<KeywordsType>("elseif", KeywordsType.eExprKwrdElseif),
+            new KeywordRec<KeywordsType>("error", KeywordsType.eExprKwrdError),
+            new KeywordRec<KeywordsType>("exp", KeywordsType.eExprKwrdExp),
+            new KeywordRec<KeywordsType>("false", KeywordsType.eExprKwrdFalse),
+            new KeywordRec<KeywordsType>("fixed", KeywordsType.eExprKwrdFixed),
+            new KeywordRec<KeywordsType>("fixedarray", KeywordsType.eExprKwrdFixedarray),
+            new KeywordRec<KeywordsType>("float", KeywordsType.eExprKwrdFloat),
+            new KeywordRec<KeywordsType>("floatarray", KeywordsType.eExprKwrdFloatarray),
+            new KeywordRec<KeywordsType>("floor", KeywordsType.eExprKwrdFloor),
+            new KeywordRec<KeywordsType>("for", KeywordsType.eExprKwrdFor),
+            new KeywordRec<KeywordsType>("foreach", KeywordsType.eExprKwrdForeach),
+            new KeywordRec<KeywordsType>("func", KeywordsType.eExprKwrdFunc),
+            new KeywordRec<KeywordsType>("getsample", KeywordsType.eExprKwrdGetsample),
+            new KeywordRec<KeywordsType>("getsampleleft", KeywordsType.eExprKwrdGetsampleleft),
+            new KeywordRec<KeywordsType>("getsampleright", KeywordsType.eExprKwrdGetsampleright),
+            new KeywordRec<KeywordsType>("getwavedata", KeywordsType.eExprKwrdGetwavedata),
+            new KeywordRec<KeywordsType>("getwavenumframes", KeywordsType.eExprKwrdGetwavenumframes),
+            new KeywordRec<KeywordsType>("getwavenumtables", KeywordsType.eExprKwrdGetwavenumtables),
+            new KeywordRec<KeywordsType>("if", KeywordsType.eExprKwrdIf),
+            new KeywordRec<KeywordsType>("int", KeywordsType.eExprKwrdInt),
+            new KeywordRec<KeywordsType>("intarray", KeywordsType.eExprKwrdIntarray),
+            new KeywordRec<KeywordsType>("length", KeywordsType.eExprKwrdLength),
+            new KeywordRec<KeywordsType>("ln", KeywordsType.eExprKwrdLn),
+            new KeywordRec<KeywordsType>("loadsample", KeywordsType.eExprKwrdLoadsample),
+            new KeywordRec<KeywordsType>("loadsampleleft", KeywordsType.eExprKwrdLoadsampleleft),
+            new KeywordRec<KeywordsType>("loadsampleright", KeywordsType.eExprKwrdLoadsampleright),
+            new KeywordRec<KeywordsType>("long", KeywordsType.eExprKwrdLong),
+            new KeywordRec<KeywordsType>("longarray", KeywordsType.eExprKwrdLongarray),
+            new KeywordRec<KeywordsType>("mod", KeywordsType.eExprKwrdMod),
+            new KeywordRec<KeywordsType>("neg", KeywordsType.eExprKwrdNeg),
+            new KeywordRec<KeywordsType>("not", KeywordsType.eExprKwrdNot),
+            new KeywordRec<KeywordsType>("or", KeywordsType.eExprKwrdOr),
+            new KeywordRec<KeywordsType>("pi", KeywordsType.eExprKwrdPi),
+            new KeywordRec<KeywordsType>("print", KeywordsType.eExprKwrdPrint),
+            new KeywordRec<KeywordsType>("resize", KeywordsType.eExprKwrdResize),
+            new KeywordRec<KeywordsType>("resumable", KeywordsType.eExprKwrdResumable),
+            new KeywordRec<KeywordsType>("round", KeywordsType.eExprKwrdRound),
+            new KeywordRec<KeywordsType>("set", KeywordsType.eExprKwrdSet),
+            new KeywordRec<KeywordsType>("sign", KeywordsType.eExprKwrdSign),
+            new KeywordRec<KeywordsType>("sin", KeywordsType.eExprKwrdSin),
+            new KeywordRec<KeywordsType>("single", KeywordsType.eExprKwrdSingle),
+            new KeywordRec<KeywordsType>("singlearray", KeywordsType.eExprKwrdSinglearray),
+            new KeywordRec<KeywordsType>("sinh", KeywordsType.eExprKwrdSinh),
+            new KeywordRec<KeywordsType>("sqr", KeywordsType.eExprKwrdSqr),
+            new KeywordRec<KeywordsType>("sqrt", KeywordsType.eExprKwrdSqrt),
+            new KeywordRec<KeywordsType>("step", KeywordsType.eExprKwrdStep),
+            new KeywordRec<KeywordsType>("struct", KeywordsType.eExprKwrdStruct),
+            new KeywordRec<KeywordsType>("tan", KeywordsType.eExprKwrdTan),
+            new KeywordRec<KeywordsType>("tanh", KeywordsType.eExprKwrdTanh),
+            new KeywordRec<KeywordsType>("then", KeywordsType.eExprKwrdThen),
+            new KeywordRec<KeywordsType>("to", KeywordsType.eExprKwrdTo),
+            new KeywordRec<KeywordsType>("true", KeywordsType.eExprKwrdTrue),
+            new KeywordRec<KeywordsType>("var", KeywordsType.eExprKwrdVar),
+            new KeywordRec<KeywordsType>("vector", KeywordsType.eExprKwrdVector),
+            new KeywordRec<KeywordsType>("void", KeywordsType.eExprKwrdVoid),
+            new KeywordRec<KeywordsType>("while", KeywordsType.eExprKwrdWhile),
+            new KeywordRec<KeywordsType>("xor", KeywordsType.eExprKwrdXor),
+        };
 
         private struct CompileErrorRec
         {
-            public CompileErrors ErrorCode;
-            public string Message;
+            public readonly CompileErrors ErrorCode;
+            public readonly string Message;
 
             public CompileErrorRec(CompileErrors ErrorCode, string Message)
             {
@@ -270,137 +281,135 @@ namespace OutOfPhase
         }
 
         private static readonly CompileErrorRec[] Errors = new CompileErrorRec[]
-	    {
-		    new CompileErrorRec(CompileErrors.eCompileNoError,
-			    "No error"),
-		    new CompileErrorRec(CompileErrors.eCompileOutOfMemory,
-			    "Out of memory"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedFuncOrProto,
-			    "Expected 'func' or 'proto'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedFunc,
-			    "Expected 'func'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedIdentifier,
-			    "Expected identifier"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedOpenParen,
-			    "Expected '('"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedCloseParen,
-			    "Expected ')'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedColon,
-			    "Expected ':'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedSemicolon,
-			    "Expected ';'"),
-		    new CompileErrorRec(CompileErrors.eCompileMultiplyDefinedIdentifier,
-			    "Identifier has already been used"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedTypeSpecifier,
-			    "Expected type specification"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedExpressionForm,
-			    "Expected expression"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedColonEqual,
-			    "Expected ':='"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedTo,
-			    "Expected 'to'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedStringLiteral,
-			    "Expected string literal"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedResumable,
-			    "Expected 'resumable'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedWhile,
-			    "Expected 'while'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedDo,
-			    "Expected 'do'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedUntil,
-			    "Expected 'until'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedOpenParenOrEqual,
-			    "Expected '(' or '='"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedThen,
-			    "Expected 'then'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedWhileOrUntil,
-			    "Expected 'while' or 'until'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedComma,
-			    "Expected ', '"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedCommaOrCloseParen,
-			    "Expected ', ' or ')'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedElseOrElseIf,
-			    "Expected 'else' or 'elseif'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedOperatorOrStatement,
-			    "Expected operator or statement"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedOperand,
-			    "Expected operand"),
-		    new CompileErrorRec(CompileErrors.eCompileIdentifierNotDeclared,
-			    "Identifier hasn't been declared"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedRightAssociativeOperator,
-			    "Expected right associative operator"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedOpenBracket,
-			    "Expected '['"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedCloseBracket,
-			    "Expected ']'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedVariable,
-			    "Expected variable"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedArrayType,
-			    "Expected array type"),
-		    new CompileErrorRec(CompileErrors.eCompileArraySizeSpecMustBeInteger,
-			    "Array size specifier must be integer"),
-		    new CompileErrorRec(CompileErrors.eCompileTypeMismatch,
-			    "Type conflict"),
-		    new CompileErrorRec(CompileErrors.eCompileInvalidLValue,
-			    "Invalid l-value"),
-		    new CompileErrorRec(CompileErrors.eCompileOperandsMustBeScalar,
-			    "Operands must be scalar"),
-		    new CompileErrorRec(CompileErrors.eCompileOperandsMustBeSequencedScalar,
-			    "Operands must be sequenced scalar"),
-		    new CompileErrorRec(CompileErrors.eCompileOperandsMustBeIntegers,
-			    "Operands must be an integer"),
-		    new CompileErrorRec(CompileErrors.eCompileRightOperandMustBeInteger,
-			    "Right operand must be an integer"),
-		    new CompileErrorRec(CompileErrors.eCompileArraySubscriptMustBeInteger,
-			    "Array subscript must be an integer"),
-		    new CompileErrorRec(CompileErrors.eCompileArrayRequiredForSubscription,
-			    "Array required for subscription"),
-		    new CompileErrorRec(CompileErrors.eCompileDoubleRequiredForExponentiation,
-			    "Operands for exponentiation must be doubles"),
-		    new CompileErrorRec(CompileErrors.eCompileArrayRequiredForResize,
-			    "Array required for resize"),
-		    new CompileErrorRec(CompileErrors.eCompileIntegerRequiredForResize,
-			    "Integer required resize array size specifier"),
-		    new CompileErrorRec(CompileErrors.eCompileConditionalMustBeBoolean,
-			    "Conditional expression must boolean"),
-		    new CompileErrorRec(CompileErrors.eCompileTypeMismatchBetweenThenAndElse,
-			    "Type conflict between consequent and alternate arms of conditional"),
-		    new CompileErrorRec(CompileErrors.eCompileErrorNeedsBooleanArg,
-			    "Error directive needs boolean argument"),
-		    new CompileErrorRec(CompileErrors.eCompileFunctionIdentifierRequired,
-			    "Function identifier required"),
-		    new CompileErrorRec(CompileErrors.eCompileArgumentTypeConflict,
-			    "Type conflict between formal and actual arguments"),
-		    new CompileErrorRec(CompileErrors.eCompileWrongNumberOfArgsToFunction,
-			    "Wrong number of arguments to function"),
-		    new CompileErrorRec(CompileErrors.eCompileMustBeAVariableIdentifier,
-			    "Variable identifier required"),
-		    new CompileErrorRec(CompileErrors.eCompileOperandMustBeBooleanOrInteger,
-			    "Operands must be boolean or integer"),
-		    new CompileErrorRec(CompileErrors.eCompileOperandMustBeDouble,
-			    "Operand must be double"),
-		    new CompileErrorRec(CompileErrors.eCompileArrayRequiredForGetLength,
-			    "Array required for length operator"),
-		    new CompileErrorRec(CompileErrors.eCompileTypeMismatchInAssignment,
-			    "Type conflict between l-value and argument"),
-		    new CompileErrorRec(CompileErrors.eCompileVoidExpressionIsNotAllowed,
-			    "Void expression is not allowed"),
-		    new CompileErrorRec(CompileErrors.eCompileMultiplyDeclaredFunction,
-			    "Function name has already been used"),
-		    new CompileErrorRec(CompileErrors.eCompilePrototypeCantBeLastThingInExprList,
-			    "Prototype can't be the last expression in an expression sequence"),
-		    new CompileErrorRec(CompileErrors.eCompileInputBeyondEndOfFunction,
-			    "Input beyond end of expression"),
-		    new CompileErrorRec(CompileErrors.eCompileArrayConstructionOnScalarType,
-			    "Array constructor applied to scalar variable"),
-		    new CompileErrorRec(CompileErrors.eCompileOperandMustBeInteger,
-			    "Operand must be integer"),
-		    new CompileErrorRec(CompileErrors.eCompileOperandMustBeArrayOfFloat,
-			    "Operand must be array of single"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedStep,
-			    "Expected 'step'"),
-		    new CompileErrorRec(CompileErrors.eCompileExpectedEqual,
-			    "Expected '='"),
+        {
+            new CompileErrorRec(CompileErrors.eCompileNoError,
+                "No error"),
+            new CompileErrorRec(CompileErrors.eCompileOutOfMemory,
+                "Out of memory"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedFunc,
+                "Expected 'func'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedIdentifier,
+                "Expected identifier"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedOpenParen,
+                "Expected '('"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedCloseParen,
+                "Expected ')'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedColon,
+                "Expected ':'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedSemicolon,
+                "Expected ';'"),
+            new CompileErrorRec(CompileErrors.eCompileMultiplyDefinedIdentifier,
+                "Identifier has already been used"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedTypeSpecifier,
+                "Expected type specification"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedExpressionForm,
+                "Expected expression"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedColonEqual,
+                "Expected ':='"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedTo,
+                "Expected 'to'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedStringLiteral,
+                "Expected string literal"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedResumable,
+                "Expected 'resumable'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedWhile,
+                "Expected 'while'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedDo,
+                "Expected 'do'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedOpenParenOrEqual,
+                "Expected '(' or '='"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedThen,
+                "Expected 'then'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedComma,
+                "Expected ', '"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedCommaOrCloseParen,
+                "Expected ', ' or ')'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedElseOrElseIf,
+                "Expected 'else' or 'elseif'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedOperatorOrStatement,
+                "Expected operator or statement"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedOperand,
+                "Expected operand"),
+            new CompileErrorRec(CompileErrors.eCompileIdentifierNotDeclared,
+                "Identifier hasn't been declared"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedRightAssociativeOperator,
+                "Expected right associative operator"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedOpenBracket,
+                "Expected '['"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedCloseBracket,
+                "Expected ']'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedVariable,
+                "Expected variable"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedArrayType,
+                "Expected array type"),
+            new CompileErrorRec(CompileErrors.eCompileArraySizeSpecMustBeInteger,
+                "Array size specifier must be integer"),
+            new CompileErrorRec(CompileErrors.eCompileTypeMismatch,
+                "Type conflict"),
+            new CompileErrorRec(CompileErrors.eCompileInvalidLValue,
+                "Invalid l-value"),
+            new CompileErrorRec(CompileErrors.eCompileOperandsMustBeScalar,
+                "Operands must be scalar"),
+            new CompileErrorRec(CompileErrors.eCompileOperandsMustBeSequencedScalar,
+                "Operands must be sequenced scalar"),
+            new CompileErrorRec(CompileErrors.eCompileOperandsMustBeIntegers,
+                "Operands must be an integer"),
+            new CompileErrorRec(CompileErrors.eCompileRightOperandMustBeInteger,
+                "Right operand must be an integer"),
+            new CompileErrorRec(CompileErrors.eCompileArraySubscriptMustBeInteger,
+                "Array subscript must be an integer"),
+            new CompileErrorRec(CompileErrors.eCompileArrayRequiredForSubscription,
+                "Array required for subscription"),
+            new CompileErrorRec(CompileErrors.eCompileFloatOrDoubleRequiredForExponentiation,
+                "Operands for exponentiation must be floats or doubles"),
+            new CompileErrorRec(CompileErrors.eCompileArrayRequiredForResize,
+                "Array required for resize"),
+            new CompileErrorRec(CompileErrors.eCompileIntegerRequiredForResize,
+                "Integer required resize array size specifier"),
+            new CompileErrorRec(CompileErrors.eCompileConditionalMustBeBoolean,
+                "Conditional expression must boolean"),
+            new CompileErrorRec(CompileErrors.eCompileTypeMismatchBetweenThenAndElse,
+                "Type conflict between consequent and alternate arms of conditional"),
+            new CompileErrorRec(CompileErrors.eCompileErrorNeedsBooleanArg,
+                "Error directive needs boolean argument"),
+            new CompileErrorRec(CompileErrors.eCompileFunctionIdentifierRequired,
+                "Function identifier required"),
+            new CompileErrorRec(CompileErrors.eCompileArgumentTypeConflict,
+                "Type conflict between formal and actual arguments"),
+            new CompileErrorRec(CompileErrors.eCompileWrongNumberOfArgsToFunction,
+                "Wrong number of arguments to function"),
+            new CompileErrorRec(CompileErrors.eCompileMustBeAVariableIdentifier,
+                "Variable identifier required"),
+            new CompileErrorRec(CompileErrors.eCompileOperandMustBeBooleanOrInteger,
+                "Operands must be boolean or integer"),
+            new CompileErrorRec(CompileErrors.eCompileOperandMustBeDouble,
+                "Operand must be double"),
+            new CompileErrorRec(CompileErrors.eCompileOperandMustBeFloatOrDouble,
+                "Operand must be float or double"),
+            new CompileErrorRec(CompileErrors.eCompileArrayRequiredForGetLength,
+                "Array required for length operator"),
+            new CompileErrorRec(CompileErrors.eCompileTypeMismatchInAssignment,
+                "Type conflict between l-value and argument"),
+            new CompileErrorRec(CompileErrors.eCompileVoidExpressionIsNotAllowed,
+                "Void expression is not allowed"),
+            new CompileErrorRec(CompileErrors.eCompileMultiplyDeclaredFunction,
+                "Function name has already been used"),
+            new CompileErrorRec(CompileErrors.eCompilePrototypeCantBeLastThingInExprList,
+                "Prototype can't be the last expression in an expression sequence"),
+            new CompileErrorRec(CompileErrors.eCompileInputBeyondEndOfFunction,
+                "Input beyond end of expression"),
+            new CompileErrorRec(CompileErrors.eCompileArrayConstructionOnScalarType,
+                "Array constructor applied to scalar variable"),
+            new CompileErrorRec(CompileErrors.eCompileOperandMustBeInteger,
+                "Operand must be integer"),
+            new CompileErrorRec(CompileErrors.eCompileOperandMustBeArrayOfFloat,
+                "Operand must be array of single"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedStep,
+                "Expected 'step'"),
+            new CompileErrorRec(CompileErrors.eCompileExpectedEqual,
+                "Expected '='"),
+            new CompileErrorRec(CompileErrors.eCompileFunctionNameConflictsWithBuiltIn,
+                "Declared function name conflicts with built-in function name"),
         };
 
 
@@ -430,20 +439,20 @@ namespace OutOfPhase
         {
             List<DataTypes> argsTypes = new List<DataTypes>();
             List<string> argsNames = new List<string>();
-            SymbolListRec argNode = functionSymbol.GetSymbolFunctionArgList();
+            SymbolListRec argNode = functionSymbol.FunctionArgList;
             while (argNode != null)
             {
-                SymbolRec arg = argNode.GetFirstFromSymbolList();
-                argsTypes.Add(arg.GetSymbolVariableDataType());
-                argsNames.Add(arg.GetSymbolName());
-                argNode = argNode.GetRestListFromSymbolList();
+                SymbolRec arg = argNode.First;
+                argsTypes.Add(arg.VariableDataType);
+                argsNames.Add(arg.SymbolName);
+                argNode = argNode.Rest;
             }
             argsTypesOut = argsTypes.ToArray();
             argsNamesOut = argsNames.ToArray();
         }
 
         /* apply optimizations to the AST.  returns False if it runs out of memory. */
-        private static void OptimizeAST(ASTExpressionRec Expr)
+        private static void OptimizeAST(ref ASTExpression Expr)
         {
             bool DidSomething = true;
             while (DidSomething)
@@ -452,7 +461,12 @@ namespace OutOfPhase
 
                 DidSomething = false;
 
-                FoldConstExpression(Expr, out OneDidSomething);
+                ASTExpression exprReplacement;
+                Expr.FoldConst(out OneDidSomething, out exprReplacement);
+                if (exprReplacement != null)
+                {
+                    Expr = exprReplacement;
+                }
                 DidSomething = DidSomething || OneDidSomething;
             }
         }
@@ -476,233 +490,6 @@ namespace OutOfPhase
             return Errors[Error - CompileErrors.eCompileNoError].Message;
         }
 
-#if false // TODO: remove
-        /* compile a module.  a module is a text block with a series of function definitions. */
-        /* if compilation succeeds, the functions are added to the CodeCenter object. */
-        /* the text data is NOT altered. */
-        public static CompileErrors CompileModule(
-            out int ErrorLineNumber,
-            string TextData,
-            object Signature,
-            CodeCenterRec CodeCenter,
-            string Filename)
-        {
-            CompileErrors FinalErrorThing = CompileErrors.eCompileNoError;
-            ErrorLineNumber = -1;
-
-            ScannerRec<KeywordsType> TheScanner = new ScannerRec<KeywordsType>(TextData, KeywordTable);
-            SymbolTableRec TheSymbolTable = new SymbolTableRec();
-
-            /* loop until there are no more things to parse */
-            bool LoopFlag = true;
-            while (LoopFlag)
-            {
-                TokenRec<KeywordsType> Token;
-                int InitialLineNumberOfForm;
-
-                Token = TheScanner.GetNextToken();
-                InitialLineNumberOfForm = TheScanner.GetCurrentLineNumber();
-                if (Token.GetTokenType() == TokenTypes.eTokenEndOfInput)
-                {
-                    /* no more functions to parse, so stop */
-                    LoopFlag = false;
-                }
-                else
-                {
-                    SymbolRec SymbolTableEntryForForm;
-                    ASTExpressionRec FunctionBodyRecord;
-
-                    /* parse the function */
-                    TheScanner.UngetToken(Token);
-                    CompileErrors Error = ParseForm(
-                        out SymbolTableEntryForForm,
-                        out FunctionBodyRecord,
-                        new ParserContext(
-                            TheScanner,
-                            TheSymbolTable),
-                        out ErrorLineNumber);
-                    if (Error != CompileErrors.eCompileNoError)
-                    {
-                        FinalErrorThing = Error;
-                        goto ExitErrorPoint;
-                    }
-                    /* SymbolTableEntryForForm will be the symbol table entry that */
-                    /* was added to the symbol table.  FunctionBodyRecord is either */
-                    /* an expression for a function or NIL if it was a prototype */
-
-                    /* if no error occurred, then generate code */
-                    if (FunctionBodyRecord != null)
-                    {
-                        /* only generate code for real functions */
-
-                        /* step 0:  make sure it hasn't been created yet */
-                        if (CodeCenter.CodeCenterHaveThisFunction(SymbolTableEntryForForm.GetSymbolName()))
-                        {
-                            ErrorLineNumber = TheScanner.GetCurrentLineNumber();
-                            FinalErrorThing = CompileErrors.eCompileMultiplyDeclaredFunction;
-                            goto ExitErrorPoint;
-                        }
-
-                        /* step 1:  do type checking */
-                        DataTypes ResultingType;
-                        Error = TypeCheckExpression(
-                            out ResultingType,
-                            FunctionBodyRecord,
-                            out ErrorLineNumber);
-                        if (Error != CompileErrors.eCompileNoError)
-                        {
-                            FinalErrorThing = Error;
-                            goto ExitErrorPoint;
-                        }
-                        /* check to see that resulting type matches declared type */
-                        if (!CanRightBeMadeToMatchLeft(SymbolTableEntryForForm.GetSymbolFunctionReturnType(), ResultingType))
-                        {
-                            ErrorLineNumber = InitialLineNumberOfForm;
-                            FinalErrorThing = CompileErrors.eCompileTypeMismatch;
-                            goto ExitErrorPoint;
-                        }
-                        /* if it has to be promoted, then promote it */
-                        if (MustRightBePromotedToLeft(SymbolTableEntryForForm.GetSymbolFunctionReturnType(), ResultingType))
-                        {
-                            /* insert promotion operator above expression */
-                            ASTExpressionRec ReplacementExpr = PromoteTheExpression(
-                                ResultingType,
-                                SymbolTableEntryForForm.GetSymbolFunctionReturnType(),
-                                FunctionBodyRecord,
-                                InitialLineNumberOfForm);
-                            FunctionBodyRecord = ReplacementExpr;
-                            /* sanity check */
-                            Error = TypeCheckExpression(
-                                out ResultingType,
-                                FunctionBodyRecord,
-                                out ErrorLineNumber);
-                            if (Error != CompileErrors.eCompileNoError)
-                            {
-                                // type promotion caused failure
-                                Debug.Assert(false);
-                                throw new InvalidOperationException();
-                            }
-                            if (ResultingType != SymbolTableEntryForForm.GetSymbolFunctionReturnType())
-                            {
-                                // after type promotion, types are no longer the same
-                                Debug.Assert(false);
-                                throw new InvalidOperationException();
-                            }
-                        }
-
-                        /* step 1.5:  optimize the AST */
-                        OptimizeAST(FunctionBodyRecord);
-
-                        /* step 2:  do code generation */
-                        /* calling conventions:  */
-                        /*  - push the arguments */
-                        /*  - funccall pushes the return address */
-                        /* thus, upon entry, Stack[0] will be the return address */
-                        /* and Stack[-1] will be the rightmost argument */
-                        /* on return, args and retaddr are popped and retval replaces them */
-                        int StackDepth = 0;
-                        int MaxStackDepth = 0;
-                        int ReturnValueLocation = StackDepth; /* remember return value location */
-                        int ArgumentIndex = 0;
-                        SymbolListRec FormalArgumentListScan = SymbolTableEntryForForm.GetSymbolFunctionArgList();
-                        while (FormalArgumentListScan != null)
-                        {
-                            SymbolRec TheFormalArg = FormalArgumentListScan.GetFirstFromSymbolList();
-                            StackDepth++; /* allocate first */
-                            MaxStackDepth = Math.Max(MaxStackDepth, StackDepth);
-                            TheFormalArg.SetSymbolVariableStackLocation(StackDepth); /* remember */
-                            ArgumentIndex++;
-                            FormalArgumentListScan = FormalArgumentListScan.GetRestListFromSymbolList();
-                        }
-                        /* reserve return address spot */
-                        StackDepth++;
-                        MaxStackDepth = Math.Max(MaxStackDepth, StackDepth);
-                        /* allocate the function code */
-                        PcodeRec TheFunctionCode = new PcodeRec();
-                        CodeGenExpression(
-                            TheFunctionCode,
-                            ref StackDepth,
-                            ref MaxStackDepth,
-                            FunctionBodyRecord);
-                        Debug.Assert(StackDepth <= MaxStackDepth);
-                        /* 2 extra words for retaddr and resultofexpr */
-                        if (StackDepth != ArgumentIndex + 1 + 1)
-                        {
-                            // stack depth error after evaluating function
-                            Debug.Assert(false);
-                            throw new InvalidOperationException();
-                        }
-                        /* now put the return instruction (pops retaddr and args, leaving retval) */
-                        int ignored;
-                        TheFunctionCode.AddPcodeInstruction(Pcodes.epReturnFromSubroutine, out ignored, InitialLineNumberOfForm);
-                        TheFunctionCode.AddPcodeOperandInteger(ArgumentIndex);
-                        StackDepth = StackDepth - (1 + ArgumentIndex);
-                        Debug.Assert(StackDepth <= MaxStackDepth);
-                        if (StackDepth != 1)
-                        {
-                            // stack depth is wrong at end of function
-                            Debug.Assert(false);
-                            throw new InvalidOperationException();
-                        }
-
-                        TheFunctionCode.MaxStackDepth = MaxStackDepth;
-
-                        /* step 2.5:  optimize the code */
-                        TheFunctionCode.OptimizePcode();
-
-                        /* step 3:  create the function and save it away */
-                        FuncCodeRec TheWholeFunctionThing = new FuncCodeRec(
-                            SymbolTableEntryForForm.GetSymbolName(),
-                            SymbolTableEntryForForm.GetSymbolFunctionArgList(),
-                            TheFunctionCode,
-                            SymbolTableEntryForForm.GetSymbolFunctionReturnType(),
-                            Filename);
-
-#if true // TODO:experimental
-                        if (CILObject.EnableCIL)
-                        {
-                            CILAssembly cilAssembly = new CILAssembly();
-
-                            DataTypes[] argsTypes;
-                            string[] argsNames;
-                            SymbolicArgListToType(SymbolTableEntryForForm, out argsTypes, out argsNames);
-                            CILObject cilObject = new CILObject(
-                                CodeCenter.ManagedFunctionLinker,
-                                argsTypes,
-                                argsNames,
-                                SymbolTableEntryForForm.GetSymbolFunctionReturnType(),
-                                FunctionBodyRecord,
-                                cilAssembly);
-                            TheWholeFunctionThing.CILObject = cilObject;
-
-                            if (CILObject.EnableCIL)
-                            {
-                                cilAssembly.Finish();
-                            }
-                        }
-#endif
-
-                        /* add it to the code center */
-                        CodeCenter.AddFunctionToCodeCenter(TheWholeFunctionThing, Signature);
-
-                        /* wow, all done!  on to the next one */
-                    }
-                }
-            }
-
-
-        ExitErrorPoint:
-
-            if (FinalErrorThing != CompileErrors.eCompileNoError)
-            {
-                /* since we're aborting, dump any functions we've already created */
-                CodeCenter.FlushModulesCompiledFunctions(Signature);
-            }
-
-            return FinalErrorThing;
-        }
-#endif
-
         // Compile multiple modules. (eliminates the need to do prototyping or function signature inference.)
         // CodeCenter is cleared, and if compilation succeeds, the functions are added to CodeCenter.
         public static CompileErrors CompileWholeProgram(
@@ -725,7 +512,7 @@ namespace OutOfPhase
             // parse
 
             List<SymbolRec> SymbolTableEntriesForForm = new List<SymbolRec>();
-            List<ASTExpressionRec> FunctionBodyRecords = new List<ASTExpressionRec>();
+            List<ASTExpression> FunctionBodyRecords = new List<ASTExpression>();
             List<int> ModuleIndices = new List<int>();
             Dictionary<string, List<ParserContext.FunctionSymbolRefInfo>> FunctionRefSymbolList = new Dictionary<string, List<ParserContext.FunctionSymbolRefInfo>>();
             List<int> InitialLineNumbersOfForm = new List<int>();
@@ -750,7 +537,7 @@ namespace OutOfPhase
                     }
 
                     SymbolRec SymbolTableEntryForForm;
-                    ASTExpressionRec FunctionBodyRecord;
+                    ASTExpression FunctionBodyRecord;
 
                     /* parse the function */
                     TheScanner.UngetToken(Token);
@@ -767,15 +554,11 @@ namespace OutOfPhase
                         return Error;
                     }
 
-#if true // TODO:remove -- null means 'proto'
-                    if (FunctionBodyRecord != null)
-#endif
-                    {
-                        ModuleIndices.Add(module);
-                        SymbolTableEntriesForForm.Add(SymbolTableEntryForForm);
-                        FunctionBodyRecords.Add(FunctionBodyRecord);
-                        InitialLineNumbersOfForm.Add(InitialLineNumberOfForm);
-                    }
+                    Debug.Assert(FunctionBodyRecord != null);
+                    ModuleIndices.Add(module);
+                    SymbolTableEntriesForForm.Add(SymbolTableEntryForForm);
+                    FunctionBodyRecords.Add(FunctionBodyRecord);
+                    InitialLineNumbersOfForm.Add(InitialLineNumberOfForm);
                 }
 
                 foreach (KeyValuePair<string, List<ParserContext.FunctionSymbolRefInfo>> name in FunctionRefSymbolList)
@@ -795,23 +578,23 @@ namespace OutOfPhase
                 ErrorModuleIndex = ModuleIndices[i];
 
                 SymbolRec FunctionDeclarationSymbol = SymbolTableEntriesForForm[i];
-                if (functionNamesUsed.ContainsKey(FunctionDeclarationSymbol.GetSymbolName()))
+                if (functionNamesUsed.ContainsKey(FunctionDeclarationSymbol.SymbolName))
                 {
                     ErrorLineNumber = FunctionBodyRecords[i].LineNumber;
                     return CompileErrors.eCompileMultiplyDeclaredFunction;
                 }
-                functionNamesUsed.Add(FunctionDeclarationSymbol.GetSymbolName(), false);
+                functionNamesUsed.Add(FunctionDeclarationSymbol.SymbolName, false);
 
                 List<ParserContext.FunctionSymbolRefInfo> symbols;
-                if (FunctionRefSymbolList.TryGetValue(FunctionDeclarationSymbol.GetSymbolName(), out symbols))
+                if (FunctionRefSymbolList.TryGetValue(FunctionDeclarationSymbol.SymbolName, out symbols))
                 {
                     foreach (ParserContext.FunctionSymbolRefInfo functionRef in symbols)
                     {
                         functionRef.symbol.SymbolBecomeFunction2(
-                            FunctionDeclarationSymbol.GetSymbolFunctionArgList(),
-                            FunctionDeclarationSymbol.GetSymbolFunctionReturnType());
+                            FunctionDeclarationSymbol.FunctionArgList,
+                            FunctionDeclarationSymbol.FunctionReturnType);
                     }
-                    FunctionRefSymbolList.Remove(FunctionDeclarationSymbol.GetSymbolName());
+                    FunctionRefSymbolList.Remove(FunctionDeclarationSymbol.SymbolName);
                 }
             }
 
@@ -831,7 +614,7 @@ namespace OutOfPhase
             {
                 int module = ModuleIndices[i];
                 SymbolRec SymbolTableEntryForForm = SymbolTableEntriesForForm[i];
-                ASTExpressionRec FunctionBodyRecord = FunctionBodyRecords[i];
+                ASTExpression FunctionBodyRecord = FunctionBodyRecords[i];
                 int InitialLineNumberOfForm = InitialLineNumbersOfForm[i];
 
                 ErrorModuleIndex = module;
@@ -840,38 +623,36 @@ namespace OutOfPhase
                 /* was added to the symbol table.  FunctionBodyRecord is either */
                 /* an expression for a function or NIL if it was a prototype */
 
-                Debug.Assert(!CodeCenter.CodeCenterHaveThisFunction(SymbolTableEntryForForm.GetSymbolName()));
+                Debug.Assert(!CodeCenter.CodeCenterHaveThisFunction(SymbolTableEntryForForm.SymbolName));
 
                 /* step 1:  do type checking */
                 DataTypes ResultingType;
-                CompileErrors Error = TypeCheckExpression(
+                CompileErrors Error = FunctionBodyRecord.TypeCheck(
                     out ResultingType,
-                    FunctionBodyRecord,
                     out ErrorLineNumber);
                 if (Error != CompileErrors.eCompileNoError)
                 {
                     return Error;
                 }
                 /* check to see that resulting type matches declared type */
-                if (!CanRightBeMadeToMatchLeft(SymbolTableEntryForForm.GetSymbolFunctionReturnType(), ResultingType))
+                if (!CanRightBeMadeToMatchLeft(SymbolTableEntryForForm.FunctionReturnType, ResultingType))
                 {
                     ErrorLineNumber = InitialLineNumberOfForm;
                     return CompileErrors.eCompileTypeMismatch;
                 }
                 /* if it has to be promoted, then promote it */
-                if (MustRightBePromotedToLeft(SymbolTableEntryForForm.GetSymbolFunctionReturnType(), ResultingType))
+                if (MustRightBePromotedToLeft(SymbolTableEntryForForm.FunctionReturnType, ResultingType))
                 {
                     /* insert promotion operator above expression */
-                    ASTExpressionRec ReplacementExpr = PromoteTheExpression(
+                    ASTExpression ReplacementExpr = PromoteTheExpression(
                         ResultingType,
-                        SymbolTableEntryForForm.GetSymbolFunctionReturnType(),
+                        SymbolTableEntryForForm.FunctionReturnType,
                         FunctionBodyRecord,
                         InitialLineNumberOfForm);
                     FunctionBodyRecord = ReplacementExpr;
                     /* sanity check */
-                    Error = TypeCheckExpression(
+                    Error = FunctionBodyRecord.TypeCheck(
                         out ResultingType,
-                        FunctionBodyRecord,
                         out ErrorLineNumber);
                     if (Error != CompileErrors.eCompileNoError)
                     {
@@ -879,7 +660,7 @@ namespace OutOfPhase
                         Debug.Assert(false);
                         throw new InvalidOperationException();
                     }
-                    if (ResultingType != SymbolTableEntryForForm.GetSymbolFunctionReturnType())
+                    if (ResultingType != SymbolTableEntryForForm.FunctionReturnType)
                     {
                         // after type promotion, types are no longer the same
                         Debug.Assert(false);
@@ -901,7 +682,7 @@ namespace OutOfPhase
             {
                 int module = ModuleIndices[i];
                 SymbolRec SymbolTableEntryForForm = SymbolTableEntriesForForm[i];
-                ASTExpressionRec FunctionBodyRecord = FunctionBodyRecords[i];
+                ASTExpression FunctionBodyRecord = FunctionBodyRecords[i];
                 int InitialLineNumberOfForm = InitialLineNumbersOfForm[i];
 
                 string Filename = Filenames[module];
@@ -909,10 +690,10 @@ namespace OutOfPhase
 
                 ErrorModuleIndex = module;
 
-                Debug.Assert(!CodeCenter.CodeCenterHaveThisFunction(SymbolTableEntryForForm.GetSymbolName()));
+                Debug.Assert(!CodeCenter.CodeCenterHaveThisFunction(SymbolTableEntryForForm.SymbolName));
 
                 /* step 1.5:  optimize the AST */
-                OptimizeAST(FunctionBodyRecord);
+                OptimizeAST(ref FunctionBodyRecord);
 
                 /* step 2:  do code generation */
                 /* calling conventions:  */
@@ -925,26 +706,25 @@ namespace OutOfPhase
                 int MaxStackDepth = 0;
                 int ReturnValueLocation = StackDepth; /* remember return value location */
                 int ArgumentIndex = 0;
-                SymbolListRec FormalArgumentListScan = SymbolTableEntryForForm.GetSymbolFunctionArgList();
+                SymbolListRec FormalArgumentListScan = SymbolTableEntryForForm.FunctionArgList;
                 while (FormalArgumentListScan != null)
                 {
-                    SymbolRec TheFormalArg = FormalArgumentListScan.GetFirstFromSymbolList();
+                    SymbolRec TheFormalArg = FormalArgumentListScan.First;
                     StackDepth++; /* allocate first */
                     MaxStackDepth = Math.Max(MaxStackDepth, StackDepth);
-                    TheFormalArg.SetSymbolVariableStackLocation(StackDepth); /* remember */
+                    TheFormalArg.SymbolVariableStackLocation = StackDepth; /* remember */
                     ArgumentIndex++;
-                    FormalArgumentListScan = FormalArgumentListScan.GetRestListFromSymbolList();
+                    FormalArgumentListScan = FormalArgumentListScan.Rest;
                 }
                 /* reserve return address spot */
                 StackDepth++;
                 MaxStackDepth = Math.Max(MaxStackDepth, StackDepth);
                 /* allocate the function code */
                 PcodeRec TheFunctionCode = new PcodeRec();
-                CodeGenExpression(
+                FunctionBodyRecord.PcodeGen(
                     TheFunctionCode,
                     ref StackDepth,
-                    ref MaxStackDepth,
-                    FunctionBodyRecord);
+                    ref MaxStackDepth);
                 Debug.Assert(StackDepth <= MaxStackDepth);
                 /* 2 extra words for retaddr and resultofexpr */
                 if (StackDepth != ArgumentIndex + 1 + 1)
@@ -973,15 +753,14 @@ namespace OutOfPhase
 
                 /* step 3:  create the function and save it away */
                 FuncCodeRec TheWholeFunctionThing = new FuncCodeRec(
-                    SymbolTableEntryForForm.GetSymbolName(),
-                    SymbolTableEntryForForm.GetSymbolFunctionArgList(),
+                    SymbolTableEntryForForm.SymbolName,
+                    SymbolTableEntryForForm.FunctionArgList,
                     TheFunctionCode,
-                    SymbolTableEntryForForm.GetSymbolFunctionReturnType(),
+                    SymbolTableEntryForForm.FunctionReturnType,
                     Filename);
 
                 TheWholeFunctionThings[i] = TheWholeFunctionThing;
 
-#if true // TODO:experimental
                 if (CILObject.EnableCIL)
                 {
                     DataTypes[] argsTypes;
@@ -991,12 +770,11 @@ namespace OutOfPhase
                         CodeCenter.ManagedFunctionLinker,
                         argsTypes,
                         argsNames,
-                        SymbolTableEntryForForm.GetSymbolFunctionReturnType(),
+                        SymbolTableEntryForForm.FunctionReturnType,
                         FunctionBodyRecord,
                         cilAssembly);
                     TheWholeFunctionThing.CILObject = cilObject;
                 }
-#endif
             }
 
             // register after entire assembly is emitted
@@ -1022,10 +800,10 @@ namespace OutOfPhase
                 string[] argsNames;
                 SymbolicArgListToType(SymbolTableEntriesForForm[i], out argsTypes, out argsNames);
                 CodeCenter.RetainedFunctionSignatures[i] = new KeyValuePair<string, FunctionSignature>(
-                    SymbolTableEntriesForForm[i].GetSymbolName(),
+                    SymbolTableEntriesForForm[i].SymbolName,
                     new FunctionSignature(
                         argsTypes,
-                        SymbolTableEntriesForForm[i].GetSymbolFunctionReturnType()));
+                        SymbolTableEntriesForForm[i].FunctionReturnType));
             }
 
             return CompileErrors.eCompileNoError;
@@ -1044,7 +822,7 @@ namespace OutOfPhase
             string TextData,
             bool suppressCILEmission,
             out PcodeRec FunctionOut,
-            out ASTExpressionRec ASTOut)
+            out ASTExpression ASTOut)
         {
             CompileErrors Error;
 
@@ -1063,7 +841,8 @@ namespace OutOfPhase
                     CodeCenter.RetainedFunctionSignatures[i].Key,
                     CodeCenter.RetainedFunctionSignatures[i].Value.ArgsTypes,
                     CodeCenter.RetainedFunctionSignatures[i].Value.ReturnType);
-                TheSymbolTable.AddSymbolToTable(functionSignature);
+                bool f = TheSymbolTable.Add(functionSignature);
+                Debug.Assert(f); // should never fail (due to duplicate) since CodeCenter.RetainedFunctionSignatures is unique-keyed
             }
 
             /* build parameters into symbol table */
@@ -1077,17 +856,11 @@ namespace OutOfPhase
                 /* allocate stack slot */
                 StackDepth++;
                 MaxStackDepth = Math.Max(MaxStackDepth, StackDepth);
-                TheParameter.SetSymbolVariableStackLocation(StackDepth);
-                switch (TheSymbolTable.AddSymbolToTable(TheParameter))
+                TheParameter.SymbolVariableStackLocation = StackDepth;
+                if (!TheSymbolTable.Add(TheParameter)) // our own code should never pass in a formal arg list with duplicates
                 {
-                    default:
-                        Debug.Assert(false);
-                        throw new InvalidOperationException();
-                    case AddSymbolType.eAddSymbolNoErr:
-                        break;
-                    case AddSymbolType.eAddSymbolAlreadyExists:
-                        Debug.Assert(false);
-                        throw new InvalidOperationException();
+                    Debug.Assert(false);
+                    throw new InvalidOperationException();
                 }
             }
             /* fence them off */
@@ -1103,7 +876,7 @@ namespace OutOfPhase
                 throw new InvalidOperationException();
             }
 
-            ASTExprListRec ListOfExpressions;
+            ASTExpressionList ListOfExpressions;
             Error = ParseExprList(
                 out ListOfExpressions,
                 new ParserContext(
@@ -1115,7 +888,9 @@ namespace OutOfPhase
             {
                 return Error;
             }
-            ASTExpressionRec TheExpressionThang = NewExprSequence(ListOfExpressions, TheScanner.GetCurrentLineNumber());
+            ASTExpression TheExpressionThang = new ASTExpression(
+                ListOfExpressions,
+                TheScanner.GetCurrentLineNumber());
 
             /* make sure there is nothing after it */
             TokenRec<KeywordsType> Token = TheScanner.GetNextToken();
@@ -1126,24 +901,23 @@ namespace OutOfPhase
             }
 
             DataTypes ResultingType;
-            Error = TypeCheckExpression(out ResultingType, TheExpressionThang, out ErrorLineNumber);
+            Error = TheExpressionThang.TypeCheck(out ResultingType, out ErrorLineNumber);
             if (Error != CompileErrors.eCompileNoError)
             {
                 return Error;
             }
 
-            OptimizeAST(TheExpressionThang);
+            OptimizeAST(ref TheExpressionThang);
 
             PcodeRec TheFunctionCode = new PcodeRec();
 
-            CodeGenExpression(
+            TheExpressionThang.PcodeGen(
                 TheFunctionCode,
                 ref StackDepth,
-                ref MaxStackDepth,
-                TheExpressionThang);
+                ref MaxStackDepth);
             Debug.Assert(StackDepth <= MaxStackDepth);
 
-            ReturnTypeOut = GetExpressionsResultantType(TheExpressionThang);
+            ReturnTypeOut = TheExpressionThang.ResultType;
 
 
             /* 2 extra words for retaddr, resultofexpr */
@@ -1172,7 +946,6 @@ namespace OutOfPhase
             TheFunctionCode.OptimizePcode();
 
 
-#if true // TODO:experimental
             if (CILObject.EnableCIL && !suppressCILEmission)
             {
                 DataTypes[] argsTypes = new DataTypes[FuncArray.Length];
@@ -1187,13 +960,12 @@ namespace OutOfPhase
                     CodeCenter.ManagedFunctionLinker,
                     argsTypes,
                     argsNames,
-                    GetExpressionsResultantType(TheExpressionThang),
+                    TheExpressionThang.ResultType,
                     TheExpressionThang,
                     cilAssembly);
                 TheFunctionCode.cilObject = cilObject;
                 cilAssembly.Finish();
             }
-#endif
 
 
             /* it worked, so return the dang thing */

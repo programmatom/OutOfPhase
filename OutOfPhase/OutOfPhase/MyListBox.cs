@@ -96,6 +96,12 @@ namespace OutOfPhase
             Rebuild();
         }
 
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            VerticalScroll.SmallChange = FontHeight;
+        }
+
         [Category("Behavior"), DefaultValue(false)]
         public bool Multiselect
         {
@@ -138,6 +144,7 @@ namespace OutOfPhase
             base.OnFontChanged(e);
             ClearDrawingResources(); // recreate offscreen strip
             Invalidate();
+            VerticalScroll.SmallChange = FontHeight;
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)
@@ -318,7 +325,7 @@ namespace OutOfPhase
                     }
                 }
 
-                graphics.DrawImageUnscaled(offscreenStrip, rect);
+                graphics.DrawImage(offscreenStrip, rect);
             }
         }
 

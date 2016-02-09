@@ -43,13 +43,6 @@ namespace OutOfPhase
             double OriginalValue,
             double Amplitude);
 
-        public delegate float LFOWaveIndexerMethod(
-            double Phase,
-            double TableIndex,
-            int NumTables,
-            int Frames,
-            float[][] Matrix);
-
         public class LFOOneStateRec
         {
             /* pointer to the LFO generating function */
@@ -96,14 +89,14 @@ namespace OutOfPhase
             public int NumberOfTables;
             /* raw wave table data array */
             public float[][] WaveTableMatrix;
-            /* function for indexing the wave table */
-            public LFOWaveIndexerMethod WaveIndexer;
             /* envelope controlling wave table index */
             public EvalEnvelopeRec WaveTableIndexEnvelope;
             /* lfo processing the wave table index */
             public LFOGenRec WaveTableLFOGenerator;
             // current output of wave table envelope and lfo
             public double CurrentWaveTableIndex;
+            // cross-table interpolation option
+            public bool EnableCrossWaveTableInterpolation;
 
             /* modulation method */
             public LFOModulationTypes ModulationMethod;
@@ -539,10 +532,6 @@ namespace OutOfPhase
                             out ListNode.WaveTableMatrix,
                             out ListNode.FramesPerTable,
                             out ListNode.NumberOfTables);
-                        if (ListNode.WaveTableWasDefined)
-                        {
-                            ListNode.WaveIndexer = WaveTableIndexer;
-                        }
 
                         ListNode.WaveTableIndexEnvelope = NewEnvelopeStateRecord(
                             GetLFOSpecWaveTableIndexEnvelope(OneLFOSpec),
@@ -576,6 +565,9 @@ namespace OutOfPhase
                         {
                             MaxPreOrigin = PreOriginTime;
                         }
+
+                        ListNode.EnableCrossWaveTableInterpolation = LFOSpecGetEnableCrossWaveTableInterpolation(OneLFOSpec);
+
                         break;
 
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
@@ -2034,12 +2026,13 @@ namespace OutOfPhase
         {
             if (State.WaveTableWasDefined)
             {
-                float WaveIndexerResult = State.WaveIndexer(
+                float WaveIndexerResult = WaveTableIndexer(
                     State.FramesPerTable * State.CurrentPhase,
                     State.CurrentWaveTableIndex * (State.NumberOfTables - 1),
                     State.NumberOfTables,
                     State.FramesPerTable,
-                    State.WaveTableMatrix);
+                    State.WaveTableMatrix,
+                    State.EnableCrossWaveTableInterpolation);
                 return OriginalValue + Amplitude * WaveIndexerResult;
             }
             return OriginalValue;
@@ -2052,12 +2045,13 @@ namespace OutOfPhase
         {
             if (State.WaveTableWasDefined)
             {
-                float WaveIndexerResult = State.WaveIndexer(
+                float WaveIndexerResult = WaveTableIndexer(
                     State.FramesPerTable * State.CurrentPhase,
                     State.CurrentWaveTableIndex * (State.NumberOfTables - 1),
                     State.NumberOfTables,
                     State.FramesPerTable,
-                    State.WaveTableMatrix);
+                    State.WaveTableMatrix,
+                    State.EnableCrossWaveTableInterpolation);
                 return OriginalValue * Amplitude * WaveIndexerResult;
             }
             return 0;
@@ -2070,12 +2064,13 @@ namespace OutOfPhase
         {
             if (State.WaveTableWasDefined)
             {
-                float WaveIndexerResult = State.WaveIndexer(
+                float WaveIndexerResult = WaveTableIndexer(
                     State.FramesPerTable * State.CurrentPhase,
                     State.CurrentWaveTableIndex * (State.NumberOfTables - 1),
                     State.NumberOfTables,
                     State.FramesPerTable,
-                    State.WaveTableMatrix);
+                    State.WaveTableMatrix,
+                    State.EnableCrossWaveTableInterpolation);
                 return (1 - Amplitude * WaveIndexerResult) * OriginalValue;
             }
             return OriginalValue;

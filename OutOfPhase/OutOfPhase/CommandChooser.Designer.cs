@@ -83,7 +83,7 @@ namespace OutOfPhase
             this.buttonCancel.Location = new System.Drawing.Point(78, 330);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(75, 23);
-            this.buttonCancel.TabIndex = 3;
+            this.buttonCancel.TabIndex = 2;
             this.buttonCancel.Text = "Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
             // 
@@ -96,14 +96,14 @@ namespace OutOfPhase
             this.listBoxCommands.Name = "listBoxCommands";
             this.listBoxCommands.ScrollAlwaysVisible = true;
             this.listBoxCommands.Size = new System.Drawing.Size(366, 321);
-            this.listBoxCommands.TabIndex = 2;
+            this.listBoxCommands.TabIndex = 1;
             // 
             // buttonOK
             // 
             this.buttonOK.Location = new System.Drawing.Point(219, 330);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(75, 23);
-            this.buttonOK.TabIndex = 0;
+            this.buttonOK.TabIndex = 3;
             this.buttonOK.Text = "OK";
             this.buttonOK.UseVisualStyleBackColor = true;
             this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);

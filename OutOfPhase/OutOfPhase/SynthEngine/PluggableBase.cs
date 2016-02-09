@@ -270,6 +270,18 @@ namespace OutOfPhase
             new KeyValuePair<string, IPluggableProcessorFactory>("usereffect", new PluggableEffectUserEffectFactory()),
         };
 
+        public static KeyValuePair<string, IPluggableProcessorFactory>[] ExternalPluggableProcessors;
+
+        public static IEnumerable<KeyValuePair<string, IPluggableProcessorFactory>> AllPluggableProcessors
+        {
+            get
+            {
+                List<KeyValuePair<string, IPluggableProcessorFactory>> list = new List<KeyValuePair<string, IPluggableProcessorFactory>>(BuiltInPluggableProcessors);
+                list.AddRange(ExternalPluggableProcessors);
+                return list;
+            }
+        }
+
 
         //
 

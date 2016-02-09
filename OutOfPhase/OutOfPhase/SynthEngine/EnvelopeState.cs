@@ -28,8 +28,8 @@ namespace OutOfPhase
 {
     public static partial class Synthesizer
     {
-        private const double DECIBELEXPANDER = 32768d;
-        private const double DECIBELTHRESHHOLD = 1d / DECIBELEXPANDER;
+        public const double DECIBELEXPANDER = 32768d;
+        public const double DECIBELTHRESHHOLD = 1d / DECIBELEXPANDER;
 
         public class OneEnvPhaseRec
         {
@@ -551,24 +551,10 @@ namespace OutOfPhase
             }
             else
             {
-                double Temp;
-                bool Negative;
-
                 /* we need to compute the next value */
-                Temp = LinearTransitionUpdate(ref State.LinearTransition);
-                Negative = false;
-                if (Temp < 0)
-                {
-                    Temp = -Temp;
-                    Negative = true;
-                }
-                Temp = Math.Exp(Temp) * (1d / DECIBELEXPANDER);
-                if (Negative)
-                {
-                    Temp = -Temp;
-                }
-                State.LastOutputtedValue = Temp;
-                return Temp;
+                double Temp = LinearTransitionUpdate(ref State.LinearTransition);
+                State.LastOutputtedValue = ExpSegEndpointToLinear(Temp);
+                return State.LastOutputtedValue;
             }
         }
 
@@ -642,6 +628,7 @@ namespace OutOfPhase
                         default:
                             Debug.Assert(false);
                             throw new InvalidOperationException();
+
                         case EnvTransTypes.eEnvelopeLinearInAmplitude:
                             State.EnvelopeUpdate = _EnvUpdateLinearAbsolute;
                             switch (CurrentPhase.TargetType)
@@ -649,6 +636,7 @@ namespace OutOfPhase
                                 default:
                                     Debug.Assert(false);
                                     throw new InvalidOperationException();
+
                                 case EnvTargetTypes.eEnvelopeTargetAbsolute:
                                     ResetLinearTransition(
                                         ref State.LinearTransition,
@@ -665,13 +653,9 @@ namespace OutOfPhase
                                     break;
                             }
                             break;
+
                         case EnvTransTypes.eEnvelopeLinearInDecibels:
                             {
-                                double InitialDecibels;
-                                double FinalDecibels;
-                                double Temp;
-                                bool Negative;
-
                                 /* figure out end points */
                                 /* this is set so that the magnitude of the thing always indicates */
                                 /* the log of the value, thus the linear transition is linear in the */
@@ -679,51 +663,25 @@ namespace OutOfPhase
                                 /* log using DECIBELEXPANDER so that the log is always positive, */
                                 /* freeing up the sign for us.  signed transitions (positive to */
                                 /* negative, for instance) are weird. */
+
                                 State.EnvelopeUpdate = _EnvUpdateLinearDecibels;
-                                Temp = State.LastOutputtedValue;
-                                Negative = false;
-                                if (Temp < 0)
-                                {
-                                    Temp = -Temp;
-                                    Negative = true;
-                                }
-                                if (Temp < DECIBELTHRESHHOLD)
-                                {
-                                    /* we used to use FastFixedType, so we use same epsilon value */
-                                    Temp = DECIBELTHRESHHOLD;
-                                }
-                                InitialDecibels = Math.Log(DECIBELEXPANDER * Temp);
-                                if (Negative)
-                                {
-                                    InitialDecibels = -InitialDecibels;
-                                }
+
+                                double InitialDecibels = ExpSegEndpointToLog(State.LastOutputtedValue);
+
+                                double FinalDecibels;
                                 switch (CurrentPhase.TargetType)
                                 {
                                     default:
                                         Debug.Assert(false);
                                         throw new InvalidOperationException();
                                     case EnvTargetTypes.eEnvelopeTargetAbsolute:
-                                        Temp = CurrentPhase.FinalAmplitude;
+                                        FinalDecibels = ExpSegEndpointToLog(CurrentPhase.FinalAmplitude);
                                         break;
                                     case EnvTargetTypes.eEnvelopeTargetScaling:
-                                        Temp = CurrentPhase.FinalAmplitude * State.LastOutputtedValue;
+                                        FinalDecibels = ExpSegEndpointToLog(CurrentPhase.FinalAmplitude * State.LastOutputtedValue);
                                         break;
                                 }
-                                Negative = false;
-                                if (Temp < 0)
-                                {
-                                    Temp = -Temp;
-                                    Negative = true;
-                                }
-                                if (Temp < DECIBELTHRESHHOLD)
-                                {
-                                    Temp = DECIBELTHRESHHOLD;
-                                }
-                                FinalDecibels = Math.Log(DECIBELEXPANDER * Temp);
-                                if (Negative)
-                                {
-                                    FinalDecibels = -FinalDecibels;
-                                }
+
                                 ResetLinearTransition(
                                     ref State.LinearTransition,
                                     InitialDecibels,
@@ -752,6 +710,55 @@ namespace OutOfPhase
                     EnvStepToNextInterval(State);
                 }
             }
+        }
+
+        // shared utility function for exponential segment calculation
+        public static double ExpSegEndpointToLog(double linearValue)
+        {
+            /* this is set so that the magnitude of the thing always indicates */
+            /* the log of the value, thus the linear transition is linear in the */
+            /* log.  the sign is for the actual value.  we normalize the */
+            /* log using DECIBELEXPANDER so that the log is always positive, */
+            /* freeing up the sign for us.  signed transitions (positive to */
+            /* negative, for instance) are weird. */
+            double Temp = linearValue;
+            bool Negative = false;
+            if (Temp < 0)
+            {
+                Temp = -Temp;
+                Negative = true;
+            }
+            Temp = Math.Max(Temp, DECIBELTHRESHHOLD);
+            if (Temp < DECIBELTHRESHHOLD)
+            {
+                // we used to use FastFixedType [a fixed point type with a 15-bit fraction], so we use same epsilon value
+                Temp = DECIBELTHRESHHOLD;
+            }
+            double decibelsValue = Math.Log(DECIBELEXPANDER * Temp);
+            if (Negative)
+            {
+                decibelsValue = -decibelsValue;
+            }
+            return decibelsValue;
+        }
+
+        // shared utility function for exponential segment calculation
+        public static double ExpSegEndpointToLinear(double decibelsValue)
+        {
+            double Temp = decibelsValue;
+            bool Negative = false;
+            if (Temp < 0)
+            {
+                Temp = -Temp;
+                Negative = true;
+            }
+            Temp = Math.Exp(Temp) * (1d / DECIBELEXPANDER);
+            if (Negative)
+            {
+                Temp = -Temp;
+            }
+            double linearValue = Temp;
+            return linearValue;
         }
 
         /* retrigger envelopes from the origin point */

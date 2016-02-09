@@ -136,7 +136,7 @@ namespace OutOfPhase
             DataTypes[] argsTypes,
             string[] argsNames,
             DataTypes returnType,
-            Compiler.ASTExpressionRec ast,
+            Compiler.ASTExpression ast,
             CILAssembly cilAssembly)
         {
             this.argsTypes = argsTypes;
@@ -167,14 +167,13 @@ namespace OutOfPhase
             }
 
             ILGenerator ilGenerator = methodBuilder.GetILGenerator();
-            Compiler.ILGenExpression(
+            ast.ILGen(
                 this,
                 new Compiler.ILGenContext(
                     ilGenerator,
                     argumentTable,
                     variableTable,
-                    managedFunctionLinker),
-                ast);
+                    managedFunctionLinker));
             ilGenerator.Emit(OpCodes.Ret);
 
 

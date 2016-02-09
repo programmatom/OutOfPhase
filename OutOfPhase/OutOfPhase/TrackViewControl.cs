@@ -32,11 +32,13 @@ using System.Windows.Forms;
 
 using Microsoft.Win32;
 
+using TextEditor;
+
 namespace OutOfPhase
 {
     // TODO: for WPF, all this custom drawn code should be rewritten as a hierarchy of modular elements
 
-    public partial class TrackViewControl : UserControl, IGraphicsContext, IUndoClient
+    public partial class TrackViewControl : ScrollableControl, IGraphicsContext, IUndoClient
     {
         private TrackObjectRec trackObject;
 
@@ -80,6 +82,24 @@ namespace OutOfPhase
         private Pen lightGreyPen;
         private Brush lightLightGreyBrush;
 
+        // these values are cached to improve performance
+        private readonly Dictionary<CachedTextWidthKey, int> cachedTextWidths = new Dictionary<CachedTextWidthKey, int>();
+        private int fontHeight = -1;
+        private LayoutMetrics layoutMetrics;
+        private IBitmapsScore bitmaps;
+#if true // TODO: for testing, remove
+        private float currentScaleFactor = 1;
+        public static bool currentBravura = Program.Config.EnableBravura;
+#endif
+        private Font bravuraFont;
+        private int bravuraQuarterNoteWidth = -1;
+        private int bravuraFontHeight = -1;
+        private Font smallFont;
+        private int smallFontHeight = -1;
+
+        private int lastHeight;
+        private float adjustError;
+
 
         public TrackViewControl()
         {
@@ -91,6 +111,8 @@ namespace OutOfPhase
             Schedule.TrackExtentsChanged += new EventHandler(Schedule_TrackExtentsChanged);
 
             SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
+
+            lastHeight = ClientSize.Height;
 
             Disposed += new EventHandler(TrackViewControl_Disposed);
         }
@@ -127,7 +149,9 @@ namespace OutOfPhase
 
             RebuildInlineStrip();
 
+#if false // TODO: what problem was this trying to solve?
             trackObject.PropertyChanged += new PropertyChangedEventHandler(trackObject_PropertyChanged);
+#endif
             trackObject.FrameArray.ListChanged += new ListChangedEventHandler(FrameArray_ListChanged);
             trackObject.FrameArrayChanged += new PropertyChangedEventHandler(TrackObject_FrameArrayChanged);
             trackObject.BackgroundObjects.ListChanged += new ListChangedEventHandler(BackgroundObjects_ListChanged);
@@ -139,7 +163,9 @@ namespace OutOfPhase
 
             if (trackObject != null)
             {
+#if false // TODO: what problem was this trying to solve?
                 trackObject.PropertyChanged -= new PropertyChangedEventHandler(trackObject_PropertyChanged);
+#endif
                 trackObject.FrameArray.ListChanged -= new ListChangedEventHandler(FrameArray_ListChanged);
                 trackObject.FrameArrayChanged -= new PropertyChangedEventHandler(TrackObject_FrameArrayChanged);
                 trackObject.BackgroundObjects.ListChanged -= new ListChangedEventHandler(BackgroundObjects_ListChanged);
@@ -152,9 +178,42 @@ namespace OutOfPhase
             ClearGraphicsObjects();
         }
 
+#if false // TODO: what problem was this trying to solve?
         private void trackObject_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             TrackObjectAltered(trackObject, 0);
+        }
+#endif
+
+        protected override void OnFontChanged(EventArgs e)
+        {
+            base.OnFontChanged(e);
+
+            cachedTextWidths.Clear();
+            fontHeight = -1;
+            layoutMetrics = null;
+            bitmaps = null;
+            bravuraFont = null;
+            bravuraQuarterNoteWidth = -1;
+            bravuraFontHeight = -1;
+            smallFont = null;
+            smallFontHeight = -1;
+
+            RebuildSchedule(); // rebuild layout for new scaling factor
+            RecalcTrackExtent(); // reset scrollbars
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+
+            // keep vertical scoll centered as size changes
+            int addedPx = ClientSize.Height - lastHeight;
+            lastHeight = ClientSize.Height;
+            float adjustPrecise = (float)addedPx * .5f;
+            int adjust = (int)Math.Round(adjustPrecise);
+            adjustError = adjustPrecise - adjust;
+            AutoScrollPosition = new Point(-AutoScrollPosition.X, Math.Max(-AutoScrollPosition.Y - adjust, 0));
         }
 
         private void FrameArray_ListChanged(object sender, ListChangedEventArgs e)
@@ -199,13 +258,13 @@ namespace OutOfPhase
 
         private void RecalcTrackExtent()
         {
-            int totalWidth;
             using (GraphicsContext gc = new GraphicsContext(this))
             {
-                totalWidth = Schedule.TotalWidth;
+                int totalWidth = Schedule.TotalWidth;
+                AutoScrollMinSize = new Size(
+                    totalWidth + gc.LayoutMetrics.HORIZONTALEXTENTION,
+                    gc.LayoutMetrics.MAXVERTICALSIZE);
             }
-            const int AutoScrollMinSizeHorizontalExtra = 50;
-            AutoScrollMinSize = new Size(totalWidth + AutoScrollMinSizeHorizontalExtra, StaffCalibration.MaxVerticalSize);
         }
 
         private void Schedule_TrackExtentsChanged(object sender, EventArgs e)
@@ -249,7 +308,7 @@ namespace OutOfPhase
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Color LightLightGreyColor { get { return BlendColor(SystemColors.Window, 7, SystemColors.ControlText, 1); } }
 
-        private Color BlendColor(Color color1, int parts1, Color color2, int parts2)
+        public static Color BlendColor(Color color1, int parts1, Color color2, int parts2)
         {
             Color blendColor = Color.FromArgb(
                 (color1.R * parts1 + color2.R * parts2) / (parts1 + parts2),
@@ -327,7 +386,7 @@ namespace OutOfPhase
         {
             if (!scrollPositionRestored)
             {
-                VerticalScroll.Value = (StaffCalibration.MaxVerticalSize - Height) / 2;
+                VerticalScroll.Value = (gc.LayoutMetrics.MAXVERTICALSIZE - Height) / 2;
             }
         }
 
@@ -336,44 +395,44 @@ namespace OutOfPhase
             switch (e.ListChangedType)
             {
                 case ListChangedType.ItemAdded:
-                    Schedule.Add(((BindingList<TrackObjectRec>)sender)[e.NewIndex]);
-#if false // TODO:
-		MyBoolean							Result;
-		long									FrameIndex;
-		MyBoolean							OnAFrameFlag;
-
-		(void)TrackDisplayPixelToIndex(View->Schedule, View->TrackObj, View->PixelIndent,
-			&OnAFrameFlag, &FrameIndex);
-		Result = AddTrackToDisplaySchedule(View->Schedule, TrackObj);
-		if (FrameIndex < TrackObjectGetNumFrames(View->TrackObj))
-			{
-				(void)TrackDisplayIndexToPixel(View->Schedule, 0, FrameIndex, &(View->PixelIndent));
-			}
-		 else
-			{
-				View->PixelIndent = 0;
-			}
-#endif
+                    {
+                        TrackObjectRec trackAdded = ((BindingList<TrackObjectRec>)sender)[e.NewIndex];
+                        bool onFrame;
+                        int frameIndex;
+                        Schedule.TrackDisplayPixelToIndex(trackObject, PixelIndent, out onFrame, out frameIndex);
+                        Schedule.Add(trackAdded);
+                        // try to preserve current track scroll offset despite layout change
+                        if (frameIndex < trackObject.FrameArray.Count)
+                        {
+                            int pixelOffset;
+                            Schedule.TrackDisplayIndexToPixel(0, frameIndex, out pixelOffset);
+                            AutoScrollPosition = new Point(pixelOffset, -AutoScrollPosition.Y);
+                        }
+                        else
+                        {
+                            AutoScrollPosition = new Point(0, -AutoScrollPosition.Y);
+                        }
+                    }
                     break;
                 case ListChangedType.ItemDeleted:
-                    // event does not provide which item was deleted, so rebuild from scratch
-                    RebuildSchedule();
-#if false // TODO:
-		long									FrameIndex;
-		MyBoolean							OnAFrameFlag;
-
-		(void)TrackDisplayPixelToIndex(View->Schedule, View->TrackObj, View->PixelIndent,
-			&OnAFrameFlag, &FrameIndex);
-		DeleteTrackFromDisplaySchedule(View->Schedule, TrackObj);
-		if (FrameIndex < TrackObjectGetNumFrames(View->TrackObj))
-			{
-				(void)TrackDisplayIndexToPixel(View->Schedule, 0, FrameIndex, &(View->PixelIndent));
-			}
-		 else
-			{
-				View->PixelIndent = 0;
-			}
-#endif
+                    {
+                        bool onFrame;
+                        int frameIndex;
+                        Schedule.TrackDisplayPixelToIndex(trackObject, PixelIndent, out onFrame, out frameIndex);
+                        // event does not provide which item was deleted, so rebuild from scratch
+                        RebuildSchedule();
+                        // try to preserve current track scroll offset despite layout change
+                        if (frameIndex < trackObject.FrameArray.Count)
+                        {
+                            int pixelOffset;
+                            Schedule.TrackDisplayIndexToPixel(0, frameIndex, out pixelOffset);
+                            AutoScrollPosition = new Point(pixelOffset, -AutoScrollPosition.Y);
+                        }
+                        else
+                        {
+                            AutoScrollPosition = new Point(0, -AutoScrollPosition.Y);
+                        }
+                    }
                     break;
             }
             Invalidate();
@@ -442,6 +501,30 @@ namespace OutOfPhase
             {
                 return;
             }
+
+#if true // TODO: testing, remove
+            if (e.KeyCode == Keys.F12)
+            {
+                currentScaleFactor += .05f;
+                OnFontChanged(EventArgs.Empty);
+                e.Handled = true;
+                return;
+            }
+            else if (e.KeyCode == Keys.F11)
+            {
+                currentScaleFactor -= .05f;
+                OnFontChanged(EventArgs.Empty);
+                e.Handled = true;
+                return;
+            }
+            else if (e.KeyCode == Keys.F10)
+            {
+                currentBravura = !currentBravura;
+                OnFontChanged(EventArgs.Empty);
+                e.Handled = true;
+                return;
+            }
+#endif
 
             using (GraphicsContext gc = new GraphicsContext(this))
             {
@@ -776,7 +859,7 @@ namespace OutOfPhase
                         }
                         goto ResetCommandBar; // fallthrough
                     case Keys.A:
-                        ResetCommandBar:
+                    ResetCommandBar:
                         Window.NoteReady = false;
                         //Window.NoteState = NoteFlags.e4thNote | NoteFlags.eDiv1Modifier; /* reset the note */
                         TrackViewUndrawCursorBar();
@@ -1207,11 +1290,11 @@ namespace OutOfPhase
 
                 TrackViewUndrawCursorBar();
 
-                CursorBarLoc += Steps * (StaffCalibration.ConvertPitchToPixel(2/*D*/, 0)
-                    - StaffCalibration.ConvertPitchToPixel(0/*C*/, 0));
+                CursorBarLoc += Steps * (gc.LayoutMetrics.ConvertPitchToPixel(2/*D*/, 0)
+                    - gc.LayoutMetrics.ConvertPitchToPixel(0/*C*/, 0));
 
                 /* normalize and constrain */
-                CursorBarLoc = StaffCalibration.ConvertPitchToPixel(StaffCalibration.ConvertPixelToPitch(CursorBarLoc), 0);
+                CursorBarLoc = gc.LayoutMetrics.ConvertPitchToPixel(gc.LayoutMetrics.ConvertPixelToPitch(CursorBarLoc), 0);
 
                 TrackViewDrawCursorBar();
             }
@@ -1225,7 +1308,7 @@ namespace OutOfPhase
             {
                 return false;
             }
-            Pitch = StaffCalibration.ConvertPixelToPitch(CursorBarLoc);
+            Pitch = gc.LayoutMetrics.ConvertPixelToPitch(CursorBarLoc);
             return true;
         }
 
@@ -1346,7 +1429,8 @@ namespace OutOfPhase
             NoteNoteObjectRec Note = new NoteNoteObjectRec(trackObject);
             NoteFlags NoteSharpFlatTemp;
             short NotePitchTemp;
-            StaffCalibration.SetUpNoteInfo(
+            SetUpNoteInfo(
+                gc,
                 out NotePitchTemp,
                 out NoteSharpFlatTemp,
                 (NoteAttributes & NoteFlags.eSharpModifier) != 0,
@@ -1402,6 +1486,68 @@ namespace OutOfPhase
             if (trackObject.InlineParamVis != InlineParamVis.None)
             {
                 RebuildInlineStrip();
+            }
+        }
+
+        private static void SetUpNoteInfo(
+            IGraphicsContext gc,
+            out short Pitch,
+            out NoteFlags SharpFlatThing,
+            bool Sharp,
+            bool Flat,
+            int Pixel)
+        {
+            SharpFlatThing = 0;
+            Pitch = gc.LayoutMetrics.ConvertPixelToPitch(Pixel);
+            if (Sharp)
+            {
+                switch (Pitch % 12)
+                {
+                    case 0: /* C */
+                    case 2: /* D */
+                    case 5: /* F */
+                    case 7: /* G */
+                    case 9: /* A */
+                        Pitch++;
+                        SharpFlatThing |= NoteFlags.eSharpModifier;
+                        break;
+                    case 4: /* E */
+                    case 11: /* B */
+                        Pitch++;
+                        break;
+                    default:
+                        /* ? */
+                        break;
+                }
+            }
+            if (Flat)
+            {
+                switch (Pitch % 12)
+                {
+                    case 2: /* D */
+                    case 4: /* E */
+                    case 7: /* G */
+                    case 9: /* A */
+                    case 11: /* B */
+                        Pitch--;
+                        SharpFlatThing |= NoteFlags.eFlatModifier;
+                        break;
+                    case 0: /* C */
+                    case 5: /* F */
+                        Pitch--;
+                        break;
+                    default:
+                        /* ? */
+                        break;
+                }
+            }
+            if (Pitch < 0)
+            {
+                Pitch = 0;
+            }
+            if (Pitch > Constants.NUMNOTES - 1)
+            {
+                Pitch = Constants.NUMNOTES - 1;
             }
         }
 
@@ -1768,11 +1914,11 @@ namespace OutOfPhase
             }
             if (OnAFrameFlag)
             {
-                Cursor = Bitmaps.ScoreOverlayCursor;
+                Cursor = Bitmaps1Class.ScoreOverlayCursor;
             }
             else
             {
-                Cursor = Bitmaps.ScoreIntersticeCursor;
+                Cursor = Bitmaps1Class.ScoreIntersticeCursor;
             }
         }
 
@@ -1950,14 +2096,17 @@ namespace OutOfPhase
                     FrameWidth = 0;
                 }
 
-                const int ScrollIntoViewMargin = 75;
-                if (-AutoScrollPosition.X > PixelIndex - ScrollIntoViewMargin)
+                if (-AutoScrollPosition.X > PixelIndex - gc.LayoutMetrics.SCROLLINTOVIEWMARGIN)
                 {
-                    AutoScrollPosition = new Point(PixelIndex - ScrollIntoViewMargin, -AutoScrollPosition.Y);
+                    AutoScrollPosition = new Point(
+                        PixelIndex - gc.LayoutMetrics.SCROLLINTOVIEWMARGIN,
+                        -AutoScrollPosition.Y);
                 }
-                else if (-AutoScrollPosition.X < PixelIndex + FrameWidth - ClientSize.Width + ScrollIntoViewMargin)
+                else if (-AutoScrollPosition.X < PixelIndex + FrameWidth - ClientSize.Width + gc.LayoutMetrics.SCROLLINTOVIEWMARGIN)
                 {
-                    AutoScrollPosition = new Point(PixelIndex + FrameWidth - ClientSize.Width + ScrollIntoViewMargin, -AutoScrollPosition.Y);
+                    AutoScrollPosition = new Point(
+                        PixelIndex + FrameWidth - ClientSize.Width + gc.LayoutMetrics.SCROLLINTOVIEWMARGIN,
+                        -AutoScrollPosition.Y);
                 }
             }
         }
@@ -1981,10 +2130,10 @@ namespace OutOfPhase
         {
             if (CursorBarIsLocked)
             {
-                if ((X - LastCursorBarX < -TrackDisplayConstants.CURSORBARRELEASEDELTA)
-                    || (X - LastCursorBarX > TrackDisplayConstants.CURSORBARRELEASEDELTA)
-                    || (Y - LastCursorBarY < -TrackDisplayConstants.CURSORBARRELEASEDELTA)
-                    || (Y - LastCursorBarY > TrackDisplayConstants.CURSORBARRELEASEDELTA))
+                if ((X - LastCursorBarX < -gc.LayoutMetrics.CURSORBARRELEASEDELTA)
+                    || (X - LastCursorBarX > gc.LayoutMetrics.CURSORBARRELEASEDELTA)
+                    || (Y - LastCursorBarY < -gc.LayoutMetrics.CURSORBARRELEASEDELTA)
+                    || (Y - LastCursorBarY > gc.LayoutMetrics.CURSORBARRELEASEDELTA))
                 {
                     CursorBarIsLocked = false;
                 }
@@ -1993,7 +2142,8 @@ namespace OutOfPhase
             {
                 LastCursorBarX = X;
                 LastCursorBarY = Y;
-                int NewCursorBar = StaffCalibration.ConvertPitchToPixel(StaffCalibration.ConvertPixelToPitch(Y + VerticalOffset), 0);
+                int NewCursorBar = gc.LayoutMetrics.ConvertPitchToPixel(
+                    gc.LayoutMetrics.ConvertPixelToPitch(Y + VerticalOffset), 0);
                 if ((NewCursorBar != CursorBarLoc) || !CursorBarIsVisible)
                 {
                     TrackViewUndrawCursorBar();
@@ -2279,15 +2429,18 @@ namespace OutOfPhase
             PixelIndex += offset;
             int width = Schedule.TrackDisplayGetNoteInternalWidth(0/*first track*/, frameIndex, noteIndex);
 
-            const int ScrollIntoViewMargin = 75;
             int oldScrollOffset = -AutoScrollPosition.X;
-            if (-AutoScrollPosition.X > PixelIndex - ScrollIntoViewMargin)
+            if (-AutoScrollPosition.X > PixelIndex - gc.LayoutMetrics.SCROLLINTOVIEWMARGIN)
             {
-                AutoScrollPosition = new Point(PixelIndex - ScrollIntoViewMargin, -AutoScrollPosition.Y);
+                AutoScrollPosition = new Point(
+                    PixelIndex - gc.LayoutMetrics.SCROLLINTOVIEWMARGIN,
+                    -AutoScrollPosition.Y);
             }
-            else if (-AutoScrollPosition.X < PixelIndex + width - ClientSize.Width + ScrollIntoViewMargin)
+            else if (-AutoScrollPosition.X < PixelIndex + width - ClientSize.Width + gc.LayoutMetrics.SCROLLINTOVIEWMARGIN)
             {
-                AutoScrollPosition = new Point(PixelIndex + width - ClientSize.Width + ScrollIntoViewMargin, -AutoScrollPosition.Y);
+                AutoScrollPosition = new Point(
+                    PixelIndex + width - ClientSize.Width + gc.LayoutMetrics.SCROLLINTOVIEWMARGIN,
+                    -AutoScrollPosition.Y);
             }
             int newScrollOffset = -AutoScrollPosition.X;
             if (noteParamStrip != null)
@@ -2541,484 +2694,582 @@ namespace OutOfPhase
 
             bool layoutChanged = Schedule.TrackDisplayScheduleUpdate();
 
-            /* erase the drawing area */
-            gc.graphics.FillRectangle(
-                gc.BackBrush,
-                0,
-                0,
-                Schedule.TotalWidth + Width/*for overscrolled*/,
-                StaffCalibration.MaxVerticalSize + Height/*for overscrolled*/);
-
-            // draw mouse-over highlight effect for single note selection and NoteView inspector pane
-            if (noteView.Note != null)
+            Graphics primaryGraphics = gc.graphics;
+            GDIBitmap hBitmapOffscreen = null;
+            GDIDC hDCOffscreen = null;
+            Graphics gOffscreen = null;
+            GraphicsContext gcOffscreen = null;
+            bool translated = false;
+            int updateLeft = 0, updateTop = 0;
+            try
             {
-                int frameIndex, noteIndex;
-                if (trackObject.FindNote(noteView.Note, out frameIndex, out noteIndex))
+                if (Program.Config.EnableTrackViewOffscreenCompositing)
                 {
-                    if (Schedule.TrackDisplayShouldWeDrawIt(0, frameIndex))
+                    RectangleF updateBoundsF = gc.graphics.VisibleClipBounds;
+                    updateLeft = (int)Math.Floor(updateBoundsF.X);
+                    updateTop = (int)Math.Floor(updateBoundsF.Y);
+                    int right = (int)Math.Ceiling(updateBoundsF.Right);
+                    int bottom = (int)Math.Ceiling(updateBoundsF.Bottom);
+                    Rectangle updateBounds = new Rectangle(updateLeft, updateTop, right - updateLeft, bottom - updateTop);
+                    updateBounds.Intersect(this.ClientRectangle);
+                    if (updateBounds.IsEmpty)
                     {
-                        int PixelIndex;
-                        Schedule.TrackDisplayIndexToPixel(0, frameIndex, out PixelIndex);
-                        gc.graphics.FillRectangle(
-                            gc.LightLightGreyBrush,
-                            PixelIndex - PixelIndent + Schedule.TrackDisplayGetNoteOffset(0, frameIndex, noteIndex),
-                            -VerticalOffset,
-                            Schedule.TrackDisplayGetNoteInternalWidth(0, frameIndex, noteIndex),
-                            StaffCalibration.MaxVerticalSize);
+                        return;
+                    }
+                    try
+                    {
+                        // Create GDI objects for offscreen. Must be created through GDI because Uniscribe/DirectWrite do not
+                        // like objects created by GDI+ and will draw with very poor quality on them.
+                        using (GraphicsHDC hDC = new GraphicsHDC(gc.graphics))
+                        {
+                            hDCOffscreen = GDIDC.CreateCompatibleDC(hDC);
+                            hBitmapOffscreen = new GDIBitmap(updateBounds.Width, updateBounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                            GDI.SelectObject(hDCOffscreen, hBitmapOffscreen);
+                        }
+                        using (GDIBrush brush = new GDIBrush(Color.White))
+                        {
+                            Rectangle rect = ClientRectangle;
+                            GDI.FillRect(hDCOffscreen, ref rect, brush);
+                        }
+                        gOffscreen = Graphics.FromHdc(hDCOffscreen);
+
+                        gcOffscreen = new GraphicsContext(this, gOffscreen); // push context
+
+                        PixelIndent += updateLeft;
+                        VerticalOffset += updateTop;
+                        translated = true;
+                    }
+                    catch (OutOfMemoryException)
+                    {
+                        // else draw directly to screen
                     }
                 }
-            }
 
-            // draw phantom insertion point
-            if (phantomInsertionPointIndex >= 0)
-            {
-                int PixelIndex;
-                Schedule.TrackDisplayIndexToPixelRobust(0, phantomInsertionPointIndex, out PixelIndex);
+                /* erase the drawing area */
                 gc.graphics.FillRectangle(
-                    gc.LightGreyBrush,
-                    PixelIndex - PixelIndent,
+                    gc.BackBrush,
                     0,
-                    1,
-                    ClientSize.Height);
-            }
+                    0,
+                    Schedule.TotalWidth + Width/*for overscrolled*/,
+                    gc.LayoutMetrics.MAXVERTICALSIZE + Height/*for overscrolled*/);
 
-            /* draw the staff */
-            TrackViewRedrawStaff(gc.graphics);
-
-            /* now we have to draw the notes */
-            int CenterNotePixel = -VerticalOffset + StaffCalibration.CenterNotePixel;
-
-            /* draw ties first, so they are under the notes */
-            {
-                GraphicsState saved = gc.graphics.Save();
-                gc.graphics.SmoothingMode = SmoothingMode.AntiAlias; // they never looked so beautiful!
-                List<TieTrackPixelRec.TiePixelRec> TieList = Schedule.TrackDisplayGetTieIntervalList(PixelIndent, Schedule.TotalWidth);
-                for (int iTie = 0; iTie < TieList.Count; iTie++)
+                // draw mouse-over highlight effect for single note selection and NoteView inspector pane
+                if (noteView.Note != null)
                 {
-                    int StartX;
-                    int StartY;
-                    int EndX;
-                    int EndY;
-
-                    TieTrackPixelRec.GetTieTrackIntersectElement(
-                        TieList,
-                        iTie,
-                        out StartX,
-                        out StartY,
-                        out EndX,
-                        out EndY);
-                    DrawTieLine(
-                        gc.graphics,
-                        gc.ForePen,
-                        (StartX + TrackDisplayConstants.TIESTARTXCORRECTION) - PixelIndent,
-                        (StartY + TrackDisplayConstants.TIESTARTYCORRECTION) - VerticalOffset,
-                        (EndX + TrackDisplayConstants.TIEENDXCORRECTION) - (StartX + TrackDisplayConstants.TIESTARTXCORRECTION),
-                        (EndY + TrackDisplayConstants.TIEENDYCORRECTION) - (StartY + TrackDisplayConstants.TIESTARTYCORRECTION));
-                }
-                gc.graphics.Restore(saved);
-            }
-
-            /* draw the notes */
-            int NumTracks = Schedule.TrackDisplayGetNumTracks();
-            /* note the less than or EQUAL to NumTracks in the loop... */
-            /* see note inside loop about why */
-            for (int iTrack = 0; iTrack <= NumTracks; iTrack++)
-            {
-                /* we want to draw our track, but we want to draw it last.  to do this, */
-                /* we won't draw it when it comes around normally, but we'll loop one extra */
-                /* (fake) time, during which we won't do the normal get track but instead, */
-                /* we'll just use our own track.  not especially elegant, but it works */
-                TrackObjectRec TrackObj;
-                if (iTrack < NumTracks)
-                {
-                    TrackObj = Schedule.TrackDisplayGetParticularTrack(iTrack);
-                }
-                else
-                {
-                    TrackObj = trackObject;
-                }
-                int ActualTrackIndex = Schedule.TrackDisplayGetTrackIndex(TrackObj);
-                if ((TrackObj != trackObject) || (iTrack == NumTracks))
-                {
-                    int Position;
-                    bool Unused;
-
-                    Schedule.TrackDisplayPixelToIndex(TrackObj, PixelIndent, out Unused, out Position);
-
-                    /* find out how much to draw.  this definitely needs to be */
-                    /* fixed since there is no reason to draw frames until the */
-                    /* end of the entire track */
-                    int Limit = TrackObj.FrameArray.Count;
-
-                    if (Position > 0)
+                    int frameIndex, noteIndex;
+                    if (trackObject.FindNote(noteView.Note, out frameIndex, out noteIndex))
                     {
-                        /* this draws the note just off the left edge of the */
-                        /* screen to fix some update region alignment problems. */
-                        Position--;
-                    }
-
-                    /* draw the insertion point, if there is one */
-                    if ((TrackObj == trackObject) && (SelectionMode == SelectionModes.eTrackViewNoSelection))
-                    {
-                        int TotalNumFrames = TrackObj.FrameArray.Count;
-                        if ((InsertionPointIndex < 0) || (InsertionPointIndex > TotalNumFrames))
+                        if (Schedule.TrackDisplayShouldWeDrawIt(0, frameIndex))
                         {
-                            // insertion point index out of range
-                            Debug.Assert(false);
-                            throw new InvalidOperationException();
-                        }
-                        if (InsertionPointIndex < TotalNumFrames)
-                        {
-                            int InsertionPixel;
-
-                            /* draw the selection before it's corresponding frame */
-                            Schedule.TrackDisplayIndexToPixel(0/*first track*/, InsertionPointIndex, out InsertionPixel);
-
-                            InsertionPixel = -TrackDisplayConstants.INSERTIONPOINTWIDTH / 2
-                                + InsertionPixel - PixelIndent;
-                            if (InsertionPixel < TrackDisplayConstants.ORDTYPEMIN / 2)
-                            {
-                                InsertionPixel = TrackDisplayConstants.ORDTYPEMIN / 2;
-                            }
-                            if (InsertionPixel > TrackDisplayConstants.ORDTYPEMAX / 2)
-                            {
-                                InsertionPixel = TrackDisplayConstants.ORDTYPEMAX / 2;
-                            }
+                            int PixelIndex;
+                            Schedule.TrackDisplayIndexToPixel(0, frameIndex, out PixelIndex);
                             gc.graphics.FillRectangle(
-                                gc.ForeBrush,
-                                InsertionPixel,
-                                0,
-                                TrackDisplayConstants.INSERTIONPOINTWIDTH,
-                                StaffCalibration.MaxVerticalSize);
-                        }
-                        else if (TotalNumFrames > 0)
-                        {
-                            int InsertionPixel;
-
-                            /* oops, no frame, so draw it after the last frame */
-                            Schedule.TrackDisplayIndexToPixel(0/*first track*/, TrackObj.FrameArray.Count - 1, out InsertionPixel);
-
-                            InsertionPixel += FrameDrawUtility.WidthOfFrameAndDraw(
-                                gc,
-                                0,
-                                0,
-                                TrackObj.FrameArray[TotalNumFrames - 1],
-                                false/*don't draw*/,
-                                false,
-                                (TrackObj != trackObject) ? 0 : trackObject.InlineParamVis);
-                            InsertionPixel = -TrackDisplayConstants.INSERTIONPOINTWIDTH / 2
-                                + InsertionPixel + TrackDisplayConstants.EXTERNALSEPARATION - PixelIndent;
-                            if (InsertionPixel < TrackDisplayConstants.ORDTYPEMIN / 2)
-                            {
-                                InsertionPixel = TrackDisplayConstants.ORDTYPEMIN / 2;
-                            }
-                            if (InsertionPixel > TrackDisplayConstants.ORDTYPEMAX / 2)
-                            {
-                                InsertionPixel = TrackDisplayConstants.ORDTYPEMAX / 2;
-                            }
-                            gc.graphics.FillRectangle(
-                                gc.ForeBrush,
-                                InsertionPixel,
-                                0,
-                                TrackDisplayConstants.INSERTIONPOINTWIDTH,
-                                StaffCalibration.MaxVerticalSize);
-                        }
-                        else
-                        {
-                            /* oops, no frames at all, so just draw it at the beginning */
-                            /* oh, well, it doesn't get drawn... should fix. (not that */
-                            /* there's any doubt where an insertion would occur...) */
+                                gc.LightLightGreyBrush,
+                                PixelIndex - PixelIndent + Schedule.TrackDisplayGetNoteOffset(0, frameIndex, noteIndex),
+                                -VerticalOffset,
+                                Schedule.TrackDisplayGetNoteInternalWidth(0, frameIndex, noteIndex),
+                                gc.LayoutMetrics.MAXVERTICALSIZE);
                         }
                     }
+                }
 
-                    /* draw all of the frames */
-                    for (int i = Position; i < Limit; i++)
+                // draw phantom insertion point
+                if (phantomInsertionPointIndex >= 0)
+                {
+                    int PixelIndex;
+                    Schedule.TrackDisplayIndexToPixelRobust(0, phantomInsertionPointIndex, out PixelIndex);
+                    gc.graphics.FillRectangle(
+                        gc.LightGreyBrush,
+                        PixelIndex - PixelIndent,
+                        0,
+                        1,
+                        ClientSize.Height);
+                }
+
+                /* draw the staff */
+                TrackViewRedrawStaff(gc);
+
+                /* now we have to draw the notes */
+                int CenterNotePixel = -VerticalOffset + gc.LayoutMetrics.CENTERNOTEPIXEL;
+
+                /* draw ties first, so they are under the notes */
+                using (Pen tiePen = new Pen(gc.ForeColor, gc.LayoutMetrics.TIETHICKNESS))
+                {
+                    SmoothingMode oldSmoothingMode = gc.graphics.SmoothingMode;
+                    gc.graphics.SmoothingMode = SmoothingMode.AntiAlias; // they never looked so beautiful!
+
+                    List<TieTrackPixelRec.TiePixelRec> TieList = Schedule.TrackDisplayGetTieIntervalList(PixelIndent, ClientSize.Width);
+                    for (int iTie = 0; iTie < TieList.Count; iTie++)
                     {
-                        int TheFrameWidth = Int32.MinValue;
+                        int StartX;
+                        int StartY;
+                        int EndX;
+                        int EndY;
 
-                        /* see if we can draw.  if TrackDisplayIndexToPixel returns false, */
-                        /* then it just won't be drawn.  if TrackDisplayShouldWeDrawIt */
-                        /* returns False, then don't draw because it isn't scheduled. */
-                        int PixelIndex;
-                        Schedule.TrackDisplayIndexToPixel(ActualTrackIndex, i, out PixelIndex);
-                        if (Schedule.TrackDisplayShouldWeDrawIt(ActualTrackIndex, i))
+                        TieTrackPixelRec.GetTieTrackIntersectElement(
+                            TieList,
+                            iTie,
+                            out StartX,
+                            out StartY,
+                            out EndX,
+                            out EndY);
+                        DrawTieLine(
+                            gc,
+                            tiePen,
+                            (StartX + gc.LayoutMetrics.TIESTARTXCORRECTION) - PixelIndent,
+                            (StartY + gc.LayoutMetrics.TIESTARTYCORRECTION) - VerticalOffset,
+                            (EndX + gc.LayoutMetrics.TIEENDXCORRECTION) - (StartX + gc.LayoutMetrics.TIESTARTXCORRECTION),
+                            (EndY + gc.LayoutMetrics.TIEENDYCORRECTION) - (StartY + gc.LayoutMetrics.TIESTARTYCORRECTION));
+                    }
+
+                    gc.graphics.SmoothingMode = oldSmoothingMode;
+                }
+
+                /* draw the notes */
+                int NumTracks = Schedule.TrackDisplayGetNumTracks();
+                /* note the less than or EQUAL to NumTracks in the loop... */
+                /* see note inside loop about why */
+                for (int iTrack = 0; iTrack <= NumTracks; iTrack++)
+                {
+                    /* we want to draw our track, but we want to draw it last.  to do this, */
+                    /* we won't draw it when it comes around normally, but we'll loop one extra */
+                    /* (fake) time, during which we won't do the normal get track but instead, */
+                    /* we'll just use our own track.  not especially elegant, but it works */
+                    TrackObjectRec TrackObj;
+                    if (iTrack < NumTracks)
+                    {
+                        TrackObj = Schedule.TrackDisplayGetParticularTrack(iTrack);
+                    }
+                    else
+                    {
+                        TrackObj = trackObject;
+                    }
+                    int ActualTrackIndex = Schedule.TrackDisplayGetTrackIndex(TrackObj);
+                    if ((TrackObj != trackObject) || (iTrack == NumTracks))
+                    {
+                        int Position;
+                        bool Unused;
+
+                        Schedule.TrackDisplayPixelToIndex(TrackObj, PixelIndent, out Unused, out Position);
+
+                        /* find out how much to draw.  this definitely needs to be */
+                        /* fixed since there is no reason to draw frames until the */
+                        /* end of the entire track */
+                        int Limit = TrackObj.FrameArray.Count;
+
+                        if (Position > 0)
                         {
-                            /* escape if we have gone past the end of the window */
-#if true
-                            if (PixelIndex - PixelIndent - FrameDisplayConstants.LEFTNOTEEDGEINSET >= Width)
+                            /* this draws the note just off the left edge of the */
+                            /* screen to fix some update region alignment problems. */
+                            Position--;
+                        }
+
+                        /* draw the insertion point, if there is one */
+                        if ((TrackObj == trackObject) && (SelectionMode == SelectionModes.eTrackViewNoSelection))
+                        {
+                            int TotalNumFrames = TrackObj.FrameArray.Count;
+                            if ((InsertionPointIndex < 0) || (InsertionPointIndex > TotalNumFrames))
                             {
-                                goto DonePoint;
+                                // insertion point index out of range
+                                Debug.Assert(false);
+                                throw new InvalidOperationException();
                             }
-#endif
-                            // new code: TODO: this should be tightened up
-                            if (!gc.graphics.IsVisible(
-                                new Rectangle(
-                                    PixelIndex - PixelIndent - Width / 2,
-                                    -VerticalOffset,
-                                    2 * Width,
-                                    StaffCalibration.MaxVerticalSize)))
+                            if (InsertionPointIndex < TotalNumFrames)
                             {
-                                continue;
-                            }
+                                int InsertionPixel;
 
-                            /* get the frame to draw */
-                            FrameObjectRec Frame = TrackObj.FrameArray[i];
+                                /* draw the selection before it's corresponding frame */
+                                Schedule.TrackDisplayIndexToPixel(0/*first track*/, InsertionPointIndex, out InsertionPixel);
 
-                            /* this section is for stuff that only works in */
-                            /* the current track */
-                            if (TrackObj == trackObject)
-                            {
-                                /* if we should draw a measure bar, then do so.  this */
-                                /* is done before drawing the notes so that the notes */
-                                /* will appear on top of the measure bar numbers if */
-                                /* there is an overwrite */
-
-                                /* draw the measure bar */
-                                int MeasureBarIndex = Schedule.TrackDisplayMeasureBarIndex(i);
-                                if (MeasureBarIndex != TrackDisplayConstants.NOMEASUREBAR)
+                                InsertionPixel = -gc.LayoutMetrics.INSERTIONPOINTWIDTH / 2
+                                    + InsertionPixel - PixelIndent;
+                                if (InsertionPixel < LayoutMetrics.PIXELMIN)
                                 {
-                                    Color color;
-                                    Pen pen;
-                                    Brush brush;
-
-                                    if (Schedule.TrackDisplayShouldMeasureBarBeGreyed(i))
-                                    {
-                                        color = gc.GreyColor;
-                                        pen = gc.GreyPen;
-                                        brush = gc.GreyBrush;
-                                    }
-                                    else
-                                    {
-                                        color = gc.ForeColor;
-                                        pen = gc.ForePen;
-                                        brush = gc.ForeBrush;
-                                    }
-                                    /* actually something to be drawn */
-                                    string measureNumberText = MeasureBarIndex.ToString();
-                                    gc.graphics.DrawLine(
-                                        pen,
-                                        PixelIndex - 4/*!*/ - PixelIndent,
-                                        -VerticalOffset,
-                                        PixelIndex - 4/*!*/ - PixelIndent,
-                                        -VerticalOffset + StaffCalibration.MaxVerticalSize);
-                                    int widthMeasureNumberText = MyTextRenderer.MeasureText(
-                                        gc.graphics,
-                                        measureNumberText,
-                                        gc.font).Width;
-                                    MyTextRenderer.DrawText(
-                                        gc.graphics,
-                                        measureNumberText,
-                                        gc.font,
-                                        new Point(
-                                            PixelIndex - 4/*!*/ - PixelIndent - widthMeasureNumberText / 2,
-                                            CenterNotePixel - gc.font.Height / 2),
-                                        color,
-                                        TextFormatFlags.PreserveGraphicsClipping);
+                                    InsertionPixel = LayoutMetrics.PIXELMIN;
                                 }
+                                if (InsertionPixel > LayoutMetrics.PIXELMAX)
+                                {
+                                    InsertionPixel = LayoutMetrics.PIXELMAX;
+                                }
+                                gc.graphics.FillRectangle(
+                                    gc.ForeBrush,
+                                    InsertionPixel,
+                                    0,
+                                    gc.LayoutMetrics.INSERTIONPOINTWIDTH,
+                                    gc.LayoutMetrics.MAXVERTICALSIZE);
                             }
-
-                            /* draw the notes */
-                            TheFrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(
-                                gc,
-                                PixelIndex - PixelIndent,
-                                CenterNotePixel,
-                                Frame,
-                                true/*draw*/,
-                                (TrackObj != trackObject)/*greyed*/,
-                                (TrackObj != trackObject) ? 0 : trackObject.InlineParamVis);
-
-                            /* draw any hilighting for selected items */
-                            switch (SelectionMode)
+                            else if (TotalNumFrames > 0)
                             {
-                                default:
-                                    Debug.Assert(false);
-                                    throw new InvalidOperationException();
-                                case SelectionModes.eTrackViewNoSelection:
-                                    break;
-                                case SelectionModes.eTrackViewSingleNoteSelection:
+                                int InsertionPixel;
+
+                                /* oops, no frame, so draw it after the last frame */
+                                Schedule.TrackDisplayIndexToPixel(0/*first track*/, TrackObj.FrameArray.Count - 1, out InsertionPixel);
+
+                                InsertionPixel += FrameDrawUtility.WidthOfFrameAndDraw(
+                                    gc,
+                                    0,
+                                    0,
+                                    TrackObj.FrameArray[TotalNumFrames - 1],
+                                    false/*don't draw*/,
+                                    false,
+                                    (TrackObj != trackObject) ? 0 : trackObject.InlineParamVis);
+                                InsertionPixel = -gc.LayoutMetrics.INSERTIONPOINTWIDTH / 2
+                                    + InsertionPixel + gc.LayoutMetrics.EXTERNALSEPARATION - PixelIndent;
+                                if (InsertionPixel < LayoutMetrics.PIXELMIN)
+                                {
+                                    InsertionPixel = LayoutMetrics.PIXELMIN;
+                                }
+                                if (InsertionPixel > LayoutMetrics.PIXELMAX)
+                                {
+                                    InsertionPixel = LayoutMetrics.PIXELMAX;
+                                }
+                                gc.graphics.FillRectangle(
+                                    gc.ForeBrush,
+                                    InsertionPixel,
+                                    0,
+                                    gc.LayoutMetrics.INSERTIONPOINTWIDTH,
+                                    gc.LayoutMetrics.MAXVERTICALSIZE);
+                            }
+                            else
+                            {
+                                /* oops, no frames at all, so just draw it at the beginning */
+                                /* oh, well, it doesn't get drawn... should fix. (not that */
+                                /* there's any doubt where an insertion would occur...) */
+                            }
+                        }
+
+                        /* draw all of the frames */
+                        for (int i = Position; i < Limit; i++)
+                        {
+                            int TheFrameWidth = Int32.MinValue;
+
+                            /* see if we can draw.  if TrackDisplayIndexToPixel returns false, */
+                            /* then it just won't be drawn.  if TrackDisplayShouldWeDrawIt */
+                            /* returns False, then don't draw because it isn't scheduled. */
+                            int PixelIndex;
+                            Schedule.TrackDisplayIndexToPixel(ActualTrackIndex, i, out PixelIndex);
+                            if (Schedule.TrackDisplayShouldWeDrawIt(ActualTrackIndex, i))
+                            {
+                                /* escape if we have gone past the end of the window */
+                                if (PixelIndex - PixelIndent - gc.LayoutMetrics.LEFTNOTEEDGEINSET >= Width)
+                                {
+                                    goto DonePoint;
+                                }
+                                // new code: TODO: this should be tightened up
+                                if (!gc.graphics.IsVisible(
+                                    new Rectangle(
+                                        PixelIndex - PixelIndent - Width / 2,
+                                        -VerticalOffset,
+                                        2 * Width,
+                                        gc.LayoutMetrics.MAXVERTICALSIZE)))
+                                {
+                                    continue;
+                                }
+
+                                /* get the frame to draw */
+                                FrameObjectRec Frame = TrackObj.FrameArray[i];
+
+                                /* this section is for stuff that only works in */
+                                /* the current track */
+                                if (TrackObj == trackObject)
+                                {
+                                    /* if we should draw a measure bar, then do so.  this */
+                                    /* is done before drawing the notes so that the notes */
+                                    /* will appear on top of the measure bar numbers if */
+                                    /* there is an overwrite */
+
+                                    /* draw the measure bar */
+                                    int MeasureBarIndex = Schedule.TrackDisplayMeasureBarIndex(i);
+                                    if (MeasureBarIndex != TrackDispScheduleRec.NOMEASUREBAR)
                                     {
-                                        int FrameEnd = Frame.Count;
+                                        Color color;
+                                        Pen pen;
+                                        Brush brush;
+
+                                        if (Schedule.TrackDisplayShouldMeasureBarBeGreyed(i))
+                                        {
+                                            color = gc.GreyColor;
+                                            pen = gc.GreyPen;
+                                            brush = gc.GreyBrush;
+                                        }
+                                        else
+                                        {
+                                            color = gc.ForeColor;
+                                            pen = gc.ForePen;
+                                            brush = gc.ForeBrush;
+                                        }
+                                        /* actually something to be drawn */
+                                        string measureNumberText = MeasureBarIndex.ToString();
+                                        gc.graphics.DrawLine(
+                                            pen,
+                                            PixelIndex - 4/*!*/ - PixelIndent,
+                                            -VerticalOffset,
+                                            PixelIndex - 4/*!*/ - PixelIndent,
+                                            -VerticalOffset + gc.LayoutMetrics.MAXVERTICALSIZE);
+                                        int widthMeasureNumberText = gc.MeasureText(
+                                            measureNumberText,
+                                            gc.font);
+                                        MyTextRenderer.DrawText(
+                                            gc.graphics,
+                                            measureNumberText,
+                                            gc.font,
+                                            new Point(
+                                                PixelIndex - 4/*!*/ - PixelIndent - widthMeasureNumberText / 2,
+                                                CenterNotePixel - gc.FontHeight / 2),
+                                            color,
+                                            TextFormatFlags.PreserveGraphicsClipping);
+                                    }
+                                }
+
+                                /* draw the notes */
+                                TheFrameWidth = FrameDrawUtility.WidthOfFrameAndDraw(
+                                    gc,
+                                    PixelIndex - PixelIndent,
+                                    CenterNotePixel,
+                                    Frame,
+                                    true/*draw*/,
+                                    (TrackObj != trackObject)/*greyed*/,
+                                    (TrackObj != trackObject) ? 0 : trackObject.InlineParamVis);
+
+                                /* draw any hilighting for selected items */
+                                switch (SelectionMode)
+                                {
+                                    default:
+                                        Debug.Assert(false);
+                                        throw new InvalidOperationException();
+                                    case SelectionModes.eTrackViewNoSelection:
+                                        break;
+                                    case SelectionModes.eTrackViewSingleNoteSelection:
+                                        {
+                                            int FrameEnd = Frame.Count;
+                                            if ((SelectedNoteFrame < 0) || (SelectedNoteFrame >= trackObject.FrameArray.Count))
+                                            {
+                                                // bad selected note frame
+                                                Debug.Assert(false);
+                                                throw new InvalidOperationException();
+                                            }
+                                            int j = 0;
+                                            while (j < FrameEnd)
+                                            {
+                                                if (Frame[j] == SelectedNote)
+                                                {
+                                                    int trackIndex = Schedule.TrackDisplayGetTrackIndex(TrackObj);
+                                                    int offset = Schedule.TrackDisplayGetNoteOffset(trackIndex, i, j);
+                                                    int width = Schedule.TrackDisplayGetNoteInternalWidth(trackIndex, i, j);
+                                                    gc.graphics.DrawRectangle(
+                                                        gc.GreyPen,
+                                                        PixelIndex - PixelIndent + offset,
+                                                        -VerticalOffset,
+                                                        width,
+                                                        gc.LayoutMetrics.MAXVERTICALSIZE);
+                                                    gc.graphics.DrawRectangle(
+                                                        gc.GreyPen,
+                                                        PixelIndex - PixelIndent + offset + 1,
+                                                        -VerticalOffset + 1,
+                                                        width - 2,
+                                                        gc.LayoutMetrics.MAXVERTICALSIZE - 2);
+                                                    goto SingleNoteSelectDonePoint;
+                                                }
+                                                j++;
+                                            }
+                                        }
+                                    SingleNoteSelectDonePoint:
+                                        break;
+                                    case SelectionModes.eTrackViewSingleCommandSelection:
                                         if ((SelectedNoteFrame < 0) || (SelectedNoteFrame >= trackObject.FrameArray.Count))
                                         {
                                             // bad selected note frame
                                             Debug.Assert(false);
                                             throw new InvalidOperationException();
                                         }
-                                        int j = 0;
-                                        while (j < FrameEnd)
+                                        if (Frame.IsThisACommandFrame)
                                         {
-                                            if (Frame[j] == SelectedNote)
+                                            if (SelectedNote == Frame[0])
                                             {
-                                                int trackIndex = Schedule.TrackDisplayGetTrackIndex(TrackObj);
-                                                int offset = Schedule.TrackDisplayGetNoteOffset(trackIndex, i, j);
-                                                int width = Schedule.TrackDisplayGetNoteInternalWidth(trackIndex, i, j);
                                                 gc.graphics.DrawRectangle(
                                                     gc.GreyPen,
-                                                    PixelIndex - PixelIndent + offset,
+                                                    PixelIndex - PixelIndent,
                                                     -VerticalOffset,
-                                                    width,
-                                                    StaffCalibration.MaxVerticalSize);
+                                                    TheFrameWidth,
+                                                    gc.LayoutMetrics.MAXVERTICALSIZE);
                                                 gc.graphics.DrawRectangle(
                                                     gc.GreyPen,
-                                                    PixelIndex - PixelIndent + offset + 1,
+                                                    PixelIndex - PixelIndent + 1,
                                                     -VerticalOffset + 1,
-                                                    width - 2,
-                                                    StaffCalibration.MaxVerticalSize - 2);
-                                                goto SingleNoteSelectDonePoint;
+                                                    TheFrameWidth - 2,
+                                                    gc.LayoutMetrics.MAXVERTICALSIZE - 2);
                                             }
-                                            j++;
                                         }
-                                    }
-                                    SingleNoteSelectDonePoint:
-                                    break;
-                                case SelectionModes.eTrackViewSingleCommandSelection:
-                                    if ((SelectedNoteFrame < 0) || (SelectedNoteFrame >= trackObject.FrameArray.Count))
-                                    {
-                                        // bad selected note frame
-                                        Debug.Assert(false);
-                                        throw new InvalidOperationException();
-                                    }
-                                    if (Frame.IsThisACommandFrame)
-                                    {
-                                        if (SelectedNote == Frame[0])
-                                        {
-                                            gc.graphics.DrawRectangle(
-                                                gc.GreyPen,
-                                                PixelIndex - PixelIndent,
-                                                -VerticalOffset,
-                                                TheFrameWidth,
-                                                StaffCalibration.MaxVerticalSize);
-                                            gc.graphics.DrawRectangle(
-                                                gc.GreyPen,
-                                                PixelIndex - PixelIndent + 1,
-                                                -VerticalOffset + 1,
-                                                TheFrameWidth - 2,
-                                                StaffCalibration.MaxVerticalSize - 2);
-                                        }
-                                    }
-                                    break;
-                                case SelectionModes.eTrackViewRangeSelection:
-                                    // done later, after all notes are drawn
-                                    break;
+                                        break;
+                                    case SelectionModes.eTrackViewRangeSelection:
+                                        // done later, after all notes are drawn
+                                        break;
+                                }
                             }
-                        }
-                    } /* end of frame scan */
-#if true
-                    /* jump here when end of visible note series is reached */
+                        } /* end of frame scan */
+                          /* jump here when end of visible note series is reached */
                     DonePoint:
-                    ;
-#endif
-                }
-            } /* end of track scan */
+                        ;
+                    }
+                } /* end of track scan */
 
-            /* draw selection box */
-            if (SelectionMode == SelectionModes.eTrackViewRangeSelection)
-            {
-                int OurTrackIndex = Schedule.TrackDisplayGetTrackIndex(trackObject);
-                if ((RangeSelectStart < 0) || (RangeSelectStart > trackObject.FrameArray.Count))
+                /* draw selection box */
+                if (SelectionMode == SelectionModes.eTrackViewRangeSelection)
                 {
-                    // bad range start
-                    Debug.Assert(false);
-                    throw new InvalidOperationException();
-                }
-                if ((RangeSelectEnd < 0) || (RangeSelectEnd > trackObject.FrameArray.Count))
-                {
-                    // bad range end
-                    Debug.Assert(false);
-                    throw new InvalidOperationException();
-                }
-                if (RangeSelectStart >= RangeSelectEnd)
-                {
-                    // range selection boundaries are invalid
-                    Debug.Assert(false);
-                    throw new InvalidOperationException();
+                    int OurTrackIndex = Schedule.TrackDisplayGetTrackIndex(trackObject);
+                    if ((RangeSelectStart < 0) || (RangeSelectStart > trackObject.FrameArray.Count))
+                    {
+                        // bad range start
+                        Debug.Assert(false);
+                        throw new InvalidOperationException();
+                    }
+                    if ((RangeSelectEnd < 0) || (RangeSelectEnd > trackObject.FrameArray.Count))
+                    {
+                        // bad range end
+                        Debug.Assert(false);
+                        throw new InvalidOperationException();
+                    }
+                    if (RangeSelectStart >= RangeSelectEnd)
+                    {
+                        // range selection boundaries are invalid
+                        Debug.Assert(false);
+                        throw new InvalidOperationException();
+                    }
+
+                    int StartPixelIndex;
+                    Schedule.TrackDisplayIndexToPixel(OurTrackIndex, RangeSelectStart, out StartPixelIndex);
+                    StartPixelIndex += -PixelIndent; /* normalize to screen */
+                    if (StartPixelIndex < LayoutMetrics.PIXELMIN)
+                    {
+                        StartPixelIndex = LayoutMetrics.PIXELMIN;
+                    }
+                    if (StartPixelIndex > LayoutMetrics.PIXELMAX)
+                    {
+                        StartPixelIndex = LayoutMetrics.PIXELMAX;
+                    }
+
+                    int EndPixelIndex;
+                    Schedule.TrackDisplayIndexToPixel(OurTrackIndex, RangeSelectEnd - 1, out EndPixelIndex);
+                    EndPixelIndex += FrameDrawUtility.WidthOfFrameAndDraw(
+                        gc,
+                        0,
+                        0,
+                        trackObject.FrameArray[RangeSelectEnd - 1],
+                        false/*nodraw*/,
+                        false,
+                        trackObject.InlineParamVis);
+                    EndPixelIndex += -PixelIndent; /* normalize to screen */
+                    if (EndPixelIndex < LayoutMetrics.PIXELMIN)
+                    {
+                        EndPixelIndex = LayoutMetrics.PIXELMIN;
+                    }
+                    if (EndPixelIndex > LayoutMetrics.PIXELMAX)
+                    {
+                        EndPixelIndex = LayoutMetrics.PIXELMAX;
+                    }
+
+                    /* draw upper and lower edges of bounding box */
+                    gc.graphics.FillRectangle(
+                        gc.ForeBrush,
+                        StartPixelIndex,
+                        0,
+                        EndPixelIndex - StartPixelIndex + gc.LayoutMetrics.EXTERNALSEPARATION,
+                        gc.LayoutMetrics.RANGESELECTTHICKNESS);
+                    gc.graphics.FillRectangle(
+                        gc.ForeBrush,
+                        StartPixelIndex,
+                        ClientSize.Height - gc.LayoutMetrics.RANGESELECTTHICKNESS/*StaffCalibration.MaxVerticalSize - gc.LayoutMetrics.RANGESELECTTHICKNESS*/,
+                        EndPixelIndex - StartPixelIndex + gc.LayoutMetrics.EXTERNALSEPARATION,
+                        gc.LayoutMetrics.RANGESELECTTHICKNESS);
+
+                    /* draw left edge of bounding box */
+                    gc.graphics.FillRectangle(
+                        gc.ForeBrush,
+                        StartPixelIndex,
+                        0,
+                        RangeSelectStartIsActive ? gc.LayoutMetrics.RANGESELECTTHICKNESS : 1,
+                        ClientSize.Height/*StaffCalibration.MaxVerticalSize*/);
+
+                    /* draw right edge of bounding box */
+                    gc.graphics.FillRectangle(
+                        gc.ForeBrush,
+                        EndPixelIndex + gc.LayoutMetrics.EXTERNALSEPARATION,
+                        0,
+                        !RangeSelectStartIsActive ? gc.LayoutMetrics.RANGESELECTTHICKNESS : 1,
+                        ClientSize.Height/*StaffCalibration.MaxVerticalSize*/);
                 }
 
-                int StartPixelIndex;
-                Schedule.TrackDisplayIndexToPixel(OurTrackIndex, RangeSelectStart, out StartPixelIndex);
-                StartPixelIndex += -PixelIndent; /* normalize to screen */
-                if (StartPixelIndex < TrackDisplayConstants.ORDTYPEMIN / 2)
+                /* draw cursor bar */
+                if (CursorBarIsVisible && Focused)
                 {
-                    StartPixelIndex = TrackDisplayConstants.ORDTYPEMIN / 2;
-                }
-                if (StartPixelIndex > TrackDisplayConstants.ORDTYPEMAX / 2)
-                {
-                    StartPixelIndex = TrackDisplayConstants.ORDTYPEMAX / 2;
+                    TrackViewDrawCursorBar();
                 }
 
-                int EndPixelIndex;
-                Schedule.TrackDisplayIndexToPixel(OurTrackIndex, RangeSelectEnd - 1, out EndPixelIndex);
-                EndPixelIndex += FrameDrawUtility.WidthOfFrameAndDraw(
-                    gc,
-                    0,
-                    0,
-                    trackObject.FrameArray[RangeSelectEnd - 1],
-                    false/*nodraw*/,
-                    false,
-                    trackObject.InlineParamVis);
-                EndPixelIndex += -PixelIndent; /* normalize to screen */
-                if (EndPixelIndex < TrackDisplayConstants.ORDTYPEMIN / 2)
+                // if positions may have changed, trigger an event to update mouse-over visuals for whatever is now under the mouse.
+                // (timer is used as simpler way instead of trying to post fake WM_MOUSEMOVE to message queue.)
+                if (layoutChanged)
                 {
-                    EndPixelIndex = TrackDisplayConstants.ORDTYPEMIN / 2;
-                }
-                if (EndPixelIndex > TrackDisplayConstants.ORDTYPEMAX / 2)
-                {
-                    EndPixelIndex = TrackDisplayConstants.ORDTYPEMAX / 2;
+                    timerUpdateMouseOverEffect.Start();
                 }
 
-                /* draw upper and lower edges of bounding box */
-                gc.graphics.FillRectangle(
-                    gc.ForeBrush,
-                    StartPixelIndex,
-                    0,
-                    EndPixelIndex - StartPixelIndex + TrackDisplayConstants.EXTERNALSEPARATION,
-                    TrackDisplayConstants.RANGESELECTTHICKNESS);
-                gc.graphics.FillRectangle(
-                    gc.ForeBrush,
-                    StartPixelIndex,
-                    ClientSize.Height - TrackDisplayConstants.RANGESELECTTHICKNESS/*StaffCalibration.MaxVerticalSize - TrackDisplayConstants.RANGESELECTTHICKNESS*/,
-                    EndPixelIndex - StartPixelIndex + TrackDisplayConstants.EXTERNALSEPARATION,
-                    TrackDisplayConstants.RANGESELECTTHICKNESS);
+                // put offscreen buffer to screen
+                if (hDCOffscreen != null)
+                {
+                    using (GDIRegion gdiRgnClip = new GDIRegion(primaryGraphics.Clip.GetHrgn(primaryGraphics)))
+                    {
+                        using (GraphicsHDC hDC = new GraphicsHDC(primaryGraphics))
+                        {
+                            // Graphics/GDI+ doesn't pass clip region through so we have to reset it explicitly
+                            GDI.SelectClipRgn(hDC, gdiRgnClip);
 
-                /* draw left edge of bounding box */
-                gc.graphics.FillRectangle(
-                    gc.ForeBrush,
-                    StartPixelIndex,
-                    0,
-                    RangeSelectStartIsActive ? TrackDisplayConstants.RANGESELECTTHICKNESS : 1,
-                    ClientSize.Height/*StaffCalibration.MaxVerticalSize*/);
-
-                /* draw right edge of bounding box */
-                gc.graphics.FillRectangle(
-                    gc.ForeBrush,
-                    EndPixelIndex + TrackDisplayConstants.EXTERNALSEPARATION,
-                    0,
-                    !RangeSelectStartIsActive ? TrackDisplayConstants.RANGESELECTTHICKNESS : 1,
-                    ClientSize.Height/*StaffCalibration.MaxVerticalSize*/);
+                            bool f = GDI.BitBlt(
+                                hDC,
+                                updateLeft,
+                                updateTop,
+                                hBitmapOffscreen.width,
+                                hBitmapOffscreen.height,
+                                hDCOffscreen,
+                                0,
+                                0,
+                                GDI.SRCCOPY);
+                        }
+                    }
+                }
             }
-
-            /* draw cursor bar */
-            if (CursorBarIsVisible && Focused)
+            finally
             {
-                TrackViewDrawCursorBar();
-            }
-
-            // if positions may have changed, trigger an event to update mouse-over visuals for whatever is now under the mouse.
-            // (timer is used as simpler way instead of trying to post fake WM_MOUSEMOVE to message queue.)
-            if (layoutChanged)
-            {
-                timerUpdateMouseOverEffect.Start();
+                if (translated)
+                {
+                    PixelIndent -= updateLeft;
+                    VerticalOffset -= updateTop;
+                }
+                if (gcOffscreen != null) // pop context
+                {
+                    gcOffscreen.Dispose();
+                }
+                if (gOffscreen != null)
+                {
+                    gOffscreen.Dispose();
+                }
+                if (hDCOffscreen != null)
+                {
+                    hDCOffscreen.Dispose();
+                }
+                if (hBitmapOffscreen != null)
+                {
+                    hBitmapOffscreen.Dispose();
+                }
             }
         }
 
-        private void TrackViewRedrawStaff(Graphics graphics)
+        private void TrackViewRedrawStaff(IGraphicsContext gc)
         {
             /* draw staff bars around C */
-            int[] MajorStaffList = StaffCalibration.MajorStaffList;
+            int[] MajorStaffList = LayoutMetrics.MajorStaffPitches;
             for (int i = MajorStaffList.Length - 1; i >= 0; i--)
             {
-                int y = StaffCalibration.ConvertPitchToPixel(MajorStaffList[i], 0) - VerticalOffset;
-                graphics.DrawLine(
+                int y = gc.LayoutMetrics.ConvertPitchToPixel(MajorStaffList[i], 0) - VerticalOffset;
+                gc.graphics.DrawLine(
                     gc.ForePen,
                     0,
                     y,
@@ -3027,10 +3278,10 @@ namespace OutOfPhase
             }
 
             /* draw other staff bars */
-            for (int i = StaffCalibration.MinorStaffList.Length - 1; i >= 0; i--)
+            for (int i = LayoutMetrics.MinorStaffPitches.Length - 1; i >= 0; i--)
             {
-                int y = StaffCalibration.ConvertPitchToPixel(StaffCalibration.MinorStaffList[i], 0) - VerticalOffset;
-                graphics.DrawLine(
+                int y = gc.LayoutMetrics.ConvertPitchToPixel(LayoutMetrics.MinorStaffPitches[i], 0) - VerticalOffset;
+                gc.graphics.DrawLine(
                     gc.LightGreyPen,
                     0,
                     y,
@@ -3041,15 +3292,15 @@ namespace OutOfPhase
             /* draw all C lines */
             for (int i = 0; i <= (Constants.NUMNOTES - 1) / 2; i += 12)
             {
-                int y = StaffCalibration.ConvertPitchToPixel(Constants.CENTERNOTE - i, 0) - VerticalOffset;
-                graphics.DrawLine(
+                int y = gc.LayoutMetrics.ConvertPitchToPixel(Constants.CENTERNOTE - i, 0) - VerticalOffset;
+                gc.graphics.DrawLine(
                     (i == 0) ? gc.LightGreyPen : gc.GreyPen,
                     0,
                     y,
                     Schedule.TotalWidth,
                     y);
-                y = StaffCalibration.ConvertPitchToPixel(Constants.CENTERNOTE + i, 0) - VerticalOffset;
-                graphics.DrawLine(
+                y = gc.LayoutMetrics.ConvertPitchToPixel(Constants.CENTERNOTE + i, 0) - VerticalOffset;
+                gc.graphics.DrawLine(
                     (i == 0) ? gc.LightGreyPen : gc.GreyPen,
                     0,
                     y,
@@ -3059,31 +3310,29 @@ namespace OutOfPhase
         }
 
         /* draw a cute little paraboloid thing */
-        private void DrawTieLine(Graphics graphics, Pen color, int StartX, int StartY, int Width, int Height)
+        private void DrawTieLine(IGraphicsContext gc, Pen pen, int StartX, int StartY, int Width, int Height)
         {
-            float[] PixelXLoc = new float[TrackDisplayConstants.NUMTIELINEINTERVALS];
-            float[] PixelYLoc = new float[TrackDisplayConstants.NUMTIELINEINTERVALS];
+            float[] PixelXLoc = new float[gc.LayoutMetrics.NUMTIELINEINTERVALS];
+            float[] PixelYLoc = new float[gc.LayoutMetrics.NUMTIELINEINTERVALS];
 
             /* generate coordinates */
-            for (int Index = 0; Index < TrackDisplayConstants.NUMTIELINEINTERVALS; Index++)
+            for (int i = 0; i < gc.LayoutMetrics.NUMTIELINEINTERVALS; i++)
             {
-                float FuncX;
-
-                FuncX = 2 * ((float)Index / (TrackDisplayConstants.NUMTIELINEINTERVALS - 1)) - 1;
-                PixelXLoc[Index] = Width * ((float)Index / (TrackDisplayConstants.NUMTIELINEINTERVALS - 1));
-                PixelYLoc[Index] = Height * ((float)Index / (TrackDisplayConstants.NUMTIELINEINTERVALS - 1))
-                    + ((1 - FuncX * FuncX) * TrackDisplayConstants.MAXTIEDEPTH);
+                float FuncX = 2 * ((float)i / (gc.LayoutMetrics.NUMTIELINEINTERVALS - 1)) - 1;
+                PixelXLoc[i] = Width * ((float)i / (gc.LayoutMetrics.NUMTIELINEINTERVALS - 1));
+                PixelYLoc[i] = Height * ((float)i / (gc.LayoutMetrics.NUMTIELINEINTERVALS - 1))
+                    + ((1 - FuncX * FuncX) * gc.LayoutMetrics.MAXTIEDEPTH);
             }
             /* draw the lines */
-            for (int Index = 0; Index < TrackDisplayConstants.NUMTIELINEINTERVALS - 1; Index++)
+            for (int i = 0; i < gc.LayoutMetrics.NUMTIELINEINTERVALS - 1; i++)
             {
-                float X0 = StartX + PixelXLoc[Index];
-                float Y0 = StartY + PixelYLoc[Index];
-                float X1 = StartX + PixelXLoc[Index + 1];
-                float Y1 = StartY + PixelYLoc[Index + 1];
+                float X0 = StartX + PixelXLoc[i];
+                float Y0 = StartY + PixelYLoc[i];
+                float X1 = StartX + PixelXLoc[i + 1];
+                float Y1 = StartY + PixelYLoc[i + 1];
 
-                graphics.DrawLine(
-                    color,
+                gc.graphics.DrawLine(
+                    pen,
                     X0,
                     Y0,
                     X1,
@@ -3144,7 +3393,7 @@ namespace OutOfPhase
                         PixelIndex - PixelIndent + Schedule.TrackDisplayGetNoteOffset(0, frameIndex, noteIndex),
                         -VerticalOffset,
                         Schedule.TrackDisplayGetNoteInternalWidth(0, frameIndex, noteIndex),
-                        StaffCalibration.MaxVerticalSize);
+                        gc.LayoutMetrics.MAXVERTICALSIZE);
                     if (redraw)
                     {
                         gc.graphics.IntersectClip(rect);
@@ -3218,12 +3467,12 @@ namespace OutOfPhase
                         PixelIndent,
                         (se.OldValue - se.NewValue),
                         ClientSize.Width,
-                        TrackDisplayConstants.RANGESELECTTHICKNESS));
+                        gc.LayoutMetrics.RANGESELECTTHICKNESS));
                     Invalidate(new Rectangle(
                         PixelIndent,
-                        (se.OldValue - se.NewValue) + (ClientSize.Height - TrackDisplayConstants.RANGESELECTTHICKNESS),
+                        (se.OldValue - se.NewValue) + (ClientSize.Height - gc.LayoutMetrics.RANGESELECTTHICKNESS),
                         ClientSize.Width,
-                        TrackDisplayConstants.RANGESELECTTHICKNESS));
+                        gc.LayoutMetrics.RANGESELECTTHICKNESS));
                 }
             }
 
@@ -3415,6 +3664,170 @@ namespace OutOfPhase
             }
         }
 
+        private class CachedTextWidthKey
+        {
+            private readonly string text;
+            private readonly Font font;
+            private readonly Size proposedSize;
+            private readonly TextFormatFlags flags;
+
+            public CachedTextWidthKey(
+                string text,
+                Font font,
+                Size proposedSize,
+                TextFormatFlags flags)
+            {
+                this.text = text;
+                this.font = font;
+                this.proposedSize = proposedSize;
+                this.flags = flags;
+            }
+
+            public override bool Equals(object obj)
+            {
+                CachedTextWidthKey other = obj as CachedTextWidthKey;
+                if (other == null)
+                {
+                    return false;
+                }
+                return String.Equals(this.text, other.text)
+                    && (this.font == other.font) // TODO: correct?
+                    && (this.proposedSize == other.proposedSize)
+                    && (this.flags == other.flags);
+            }
+
+            public override int GetHashCode()
+            {
+                int textHash = text.GetHashCode();
+                int fontHash = font.GetHashCode();
+                int proposedSizeHash = proposedSize.GetHashCode();
+                int flagsHash = flags.GetHashCode();
+                return unchecked(textHash + fontHash + proposedSizeHash + flagsHash);
+            }
+        }
+
+        int IGraphicsContext.MeasureText(string text, Font font, Size proposedSize, TextFormatFlags flags)
+        {
+            CachedTextWidthKey key = new CachedTextWidthKey(text, font, proposedSize, flags);
+            int width;
+            if (!cachedTextWidths.TryGetValue(key, out width))
+            {
+                width = MyTextRenderer.MeasureText(((IGraphicsContext)this).graphics, text, font, proposedSize, flags).Width;
+                cachedTextWidths.Add(key, width);
+            }
+            return width;
+        }
+
+        int IGraphicsContext.MeasureText(string text, Font font)
+        {
+            return ((IGraphicsContext)this).MeasureText(text, font, new Size(Int16.MaxValue, FontHeight), TextFormatFlags.Default);
+        }
+
+        int IGraphicsContext.FontHeight
+        {
+            get
+            {
+                if (fontHeight < 0)
+                {
+                    fontHeight = Font.Height;
+                }
+                return fontHeight;
+            }
+        }
+
+        LayoutMetrics IGraphicsContext.LayoutMetrics
+        {
+            get
+            {
+                if (layoutMetrics == null)
+                {
+                    layoutMetrics = new LayoutMetrics(currentScaleFactor);
+                }
+                return layoutMetrics;
+            }
+        }
+
+        IBitmapsScore IGraphicsContext.Bitmaps
+        {
+            get
+            {
+                if (bitmaps == null)
+                {
+                    bitmaps = Bitmaps.Bitmaps1;
+                    if (currentScaleFactor >= 1.125f)
+                    {
+                        bitmaps = Bitmaps.Bitmaps2;
+                    }
+                }
+                return bitmaps;
+            }
+        }
+
+        Font IGraphicsContext.BravuraFont
+        {
+            get
+            {
+                if (bravuraFont == null)
+                {
+                    int size = ((IGraphicsContext)this).LayoutMetrics.BRAVURAFONTSIZE;
+                    bravuraFont = new Font(new FontFamily("Bravura"), size, FontStyle.Regular);
+                }
+                return bravuraFont;
+            }
+        }
+
+        int IGraphicsContext.BravuraQuarterNoteWidth
+        {
+            get
+            {
+                if (bravuraQuarterNoteWidth < 0)
+                {
+                    Font bravuraFont = ((IGraphicsContext)this).BravuraFont;
+                    bravuraQuarterNoteWidth = ((IGraphicsContext)this).MeasureText("\xE1D5", bravuraFont, new Size(Int16.MaxValue, Int16.MaxValue), TextFormatFlags.NoPadding);
+                }
+                return bravuraQuarterNoteWidth;
+            }
+        }
+
+        int IGraphicsContext.BravuraFontHeight
+        {
+            get
+            {
+                if (bravuraFontHeight < 0)
+                {
+                    Font bravuraFont = ((IGraphicsContext)this).BravuraFont;
+                    bravuraFontHeight = bravuraFont.Height;
+                }
+                return bravuraFontHeight;
+            }
+        }
+
+        Font IGraphicsContext.SmallFont
+        {
+            get
+            {
+                if (smallFont == null)
+                {
+                    int size = ((IGraphicsContext)this).LayoutMetrics.SMALLFONTSIZE;
+                    smallFont = new Font(new FontFamily("Calibri"), size, FontStyle.Regular);
+                }
+                return smallFont;
+            }
+        }
+
+        int IGraphicsContext.SmallFontHeight
+        {
+            get
+            {
+                if (smallFontHeight < 0)
+                {
+                    Font smallFont = ((IGraphicsContext)this).SmallFont;
+                    smallFontHeight = smallFont.Height;
+                }
+                return smallFontHeight;
+            }
+        }
+
 
         private class GraphicsContext : IGraphicsContext, IDisposable
         {
@@ -3493,6 +3906,40 @@ namespace OutOfPhase
 
             [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             Brush IGraphicsContext.LightLightGreyBrush { get { return ((IGraphicsContext)view).LightLightGreyBrush; } }
+
+            public int MeasureText(string text, Font font, Size proposedSize, TextFormatFlags flags)
+            {
+                return ((IGraphicsContext)view).MeasureText(text, font, proposedSize, flags);
+            }
+
+            public int MeasureText(string text, Font font)
+            {
+                return ((IGraphicsContext)view).MeasureText(text, font);
+            }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public int FontHeight { get { return ((IGraphicsContext)view).FontHeight; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public LayoutMetrics LayoutMetrics { get { return ((IGraphicsContext)view).LayoutMetrics; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public IBitmapsScore Bitmaps { get { return ((IGraphicsContext)view).Bitmaps; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public Font BravuraFont { get { return ((IGraphicsContext)view).BravuraFont; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public int BravuraQuarterNoteWidth { get { return ((IGraphicsContext)view).BravuraQuarterNoteWidth; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public int BravuraFontHeight { get { return ((IGraphicsContext)view).BravuraFontHeight; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public Font SmallFont { get { return ((IGraphicsContext)view).SmallFont; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public int SmallFontHeight { get { return ((IGraphicsContext)view).SmallFontHeight; } }
 
             public void Dispose()
             {
@@ -3659,6 +4106,18 @@ namespace OutOfPhase
         Pen LightGreyPen { get; }
         Color LightGreyColor { get; }
         Brush LightLightGreyBrush { get; }
+
+        int MeasureText(string text, Font font, Size proposedSize, TextFormatFlags flags);
+        int MeasureText(string text, Font font);
+        int FontHeight { get; }
+        LayoutMetrics LayoutMetrics { get; }
+        IBitmapsScore Bitmaps { get; }
+
+        Font BravuraFont { get; }
+        int BravuraQuarterNoteWidth { get; }
+        int BravuraFontHeight { get; }
+        Font SmallFont { get; }
+        int SmallFontHeight { get; }
     }
 
     public interface ITrackViewContextUI
@@ -3676,353 +4135,6 @@ namespace OutOfPhase
         eTrackViewSingleNoteSelection,
         eTrackViewSingleCommandSelection,
         eTrackViewRangeSelection,
-    }
-
-
-    public static class TrackDisplayConstants
-    {
-        /* where does the very first note start (to allow insertion before it) */
-        public const int FIRSTNOTESTART = 32;
-
-        /* how much space between notes */
-        public const int EXTERNALSEPARATION = 16;
-
-        /* so that tips of notes can be seen above last staff line */
-        public const int EDGESPACER = 96;
-
-        /* so that you have space to add new notes */
-        public const int HORIZONTALEXTENTION = 200;
-
-        /* width of the insertion point */
-        public const int INSERTIONPOINTWIDTH = 2;
-
-        /* tie endpoint positioning correction values */
-        public const int TIESTARTXCORRECTION = 11;
-        public const int TIESTARTYCORRECTION = 9;
-        public const int TIEENDXCORRECTION = 4;
-        public const int TIEENDYCORRECTION = 9;
-
-        /* tie curve drawing parameters */
-        public const int NUMTIELINEINTERVALS = 10;
-        public const int MAXTIEDEPTH = 15;
-
-        /* the width of the box drawn for range selection */
-        public const int RANGESELECTTHICKNESS = 3;
-
-        /* how far does mouse need to move to release the cursor bar lock */
-        public const int CURSORBARRELEASEDELTA = 2;
-
-        // sentinal value
-        public const int NOMEASUREBAR = Int32.MinValue;
-
-        public const int ORDTYPEMIN = Int16.MinValue;
-        public const int ORDTYPEMAX = Int16.MaxValue;
-    }
-
-    public static class FrameDisplayConstants
-    {
-        /* this is how much space to put between notes in the same frame */
-        public const int INTERNALSEPARATION = 12;
-
-        /* this is the width of the note part of an icon */
-        public const int ICONWIDTH = 20;
-
-        /* how much from the top of the note to the staff line intersection point */
-        public const int TOPNOTESTAFFINTERSECT = 23;
-
-        /* how much from the starting edge of the note icon does the note really start */
-        public const int LEFTNOTEEDGEINSET = 6;
-
-        // border width for drawing command boxes
-        public const int BORDER = 3;
-    }
-
-    public static class StaffCalibration
-    {
-        /* a note line every 4 scan lines (a note line is 1/2 of a staff line, or */
-        /* a line on which a note may be plotted) */
-        public const int STAFFSEPARATION = 4;
-
-        /* total number of pixels that are in the drawing range */
-        public const int TOTALPIXELS = (Constants.NUMNOTES / 12) * 7 * STAFFSEPARATION;
-
-
-        /* get the maximum number of vertical pixels needed to represent score range */
-        public static int MaxVerticalSize { get { return TOTALPIXELS; } }
-
-        /* get the pixel offset of the center note */
-        public static int CenterNotePixel { get { return (TOTALPIXELS - 1) - ((Constants.CENTERNOTE / 12) * (7 * STAFFSEPARATION)); } }
-
-        /* convert pitch to vertical pixel offset. */
-        public static int ConvertPitchToPixel(int HalfStep, NoteFlags SharpFlatFlags)
-        {
-            if ((SharpFlatFlags & ~(NoteFlags.eFlatModifier | NoteFlags.eSharpModifier)) != 0)
-            {
-                // extraneous bits in SharpFlatFlags
-                Debug.Assert(false);
-                throw new ArgumentException();
-            }
-            if ((HalfStep < 0) || (HalfStep > Constants.NUMNOTES - 1))
-            {
-                // pitch index is out of range
-                Debug.Assert(false);
-                throw new ArgumentException();
-            }
-
-            int Octave = HalfStep / 12;
-            int NoteOffset;
-            switch (HalfStep % 12)
-            {
-                default:
-                    throw new ArgumentException();
-                case 0: /* B#/C */
-                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
-                    {
-                        NoteOffset = -1 * STAFFSEPARATION;
-                    }
-                    else
-                    {
-                        NoteOffset = 0 * STAFFSEPARATION;
-                    }
-                    break;
-                case 1: /* C#/Db */
-                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
-                    {
-                        NoteOffset = 0 * STAFFSEPARATION;
-                    }
-                    else
-                    {
-                        NoteOffset = 1 * STAFFSEPARATION;
-                    }
-                    break;
-                case 2: /* D */
-                    NoteOffset = 1 * STAFFSEPARATION;
-                    break;
-                case 3: /* D#/Eb */
-                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
-                    {
-                        NoteOffset = 1 * STAFFSEPARATION;
-                    }
-                    else
-                    {
-                        NoteOffset = 2 * STAFFSEPARATION;
-                    }
-                    break;
-                case 4: /* E/Fb */
-                    if ((SharpFlatFlags & NoteFlags.eFlatModifier) != 0)
-                    {
-                        NoteOffset = 3 * STAFFSEPARATION;
-                    }
-                    else
-                    {
-                        NoteOffset = 2 * STAFFSEPARATION;
-                    }
-                    break;
-                case 5: /* E#/F */
-                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
-                    {
-                        NoteOffset = 2 * STAFFSEPARATION;
-                    }
-                    else
-                    {
-                        NoteOffset = 3 * STAFFSEPARATION;
-                    }
-                    break;
-                case 6: /* F#/Gb */
-                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
-                    {
-                        NoteOffset = 3 * STAFFSEPARATION;
-                    }
-                    else
-                    {
-                        NoteOffset = 4 * STAFFSEPARATION;
-                    }
-                    break;
-                case 7: /* G */
-                    NoteOffset = 4 * STAFFSEPARATION;
-                    break;
-                case 8: /* G#/Ab */
-                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
-                    {
-                        NoteOffset = 4 * STAFFSEPARATION;
-                    }
-                    else
-                    {
-                        NoteOffset = 5 * STAFFSEPARATION;
-                    }
-                    break;
-                case 9: /* A */
-                    NoteOffset = 5 * STAFFSEPARATION;
-                    break;
-                case 10: /* A#/Bb */
-                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
-                    {
-                        NoteOffset = 5 * STAFFSEPARATION;
-                    }
-                    else
-                    {
-                        NoteOffset = 6 * STAFFSEPARATION;
-                    }
-                    break;
-                case 11: /* B/Cb */
-                    if ((SharpFlatFlags & NoteFlags.eFlatModifier) != 0)
-                    {
-                        NoteOffset = 7 * STAFFSEPARATION;
-                    }
-                    else
-                    {
-                        NoteOffset = 6 * STAFFSEPARATION;
-                    }
-                    break;
-            }
-            NoteOffset += 7 * STAFFSEPARATION * Octave;
-            return (TOTALPIXELS - 1) - NoteOffset;
-        }
-
-        private static readonly int[] OneOctaveHalfStepTable = new int[]
-        {
-            0, /* pixel 0 == C */
-		    2, /* pixel 4 == D */
-		    4, /* pixel 8 == E */
-		    5, /* pixel 12 == F */
-		    7, /* pixel 16 == G */
-		    9, /* pixel 20 == A */
-		    11 /* pixel 24 == B */
-	    };
-
-        /* convert pixel offset to halfstep value */
-        public static short ConvertPixelToPitch(int Pixel)
-        {
-            Pixel = ((TOTALPIXELS - 1) - Pixel + 1) / STAFFSEPARATION;
-            if (Pixel < 0)
-            {
-                Pixel = 0;
-            }
-            int OctaveCount = 0;
-            while (Pixel >= OneOctaveHalfStepTable.Length)
-            {
-                Pixel -= OneOctaveHalfStepTable.Length;
-                OctaveCount++;
-            }
-            int ReturnValue = OctaveCount * 12 + OneOctaveHalfStepTable[Pixel];
-            if (ReturnValue > Constants.NUMNOTES - 1)
-            {
-                ReturnValue = Constants.NUMNOTES - 1;
-            }
-            return (short)ReturnValue;
-        }
-
-        public static readonly int[] MajorStaffList = new int[]
-        {
-            Constants.CENTERNOTE + 4, /* E */
-		    Constants.CENTERNOTE + 7, /* G */
-		    Constants.CENTERNOTE + 11, /* B */
-		    Constants.CENTERNOTE + 14, /* D */
-		    Constants.CENTERNOTE + 17, /* F */
-		    Constants.CENTERNOTE - 4, /* A */
-		    Constants.CENTERNOTE - 7, /* F */
-		    Constants.CENTERNOTE - 11, /* D */
-		    Constants.CENTERNOTE - 14, /* B */
-		    Constants.CENTERNOTE - 17 /* G */
-	    };
-
-        private static readonly int[] TwoOctaveStaffTable = new int[]
-        {
-            0, /* C0 */
-		    4, /* E0 */
-		    7, /* G0 */
-		    11, /* B0 */
-		    14, /* D1 */
-		    17, /* F1 */
-		    21 /* A1 */
-	    };
-
-        /* get dynamically allocated list of minor staff lines */
-        public static readonly int[] MinorStaffList = GetMinorStaffList();
-        private static int[] GetMinorStaffList()
-        {
-            List<int> Table = new List<int>();
-            for (int HalfStep = 0; HalfStep < Constants.NUMNOTES; HalfStep++)
-            {
-                if ((HalfStep < Constants.CENTERNOTE - 17) || (HalfStep > Constants.CENTERNOTE + 17))
-                {
-                    int TwoOctRelative = HalfStep - Constants.CENTERNOTE;
-                    while (TwoOctRelative < 0)
-                    {
-                        TwoOctRelative += 24;
-                    }
-                    while (TwoOctRelative >= 24)
-                    {
-                        TwoOctRelative -= 24;
-                    }
-                    for (int i = 0; i < TwoOctaveStaffTable.Length; i++)
-                    {
-                        if (TwoOctRelative == TwoOctaveStaffTable[i])
-                        {
-                            Table.Add(HalfStep);
-                        }
-                    }
-                }
-            }
-            return Table.ToArray();
-        }
-
-        /* set up note */
-        public static void SetUpNoteInfo(out short Pitch, out NoteFlags SharpFlatThing, bool Sharp, bool Flat, int Pixel)
-        {
-            SharpFlatThing = 0;
-            Pitch = ConvertPixelToPitch(Pixel);
-            if (Sharp)
-            {
-                switch (Pitch % 12)
-                {
-                    case 0: /* C */
-                    case 2: /* D */
-                    case 5: /* F */
-                    case 7: /* G */
-                    case 9: /* A */
-                        Pitch++;
-                        SharpFlatThing |= NoteFlags.eSharpModifier;
-                        break;
-                    case 4: /* E */
-                    case 11: /* B */
-                        Pitch++;
-                        break;
-                    default:
-                        /* ? */
-                        break;
-                }
-            }
-            if (Flat)
-            {
-                switch (Pitch % 12)
-                {
-                    case 2: /* D */
-                    case 4: /* E */
-                    case 7: /* G */
-                    case 9: /* A */
-                    case 11: /* B */
-                        Pitch--;
-                        SharpFlatThing |= NoteFlags.eFlatModifier;
-                        break;
-                    case 0: /* C */
-                    case 5: /* F */
-                        Pitch--;
-                        break;
-                    default:
-                        /* ? */
-                        break;
-                }
-            }
-            if (Pitch < 0)
-            {
-                Pitch = 0;
-            }
-            if (Pitch > Constants.NUMNOTES - 1)
-            {
-                Pitch = Constants.NUMNOTES - 1;
-            }
-        }
     }
 
 
@@ -4076,6 +4188,9 @@ namespace OutOfPhase
         private InlineParamVis inlineParamVis;
 
         public event EventHandler TrackExtentsChanged; // fired after recalc
+
+        public const int NOMEASUREBAR = Int32.MinValue; // sentinal value
+
 
         public TrackDispScheduleRec(IGraphicsContext gc, TrackViewControl ownerView)
         {
@@ -4170,7 +4285,7 @@ namespace OutOfPhase
                             int ThisNotePixelX;
                             TrackDisplayIndexToPixel(0/*main track*/, iFrame, out ThisNotePixelX);
                             ThisNotePixelX += TrackDisplayGetNoteOffset(0, iFrame, iNote);
-                            int ThisNotePixelY = StaffCalibration.ConvertPitchToPixel(Note.GetNotePitch(), Note.GetNoteFlatOrSharpStatus());
+                            int ThisNotePixelY = gc.LayoutMetrics.ConvertPitchToPixel(Note.GetNotePitch(), Note.GetNoteFlatOrSharpStatus());
 
                             /* do the thing for a note tied to us */
                             if (ThereIsATieToThisNote)
@@ -4255,7 +4370,7 @@ namespace OutOfPhase
                 {
                     /* erase the entries in the table */
                     i--;
-                    MainTrackMeasureBars[i].BarIndex = TrackDisplayConstants.NOMEASUREBAR; /* no bar */
+                    MainTrackMeasureBars[i].BarIndex = NOMEASUREBAR; /* no bar */
                 }
             }
 
@@ -4282,7 +4397,7 @@ namespace OutOfPhase
 
 
             /* initialize local variable counters */
-            int CurrentXLocation = TrackDisplayConstants.FIRSTNOTESTART;
+            int CurrentXLocation = gc.LayoutMetrics.FIRSTNOTESTART;
             FractionRec CurrentTime = new FractionRec(0, 0, Constants.Denominator);
 
             FractionRec MeasureBarIntervalThing = new FractionRec(0, 0, Constants.Denominator);
@@ -4427,7 +4542,7 @@ namespace OutOfPhase
                                     ref currentTrackFrameAttrArray[currentTrackFrameIndex].metrics);
                                 currentTrackFrameAttrArray[currentTrackFrameIndex].Width = width;
                                 currentTrackFrameAttrArray[currentTrackFrameIndex].widthIncludingTrailingSpace
-                                    = width + TrackDisplayConstants.EXTERNALSEPARATION;
+                                    = width + gc.LayoutMetrics.EXTERNALSEPARATION;
                                 currentTrackFrameAttrArray[currentTrackFrameIndex].SquashThisOne = false;
 
                                 if (currentTrackFrameAttrArray[currentTrackFrameIndex].Width == 0)
@@ -4467,7 +4582,7 @@ namespace OutOfPhase
                 if (MaximumWidth != 0)
                 {
                     /* MaximumWidth != 0 only happens if some stuff was scheduled */
-                    CurrentXLocation += MaximumWidth + TrackDisplayConstants.EXTERNALSEPARATION;
+                    CurrentXLocation += MaximumWidth + gc.LayoutMetrics.EXTERNALSEPARATION;
                 }
 
 
@@ -4585,7 +4700,7 @@ namespace OutOfPhase
             Debug.Assert(false);
             throw new ArgumentException();
 
-            FoundTrackPoint:
+        FoundTrackPoint:
             /* perform a binary search to locate the cell responsible for the track */
             /* first, check to make sure index is within range */
             if (PixelPosition < 0)
@@ -4799,7 +4914,7 @@ namespace OutOfPhase
         public bool TrackDisplayShouldMeasureBarBeGreyed(int FrameIndex)
         {
             TrackDisplayScheduleUpdate();
-            if (MainTrackMeasureBars[FrameIndex].BarIndex == TrackDisplayConstants.NOMEASUREBAR)
+            if (MainTrackMeasureBars[FrameIndex].BarIndex == NOMEASUREBAR)
             {
                 // no measure bar should be drawn here.
                 Debug.Assert(false);
@@ -4813,7 +4928,7 @@ namespace OutOfPhase
         public List<TieTrackPixelRec.TiePixelRec> TrackDisplayGetTieIntervalList(int StartX, int Width)
         {
             TrackDisplayScheduleUpdate();
-            return TiePixelTracker.GetTieTrackPixelIntersecting(StartX, Width);
+            return TiePixelTracker.GetTieTrackPixelIntersecting(gc, StartX, Width);
         }
 
         /* mark scheduler so that it recalculates all the stuff.  the track and frame */
@@ -4833,7 +4948,7 @@ namespace OutOfPhase
             }
             else
             {
-                return noteIndex * FrameDisplayConstants.INTERNALSEPARATION;
+                return noteIndex * gc.LayoutMetrics.INTERNALSEPARATION;
             }
         }
 
@@ -4845,7 +4960,7 @@ namespace OutOfPhase
             }
             else
             {
-                return FrameDisplayConstants.ICONWIDTH;
+                return gc.LayoutMetrics.ICONWIDTH;
             }
         }
     }
@@ -4950,14 +5065,14 @@ namespace OutOfPhase
 
         /* obtain an array of all ties which are in some manner intersecting the */
         /* specified X interval */
-        public List<TiePixelRec> GetTieTrackPixelIntersecting(int XLocStart, int XLocWidth)
+        public List<TiePixelRec> GetTieTrackPixelIntersecting(IGraphicsContext gc, int XLocStart, int XLocWidth)
         {
             List<TiePixelRec> List = new List<TiePixelRec>();
             for (int i = 0; i < ListOfTieThangs.Count; i++)
             {
                 TiePixelRec PixelRec = ListOfTieThangs[i];
-                if ((PixelRec.SourceHorizontalPixel < XLocStart + XLocWidth)
-                    && (PixelRec.DestinationHorizontalPixel > XLocStart))
+                if ((PixelRec.SourceHorizontalPixel <= XLocStart + XLocWidth + gc.LayoutMetrics.TIESTARTXCORRECTION)
+                    && (PixelRec.DestinationHorizontalPixel >= XLocStart - gc.LayoutMetrics.TIEENDXCORRECTION))
                 {
                     /* some part of the tie-line is visible on the screen */
                     List.Add(PixelRec);
@@ -5030,7 +5145,7 @@ namespace OutOfPhase
             else
             {
                 /* we have to draw the notes ourselves. */
-                X -= FrameDisplayConstants.LEFTNOTEEDGEINSET;
+                X -= gc.LayoutMetrics.LEFTNOTEEDGEINSET;
                 int relX = 0;
                 Width = 0;
                 for (int noteIndex = 0; noteIndex < Frame.Count; noteIndex++)
@@ -5043,6 +5158,7 @@ namespace OutOfPhase
                     {
                         ManagedBitmap2 Image;
                         ManagedBitmap2 Mask;
+                        string unicodeNote;
 
                         /* first, obtain the proper image for the duration */
                         if (!Note.GetNoteIsItARest())
@@ -5056,40 +5172,49 @@ namespace OutOfPhase
                                         Debug.Assert(false);
                                         throw new ArgumentException();
                                     case NoteFlags.e64thNote:
-                                        Image = Bitmaps.SixtyFourthNoteImage;
-                                        Mask = Bitmaps.SixtyFourthNoteMask;
+                                        Image = gc.Bitmaps.SixtyFourthNoteImage;
+                                        Mask = gc.Bitmaps.SixtyFourthNoteMask;
+                                        unicodeNote = "\xE1DD";
                                         break;
                                     case NoteFlags.e32ndNote:
-                                        Image = Bitmaps.ThirtySecondNoteImage;
-                                        Mask = Bitmaps.ThirtySecondNoteMask;
+                                        Image = gc.Bitmaps.ThirtySecondNoteImage;
+                                        Mask = gc.Bitmaps.ThirtySecondNoteMask;
+                                        unicodeNote = "\xE1DB";
                                         break;
                                     case NoteFlags.e16thNote:
-                                        Image = Bitmaps.SixteenthNoteImage;
-                                        Mask = Bitmaps.SixteenthNoteMask;
+                                        Image = gc.Bitmaps.SixteenthNoteImage;
+                                        Mask = gc.Bitmaps.SixteenthNoteMask;
+                                        unicodeNote = "\xE1D9";
                                         break;
                                     case NoteFlags.e8thNote:
-                                        Image = Bitmaps.EighthNoteImage;
-                                        Mask = Bitmaps.EighthNoteMask;
+                                        Image = gc.Bitmaps.EighthNoteImage;
+                                        Mask = gc.Bitmaps.EighthNoteMask;
+                                        unicodeNote = "\xE1D7";
                                         break;
                                     case NoteFlags.e4thNote:
-                                        Image = Bitmaps.QuarterNoteImage;
-                                        Mask = Bitmaps.QuarterNoteMask;
+                                        Image = gc.Bitmaps.QuarterNoteImage;
+                                        Mask = gc.Bitmaps.QuarterNoteMask;
+                                        unicodeNote = "\xE1D5";
                                         break;
                                     case NoteFlags.e2ndNote:
-                                        Image = Bitmaps.HalfNoteImage;
-                                        Mask = Bitmaps.HalfNoteMask;
+                                        Image = gc.Bitmaps.HalfNoteImage;
+                                        Mask = gc.Bitmaps.HalfNoteMask;
+                                        unicodeNote = "\xE1D3";
                                         break;
                                     case NoteFlags.eWholeNote:
-                                        Image = Bitmaps.WholeNoteImage;
-                                        Mask = Bitmaps.WholeNoteMask;
+                                        Image = gc.Bitmaps.WholeNoteImage;
+                                        Mask = gc.Bitmaps.WholeNoteMask;
+                                        unicodeNote = "\xE1D2";
                                         break;
                                     case NoteFlags.eDoubleNote:
-                                        Image = Bitmaps.DoubleNoteImage;
-                                        Mask = Bitmaps.DoubleNoteMask;
+                                        Image = gc.Bitmaps.DoubleNoteImage;
+                                        Mask = gc.Bitmaps.DoubleNoteMask;
+                                        unicodeNote = "\xE1D0";
                                         break;
                                     case NoteFlags.eQuadNote:
-                                        Image = Bitmaps.QuadNoteImage;
-                                        Mask = Bitmaps.QuadNoteMask;
+                                        Image = gc.Bitmaps.QuadNoteImage;
+                                        Mask = gc.Bitmaps.QuadNoteMask;
+                                        unicodeNote = "\xE1D1";
                                         break;
                                 }
                             }
@@ -5102,40 +5227,49 @@ namespace OutOfPhase
                                         Debug.Assert(false);
                                         throw new ArgumentException();
                                     case NoteFlags.e64thNote:
-                                        Image = Bitmaps.OneTwentyEighthNoteImage;
-                                        Mask = Bitmaps.OneTwentyEighthNoteMask;
+                                        Image = gc.Bitmaps.OneTwentyEighthNoteImage;
+                                        Mask = gc.Bitmaps.OneTwentyEighthNoteMask;
+                                        unicodeNote = "\xE1DF";
                                         break;
                                     case NoteFlags.e32ndNote:
-                                        Image = Bitmaps.SixtyFourthNoteImage;
-                                        Mask = Bitmaps.SixtyFourthNoteMask;
+                                        Image = gc.Bitmaps.SixtyFourthNoteImage;
+                                        Mask = gc.Bitmaps.SixtyFourthNoteMask;
+                                        unicodeNote = "\xE1DD";
                                         break;
                                     case NoteFlags.e16thNote:
-                                        Image = Bitmaps.ThirtySecondNoteImage;
-                                        Mask = Bitmaps.ThirtySecondNoteMask;
+                                        Image = gc.Bitmaps.ThirtySecondNoteImage;
+                                        Mask = gc.Bitmaps.ThirtySecondNoteMask;
+                                        unicodeNote = "\xE1DB";
                                         break;
                                     case NoteFlags.e8thNote:
-                                        Image = Bitmaps.SixteenthNoteImage;
-                                        Mask = Bitmaps.SixteenthNoteMask;
+                                        Image = gc.Bitmaps.SixteenthNoteImage;
+                                        Mask = gc.Bitmaps.SixteenthNoteMask;
+                                        unicodeNote = "\xE1D9";
                                         break;
                                     case NoteFlags.e4thNote:
-                                        Image = Bitmaps.EighthNoteImage;
-                                        Mask = Bitmaps.EighthNoteMask;
+                                        Image = gc.Bitmaps.EighthNoteImage;
+                                        Mask = gc.Bitmaps.EighthNoteMask;
+                                        unicodeNote = "\xE1D7";
                                         break;
                                     case NoteFlags.e2ndNote:
-                                        Image = Bitmaps.QuarterNoteImage;
-                                        Mask = Bitmaps.QuarterNoteMask;
+                                        Image = gc.Bitmaps.QuarterNoteImage;
+                                        Mask = gc.Bitmaps.QuarterNoteMask;
+                                        unicodeNote = "\xE1D5";
                                         break;
                                     case NoteFlags.eWholeNote:
-                                        Image = Bitmaps.HalfNoteImage;
-                                        Mask = Bitmaps.HalfNoteMask;
+                                        Image = gc.Bitmaps.HalfNoteImage;
+                                        Mask = gc.Bitmaps.HalfNoteMask;
+                                        unicodeNote = "\xE1D3";
                                         break;
                                     case NoteFlags.eDoubleNote:
-                                        Image = Bitmaps.WholeNoteImage;
-                                        Mask = Bitmaps.WholeNoteMask;
+                                        Image = gc.Bitmaps.WholeNoteImage;
+                                        Mask = gc.Bitmaps.WholeNoteMask;
+                                        unicodeNote = "\xE1D2";
                                         break;
                                     case NoteFlags.eQuadNote:
-                                        Image = Bitmaps.DoubleNoteImage;
-                                        Mask = Bitmaps.DoubleNoteMask;
+                                        Image = gc.Bitmaps.DoubleNoteImage;
+                                        Mask = gc.Bitmaps.DoubleNoteMask;
+                                        unicodeNote = "\xE1D0";
                                         break;
                                 }
                             }
@@ -5152,40 +5286,49 @@ namespace OutOfPhase
                                         Debug.Assert(false);
                                         throw new ArgumentException();
                                     case NoteFlags.e64thNote:
-                                        Image = Bitmaps.SixtyFourthRestImage;
-                                        Mask = Bitmaps.SixtyFourthRestMask;
+                                        Image = gc.Bitmaps.SixtyFourthRestImage;
+                                        Mask = gc.Bitmaps.SixtyFourthRestMask;
+                                        unicodeNote = "\xE4E9";
                                         break;
                                     case NoteFlags.e32ndNote:
-                                        Image = Bitmaps.ThirtySecondRestImage;
-                                        Mask = Bitmaps.ThirtySecondRestMask;
+                                        Image = gc.Bitmaps.ThirtySecondRestImage;
+                                        Mask = gc.Bitmaps.ThirtySecondRestMask;
+                                        unicodeNote = "\xE4E8";
                                         break;
                                     case NoteFlags.e16thNote:
-                                        Image = Bitmaps.SixteenthRestImage;
-                                        Mask = Bitmaps.SixteenthRestMask;
+                                        Image = gc.Bitmaps.SixteenthRestImage;
+                                        Mask = gc.Bitmaps.SixteenthRestMask;
+                                        unicodeNote = "\xE4E7";
                                         break;
                                     case NoteFlags.e8thNote:
-                                        Image = Bitmaps.EighthRestImage;
-                                        Mask = Bitmaps.EighthRestMask;
+                                        Image = gc.Bitmaps.EighthRestImage;
+                                        Mask = gc.Bitmaps.EighthRestMask;
+                                        unicodeNote = "\xE4E6";
                                         break;
                                     case NoteFlags.e4thNote:
-                                        Image = Bitmaps.QuarterRestImage;
-                                        Mask = Bitmaps.QuarterRestMask;
+                                        Image = gc.Bitmaps.QuarterRestImage;
+                                        Mask = gc.Bitmaps.QuarterRestMask;
+                                        unicodeNote = "\xE4E5";
                                         break;
                                     case NoteFlags.e2ndNote:
-                                        Image = Bitmaps.HalfRestImage;
-                                        Mask = Bitmaps.HalfRestMask;
+                                        Image = gc.Bitmaps.HalfRestImage;
+                                        Mask = gc.Bitmaps.HalfRestMask;
+                                        unicodeNote = "\xE4F5";
                                         break;
                                     case NoteFlags.eWholeNote:
-                                        Image = Bitmaps.WholeRestImage;
-                                        Mask = Bitmaps.WholeRestMask;
+                                        Image = gc.Bitmaps.WholeRestImage;
+                                        Mask = gc.Bitmaps.WholeRestMask;
+                                        unicodeNote = "\xE4F4";
                                         break;
                                     case NoteFlags.eDoubleNote:
-                                        Image = Bitmaps.DoubleRestImage;
-                                        Mask = Bitmaps.DoubleRestMask;
+                                        Image = gc.Bitmaps.DoubleRestImage;
+                                        Mask = gc.Bitmaps.DoubleRestMask;
+                                        unicodeNote = "\xE4E2";
                                         break;
                                     case NoteFlags.eQuadNote:
-                                        Image = Bitmaps.QuadRestImage;
-                                        Mask = Bitmaps.QuadRestMask;
+                                        Image = gc.Bitmaps.QuadRestImage;
+                                        Mask = gc.Bitmaps.QuadRestMask;
+                                        unicodeNote = "\xE4E1";
                                         break;
                                 }
                             }
@@ -5198,46 +5341,56 @@ namespace OutOfPhase
                                         Debug.Assert(false);
                                         throw new ArgumentException();
                                     case NoteFlags.e64thNote:
-                                        Image = Bitmaps.OneTwentyEighthRestImage;
-                                        Mask = Bitmaps.OneTwentyEighthRestMask;
+                                        Image = gc.Bitmaps.OneTwentyEighthRestImage;
+                                        Mask = gc.Bitmaps.OneTwentyEighthRestMask;
+                                        unicodeNote = "\xE4EA";
                                         break;
                                     case NoteFlags.e32ndNote:
-                                        Image = Bitmaps.SixtyFourthRestImage;
-                                        Mask = Bitmaps.SixtyFourthRestMask;
+                                        Image = gc.Bitmaps.SixtyFourthRestImage;
+                                        Mask = gc.Bitmaps.SixtyFourthRestMask;
+                                        unicodeNote = "\xE4E9";
                                         break;
                                     case NoteFlags.e16thNote:
-                                        Image = Bitmaps.ThirtySecondRestImage;
-                                        Mask = Bitmaps.ThirtySecondRestMask;
+                                        Image = gc.Bitmaps.ThirtySecondRestImage;
+                                        Mask = gc.Bitmaps.ThirtySecondRestMask;
+                                        unicodeNote = "\xE4E8";
                                         break;
                                     case NoteFlags.e8thNote:
-                                        Image = Bitmaps.SixteenthRestImage;
-                                        Mask = Bitmaps.SixteenthRestMask;
+                                        Image = gc.Bitmaps.SixteenthRestImage;
+                                        Mask = gc.Bitmaps.SixteenthRestMask;
+                                        unicodeNote = "\xE4E7";
                                         break;
                                     case NoteFlags.e4thNote:
-                                        Image = Bitmaps.EighthRestImage;
-                                        Mask = Bitmaps.EighthRestMask;
+                                        Image = gc.Bitmaps.EighthRestImage;
+                                        Mask = gc.Bitmaps.EighthRestMask;
+                                        unicodeNote = "\xE4E6";
                                         break;
                                     case NoteFlags.e2ndNote:
-                                        Image = Bitmaps.QuarterRestImage;
-                                        Mask = Bitmaps.QuarterRestMask;
+                                        Image = gc.Bitmaps.QuarterRestImage;
+                                        Mask = gc.Bitmaps.QuarterRestMask;
+                                        unicodeNote = "\xE4E5";
                                         break;
                                     case NoteFlags.eWholeNote:
-                                        Image = Bitmaps.HalfRestImage;
-                                        Mask = Bitmaps.HalfRestMask;
+                                        Image = gc.Bitmaps.HalfRestImage;
+                                        Mask = gc.Bitmaps.HalfRestMask;
+                                        unicodeNote = "\xE4F5";
                                         break;
                                     case NoteFlags.eDoubleNote:
-                                        Image = Bitmaps.WholeRestImage;
-                                        Mask = Bitmaps.WholeRestMask;
+                                        Image = gc.Bitmaps.WholeRestImage;
+                                        Mask = gc.Bitmaps.WholeRestMask;
+                                        unicodeNote = "\xE4F4";
                                         break;
                                     case NoteFlags.eQuadNote:
-                                        Image = Bitmaps.DoubleRestImage;
-                                        Mask = Bitmaps.DoubleRestMask;
+                                        Image = gc.Bitmaps.DoubleRestImage;
+                                        Mask = gc.Bitmaps.DoubleRestMask;
+                                        unicodeNote = "\xE4E2";
                                         break;
                                 }
                             }
                             /* end of note business */
                         }
                         /* now, handle divisions */
+                        string unicodeDivision = null;
                         switch (Note.GetNoteDurationDivision())
                         {
                             default:
@@ -5247,54 +5400,121 @@ namespace OutOfPhase
                                 /* no change */
                                 break;
                             case NoteFlags.eDiv3Modifier:
-                                Image = ManagedBitmap2.Or(Bitmaps.Div3Image, Image);
-                                Mask = ManagedBitmap2.Or(Bitmaps.Div3Mask, Mask);
+                                Image = ManagedBitmap2.Or(gc.Bitmaps.Div3Image, Image);
+                                Mask = ManagedBitmap2.Or(gc.Bitmaps.Div3Mask, Mask);
+                                unicodeDivision = "\xE883";
                                 break;
                             case NoteFlags.eDiv5Modifier:
-                                Image = ManagedBitmap2.Or(Bitmaps.Div5Image, Image);
-                                Mask = ManagedBitmap2.Or(Bitmaps.Div5Mask, Mask);
+                                Image = ManagedBitmap2.Or(gc.Bitmaps.Div5Image, Image);
+                                Mask = ManagedBitmap2.Or(gc.Bitmaps.Div5Mask, Mask);
+                                unicodeDivision = "\xE885";
                                 break;
                             case NoteFlags.eDiv7Modifier:
-                                Image = ManagedBitmap2.Or(Bitmaps.Div7Image, Image);
-                                Mask = ManagedBitmap2.Or(Bitmaps.Div7Mask, Mask);
+                                Image = ManagedBitmap2.Or(gc.Bitmaps.Div7Image, Image);
+                                Mask = ManagedBitmap2.Or(gc.Bitmaps.Div7Mask, Mask);
+                                unicodeDivision = "\xE887";
                                 break;
                         }
                         /* handle dots */
+                        string unicodeDot = null;
                         if (Note.GetNoteDotStatus())
                         {
-                            Image = ManagedBitmap2.Or(Bitmaps.DotImage, Image);
-                            Mask = ManagedBitmap2.Or(Bitmaps.DotMask, Mask);
+                            Image = ManagedBitmap2.Or(gc.Bitmaps.DotImage, Image);
+                            Mask = ManagedBitmap2.Or(gc.Bitmaps.DotMask, Mask);
+                            unicodeDot = "\xE1E7";
                         }
                         /* sharps and flats require more clever handling */
+                        string unicodeAccidental = null;
                         if ((Note.GetNoteFlatOrSharpStatus() & NoteFlags.eSharpModifier) != 0)
                         {
-                            Image = ManagedBitmap2.Or(Bitmaps.SharpImage, Image);
-                            Mask = ManagedBitmap2.Or(Bitmaps.SharpMask, Mask);
+                            Image = ManagedBitmap2.Or(gc.Bitmaps.SharpImage, Image);
+                            Mask = ManagedBitmap2.Or(gc.Bitmaps.SharpMask, Mask);
+                            unicodeAccidental = "\xE262";
                         }
                         if ((Note.GetNoteFlatOrSharpStatus() & NoteFlags.eFlatModifier) != 0)
                         {
-                            Image = ManagedBitmap2.Or(Bitmaps.FlatImage, Image);
-                            Mask = ManagedBitmap2.Or(Bitmaps.FlatMask, Mask);
+                            Image = ManagedBitmap2.Or(gc.Bitmaps.FlatImage, Image);
+                            Mask = ManagedBitmap2.Or(gc.Bitmaps.FlatMask, Mask);
+                            unicodeAccidental = "\xE260";
                         }
                         /* perform the drawing */
-                        NoteOffset = Y + StaffCalibration.ConvertPitchToPixel(Note.GetNotePitch(), Note.GetNoteFlatOrSharpStatus())
-                            - FrameDisplayConstants.TOPNOTESTAFFINTERSECT - StaffCalibration.CenterNotePixel;
-                        using (Bitmap gdiImage = Image.ToGDI(Color.Transparent, GreyedOut ? gc.LightGreyColor : gc.ForeColor))
+                        NoteOffset = Y + gc.LayoutMetrics.ConvertPitchToPixel(Note.GetNotePitch(), Note.GetNoteFlatOrSharpStatus())
+                            - gc.LayoutMetrics.TOPNOTESTAFFINTERSECT - gc.LayoutMetrics.CENTERNOTEPIXEL;
+                        if (!TrackViewControl.currentBravura/*Program.Config.EnableBravura*/)
                         {
-                            using (Bitmap gdiMask = Mask.ToGDI(Color.Transparent, gc.BackColor))
+                            using (Bitmap gdiImage = Image.ToGDI(Color.Transparent, GreyedOut ? gc.LightGreyColor : gc.ForeColor))
                             {
-                                gc.graphics.DrawImage(
-                                    gdiMask,
-                                    X,
-                                    NoteOffset,
-                                    gdiMask.Width,
-                                    gdiMask.Height);
-                                gc.graphics.DrawImage(
-                                    gdiImage,
-                                    X,
-                                    NoteOffset,
-                                    gdiImage.Width,
-                                    gdiImage.Height);
+                                using (Bitmap gdiMask = Mask.ToGDI(Color.Transparent, gc.BackColor))
+                                {
+                                    gc.graphics.DrawImage(
+                                        gdiMask,
+                                        X,
+                                        NoteOffset,
+                                        gc.LayoutMetrics.GLYPHIMAGEWIDTH,
+                                        gc.LayoutMetrics.GLYPHIMAGEHEIGHT);
+                                    gc.graphics.DrawImage(
+                                        gdiImage,
+                                        X,
+                                        NoteOffset,
+                                        gc.LayoutMetrics.GLYPHIMAGEWIDTH,
+                                        gc.LayoutMetrics.GLYPHIMAGEHEIGHT);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            int yFix = Program.Config.EnableDirectWrite ? gc.LayoutMetrics.BRAVURAYFIX : 0;
+
+                            //gc.graphics.DrawRectangle(Pens.Chartreuse, X, NoteOffset, 32, 32);
+                            //gc.graphics.DrawRectangle(Pens.Red, X + gc.LayoutMetrics.LEFTNOTEEDGEINSET - 1, NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT - 1, 3, 3);
+                            MyTextRenderer.DrawText(
+                                gc.graphics,
+                                unicodeNote,
+                                gc.BravuraFont,
+                                new Point(
+                                    X + gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX,
+                                    NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2),
+                                gc.ForeColor,
+                                TextFormatFlags.NoPadding);
+
+                            if (unicodeDivision != null)
+                            {
+                                MyTextRenderer.DrawText(
+                                    gc.graphics,
+                                    unicodeDivision,
+                                    gc.BravuraFont,
+                                    new Point(
+                                        X + gc.LayoutMetrics.BRAVURAXFIX,
+                                        NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT / 2 + yFix - gc.BravuraFontHeight / 2),
+                                    gc.ForeColor,
+                                    TextFormatFlags.NoPadding);
+                            }
+
+                            if (unicodeDot != null)
+                            {
+                                MyTextRenderer.DrawText(
+                                    gc.graphics,
+                                    unicodeDot,
+                                    gc.BravuraFont,
+                                    new Point(
+                                        X + gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX + 3 * gc.BravuraQuarterNoteWidth / 2,
+                                        NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2),
+                                    gc.ForeColor,
+                                    TextFormatFlags.NoPadding);
+                            }
+
+                            if (unicodeAccidental != null)
+                            {
+                                int accidentalWidth = gc.MeasureText(unicodeAccidental, gc.BravuraFont);
+                                MyTextRenderer.DrawText(
+                                    gc.graphics,
+                                    unicodeAccidental,
+                                    gc.BravuraFont,
+                                    new Point(
+                                        X + gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX - 4 * accidentalWidth / 3,
+                                        NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2),
+                                    gc.ForeColor,
+                                    TextFormatFlags.NoPadding);
                             }
                         }
                     }
@@ -5306,12 +5526,11 @@ namespace OutOfPhase
                         if (extraSpaceWidth == 0)
                         {
                             const string ExtraSpace = "  ";
-                            extraSpaceWidth = MyTextRenderer.MeasureText(
-                                gc.graphics,
+                            extraSpaceWidth = gc.MeasureText(
                                 ExtraSpace,
                                 gc.font,
-                                new Size(Int16.MaxValue, gc.font.Height),
-                                NoteParamStrip.Flags).Width;
+                                new Size(Int16.MaxValue, gc.FontHeight),
+                                NoteParamStrip.Flags);
                         }
 
                         ValueInfo[] values = ValueInfo.Values;
@@ -5321,25 +5540,25 @@ namespace OutOfPhase
                             if ((info != null) && ((inlineParamVis & info.InlineParam) != 0))
                             {
                                 string text = info.GetValue(Note);
-                                int width1 = MyTextRenderer.MeasureText(
-                                    gc.graphics,
+                                int width1 = gc.MeasureText(
                                     text,
                                     gc.font,
-                                    new Size(Int16.MaxValue, gc.font.Height),
-                                    NoteParamStrip.Flags).Width;
+                                    new Size(Int16.MaxValue, gc.FontHeight),
+                                    NoteParamStrip.Flags);
                                 inlineTextWidth = Math.Max(inlineTextWidth, width1);
                             }
                         }
                     }
 
                     /* increment X for the next time around */
-                    int rightEdge = X + FrameDisplayConstants.INTERNALSEPARATION;
-                    int internalWidth = Math.Max(FrameDisplayConstants.INTERNALSEPARATION, inlineTextWidth);
-                    int externalWidth = Math.Max(FrameDisplayConstants.INTERNALSEPARATION, inlineTextWidth + extraSpaceWidth);
+                    int savedX = X;
+                    int rightEdge = X + gc.LayoutMetrics.INTERNALSEPARATION;
+                    int internalWidth = Math.Max(gc.LayoutMetrics.INTERNALSEPARATION, inlineTextWidth);
+                    int externalWidth = Math.Max(gc.LayoutMetrics.INTERNALSEPARATION, inlineTextWidth + extraSpaceWidth);
                     if (metrics != null)
                     {
                         metrics[noteIndex].offset = (short)relX;
-                        metrics[noteIndex].width = (short)Math.Max(internalWidth, FrameDisplayConstants.ICONWIDTH);
+                        metrics[noteIndex].width = (short)Math.Max(internalWidth, gc.LayoutMetrics.ICONWIDTH);
                     }
                     X += externalWidth;
                     relX += externalWidth;
@@ -5349,97 +5568,221 @@ namespace OutOfPhase
                         /* draw little attributions below */
                         if (!GreyedOut)
                         {
-                            if (Note.GetNoteRetriggerEnvelopesOnTieStatus())
+                            if (!TrackViewControl.currentBravura/*Program.Config.EnableBravura*/)
                             {
-                                using (Bitmap gdiRetrigger8x8 = Bitmaps.Retrigger8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                if (Note.GetNoteRetriggerEnvelopesOnTieStatus())
                                 {
-                                    gc.graphics.DrawImage(
-                                        gdiRetrigger8x8,
-                                        rightEdge - 1,
-                                        NoteOffset + 40,
-                                        gdiRetrigger8x8.Width,
-                                        gdiRetrigger8x8.Height);
-                                }
-                            }
-                            if (0 != Note.GetNotePortamentoDuration())
-                            {
-                                if (Note.GetNotePortamentoLeadsBeatFlag())
-                                {
-                                    /* draw backwards "P" for portamento leading note */
-                                    using (Bitmap gdiReversePortamento8x8 = Bitmaps.ReversePortamento8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    using (Bitmap gdiRetrigger8x8 = gc.Bitmaps.Retrigger8x8.ToGDI(Color.Transparent, gc.ForeColor))
                                     {
                                         gc.graphics.DrawImage(
-                                            gdiReversePortamento8x8,
+                                            gdiRetrigger8x8,
                                             rightEdge - 1,
-                                            NoteOffset + 40 + 9,
-                                            gdiReversePortamento8x8.Width,
-                                            gdiReversePortamento8x8.Height);
+                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
+                                                + 0 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
                                     }
                                 }
-                                else
+                                if (0 != Note.GetNotePortamentoDuration())
                                 {
-                                    /* draw "P" for portamento */
-                                    using (Bitmap gdiPortamento8x8 = Bitmaps.Portamento8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    if (Note.GetNotePortamentoLeadsBeatFlag())
+                                    {
+                                        /* draw backwards "P" for portamento leading note */
+                                        using (Bitmap gdiReversePortamento8x8 = gc.Bitmaps.ReversePortamento8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                        {
+                                            gc.graphics.DrawImage(
+                                                gdiReversePortamento8x8,
+                                                rightEdge - 1,
+                                                NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
+                                                    + 1 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
+                                                gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
+                                                gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        /* draw "P" for portamento */
+                                        using (Bitmap gdiPortamento8x8 = gc.Bitmaps.Portamento8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                        {
+                                            gc.graphics.DrawImage(
+                                                gdiPortamento8x8,
+                                                rightEdge - 1,
+                                                NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
+                                                    + 1 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
+                                                gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
+                                                gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                        }
+                                    }
+                                }
+                                if (Note.GetNoteEarlyLateAdjust() < 0)
+                                {
+                                    /* draw "<" for early adjust */
+                                    using (Bitmap gdiShiftEarly8x8 = gc.Bitmaps.ShiftEarly8x8.ToGDI(Color.Transparent, gc.ForeColor))
                                     {
                                         gc.graphics.DrawImage(
-                                            gdiPortamento8x8,
+                                            gdiShiftEarly8x8,
                                             rightEdge - 1,
-                                            NoteOffset + 40 + 9,
-                                            gdiPortamento8x8.Width,
-                                            gdiPortamento8x8.Height);
+                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
+                                                + 2 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                    }
+                                }
+                                else if (Note.GetNoteEarlyLateAdjust() > 0)
+                                {
+                                    /* draw ">" for late adjust */
+                                    using (Bitmap gdiShiftLate8x8 = gc.Bitmaps.ShiftLate8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    {
+                                        gc.graphics.DrawImage(
+                                            gdiShiftLate8x8,
+                                            rightEdge - 1,
+                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
+                                                + 2 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                    }
+                                }
+                                if (Note.GetNoteDetuning() < 0)
+                                {
+                                    /* draw "-" for detuning down */
+                                    using (Bitmap gdiPitchDown8x8 = gc.Bitmaps.PitchDown8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    {
+                                        gc.graphics.DrawImage(
+                                            gdiPitchDown8x8,
+                                            rightEdge - 1,
+                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
+                                                + 3 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                    }
+                                }
+                                else if (Note.GetNoteDetuning() > 0)
+                                {
+                                    /* draw "+" for detuning up */
+                                    using (Bitmap gdiPitchUp8x8 = gc.Bitmaps.PitchUp8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    {
+                                        gc.graphics.DrawImage(
+                                            gdiPitchUp8x8,
+                                            rightEdge - 1,
+                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
+                                                + 3 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
+                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
                                     }
                                 }
                             }
-                            if (Note.GetNoteEarlyLateAdjust() < 0)
+                            else
                             {
-                                /* draw "<" for early adjust */
-                                using (Bitmap gdiShiftEarly8x8 = Bitmaps.ShiftEarly8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                int annotationLeft = savedX + gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX;
+                                int annotationWidth = gc.BravuraQuarterNoteWidth;
+                                int annotationTopBase = NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT;
+                                int annotationVerticalSeparation = gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING;
+
+                                if (Note.GetNoteRetriggerEnvelopesOnTieStatus())
                                 {
-                                    gc.graphics.DrawImage(
-                                        gdiShiftEarly8x8,
-                                        rightEdge - 1,
-                                        NoteOffset + 40 + 2 * 9,
-                                        gdiShiftEarly8x8.Width,
-                                        gdiShiftEarly8x8.Height);
+                                    MyTextRenderer.DrawText(
+                                        gc.graphics,
+                                        "R",
+                                        gc.SmallFont,
+                                        new Rectangle(
+                                            annotationLeft,
+                                            annotationTopBase + 0 * annotationVerticalSeparation,
+                                            annotationWidth,
+                                            gc.SmallFontHeight),
+                                        gc.ForeColor,
+                                        TextFormatFlags.HorizontalCenter);
                                 }
-                            }
-                            else if (Note.GetNoteEarlyLateAdjust() > 0)
-                            {
-                                /* draw ">" for late adjust */
-                                using (Bitmap gdiShiftLate8x8 = Bitmaps.ShiftLate8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                if (0 != Note.GetNotePortamentoDuration())
                                 {
-                                    gc.graphics.DrawImage(
-                                        gdiShiftLate8x8,
-                                        rightEdge - 1,
-                                        NoteOffset + 40 + 2 * 9,
-                                        gdiShiftLate8x8.Width,
-                                        gdiShiftLate8x8.Height);
+                                    if (Note.GetNotePortamentoLeadsBeatFlag())
+                                    {
+                                        /* draw backwards "P" for portamento leading note */
+                                        MyTextRenderer.DrawText(
+                                            gc.graphics,
+                                            "\xA7FC", // TODO: is it sufficiently available?
+                                            gc.SmallFont,
+                                            new Rectangle(
+                                                annotationLeft,
+                                                annotationTopBase + 1 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                gc.SmallFontHeight),
+                                            gc.ForeColor,
+                                            TextFormatFlags.HorizontalCenter);
+                                    }
+                                    else
+                                    {
+                                        MyTextRenderer.DrawText(
+                                            gc.graphics,
+                                            "P",
+                                            gc.SmallFont,
+                                            new Rectangle(
+                                                annotationLeft,
+                                                annotationTopBase + 1 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                gc.SmallFontHeight),
+                                            gc.ForeColor,
+                                            TextFormatFlags.HorizontalCenter);
+                                    }
                                 }
-                            }
-                            if (Note.GetNoteDetuning() < 0)
-                            {
-                                /* draw "-" for detuning down */
-                                using (Bitmap gdiPitchDown8x8 = Bitmaps.PitchDown8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                if (Note.GetNoteEarlyLateAdjust() < 0)
                                 {
-                                    gc.graphics.DrawImage(
-                                        gdiPitchDown8x8,
-                                        rightEdge - 1,
-                                        NoteOffset + 40 + 3 * 9,
-                                        gdiPitchDown8x8.Width,
-                                        gdiPitchDown8x8.Height);
+                                    /* draw "<" for early adjust */
+                                    MyTextRenderer.DrawText(
+                                        gc.graphics,
+                                        "<",
+                                        gc.SmallFont,
+                                        new Rectangle(
+                                            annotationLeft,
+                                            annotationTopBase + 2 * annotationVerticalSeparation,
+                                            annotationWidth,
+                                            gc.SmallFontHeight),
+                                        gc.ForeColor,
+                                        TextFormatFlags.HorizontalCenter);
                                 }
-                            }
-                            else if (Note.GetNoteDetuning() > 0)
-                            {
-                                /* draw "+" for detuning up */
-                                using (Bitmap gdiPitchUp8x8 = Bitmaps.PitchUp8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                else if (Note.GetNoteEarlyLateAdjust() > 0)
                                 {
-                                    gc.graphics.DrawImage(
-                                        gdiPitchUp8x8,
-                                        rightEdge - 1,
-                                        NoteOffset + 40 + 3 * 9,
-                                        gdiPitchUp8x8.Width,
-                                        gdiPitchUp8x8.Height);
+                                    /* draw ">" for late adjust */
+                                    MyTextRenderer.DrawText(
+                                        gc.graphics,
+                                        ">",
+                                        gc.SmallFont,
+                                        new Rectangle(
+                                            annotationLeft,
+                                            annotationTopBase + 2 * annotationVerticalSeparation,
+                                            annotationWidth,
+                                            gc.SmallFontHeight),
+                                        gc.ForeColor,
+                                        TextFormatFlags.HorizontalCenter);
+                                }
+                                if (Note.GetNoteDetuning() < 0)
+                                {
+                                    /* draw "-" for detuning down */
+                                    MyTextRenderer.DrawText(
+                                        gc.graphics,
+                                        "-",
+                                        gc.SmallFont,
+                                        new Rectangle(
+                                            annotationLeft,
+                                            annotationTopBase + 3 * annotationVerticalSeparation,
+                                            annotationWidth,
+                                            gc.SmallFontHeight),
+                                        gc.ForeColor,
+                                        TextFormatFlags.HorizontalCenter);
+                                }
+                                else if (Note.GetNoteDetuning() > 0)
+                                {
+                                    /* draw "+" for detuning up */
+                                    MyTextRenderer.DrawText(
+                                        gc.graphics,
+                                        "+",
+                                        gc.SmallFont,
+                                        new Rectangle(
+                                            annotationLeft,
+                                            annotationTopBase + 3 * annotationVerticalSeparation,
+                                            annotationWidth,
+                                            gc.SmallFontHeight),
+                                        gc.ForeColor,
+                                        TextFormatFlags.HorizontalCenter);
                                 }
                             }
                         }
@@ -5449,7 +5792,7 @@ namespace OutOfPhase
                     if (Width == 0)
                     {
                         /* first time you get the whole width */
-                        Width = Math.Max(FrameDisplayConstants.ICONWIDTH - FrameDisplayConstants.LEFTNOTEEDGEINSET, externalWidth);
+                        Width = Math.Max(gc.LayoutMetrics.ICONWIDTH - gc.LayoutMetrics.LEFTNOTEEDGEINSET, externalWidth);
                     }
                     else
                     {
@@ -5706,34 +6049,34 @@ namespace OutOfPhase
             bool GreyedOut,
             string String)
         {
-            int StrWidth = MyTextRenderer.MeasureText(gc.graphics, String, gc.font).Width;
+            int StrWidth = gc.MeasureText(String, gc.font);
             if (ActuallyDraw)
             {
-                int FontHeight = gc.font.Height;
+                int FontHeight = gc.FontHeight;
 
                 gc.graphics.DrawRectangle(
                     gc.ForePen,
                     X,
                     Y,
-                    StrWidth + 2 * FrameDisplayConstants.BORDER,
-                    FontHeight + 2 * FrameDisplayConstants.BORDER);
+                    StrWidth + 2 * gc.LayoutMetrics.BORDER,
+                    FontHeight + 2 * gc.LayoutMetrics.BORDER);
                 gc.graphics.FillRectangle(
                     gc.BackBrush,
                     X + 1,
                     Y + 1,
-                    StrWidth + 2 * FrameDisplayConstants.BORDER - 1,
-                    FontHeight + 2 * FrameDisplayConstants.BORDER - 1);
+                    StrWidth + 2 * gc.LayoutMetrics.BORDER - 1,
+                    FontHeight + 2 * gc.LayoutMetrics.BORDER - 1);
                 MyTextRenderer.DrawText(
                     gc.graphics,
                     String,
                     gc.font,
                     new Point(
-                        X + FrameDisplayConstants.BORDER,
-                        Y + FrameDisplayConstants.BORDER),
+                        X + gc.LayoutMetrics.BORDER,
+                        Y + gc.LayoutMetrics.BORDER),
                     gc.ForeColor,
                     TextFormatFlags.PreserveGraphicsClipping);
             }
-            return StrWidth + 2 * FrameDisplayConstants.BORDER;
+            return StrWidth + 2 * gc.LayoutMetrics.BORDER;
         }
 
         private static int DrawCommand1Param(
@@ -5745,10 +6088,10 @@ namespace OutOfPhase
             string String,
             string Argument1)
         {
-            int TotalWidth = MyTextRenderer.MeasureText(gc.graphics, String, gc.font).Width;
+            int TotalWidth = gc.MeasureText(String, gc.font);
             if (Argument1 != null)
             {
-                int OtherWidth = MyTextRenderer.MeasureText(gc.graphics, Argument1, gc.font).Width;
+                int OtherWidth = gc.MeasureText(Argument1, gc.font);
                 if (OtherWidth > TotalWidth)
                 {
                     TotalWidth = OtherWidth;
@@ -5756,26 +6099,26 @@ namespace OutOfPhase
             }
             if (ActuallyDraw)
             {
-                int FontHeight = gc.font.Height;
+                int FontHeight = gc.FontHeight;
                 gc.graphics.DrawRectangle(
                     gc.ForePen,
                     X,
                     Y,
-                    TotalWidth + 2 * FrameDisplayConstants.BORDER,
-                    2 * FontHeight + 2 * FrameDisplayConstants.BORDER);
+                    TotalWidth + 2 * gc.LayoutMetrics.BORDER,
+                    2 * FontHeight + 2 * gc.LayoutMetrics.BORDER);
                 gc.graphics.FillRectangle(
                     gc.BackBrush,
                     X + 1,
                     Y + 1,
-                    TotalWidth + 2 * FrameDisplayConstants.BORDER - 1,
-                    2 * FontHeight + 2 * FrameDisplayConstants.BORDER - 1);
+                    TotalWidth + 2 * gc.LayoutMetrics.BORDER - 1,
+                    2 * FontHeight + 2 * gc.LayoutMetrics.BORDER - 1);
                 MyTextRenderer.DrawText(
                     gc.graphics,
                     String,
                     gc.font,
                     new Point(
-                        X + FrameDisplayConstants.BORDER,
-                        Y + FrameDisplayConstants.BORDER),
+                        X + gc.LayoutMetrics.BORDER,
+                        Y + gc.LayoutMetrics.BORDER),
                     gc.ForeColor,
                     TextFormatFlags.PreserveGraphicsClipping);
                 if (Argument1 != null)
@@ -5785,13 +6128,13 @@ namespace OutOfPhase
                         Argument1,
                         gc.font,
                         new Point(
-                            X + FrameDisplayConstants.BORDER,
-                            Y + FrameDisplayConstants.BORDER + FontHeight),
+                            X + gc.LayoutMetrics.BORDER,
+                            Y + gc.LayoutMetrics.BORDER + FontHeight),
                         gc.ForeColor,
                         TextFormatFlags.PreserveGraphicsClipping);
                 }
             }
-            return TotalWidth + 2 * FrameDisplayConstants.BORDER;
+            return TotalWidth + 2 * gc.LayoutMetrics.BORDER;
         }
 
         private static int DrawCommand2Params(
@@ -5804,10 +6147,10 @@ namespace OutOfPhase
             string Argument1,
             string Argument2)
         {
-            int TotalWidth = MyTextRenderer.MeasureText(gc.graphics, String, gc.font).Width;
+            int TotalWidth = gc.MeasureText(String, gc.font);
             if (Argument1 != null)
             {
-                int OtherWidth = MyTextRenderer.MeasureText(gc.graphics, Argument1, gc.font).Width;
+                int OtherWidth = gc.MeasureText(Argument1, gc.font);
                 if (OtherWidth > TotalWidth)
                 {
                     TotalWidth = OtherWidth;
@@ -5815,7 +6158,7 @@ namespace OutOfPhase
             }
             if (Argument2 != null)
             {
-                int OtherWidth = MyTextRenderer.MeasureText(gc.graphics, Argument2, gc.font).Width;
+                int OtherWidth = gc.MeasureText(Argument2, gc.font);
                 if (OtherWidth > TotalWidth)
                 {
                     TotalWidth = OtherWidth;
@@ -5823,26 +6166,26 @@ namespace OutOfPhase
             }
             if (ActuallyDraw)
             {
-                int FontHeight = gc.font.Height;
+                int FontHeight = gc.FontHeight;
                 gc.graphics.DrawRectangle(
                     gc.ForePen,
                     X,
                     Y,
-                    TotalWidth + 2 * FrameDisplayConstants.BORDER,
-                    3 * FontHeight + 2 * FrameDisplayConstants.BORDER);
+                    TotalWidth + 2 * gc.LayoutMetrics.BORDER,
+                    3 * FontHeight + 2 * gc.LayoutMetrics.BORDER);
                 gc.graphics.FillRectangle(
                     gc.BackBrush,
                     X + 1,
                     Y + 1,
-                    TotalWidth + 2 * FrameDisplayConstants.BORDER - 1,
-                    3 * FontHeight + 2 * FrameDisplayConstants.BORDER - 1);
+                    TotalWidth + 2 * gc.LayoutMetrics.BORDER - 1,
+                    3 * FontHeight + 2 * gc.LayoutMetrics.BORDER - 1);
                 MyTextRenderer.DrawText(
                     gc.graphics,
                     String,
                     gc.font,
                     new Point(
-                        X + FrameDisplayConstants.BORDER,
-                        Y + FrameDisplayConstants.BORDER),
+                        X + gc.LayoutMetrics.BORDER,
+                        Y + gc.LayoutMetrics.BORDER),
                     gc.ForeColor,
                     TextFormatFlags.PreserveGraphicsClipping);
                 if (Argument1 != null)
@@ -5852,8 +6195,8 @@ namespace OutOfPhase
                         Argument1,
                         gc.font,
                         new Point(
-                            X + FrameDisplayConstants.BORDER,
-                            Y + FrameDisplayConstants.BORDER + FontHeight),
+                            X + gc.LayoutMetrics.BORDER,
+                            Y + gc.LayoutMetrics.BORDER + FontHeight),
                         gc.ForeColor,
                         TextFormatFlags.PreserveGraphicsClipping);
                 }
@@ -5864,13 +6207,13 @@ namespace OutOfPhase
                         Argument2,
                         gc.font,
                         new Point(
-                            X + FrameDisplayConstants.BORDER,
-                            Y + FrameDisplayConstants.BORDER + 2 * FontHeight),
+                            X + gc.LayoutMetrics.BORDER,
+                            Y + gc.LayoutMetrics.BORDER + 2 * FontHeight),
                         gc.ForeColor,
                         TextFormatFlags.PreserveGraphicsClipping);
                 }
             }
-            return TotalWidth + 2 * FrameDisplayConstants.BORDER;
+            return TotalWidth + 2 * gc.LayoutMetrics.BORDER;
         }
 
         /* draw a command that has one parameter, but has line feeds in it. */
@@ -5883,7 +6226,7 @@ namespace OutOfPhase
             string String,
             string Argument1)
         {
-            int TotalWidth = MyTextRenderer.MeasureText(gc.graphics, String, gc.font).Width;
+            int TotalWidth = gc.MeasureText(String, gc.font);
             string[] arg1Parts = new string[0];
             if (Argument1 != null)
             {
@@ -5894,7 +6237,7 @@ namespace OutOfPhase
                 }
                 foreach (string line in arg1Parts)
                 {
-                    int OtherWidth = MyTextRenderer.MeasureText(gc.graphics, line, gc.font).Width;
+                    int OtherWidth = gc.MeasureText(line, gc.font);
                     if (OtherWidth > TotalWidth)
                     {
                         TotalWidth = OtherWidth;
@@ -5903,26 +6246,26 @@ namespace OutOfPhase
             }
             if (ActuallyDraw)
             {
-                int FontHeight = gc.font.Height;
+                int FontHeight = gc.FontHeight;
                 gc.graphics.DrawRectangle(
                     gc.ForePen,
                     X,
                     Y,
-                    TotalWidth + 2 * FrameDisplayConstants.BORDER,
-                    (1 + arg1Parts.Length) * FontHeight + 2 * FrameDisplayConstants.BORDER);
+                    TotalWidth + 2 * gc.LayoutMetrics.BORDER,
+                    (1 + arg1Parts.Length) * FontHeight + 2 * gc.LayoutMetrics.BORDER);
                 gc.graphics.FillRectangle(
                     gc.BackBrush,
                     X + 1,
                     Y + 1,
-                    TotalWidth + 2 * FrameDisplayConstants.BORDER - 1,
-                    (1 + arg1Parts.Length) * FontHeight + 2 * FrameDisplayConstants.BORDER - 1);
+                    TotalWidth + 2 * gc.LayoutMetrics.BORDER - 1,
+                    (1 + arg1Parts.Length) * FontHeight + 2 * gc.LayoutMetrics.BORDER - 1);
                 MyTextRenderer.DrawText(
                     gc.graphics,
                     String,
                     gc.font,
                     new Point(
-                        X + FrameDisplayConstants.BORDER,
-                        Y + FrameDisplayConstants.BORDER),
+                        X + gc.LayoutMetrics.BORDER,
+                        Y + gc.LayoutMetrics.BORDER),
                     gc.ForeColor,
                     TextFormatFlags.PreserveGraphicsClipping);
                 for (int i = 0; i < arg1Parts.Length; i++)
@@ -5933,13 +6276,395 @@ namespace OutOfPhase
                         line,
                         gc.font,
                         new Point(
-                            X + FrameDisplayConstants.BORDER,
-                            Y + FrameDisplayConstants.BORDER + FontHeight * (i + 1)),
+                            X + gc.LayoutMetrics.BORDER,
+                            Y + gc.LayoutMetrics.BORDER + FontHeight * (i + 1)),
                         gc.ForeColor,
                         TextFormatFlags.PreserveGraphicsClipping);
                 }
             }
-            return TotalWidth + 2 * FrameDisplayConstants.BORDER;
+            return TotalWidth + 2 * gc.LayoutMetrics.BORDER;
+        }
+    }
+
+
+    public class LayoutMetrics
+    {
+        // global layout constants
+
+        /* so that you have space to add new notes */
+        public int HORIZONTALEXTENTION { get { return INTERNALSEPARATION * 4; } }
+
+        public int SCROLLINTOVIEWMARGIN { get { return INTERNALSEPARATION * 7; } }
+
+
+        // track display constants
+
+        /* where does the very first note start (to allow insertion before it) */
+        public int FIRSTNOTESTART { get { return INTERNALSEPARATION * 2; } }
+
+        /* how much space between notes */
+        public readonly int EXTERNALSEPARATION = 16;
+
+        /* so that tips of notes can be seen above last staff line */
+        public readonly int VERTICALEDGESPACER = 32; // should exceed max glyph height and max tie line descent (MAXTIEDEPTH)
+
+        /* width of the insertion point */
+        public readonly int INSERTIONPOINTWIDTH = 2;
+
+        /* tie endpoint positioning correction values */
+        public readonly int TIESTARTXCORRECTION = 11;
+        public readonly int TIESTARTYCORRECTION = 9;
+        public readonly int TIEENDXCORRECTION = 4;
+        public readonly int TIEENDYCORRECTION = 9;
+
+        /* tie curve drawing parameters */
+        public readonly int NUMTIELINEINTERVALS = 10;
+        public readonly int MAXTIEDEPTH = 15;
+
+        // pen thickness
+        public readonly float TIETHICKNESS = 1f;
+
+        /* the width of the box drawn for range selection */
+        public readonly int RANGESELECTTHICKNESS = 3;
+
+        /* how far does mouse need to move to release the cursor bar lock */
+        public readonly int CURSORBARRELEASEDELTA = 2;
+
+        // constrain pixel values on rendering canvas - TODO: is this necessary any more?
+        public const int PIXELMIN = Int32.MinValue / 2;
+        public const int PIXELMAX = Int32.MaxValue / 2;
+
+
+        // frame display constants
+
+        /* this is how much space to put between notes in the same frame */
+        public readonly int INTERNALSEPARATION = 12;
+
+        /* this is the width of the note part of an icon */
+        public readonly int ICONWIDTH = 20;
+
+        // dimensions of the bitmap objects for note images
+        public readonly int GLYPHIMAGEWIDTH = 32;
+        public readonly int GLYPHIMAGEHEIGHT = 32;
+        public readonly int SMALLGLYPHIMAGEWIDTH = 8;
+        public readonly int SMALLGLYPHIMAGEHEIGHT = 8;
+        public readonly int SMALLGLYPHIMAGEVERTICALSPACING = 9;
+
+        /* how much from the top of the note to the staff line intersection point */
+        public readonly int TOPNOTESTAFFINTERSECT = 23;
+
+        /* how much from the starting edge of the note icon does the note really start */
+        public readonly int LEFTNOTEEDGEINSET = 6;
+
+        // small glyph offset from "NoteOffset" (see WidthOfFrameAndDraw())
+        public readonly int SMALLGLYPHVERTICALDESCENT = 40;
+
+        // border width for drawing command boxes
+        public readonly int BORDER = 3;
+
+
+        // staff calibration
+
+        /* a note line every 4 scan lines (a note line is 1/2 of a staff line, or */
+        /* a line on which a note may be plotted) */
+        public readonly int STAFFSEPARATION = 4;
+
+        /* total number of pixels that are in the drawing range */
+        public int TOTALPIXELS { get { return (Constants.NUMNOTES / 12) * 7 * STAFFSEPARATION; } }
+
+        /* get the maximum number of vertical pixels needed to represent score range */
+        public int MAXVERTICALSIZE { get { return TOTALPIXELS + VERTICALEDGESPACER * 2; } }
+
+        /* get the pixel offset of the center note */
+        public int CENTERNOTEPIXEL { get { return (TOTALPIXELS - 1) - ((Constants.CENTERNOTE / 12) * (7 * STAFFSEPARATION)) + VERTICALEDGESPACER; } }
+
+
+        // Bravura
+
+        public readonly int BRAVURAFONTSIZE = 23;
+        public readonly int BRAVURAXFIX = 3;
+        public readonly int BRAVURAYFIX = 1;
+        public readonly int SMALLFONTSIZE = 10;
+
+
+        // default (1:1) scaled metrics
+        public LayoutMetrics()
+        {
+        }
+
+        // dynamically scaled metrics for high DPI
+        public LayoutMetrics(float factor)
+        {
+            // fundamental vertical pivots
+            int unitySTAFFSEPARATION = STAFFSEPARATION;
+            STAFFSEPARATION = (int)Math.Round(STAFFSEPARATION * factor);
+            float keyExpansionRatio = (float)STAFFSEPARATION / unitySTAFFSEPARATION;
+
+            // other vertical values
+            VERTICALEDGESPACER = (int)Math.Ceiling(VERTICALEDGESPACER * keyExpansionRatio);
+            int unityGLYPHIMAGEHEIGHT = GLYPHIMAGEHEIGHT;
+            GLYPHIMAGEHEIGHT = (int)Math.Round(GLYPHIMAGEHEIGHT * keyExpansionRatio);
+            float glyphExpansionRatio = (float)GLYPHIMAGEHEIGHT / unityGLYPHIMAGEHEIGHT;
+            GLYPHIMAGEWIDTH = (int)Math.Round(GLYPHIMAGEWIDTH * keyExpansionRatio);
+            // TODO: this may be problematic:
+            // TOPNOTESTAFFINTERSECT is used to position the glyph and would be quite visually sensitive to rounding error
+            // as the note body would misalign on or between staff lines.
+            TOPNOTESTAFFINTERSECT = (int)Math.Round(TOPNOTESTAFFINTERSECT * keyExpansionRatio);
+            // ICONWIDTH used to draw highlight boxes around notes which is relatively insensitive to rounding error
+            ICONWIDTH = (int)Math.Round(ICONWIDTH * keyExpansionRatio);
+            // LEFTNOTEEDGEINSET is used to position glyph horizontally, which is somewhat less sensitive to rounding error
+            // as there are no visible guidelines to notice misalignment against.
+            LEFTNOTEEDGEINSET = (int)Math.Round(LEFTNOTEEDGEINSET * keyExpansionRatio);
+            SMALLGLYPHIMAGEWIDTH = (int)Math.Round(SMALLGLYPHIMAGEWIDTH * glyphExpansionRatio);
+            SMALLGLYPHIMAGEHEIGHT = (int)Math.Round(SMALLGLYPHIMAGEHEIGHT * glyphExpansionRatio);
+            SMALLGLYPHVERTICALDESCENT = (int)Math.Round(SMALLGLYPHVERTICALDESCENT * glyphExpansionRatio);
+            SMALLGLYPHIMAGEVERTICALSPACING = (int)Math.Round((SMALLGLYPHIMAGEHEIGHT + 1) * keyExpansionRatio);
+
+            // horizontal scaling
+            float internalExternalRatio = (float)EXTERNALSEPARATION / INTERNALSEPARATION;
+            INTERNALSEPARATION = (int)Math.Round(INTERNALSEPARATION * keyExpansionRatio);
+            EXTERNALSEPARATION = (int)Math.Round(INTERNALSEPARATION * internalExternalRatio);
+
+            TIESTARTXCORRECTION = (int)Math.Round(TIESTARTXCORRECTION * glyphExpansionRatio);
+            TIESTARTYCORRECTION = (int)Math.Round(TIESTARTYCORRECTION * glyphExpansionRatio);
+            TIEENDXCORRECTION = (int)Math.Round(TIEENDXCORRECTION * glyphExpansionRatio);
+            TIEENDYCORRECTION = (int)Math.Round(TIEENDYCORRECTION * glyphExpansionRatio);
+            MAXTIEDEPTH = (int)Math.Round(MAXTIEDEPTH * keyExpansionRatio);
+            // NUMTIELINEINTERVALS would need to be adjusted only at excessively high levels (where line segments become visible)
+#if false // TODO: see if needed before enabling
+            if (keyExpansionRatio >= 3)
+            {
+                NUMTIELINEINTERVALS = (int)Math.Ceiling(NUMTIELINEINTERVALS * (keyExpansionRatio / 3));
+            }
+#endif
+            TIETHICKNESS = (int)Math.Round(TIETHICKNESS * keyExpansionRatio);
+
+            INSERTIONPOINTWIDTH = (int)Math.Round(INSERTIONPOINTWIDTH * keyExpansionRatio);
+            RANGESELECTTHICKNESS = (int)Math.Round(RANGESELECTTHICKNESS * keyExpansionRatio);
+            CURSORBARRELEASEDELTA = (int)Math.Round(CURSORBARRELEASEDELTA * keyExpansionRatio);
+            BORDER = (int)Math.Round(BORDER * keyExpansionRatio);
+
+            BRAVURAFONTSIZE = (int)Math.Round(BRAVURAFONTSIZE * keyExpansionRatio);
+            BRAVURAXFIX = (int)Math.Round(BRAVURAXFIX * keyExpansionRatio);
+            BRAVURAYFIX = (int)Math.Round(BRAVURAYFIX * keyExpansionRatio);
+            SMALLFONTSIZE = (int)Math.Round(SMALLFONTSIZE * keyExpansionRatio);
+        }
+
+
+        /* convert pitch to vertical pixel offset. */
+        public int ConvertPitchToPixel(int HalfStep, NoteFlags SharpFlatFlags)
+        {
+            if ((SharpFlatFlags & ~(NoteFlags.eFlatModifier | NoteFlags.eSharpModifier)) != 0)
+            {
+                // extraneous bits in SharpFlatFlags
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+            if ((HalfStep < 0) || (HalfStep > Constants.NUMNOTES - 1))
+            {
+                // pitch index is out of range
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+
+            int Octave = HalfStep / 12;
+            int NoteOffset;
+            switch (HalfStep % 12)
+            {
+                default:
+                    throw new ArgumentException();
+                case 0: /* B#/C */
+                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
+                    {
+                        NoteOffset = -1 * STAFFSEPARATION;
+                    }
+                    else
+                    {
+                        NoteOffset = 0 * STAFFSEPARATION;
+                    }
+                    break;
+                case 1: /* C#/Db */
+                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
+                    {
+                        NoteOffset = 0 * STAFFSEPARATION;
+                    }
+                    else
+                    {
+                        NoteOffset = 1 * STAFFSEPARATION;
+                    }
+                    break;
+                case 2: /* D */
+                    NoteOffset = 1 * STAFFSEPARATION;
+                    break;
+                case 3: /* D#/Eb */
+                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
+                    {
+                        NoteOffset = 1 * STAFFSEPARATION;
+                    }
+                    else
+                    {
+                        NoteOffset = 2 * STAFFSEPARATION;
+                    }
+                    break;
+                case 4: /* E/Fb */
+                    if ((SharpFlatFlags & NoteFlags.eFlatModifier) != 0)
+                    {
+                        NoteOffset = 3 * STAFFSEPARATION;
+                    }
+                    else
+                    {
+                        NoteOffset = 2 * STAFFSEPARATION;
+                    }
+                    break;
+                case 5: /* E#/F */
+                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
+                    {
+                        NoteOffset = 2 * STAFFSEPARATION;
+                    }
+                    else
+                    {
+                        NoteOffset = 3 * STAFFSEPARATION;
+                    }
+                    break;
+                case 6: /* F#/Gb */
+                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
+                    {
+                        NoteOffset = 3 * STAFFSEPARATION;
+                    }
+                    else
+                    {
+                        NoteOffset = 4 * STAFFSEPARATION;
+                    }
+                    break;
+                case 7: /* G */
+                    NoteOffset = 4 * STAFFSEPARATION;
+                    break;
+                case 8: /* G#/Ab */
+                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
+                    {
+                        NoteOffset = 4 * STAFFSEPARATION;
+                    }
+                    else
+                    {
+                        NoteOffset = 5 * STAFFSEPARATION;
+                    }
+                    break;
+                case 9: /* A */
+                    NoteOffset = 5 * STAFFSEPARATION;
+                    break;
+                case 10: /* A#/Bb */
+                    if ((SharpFlatFlags & NoteFlags.eSharpModifier) != 0)
+                    {
+                        NoteOffset = 5 * STAFFSEPARATION;
+                    }
+                    else
+                    {
+                        NoteOffset = 6 * STAFFSEPARATION;
+                    }
+                    break;
+                case 11: /* B/Cb */
+                    if ((SharpFlatFlags & NoteFlags.eFlatModifier) != 0)
+                    {
+                        NoteOffset = 7 * STAFFSEPARATION;
+                    }
+                    else
+                    {
+                        NoteOffset = 6 * STAFFSEPARATION;
+                    }
+                    break;
+            }
+            NoteOffset += 7 * STAFFSEPARATION * Octave;
+            return (TOTALPIXELS - 1) - NoteOffset + VERTICALEDGESPACER;
+        }
+
+
+        private readonly int[] OneOctaveHalfStepTable = new int[]
+        {
+            0, /* pixel 0 == C */
+            2, /* pixel 4 == D */
+            4, /* pixel 8 == E */
+            5, /* pixel 12 == F */
+            7, /* pixel 16 == G */
+            9, /* pixel 20 == A */
+            11 /* pixel 24 == B */
+	    };
+
+        /* convert pixel offset to halfstep value */
+        public short ConvertPixelToPitch(int Pixel)
+        {
+            Pixel = ((TOTALPIXELS - 1) - (Pixel - VERTICALEDGESPACER) + 1) / STAFFSEPARATION;
+            if (Pixel < 0)
+            {
+                Pixel = 0;
+            }
+            int OctaveCount = 0;
+            while (Pixel >= OneOctaveHalfStepTable.Length)
+            {
+                Pixel -= OneOctaveHalfStepTable.Length;
+                OctaveCount++;
+            }
+            int ReturnValue = OctaveCount * 12 + OneOctaveHalfStepTable[Pixel];
+            if (ReturnValue > Constants.NUMNOTES - 1)
+            {
+                ReturnValue = Constants.NUMNOTES - 1;
+            }
+            return (short)ReturnValue;
+        }
+
+        // pitch indices of major staff guidelines (heavier weight lines outside of primary staff lines)
+        public static readonly int[] MajorStaffPitches = new int[]
+        {
+            Constants.CENTERNOTE + 4, /* E */
+            Constants.CENTERNOTE + 7, /* G */
+            Constants.CENTERNOTE + 11, /* B */
+            Constants.CENTERNOTE + 14, /* D */
+            Constants.CENTERNOTE + 17, /* F */
+            Constants.CENTERNOTE - 4, /* A */
+            Constants.CENTERNOTE - 7, /* F */
+            Constants.CENTERNOTE - 11, /* D */
+            Constants.CENTERNOTE - 14, /* B */
+            Constants.CENTERNOTE - 17 /* G */
+	    };
+
+        private static readonly int[] RecurringTwoOctaveStaffPitchOffsets = new int[]
+        {
+            0, /* C0 */
+            4, /* E0 */
+            7, /* G0 */
+            11, /* B0 */
+            14, /* D1 */
+            17, /* F1 */
+            21 /* A1 */
+	    };
+
+        // pitch indices of minor staff lines (lighter leger lines outside of main staff area)
+        public static readonly int[] MinorStaffPitches = GetMinorStaffPitches();
+        private static int[] GetMinorStaffPitches()
+        {
+            List<int> Table = new List<int>();
+            for (int HalfStep = 0; HalfStep < Constants.NUMNOTES; HalfStep++)
+            {
+                if ((HalfStep < Constants.CENTERNOTE - 17) || (HalfStep > Constants.CENTERNOTE + 17))
+                {
+                    int TwoOctRelative = HalfStep - Constants.CENTERNOTE;
+                    while (TwoOctRelative < 0)
+                    {
+                        TwoOctRelative += 24;
+                    }
+                    while (TwoOctRelative >= 24)
+                    {
+                        TwoOctRelative -= 24;
+                    }
+                    for (int i = 0; i < RecurringTwoOctaveStaffPitchOffsets.Length; i++)
+                    {
+                        if (TwoOctRelative == RecurringTwoOctaveStaffPitchOffsets[i])
+                        {
+                            Table.Add(HalfStep);
+                        }
+                    }
+                }
+            }
+            return Table.ToArray();
         }
     }
 }

@@ -46,6 +46,8 @@ namespace OutOfPhase
             eFilterHighShelfEQ,
             eFilterResonantLowpass,
             eFilterResonantLowpass2,
+
+            Count
         }
 
         /* signal normalization options */

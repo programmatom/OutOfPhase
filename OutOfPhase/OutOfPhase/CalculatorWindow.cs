@@ -66,6 +66,12 @@ namespace OutOfPhase
             base.OnFormClosed(e);
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            this.textBox.Focus();
+        }
+
         protected override void OnActivated(EventArgs e)
         {
             base.OnActivated(e);
@@ -93,13 +99,14 @@ namespace OutOfPhase
             {
                 LastLine = Math.Min(LastLine, textBox.Count);
                 textBox.SetSelectionLine(LastLine);
+                textBox.ScrollToSelection();
             }
         }
 
         private bool Compile(out PcodeRec FuncCode, out DataTypes ReturnType)
         {
             int LineNumber;
-            Compiler.ASTExpressionRec AST;
+            Compiler.ASTExpression AST;
             CompileErrors Error = Compiler.CompileSpecialFunction(
                 document.CodeCenter,
                 new FunctionParamRec[0]/*no arguments*/,
@@ -113,6 +120,7 @@ namespace OutOfPhase
             {
                 textBox.Focus();
                 textBox.SetSelectionLine(textBox.SelectionStartLine + LineNumber - 1);
+                textBox.ScrollToSelection();
                 BuildErrorInfo error = new LiteralBuildErrorInfo(
                     Compiler.GetCompileErrorString(Error),
                     LineNumber);

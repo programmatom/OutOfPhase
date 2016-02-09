@@ -129,7 +129,7 @@ namespace OutOfPhase
             return scoreEffectsObject.EnsureBuilt(
                 force,
                 new PcodeExterns(mainWindow),
-                delegate(object source, BuildErrorInfo errorInfo)
+                delegate (object source, BuildErrorInfo errorInfo)
                 {
                     Debug.Assert(source == scoreEffectsObject);
                     HighlightLine(errorInfo.LineNumber);
@@ -142,9 +142,9 @@ namespace OutOfPhase
 
         public void HighlightLine(int line)
         {
-            line--;
             textBoxScoreEffectsText.Focus();
-            textBoxScoreEffectsText.SetSelectionLine(line);
+            textBoxScoreEffectsText.SetSelectionLine(line - 1);
+            textBoxScoreEffectsText.ScrollToSelection();
         }
 
 

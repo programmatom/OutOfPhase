@@ -290,35 +290,115 @@ namespace OutOfPhase
                         String.Append("doubletofloat");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleSin:
+                    case Pcodes.epOperationDoubleSinF:
+                        String.Append("sin.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleSinD:
                         String.Append("sin.d");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleCos:
+                    case Pcodes.epOperationDoubleCosF:
+                        String.Append("cos.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleCosD:
                         String.Append("cos.d");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleTan:
+                    case Pcodes.epOperationDoubleTanF:
+                        String.Append("tan.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleTanD:
                         String.Append("tan.d");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleAtan:
+                    case Pcodes.epOperationDoubleAtanF:
+                        String.Append("atan.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleAtanD:
                         String.Append("atan.d");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleLn:
+                    case Pcodes.epOperationDoubleLnF:
+                        String.Append("ln.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleLnD:
                         String.Append("ln.d");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleExp:
+                    case Pcodes.epOperationDoubleExpF:
+                        String.Append("exp.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleExpD:
                         String.Append("exp.d");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleSqrt:
+                    case Pcodes.epOperationDoubleSqrtF:
+                        String.Append("sqrt.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleSqrtD:
                         String.Append("sqrt.d");
                         i++;
                         break;
-                    case Pcodes.epOperationDoublePower:
+                    case Pcodes.epOperationDoubleFloorF:
+                        String.Append("floor.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleFloorD:
+                        String.Append("floor.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleCeilF:
+                        String.Append("ceil.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleCeilD:
+                        String.Append("ceil.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleRoundF:
+                        String.Append("round.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleRoundD:
+                        String.Append("round.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleCoshF:
+                        String.Append("cosh.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleCoshD:
+                        String.Append("cosh.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleSinhF:
+                        String.Append("sinh.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleSinhD:
+                        String.Append("sinh.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleTanhF:
+                        String.Append("tanh.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleTanhD:
+                        String.Append("tanh.d");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoublePowerF:
+                        String.Append("pow.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoublePowerD:
                         String.Append("pow.d");
                         i++;
                         break;
@@ -363,15 +443,27 @@ namespace OutOfPhase
                         String.Append("not.i");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleAsin:
+                    case Pcodes.epOperationDoubleAsinF:
+                        String.Append("asin.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleAsinD:
                         String.Append("asin.d");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleAcos:
+                    case Pcodes.epOperationDoubleAcosF:
+                        String.Append("acos.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleAcosD:
                         String.Append("acos.d");
                         i++;
                         break;
-                    case Pcodes.epOperationDoubleSqr:
+                    case Pcodes.epOperationDoubleSqrF:
+                        String.Append("sqr.s");
+                        i++;
+                        break;
+                    case Pcodes.epOperationDoubleSqrD:
                         String.Append("sqr.d");
                         i++;
                         break;
@@ -591,6 +683,51 @@ namespace OutOfPhase
                         String.Append(Pcode.strings[OpcodeArray[i + 1].ImmediateString_Ref]);
                         String.Append("\x22");
                         i += 2;
+                        break;
+
+                    case Pcodes.epMinInt:
+                        String.Append("min.i");
+                        i++;
+                        break;
+                    case Pcodes.epMinFloat:
+                        String.Append("min.s");
+                        i++;
+                        break;
+                    case Pcodes.epMinDouble:
+                        String.Append("min.d");
+                        i++;
+                        break;
+                    case Pcodes.epMaxInt:
+                        String.Append("max.i");
+                        i++;
+                        break;
+                    case Pcodes.epMaxFloat:
+                        String.Append("max.s");
+                        i++;
+                        break;
+                    case Pcodes.epMaxDouble:
+                        String.Append("max.d");
+                        i++;
+                        break;
+                    case Pcodes.epMinMaxInt:
+                        String.Append("minmax.i");
+                        i++;
+                        break;
+                    case Pcodes.epMinMaxFloat:
+                        String.Append("minmax.s");
+                        i++;
+                        break;
+                    case Pcodes.epMinMaxDouble:
+                        String.Append("minmax.d");
+                        i++;
+                        break;
+                    case Pcodes.epAtan2Float:
+                        String.Append("atan2.s");
+                        i++;
+                        break;
+                    case Pcodes.epAtan2Double:
+                        String.Append("atan2.d");
+                        i++;
                         break;
 
                     default:

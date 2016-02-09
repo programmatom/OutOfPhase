@@ -364,7 +364,7 @@ namespace OutOfPhase
             int ErrorLineNumberCompilation;
             DataTypes ReturnType;
             PcodeRec FuncCode;
-            Compiler.ASTExpressionRec AST;
+            Compiler.ASTExpression AST;
             CompileErrors CompileError = Compiler.CompileSpecialFunction(
                 mainWindow.Document.CodeCenter,
                 new FunctionParamRec[]
@@ -383,6 +383,7 @@ namespace OutOfPhase
             {
                 textBoxFormula.Focus();
                 textBoxFormula.SetSelectionLine(ErrorLineNumberCompilation - 1);
+                textBoxFormula.ScrollToSelection();
                 LiteralBuildErrorInfo errorInfo = new LiteralBuildErrorInfo(Compiler.GetCompileErrorString(CompileError), ErrorLineNumberCompilation);
                 MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
                 return;
@@ -699,6 +700,8 @@ namespace OutOfPhase
         {
             const double BufferDuration = .25f;
 
+            IPlayPrefsProvider playPrefsProvider = mainWindow.GetPlayPrefsProvider();
+
 #if true // prevents "Add New Data Source..." from working
             state = WaveTableTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 mainWindow.DisplayName,
@@ -711,13 +714,13 @@ namespace OutOfPhase
                     waveTableObject.TestAttackDuration,
                     waveTableObject.TestDecayDuration,
                     waveTableObject.NumBits,
-                    waveTableObject.TestSamplingRate,
+                    playPrefsProvider.SamplingRate,
                     waveTableObject.TestFrequency),
                 WaveTableTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Completion,
                 mainWindow,
                 NumChannelsType.eSampleMono,
                 waveTableObject.NumBits,
-                waveTableObject.TestSamplingRate,
+                playPrefsProvider.SamplingRate,
                 1/*oversampling*/,
                 false/*showProgressWindow*/,
                 false/*modal*/);
@@ -731,8 +734,9 @@ namespace OutOfPhase
             if (generatorParams.exception != null)
             {
                 MessageBox.Show(generatorParams.exception.ToString());
-
             }
+
+            state.Dispose();
             state = null;
             generatorParams = null;
         }
@@ -844,7 +848,6 @@ namespace OutOfPhase
                 for (int i = 0; i < NumberOfIterationsAttack + NumberOfIterationsDecay; i++)
                 {
                     double TableIndex;
-                    float Value;
 
                     /* compute wave table index for attack/decay phase */
                     if (i < NumberOfIterationsAttack)
@@ -856,12 +859,13 @@ namespace OutOfPhase
                         TableIndex = (double)(NumberOfIterationsDecay + NumberOfIterationsAttack - i) / NumberOfIterationsDecay;
                     }
 
-                    Value = Synthesizer.WaveTableIndexer(
+                    float Value = Synthesizer.WaveTableIndexer(
                         (double)WaveformIndex * ((double)1 / 65536),
                         TableIndex * (NumTables - 1),
                         NumTables,
                         FramesPerTable,
-                        ReferenceArray);
+                        ReferenceArray,
+                        true/*EnableCrossWaveTableInterpolation*/);
                     WaveformIndex += WaveformIncrementor;
 
                     OutputBuffer[2 * OutputIndex + 0] = OutputBuffer[2 * OutputIndex + 1] = Value * .5f;

@@ -106,7 +106,7 @@ namespace OutOfPhase
             this.textBox.MaxLength = 16777216;
             this.textBox.Name = "textBox";
             this.textBox.Size = new System.Drawing.Size(171, 20);
-            this.textBox.TabIndex = 2;
+            this.textBox.TabIndex = 1;
             // 
             // labelPrompt
             // 
@@ -130,7 +130,7 @@ namespace OutOfPhase
             this.flowLayoutPanel1.Location = new System.Drawing.Point(73, 111);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Size = new System.Drawing.Size(288, 29);
-            this.flowLayoutPanel1.TabIndex = 2;
+            this.flowLayoutPanel1.TabIndex = 4;
             // 
             // buttonCancel
             // 
@@ -138,7 +138,7 @@ namespace OutOfPhase
             this.buttonCancel.Location = new System.Drawing.Point(3, 3);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(110, 23);
-            this.buttonCancel.TabIndex = 0;
+            this.buttonCancel.TabIndex = 2;
             this.buttonCancel.Text = "Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
             // 
@@ -155,7 +155,7 @@ namespace OutOfPhase
             this.buttonOK.Location = new System.Drawing.Point(175, 3);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(110, 23);
-            this.buttonOK.TabIndex = 2;
+            this.buttonOK.TabIndex = 3;
             this.buttonOK.Text = "OK";
             this.buttonOK.UseVisualStyleBackColor = true;
             // 

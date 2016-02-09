@@ -44,7 +44,6 @@ namespace OutOfPhase
 
             public FilterTypes FilterType { get { return FilterTypes.eFilterLowShelfEQ; } }
 
-            /* compute filter coefficients */
             private static void ComputeLowShelfEqualizerCoefficients(
                 ref IIR2DirectIRec Coeff,
                 double Cutoff,
@@ -85,7 +84,6 @@ namespace OutOfPhase
                 Coeff.B2 = (float)(OneOverB0 * ((A + 1) + (A - 1) * CS - Beta * SN));
             }
 
-            /* adjust filter coefficients */
             public static void SetLowShelfEqualizerCoefficients(
                 LowShelfEqualizerRec Filter,
                 double Cutoff,
@@ -107,6 +105,17 @@ namespace OutOfPhase
                     Slope,
                     Gain,
                     SamplingRate);
+            }
+
+            public void UpdateParams(
+                ref FilterParams Params)
+            {
+                SetLowShelfEqualizerCoefficients(
+                    this,
+                    Params.Cutoff,
+                    Params.BandwidthOrSlope,
+                    Params.Gain,
+                    Params.SamplingRate);
             }
 
             /* apply filter to an array of values, adding result to output array */

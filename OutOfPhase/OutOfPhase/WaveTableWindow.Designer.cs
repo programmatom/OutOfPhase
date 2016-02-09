@@ -67,11 +67,9 @@ namespace OutOfPhase
             this.label7 = new OutOfPhase.MyLabel();
             this.label8 = new OutOfPhase.MyLabel();
             this.label9 = new OutOfPhase.MyLabel();
-            this.label10 = new OutOfPhase.MyLabel();
             this.textBoxTestAttackDuration = new System.Windows.Forms.TextBox();
             this.textBoxTestDecayDuration = new System.Windows.Forms.TextBox();
             this.textBoxTestFrequency = new System.Windows.Forms.TextBox();
-            this.textBoxTestSamplingRate = new System.Windows.Forms.TextBox();
             this.buttonTest = new System.Windows.Forms.Button();
             this.labelScale = new OutOfPhase.MyLabel();
             this.comboBoxScale = new System.Windows.Forms.ComboBox();
@@ -170,25 +168,23 @@ namespace OutOfPhase
             this.tableLayoutPanel3.Controls.Add(this.label7, 3, 1);
             this.tableLayoutPanel3.Controls.Add(this.label8, 3, 2);
             this.tableLayoutPanel3.Controls.Add(this.label9, 3, 3);
-            this.tableLayoutPanel3.Controls.Add(this.label10, 3, 4);
             this.tableLayoutPanel3.Controls.Add(this.textBoxTestAttackDuration, 4, 1);
             this.tableLayoutPanel3.Controls.Add(this.textBoxTestDecayDuration, 4, 2);
             this.tableLayoutPanel3.Controls.Add(this.textBoxTestFrequency, 4, 3);
-            this.tableLayoutPanel3.Controls.Add(this.textBoxTestSamplingRate, 4, 4);
-            this.tableLayoutPanel3.Controls.Add(this.buttonTest, 4, 5);
-            this.tableLayoutPanel3.Controls.Add(this.labelScale, 0, 5);
-            this.tableLayoutPanel3.Controls.Add(this.comboBoxScale, 1, 5);
+            this.tableLayoutPanel3.Controls.Add(this.buttonTest, 4, 4);
+            this.tableLayoutPanel3.Controls.Add(this.labelScale, 0, 4);
+            this.tableLayoutPanel3.Controls.Add(this.comboBoxScale, 1, 4);
             this.tableLayoutPanel3.Dock = System.Windows.Forms.DockStyle.Top;
             this.tableLayoutPanel3.Location = new System.Drawing.Point(348, 3);
             this.tableLayoutPanel3.Name = "tableLayoutPanel3";
-            this.tableLayoutPanel3.RowCount = 6;
+            this.tableLayoutPanel3.RowCount = 5;
             this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel3.Size = new System.Drawing.Size(344, 161);
+            this.tableLayoutPanel3.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
+            this.tableLayoutPanel3.Size = new System.Drawing.Size(344, 135);
             this.tableLayoutPanel3.TabIndex = 0;
             // 
             // label2
@@ -315,16 +311,6 @@ namespace OutOfPhase
             this.label9.TabIndex = 11;
             this.label9.Text = "Frequency:";
             // 
-            // label10
-            // 
-            this.label10.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(165, 112);
-            this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(84, 13);
-            this.label10.TabIndex = 12;
-            this.label10.Text = "Sampling Rate:";
-            // 
             // textBoxTestAttackDuration
             // 
             this.textBoxTestAttackDuration.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
@@ -352,19 +338,10 @@ namespace OutOfPhase
             this.textBoxTestFrequency.Size = new System.Drawing.Size(86, 20);
             this.textBoxTestFrequency.TabIndex = 15;
             // 
-            // textBoxTestSamplingRate
-            // 
-            this.textBoxTestSamplingRate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.textBoxTestSamplingRate.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.waveTableObjectRecBindingSource, "TestSamplingRate", true));
-            this.textBoxTestSamplingRate.Location = new System.Drawing.Point(255, 109);
-            this.textBoxTestSamplingRate.Name = "textBoxTestSamplingRate";
-            this.textBoxTestSamplingRate.Size = new System.Drawing.Size(86, 20);
-            this.textBoxTestSamplingRate.TabIndex = 16;
-            // 
             // buttonTest
             // 
             this.buttonTest.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.buttonTest.Location = new System.Drawing.Point(255, 135);
+            this.buttonTest.Location = new System.Drawing.Point(255, 109);
             this.buttonTest.Name = "buttonTest";
             this.buttonTest.Size = new System.Drawing.Size(86, 23);
             this.buttonTest.TabIndex = 17;
@@ -375,7 +352,7 @@ namespace OutOfPhase
             // 
             this.labelScale.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.labelScale.AutoSize = true;
-            this.labelScale.Location = new System.Drawing.Point(3, 140);
+            this.labelScale.Location = new System.Drawing.Point(3, 114);
             this.labelScale.Name = "labelScale";
             this.labelScale.Size = new System.Drawing.Size(44, 13);
             this.labelScale.TabIndex = 18;
@@ -391,7 +368,7 @@ namespace OutOfPhase
             "8-Bit",
             "16-Bit",
             "24-Bit"});
-            this.comboBoxScale.Location = new System.Drawing.Point(53, 136);
+            this.comboBoxScale.Location = new System.Drawing.Point(53, 110);
             this.comboBoxScale.Name = "comboBoxScale";
             this.comboBoxScale.Size = new System.Drawing.Size(86, 21);
             this.comboBoxScale.TabIndex = 19;
@@ -522,10 +499,10 @@ namespace OutOfPhase
             this.textBoxFormula.Location = new System.Drawing.Point(0, 0);
             this.textBoxFormula.Margin = new System.Windows.Forms.Padding(0);
             this.textBoxFormula.Name = "textBoxFormula";
+            this.textBoxFormula.SimpleNavigation = true;
             this.textBoxFormula.Size = new System.Drawing.Size(693, 92);
             this.textBoxFormula.TabIndex = 5;
             this.textBoxFormula.TextService = TextEditor.TextService.Simple;
-            this.textBoxFormula.SimpleNavigation = true;
             this.textBoxFormula.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
@@ -612,11 +589,9 @@ namespace OutOfPhase
         private MyLabel label7;
         private MyLabel label8;
         private MyLabel label9;
-        private MyLabel label10;
         private System.Windows.Forms.TextBox textBoxTestAttackDuration;
         private System.Windows.Forms.TextBox textBoxTestDecayDuration;
         private System.Windows.Forms.TextBox textBoxTestFrequency;
-        private System.Windows.Forms.TextBox textBoxTestSamplingRate;
         private System.Windows.Forms.Button buttonTest;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel4;
         private System.Windows.Forms.HScrollBar hScrollBarWaveTable;

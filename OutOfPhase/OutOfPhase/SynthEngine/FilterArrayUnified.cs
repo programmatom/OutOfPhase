@@ -22,7 +22,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -33,6 +32,9 @@ namespace OutOfPhase
         {
             FilterTypes FilterType { get; }
 
+            void UpdateParams(
+                ref FilterParams Params);
+
             void Apply(
                 float[] XinVector,
                 int XinVectorOffset,
@@ -41,6 +43,86 @@ namespace OutOfPhase
                 int VectorLength,
                 float OutputScaling,
                 SynthParamRec SynthParams);
+        }
+
+        public struct FilterParams
+        {
+            public readonly double SamplingRate;
+            public readonly double Cutoff;
+            public readonly double BandwidthOrSlope;
+            public readonly double Gain;
+
+            public FilterParams(
+                double SamplingRate,
+                double Cutoff,
+                double BandwidthOrSlope,
+                double Gain)
+            {
+                this.SamplingRate = SamplingRate;
+                this.Cutoff = Cutoff;
+                this.BandwidthOrSlope = BandwidthOrSlope;
+                this.Gain = Gain;
+            }
+        }
+
+        public enum FilterParam
+        {
+            Cutoff,
+            BandwidthOrSlope,
+            Gain,
+        }
+
+        public struct FilterInfo
+        {
+            public readonly FilterTypes FilterType;
+            public readonly byte ParamsMask; // bitfield or'd of (1 << FilterParamsEnum.X)
+
+            public FilterInfo(
+                FilterTypes FilterType,
+                int ParamsMask)
+            {
+                this.FilterType = FilterType;
+                this.ParamsMask = (byte)ParamsMask;
+            }
+        }
+
+        public static readonly FilterInfo[] FilterInfos = CreateFilterInfo();
+        private static FilterInfo[] CreateFilterInfo()
+        {
+            // All filters specify FilterParam.Cutoff - including FilterTypes.eFilterNull which in fact does not use the
+            // cutoff, and it's the only one, so saying it does allows us to eliminate conditionals for the cutoff param generation.
+            FilterInfo[] filterInfo = new FilterInfo[(int)FilterTypes.Count];
+            filterInfo[(int)FilterTypes.eFilterNull] = new FilterInfo(FilterTypes.eFilterNull,
+                (1 << (int)FilterParam.Cutoff));
+            filterInfo[(int)FilterTypes.eFilterFirstOrderLowpass] = new FilterInfo(FilterTypes.eFilterFirstOrderLowpass,
+                (1 << (int)FilterParam.Cutoff));
+            filterInfo[(int)FilterTypes.eFilterFirstOrderHighpass] = new FilterInfo(FilterTypes.eFilterFirstOrderHighpass,
+                (1 << (int)FilterParam.Cutoff));
+            filterInfo[(int)FilterTypes.eFilterSecondOrderResonant] = new FilterInfo(FilterTypes.eFilterSecondOrderResonant,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.BandwidthOrSlope));
+            filterInfo[(int)FilterTypes.eFilterSecondOrderZero] = new FilterInfo(FilterTypes.eFilterSecondOrderZero,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.BandwidthOrSlope));
+            filterInfo[(int)FilterTypes.eFilterButterworthLowpass] = new FilterInfo(FilterTypes.eFilterButterworthLowpass,
+                (1 << (int)FilterParam.Cutoff));
+            filterInfo[(int)FilterTypes.eFilterButterworthHighpass] = new FilterInfo(FilterTypes.eFilterButterworthHighpass,
+                (1 << (int)FilterParam.Cutoff));
+            filterInfo[(int)FilterTypes.eFilterButterworthBandpass] = new FilterInfo(FilterTypes.eFilterButterworthBandpass,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.BandwidthOrSlope));
+            filterInfo[(int)FilterTypes.eFilterButterworthBandreject] = new FilterInfo(FilterTypes.eFilterButterworthBandreject,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.BandwidthOrSlope));
+            filterInfo[(int)FilterTypes.eFilterParametricEQ] = new FilterInfo(FilterTypes.eFilterParametricEQ,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.BandwidthOrSlope) | (1 << (int)FilterParam.Gain));
+            filterInfo[(int)FilterTypes.eFilterParametricEQ2] = new FilterInfo(FilterTypes.eFilterParametricEQ2,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.BandwidthOrSlope) | (1 << (int)FilterParam.Gain));
+            filterInfo[(int)FilterTypes.eFilterLowShelfEQ] = new FilterInfo(FilterTypes.eFilterLowShelfEQ,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.BandwidthOrSlope) | (1 << (int)FilterParam.Gain));
+            filterInfo[(int)FilterTypes.eFilterHighShelfEQ] = new FilterInfo(FilterTypes.eFilterHighShelfEQ,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.BandwidthOrSlope) | (1 << (int)FilterParam.Gain));
+            filterInfo[(int)FilterTypes.eFilterResonantLowpass] = new FilterInfo(FilterTypes.eFilterResonantLowpass,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.BandwidthOrSlope) | (1 << (int)FilterParam.Gain));
+            filterInfo[(int)FilterTypes.eFilterResonantLowpass2] = new FilterInfo(FilterTypes.eFilterResonantLowpass2,
+                (1 << (int)FilterParam.Cutoff) | (1 << (int)FilterParam.Gain));
+            return filterInfo;
         }
 
         /* source of parameters for an oscillator filter */
@@ -71,10 +153,8 @@ namespace OutOfPhase
             /* common state info */
             public float CurrentMultiplier; // aka outputscaling
             public float PreviousMultiplier;
-            public bool LeftEnabled; // TODO: remove - use Left != null
-            public bool RightEnabled; // TODO: remove - use Right != null
             public FilterTypes FilterType;
-            public FilterScalings FilterScaling;
+            public byte FilterParamMask;
             public IFilter Left;
             public IFilter Right;
 
@@ -88,27 +168,18 @@ namespace OutOfPhase
         /* structure for the whole overall filter */
         public class FilterArrayRec : ITrackEffect, IOscillatorEffect
         {
-            /* number of filters */
-            public int NumFilters;
-
-            /* vector of filters starts after last member of struct */
             public FilterRec[] FilterVector;
 
 
-            /* obtain filter processing routine & allocate filter state records */
-            /* returns true if successful, or false if allocation failed.  state records are */
-            /* not disposed of if failure occurs, so caller must see that they are deleted. */
-            private static void SetFilterProcessing(
-                out bool LeftEnabled,
-                out IFilter LeftOut,
-                out bool RightEnabled,
-                out IFilter RightOut,
+            private static void CreateFilters(
+                out IFilter Left,
+                out IFilter Right,
                 int FilterIndex,
                 FilterSpecRec Template,
                 SynthParamRec SynthParams)
             {
-                LeftOut = null;
-                RightOut = null;
+                Left = null;
+                Right = null;
 
                 bool LeftChannel;
                 bool RightChannel;
@@ -136,135 +207,84 @@ namespace OutOfPhase
                         break;
                 }
 
-                LeftEnabled = false;
-                RightEnabled = false;
-
-                FilterTypes Type = GetFilterType(Template, FilterIndex);
-
-                /* initialize left channel filter */
                 if (LeftChannel)
                 {
-                    switch (Type)
-                    {
-                        default:
-                            Debug.Assert(false);
-                            throw new ArgumentException();
-                        case FilterTypes.eFilterFirstOrderLowpass:
-                            LeftOut = new FirstOrderLowpassRec();
-                            break;
-                        case FilterTypes.eFilterFirstOrderHighpass:
-                            LeftOut = new FirstOrderHighpassRec();
-                            break;
-                        case FilterTypes.eFilterSecondOrderResonant:
-                            LeftOut = new SecondOrderResonRec();
-                            break;
-                        case FilterTypes.eFilterSecondOrderZero:
-                            LeftOut = new SecondOrderZeroRec();
-                            break;
-                        case FilterTypes.eFilterButterworthLowpass:
-                            LeftOut = new ButterworthLowpassRec();
-                            break;
-                        case FilterTypes.eFilterButterworthHighpass:
-                            LeftOut = new ButterworthHighpassRec();
-                            break;
-                        case FilterTypes.eFilterButterworthBandpass:
-                            LeftOut = new ButterworthBandpassRec();
-                            break;
-                        case FilterTypes.eFilterButterworthBandreject:
-                            LeftOut = new ButterworthBandrejectRec();
-                            break;
-                        case FilterTypes.eFilterParametricEQ:
-                            LeftOut = new ParametricEqualizerRec();
-                            break;
-                        case FilterTypes.eFilterParametricEQ2:
-                            LeftOut = new ParametricEqualizer2Rec();
-                            break;
-                        case FilterTypes.eFilterLowShelfEQ:
-                            LeftOut = new LowShelfEqualizerRec();
-                            break;
-                        case FilterTypes.eFilterHighShelfEQ:
-                            LeftOut = new HighShelfEqualizerRec();
-                            break;
-                        case FilterTypes.eFilterResonantLowpass:
-                            LeftOut = new ResonantLowpassRec(
-                                GetFilterLowpassOrder(Template, FilterIndex),
-                                GetFilterBandpassOrder(Template, FilterIndex));
-                            break;
-                        case FilterTypes.eFilterResonantLowpass2:
-                            LeftOut = new ResonantLowpass2Rec(
-                                GetFilterLowpassOrder(Template, FilterIndex),
-                                GetFilterBroken(Template, FilterIndex));
-                            break;
-                        case FilterTypes.eFilterNull:
-                            LeftOut = new FilterNullRec();
-                            break;
-                    }
-                    Debug.Assert(LeftOut.FilterType == Type);
+                    Left = CreateFilter(Template, FilterIndex);
+                    Debug.Assert(Left.FilterType == GetFilterType(Template, FilterIndex));
                 }
 
-                /* initialize right channel filter */
                 if (RightChannel)
                 {
-                    switch (Type)
-                    {
-                        default:
-                            Debug.Assert(false);
-                            throw new ArgumentException();
-                        case FilterTypes.eFilterFirstOrderLowpass:
-                            RightOut = new FirstOrderLowpassRec();
-                            break;
-                        case FilterTypes.eFilterFirstOrderHighpass:
-                            RightOut = new FirstOrderHighpassRec();
-                            break;
-                        case FilterTypes.eFilterSecondOrderResonant:
-                            RightOut = new SecondOrderResonRec();
-                            break;
-                        case FilterTypes.eFilterSecondOrderZero:
-                            RightOut = new SecondOrderZeroRec();
-                            break;
-                        case FilterTypes.eFilterButterworthLowpass:
-                            RightOut = new ButterworthLowpassRec();
-                            break;
-                        case FilterTypes.eFilterButterworthHighpass:
-                            RightOut = new ButterworthHighpassRec();
-                            break;
-                        case FilterTypes.eFilterButterworthBandpass:
-                            RightOut = new ButterworthBandpassRec();
-                            break;
-                        case FilterTypes.eFilterButterworthBandreject:
-                            RightOut = new ButterworthBandrejectRec();
-                            break;
-                        case FilterTypes.eFilterParametricEQ:
-                            RightOut = new ParametricEqualizerRec();
-                            break;
-                        case FilterTypes.eFilterParametricEQ2:
-                            RightOut = new ParametricEqualizer2Rec();
-                            break;
-                        case FilterTypes.eFilterLowShelfEQ:
-                            RightOut = new LowShelfEqualizerRec();
-                            break;
-                        case FilterTypes.eFilterHighShelfEQ:
-                            RightOut = new HighShelfEqualizerRec();
-                            break;
-                        case FilterTypes.eFilterResonantLowpass:
-                            RightOut = new ResonantLowpassRec(
-                                GetFilterLowpassOrder(Template, FilterIndex),
-                                GetFilterBandpassOrder(Template, FilterIndex));
-                            break;
-                        case FilterTypes.eFilterResonantLowpass2:
-                            RightOut = new ResonantLowpass2Rec(
-                                GetFilterLowpassOrder(Template, FilterIndex),
-                                GetFilterBroken(Template, FilterIndex));
-                            break;
-                        case FilterTypes.eFilterNull:
-                            RightOut = new FilterNullRec();
-                            break;
-                    }
-                    Debug.Assert(RightOut.FilterType == Type);
+                    Right = CreateFilter(Template, FilterIndex);
+                    Debug.Assert(Right.FilterType == GetFilterType(Template, FilterIndex));
                 }
+            }
 
-                LeftEnabled = LeftChannel;
-                RightEnabled = RightChannel;
+            private static IFilter CreateFilter(
+                FilterSpecRec Template,
+                int FilterIndex)
+            {
+                FilterTypes Type = GetFilterType(Template, FilterIndex);
+                IFilter filter;
+                switch (Type)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case FilterTypes.eFilterFirstOrderLowpass:
+                        filter = new FirstOrderLowpassRec();
+                        break;
+                    case FilterTypes.eFilterFirstOrderHighpass:
+                        filter = new FirstOrderHighpassRec();
+                        break;
+                    case FilterTypes.eFilterSecondOrderResonant:
+                        filter = new SecondOrderResonRec(
+                            GetFilterScalingMode(Template, FilterIndex));
+                        break;
+                    case FilterTypes.eFilterSecondOrderZero:
+                        filter = new SecondOrderZeroRec(
+                            GetFilterScalingMode(Template, FilterIndex));
+                        break;
+                    case FilterTypes.eFilterButterworthLowpass:
+                        filter = new ButterworthLowpassRec();
+                        break;
+                    case FilterTypes.eFilterButterworthHighpass:
+                        filter = new ButterworthHighpassRec();
+                        break;
+                    case FilterTypes.eFilterButterworthBandpass:
+                        filter = new ButterworthBandpassRec();
+                        break;
+                    case FilterTypes.eFilterButterworthBandreject:
+                        filter = new ButterworthBandrejectRec();
+                        break;
+                    case FilterTypes.eFilterParametricEQ:
+                        filter = new ParametricEqualizerRec();
+                        break;
+                    case FilterTypes.eFilterParametricEQ2:
+                        filter = new ParametricEqualizer2Rec();
+                        break;
+                    case FilterTypes.eFilterLowShelfEQ:
+                        filter = new LowShelfEqualizerRec();
+                        break;
+                    case FilterTypes.eFilterHighShelfEQ:
+                        filter = new HighShelfEqualizerRec();
+                        break;
+                    case FilterTypes.eFilterResonantLowpass:
+                        filter = new ResonantLowpassRec(
+                            GetFilterLowpassOrder(Template, FilterIndex),
+                            GetFilterBandpassOrder(Template, FilterIndex));
+                        break;
+                    case FilterTypes.eFilterResonantLowpass2:
+                        filter = new ResonantLowpass2Rec(
+                            GetFilterLowpassOrder(Template, FilterIndex),
+                            GetFilterBroken(Template, FilterIndex));
+                        break;
+                    case FilterTypes.eFilterNull:
+                        filter = new FilterNullRec();
+                        break;
+                }
+                Debug.Assert(filter.FilterType == Type);
+                return filter;
             }
 
             /* create a new parallel filter processor for oscillator effects chain (enveloped) */
@@ -280,29 +300,28 @@ namespace OutOfPhase
             {
                 int OnePreOrigin;
 
-                int Limit = GetNumFiltersInSpec(Template);
+                int count = GetNumFiltersInSpec(Template);
 
                 FilterArrayRec Array = new FilterArrayRec();
-                Array.FilterVector = new FilterRec[Limit];
-                Array.NumFilters = Limit;
+                Array.FilterVector = new FilterRec[count];
 
                 /* remembers maximum amount of pre-origin time required */
                 int MaxPreOrigin = 0;
 
                 /* build filter table */
-                for (int Scan = 0; Scan < Limit; Scan += 1)
+                for (int i = 0; i < count; i++)
                 {
-                    FilterRec Filter = Array.FilterVector[Scan] = new FilterRec();
+                    FilterRec Filter = Array.FilterVector[i] = new FilterRec();
                     Filter.OscFilter = new OscFilterParamRec();
 
                     /* what kind of filter is this */
-                    Filter.FilterType = GetFilterType(Template, Scan); /* do this right away */
-                    Filter.FilterScaling = GetFilterScalingMode(Template, Scan);
+                    Filter.FilterType = GetFilterType(Template, i);
+                    Filter.FilterParamMask = FilterInfos[(int)Filter.FilterType].ParamsMask;
 
                     /* envelopes and LFOs */
 
                     Filter.OscFilter.OutputMultiplierEnvelope = NewEnvelopeStateRecord(
-                        GetFilterOutputEnvelope(Template, Scan),
+                        GetFilterOutputEnvelope(Template, i),
                         ref Accents,
                         InitialFrequency,
                         1,
@@ -317,7 +336,7 @@ namespace OutOfPhase
                     }
 
                     Filter.OscFilter.OutputMultiplierLFO = NewLFOGenerator(
-                        GetFilterOutputLFO(Template, Scan),
+                        GetFilterOutputLFO(Template, i),
                         out OnePreOrigin,
                         ref Accents,
                         InitialFrequency,
@@ -339,181 +358,112 @@ namespace OutOfPhase
                         EnvelopeInitialValue(
                            Filter.OscFilter.OutputMultiplierEnvelope));
 
-                    switch (Filter.FilterType)
+                    Debug.Assert((Filter.FilterParamMask & (1 << (int)FilterParam.Cutoff)) != 0);
                     {
-                        default:
-                            Debug.Assert(false);
-                            throw new ArgumentException();
-
-                        case FilterTypes.eFilterNull:
-                            break;
-
-                        case FilterTypes.eFilterFirstOrderLowpass:
-                        case FilterTypes.eFilterFirstOrderHighpass:
-                        case FilterTypes.eFilterSecondOrderResonant:
-                        case FilterTypes.eFilterSecondOrderZero:
-                        case FilterTypes.eFilterButterworthLowpass:
-                        case FilterTypes.eFilterButterworthHighpass:
-                        case FilterTypes.eFilterButterworthBandpass:
-                        case FilterTypes.eFilterButterworthBandreject:
-                        case FilterTypes.eFilterParametricEQ:
-                        case FilterTypes.eFilterParametricEQ2:
-                        case FilterTypes.eFilterLowShelfEQ:
-                        case FilterTypes.eFilterHighShelfEQ:
-                        case FilterTypes.eFilterResonantLowpass:
-                        case FilterTypes.eFilterResonantLowpass2:
-                            Filter.OscFilter.CutoffEnvelope = NewEnvelopeStateRecord(
-                                GetFilterCutoffEnvelope(Template, Scan),
-                                ref Accents,
-                                InitialFrequency,
-                                1,
-                                HurryUp,
-                                out OnePreOrigin,
-                                _PlayTrackParamGetter,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            Filter.OscFilter.CutoffLFO = NewLFOGenerator(
-                                GetFilterCutoffLFO(Template, Scan),
-                                out OnePreOrigin,
-                                ref Accents,
-                                InitialFrequency,
-                                HurryUp,
-                                1,
-                                1,
-                                FreqForMultisampling,
-                                _PlayTrackParamGetter,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            break;
+                        Filter.OscFilter.CutoffEnvelope = NewEnvelopeStateRecord(
+                            GetFilterCutoffEnvelope(Template, i),
+                            ref Accents,
+                            InitialFrequency,
+                            1,
+                            HurryUp,
+                            out OnePreOrigin,
+                            _PlayTrackParamGetter,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
+                        Filter.OscFilter.CutoffLFO = NewLFOGenerator(
+                            GetFilterCutoffLFO(Template, i),
+                            out OnePreOrigin,
+                            ref Accents,
+                            InitialFrequency,
+                            HurryUp,
+                            1,
+                            1,
+                            FreqForMultisampling,
+                            _PlayTrackParamGetter,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
                     }
 
-                    switch (Filter.FilterType)
+                    if ((Filter.FilterParamMask & (1 << (int)FilterParam.BandwidthOrSlope)) != 0)
                     {
-                        default:
-                            Debug.Assert(false);
-                            throw new ArgumentException();
-
-                        case FilterTypes.eFilterNull:
-                        case FilterTypes.eFilterFirstOrderLowpass:
-                        case FilterTypes.eFilterFirstOrderHighpass:
-                        case FilterTypes.eFilterButterworthLowpass:
-                        case FilterTypes.eFilterButterworthHighpass:
-                        case FilterTypes.eFilterResonantLowpass2:
-                            break;
-
-                        case FilterTypes.eFilterSecondOrderResonant:
-                        case FilterTypes.eFilterSecondOrderZero:
-                        case FilterTypes.eFilterButterworthBandpass:
-                        case FilterTypes.eFilterButterworthBandreject:
-                        case FilterTypes.eFilterParametricEQ:
-                        case FilterTypes.eFilterParametricEQ2:
-                        case FilterTypes.eFilterLowShelfEQ:
-                        case FilterTypes.eFilterHighShelfEQ:
-                        case FilterTypes.eFilterResonantLowpass:
-                            Filter.OscFilter.BandwidthOrSlopeEnvelope = NewEnvelopeStateRecord(
-                                GetFilterBandwidthOrSlopeEnvelope(Template, Scan),
-                                ref Accents,
-                                InitialFrequency,
-                                1,
-                                HurryUp,
-                                out OnePreOrigin,
-                                _PlayTrackParamGetter,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            Filter.OscFilter.BandwidthOrSlopeLFO = NewLFOGenerator(
-                                GetFilterBandwidthOrSlopeLFO(Template, Scan),
-                                out OnePreOrigin,
-                                ref Accents,
-                                InitialFrequency,
-                                HurryUp,
-                                1,
-                                1,
-                                FreqForMultisampling,
-                                _PlayTrackParamGetter,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            break;
+                        Filter.OscFilter.BandwidthOrSlopeEnvelope = NewEnvelopeStateRecord(
+                            GetFilterBandwidthOrSlopeEnvelope(Template, i),
+                            ref Accents,
+                            InitialFrequency,
+                            1,
+                            HurryUp,
+                            out OnePreOrigin,
+                            _PlayTrackParamGetter,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
+                        Filter.OscFilter.BandwidthOrSlopeLFO = NewLFOGenerator(
+                            GetFilterBandwidthOrSlopeLFO(Template, i),
+                            out OnePreOrigin,
+                            ref Accents,
+                            InitialFrequency,
+                            HurryUp,
+                            1,
+                            1,
+                            FreqForMultisampling,
+                            _PlayTrackParamGetter,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
                     }
 
-                    switch (Filter.FilterType)
+                    if ((Filter.FilterParamMask & (1 << (int)FilterParam.Gain)) != 0)
                     {
-                        default:
-                            Debug.Assert(false);
-                            throw new ArgumentException();
-
-                        case FilterTypes.eFilterNull:
-                        case FilterTypes.eFilterFirstOrderLowpass:
-                        case FilterTypes.eFilterFirstOrderHighpass:
-                        case FilterTypes.eFilterButterworthLowpass:
-                        case FilterTypes.eFilterButterworthHighpass:
-                        case FilterTypes.eFilterSecondOrderResonant:
-                        case FilterTypes.eFilterSecondOrderZero:
-                        case FilterTypes.eFilterButterworthBandpass:
-                        case FilterTypes.eFilterButterworthBandreject:
-                            break;
-
-                        case FilterTypes.eFilterParametricEQ:
-                        case FilterTypes.eFilterParametricEQ2:
-                        case FilterTypes.eFilterLowShelfEQ:
-                        case FilterTypes.eFilterHighShelfEQ:
-                        case FilterTypes.eFilterResonantLowpass:
-                        case FilterTypes.eFilterResonantLowpass2:
-                            Filter.OscFilter.GainEnvelope = NewEnvelopeStateRecord(
-                                GetFilterGainEnvelope(Template, Scan),
-                                ref Accents,
-                                InitialFrequency,
-                                1,
-                                HurryUp,
-                                out OnePreOrigin,
-                                _PlayTrackParamGetter,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            Filter.OscFilter.GainLFO = NewLFOGenerator(
-                                GetFilterGainLFO(Template, Scan),
-                                out OnePreOrigin,
-                                ref Accents,
-                                InitialFrequency,
-                                HurryUp,
-                                1,
-                                1,
-                                FreqForMultisampling,
-                                _PlayTrackParamGetter,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            break;
+                        Filter.OscFilter.GainEnvelope = NewEnvelopeStateRecord(
+                            GetFilterGainEnvelope(Template, i),
+                            ref Accents,
+                            InitialFrequency,
+                            1,
+                            HurryUp,
+                            out OnePreOrigin,
+                            _PlayTrackParamGetter,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
+                        Filter.OscFilter.GainLFO = NewLFOGenerator(
+                            GetFilterGainLFO(Template, i),
+                            out OnePreOrigin,
+                            ref Accents,
+                            InitialFrequency,
+                            HurryUp,
+                            1,
+                            1,
+                            FreqForMultisampling,
+                            _PlayTrackParamGetter,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
                     }
 
-                    /* set up filter state records and filter processor function */
-                    SetFilterProcessing(
-                        out Filter.LeftEnabled,
+                    CreateFilters(
                         out Filter.Left,
-                        out Filter.RightEnabled,
                         out Filter.Right,
-                        Scan,
+                        i,
                         Template,
                         SynthParams);
                 }
@@ -528,51 +478,52 @@ namespace OutOfPhase
                 FilterSpecRec Template,
                 SynthParamRec SynthParams)
             {
-                int Limit = GetNumFiltersInSpec(Template);
+                int count = GetNumFiltersInSpec(Template);
 
                 FilterArrayRec Array = new FilterArrayRec();
-                Array.FilterVector = new FilterRec[Limit];
-                Array.NumFilters = Limit;
+                Array.FilterVector = new FilterRec[count];
 
                 /* create each filter */
-                for (int Scan = 0; Scan < Limit; Scan += 1)
+                for (int i = 0; i < count; i++)
                 {
-                    FilterRec Filter = Array.FilterVector[Scan] = new FilterRec();
+                    FilterRec Filter = Array.FilterVector[i] = new FilterRec();
                     Filter.TrackFilter = new TrackFilterParamRec();
 
                     /* load type parameters */
-                    Filter.FilterType = GetFilterType(Template, Scan); /* do this right away */
-                    Filter.FilterScaling = GetFilterScalingMode(Template, Scan);
-
-                    /* zap filter parameters so delete routine won't try to delete dead storage */
-                    Filter.LeftEnabled = false;
-                    Filter.RightEnabled = false;
+                    Filter.FilterType = GetFilterType(Template, i);
+                    Filter.FilterParamMask = FilterInfos[(int)Filter.FilterType].ParamsMask;
 
                     /* load control parameters */
-                    GetFilterCutoffAgg(
-                        Template,
-                        Scan,
-                        out Filter.TrackFilter.Cutoff);
-                    GetFilterBandwidthOrSlopeAgg(
-                        Template,
-                        Scan,
-                        out Filter.TrackFilter.BandwidthOrSlope);
+                    Debug.Assert((Filter.FilterParamMask & (1 << (int)FilterParam.Cutoff)) != 0);
+                    {
+                        GetFilterCutoffAgg(
+                            Template,
+                            i,
+                            out Filter.TrackFilter.Cutoff);
+                    }
+                    if ((Filter.FilterParamMask & (1 << (int)FilterParam.BandwidthOrSlope)) != 0)
+                    {
+                        GetFilterBandwidthOrSlopeAgg(
+                            Template,
+                            i,
+                            out Filter.TrackFilter.BandwidthOrSlope);
+                    }
+                    if ((Filter.FilterParamMask & (1 << (int)FilterParam.Gain)) != 0)
+                    {
+                        GetFilterGainAgg(
+                            Template,
+                            i,
+                            out Filter.TrackFilter.Gain);
+                    }
                     GetFilterOutputMultiplierAgg(
                         Template,
-                        Scan,
+                        i,
                         out Filter.TrackFilter.OutputMultiplier);
-                    GetFilterGainAgg(
-                        Template,
-                        Scan,
-                        out Filter.TrackFilter.Gain);
 
-                    /* set up filter state records and filter processor function */
-                    SetFilterProcessing(
-                        out Filter.LeftEnabled,
+                    CreateFilters(
                         out Filter.Left,
-                        out Filter.RightEnabled,
                         out Filter.Right,
-                        Scan,
+                        i,
                         Template,
                         SynthParams);
                 }
@@ -584,9 +535,9 @@ namespace OutOfPhase
             public void OscFixEnvelopeOrigins(
                 int ActualPreOriginTime)
             {
-                for (int i = 0; i < this.NumFilters; i += 1)
+                for (int i = 0; i < FilterVector.Length; i++)
                 {
-                    FilterRec Scan = this.FilterVector[i];
+                    FilterRec Scan = FilterVector[i];
 
                     EnvelopeStateFixUpInitialDelay(
                         Scan.OscFilter.OutputMultiplierEnvelope,
@@ -640,14 +591,15 @@ namespace OutOfPhase
                 double OscillatorFrequency,
                 SynthParamRec SynthParams)
             {
-                for (int i = 0; i < this.NumFilters; i += 1)
+                for (int i = 0; i < FilterVector.Length; i++)
                 {
                     SynthErrorCodes error;
+
                     double Cutoff = Double.NaN;
                     double BandwidthOrSlope = Double.NaN;
                     double Gain = Double.NaN;
 
-                    FilterRec Scan = this.FilterVector[i];
+                    FilterRec Scan = FilterVector[i];
 
                     error = SynthErrorCodes.eSynthDone;
                     Scan.PreviousMultiplier = Scan.CurrentMultiplier;
@@ -723,377 +675,18 @@ namespace OutOfPhase
                         }
                     }
 
-                    switch (Scan.FilterType)
+                    FilterParams Params = new FilterParams(
+                        SynthParams.dSamplingRate,
+                        Cutoff,
+                        BandwidthOrSlope,
+                        Gain);
+                    if (Scan.Left != null)
                     {
-                        default:
-                            Debug.Assert(false);
-                            throw new ArgumentException();
-
-                        case FilterTypes.eFilterFirstOrderLowpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
-                                    (FirstOrderLowpassRec)Scan.Left,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
-                                    (FirstOrderLowpassRec)Scan.Right,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterFirstOrderHighpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                FirstOrderHighpassRec.SetFirstOrderHighpassCoefficients(
-                                    (FirstOrderHighpassRec)Scan.Left,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                FirstOrderHighpassRec.SetFirstOrderHighpassCoefficients(
-                                    (FirstOrderHighpassRec)Scan.Right,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterSecondOrderResonant:
-                            if (Scan.LeftEnabled)
-                            {
-                                SecondOrderResonRec.SetSecondOrderResonCoefficients(
-                                    (SecondOrderResonRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Scan.FilterScaling,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                SecondOrderResonRec.SetSecondOrderResonCoefficients(
-                                    (SecondOrderResonRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Scan.FilterScaling,
-                                    SynthParams.dSamplingRate);
-                            }
-                            break;
-
-                        case FilterTypes.eFilterSecondOrderZero:
-                            if (Scan.LeftEnabled)
-                            {
-                                SecondOrderZeroRec.SetSecondOrderZeroCoefficients(
-                                    (SecondOrderZeroRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Scan.FilterScaling,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                SecondOrderZeroRec.SetSecondOrderZeroCoefficients(
-                                    (SecondOrderZeroRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Scan.FilterScaling,
-                                    SynthParams.dSamplingRate);
-                            }
-                            break;
-
-                        case FilterTypes.eFilterButterworthLowpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                ButterworthLowpassRec.SetButterworthLowpassCoefficients(
-                                    (ButterworthLowpassRec)Scan.Left,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ButterworthLowpassRec.SetButterworthLowpassCoefficients(
-                                    (ButterworthLowpassRec)Scan.Right,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterButterworthHighpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                ButterworthHighpassRec.SetButterworthHighpassCoefficients(
-                                    (ButterworthHighpassRec)Scan.Left,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ButterworthHighpassRec.SetButterworthHighpassCoefficients(
-                                    (ButterworthHighpassRec)Scan.Right,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterButterworthBandpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                ButterworthBandpassRec.SetButterworthBandpassCoefficients(
-                                    (ButterworthBandpassRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ButterworthBandpassRec.SetButterworthBandpassCoefficients(
-                                    (ButterworthBandpassRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterButterworthBandreject:
-                            if (Scan.LeftEnabled)
-                            {
-                                ButterworthBandrejectRec.SetButterworthBandrejectCoefficients(
-                                    (ButterworthBandrejectRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ButterworthBandrejectRec.SetButterworthBandrejectCoefficients(
-                                    (ButterworthBandrejectRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterParametricEQ:
-                            if (Scan.LeftEnabled)
-                            {
-                                ParametricEqualizerRec.SetParametricEqualizerCoefficients(
-                                    (ParametricEqualizerRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ParametricEqualizerRec.SetParametricEqualizerCoefficients(
-                                    (ParametricEqualizerRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterParametricEQ2:
-                            if (Scan.LeftEnabled)
-                            {
-                                ParametricEqualizer2Rec.SetParametricEqualizer2Coefficients(
-                                    (ParametricEqualizer2Rec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ParametricEqualizer2Rec.SetParametricEqualizer2Coefficients(
-                                    (ParametricEqualizer2Rec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterLowShelfEQ:
-                            if (Scan.LeftEnabled)
-                            {
-                                LowShelfEqualizerRec.SetLowShelfEqualizerCoefficients(
-                                    (LowShelfEqualizerRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                LowShelfEqualizerRec.SetLowShelfEqualizerCoefficients(
-                                    (LowShelfEqualizerRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterHighShelfEQ:
-                            if (Scan.LeftEnabled)
-                            {
-                                HighShelfEqualizerRec.SetHighShelfEqualizerCoefficients(
-                                    (HighShelfEqualizerRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                HighShelfEqualizerRec.SetHighShelfEqualizerCoefficients(
-                                    (HighShelfEqualizerRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterResonantLowpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                ResonantLowpassRec.SetResonantLowpassCoefficients(
-                                    (ResonantLowpassRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ResonantLowpassRec.SetResonantLowpassCoefficients(
-                                    (ResonantLowpassRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterResonantLowpass2:
-                            if (Scan.LeftEnabled)
-                            {
-                                ResonantLowpass2Rec.SetResonantLowpass2Coefficients(
-                                    (ResonantLowpass2Rec)Scan.Left,
-                                    Cutoff,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ResonantLowpass2Rec.SetResonantLowpass2Coefficients(
-                                    (ResonantLowpass2Rec)Scan.Right,
-                                    Cutoff,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterNull:
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
+                        Scan.Left.UpdateParams(ref Params);
+                    }
+                    if (Scan.Right != null)
+                    {
+                        Scan.Right.UpdateParams(ref Params);
                     }
                 }
 
@@ -1102,9 +695,9 @@ namespace OutOfPhase
 
             public void OscKeyUpSustain1()
             {
-                for (int i = 0; i < this.NumFilters; i += 1)
+                for (int i = 0; i < FilterVector.Length; i++)
                 {
-                    FilterRec Scan = this.FilterVector[i];
+                    FilterRec Scan = FilterVector[i];
 
                     EnvelopeKeyUpSustain1(Scan.OscFilter.OutputMultiplierEnvelope);
                     if (Scan.OscFilter.CutoffEnvelope != null)
@@ -1138,9 +731,9 @@ namespace OutOfPhase
 
             public void OscKeyUpSustain2()
             {
-                for (int i = 0; i < this.NumFilters; i += 1)
+                for (int i = 0; i < FilterVector.Length; i++)
                 {
-                    FilterRec Scan = this.FilterVector[i];
+                    FilterRec Scan = FilterVector[i];
 
                     EnvelopeKeyUpSustain2(Scan.OscFilter.OutputMultiplierEnvelope);
                     if (Scan.OscFilter.CutoffEnvelope != null)
@@ -1174,9 +767,9 @@ namespace OutOfPhase
 
             public void OscKeyUpSustain3()
             {
-                for (int i = 0; i < this.NumFilters; i += 1)
+                for (int i = 0; i < FilterVector.Length; i++)
                 {
-                    FilterRec Scan = this.FilterVector[i];
+                    FilterRec Scan = FilterVector[i];
 
                     EnvelopeKeyUpSustain3(Scan.OscFilter.OutputMultiplierEnvelope);
                     if (Scan.OscFilter.CutoffEnvelope != null)
@@ -1216,9 +809,9 @@ namespace OutOfPhase
                 bool ActuallyRetrigger,
                 SynthParamRec SynthParams)
             {
-                for (int i = 0; i < this.NumFilters; i += 1)
+                for (int i = 0; i < FilterVector.Length; i++)
                 {
-                    FilterRec Scan = this.FilterVector[i];
+                    FilterRec Scan = FilterVector[i];
 
                     EnvelopeRetriggerFromOrigin(
                         Scan.OscFilter.OutputMultiplierEnvelope,
@@ -1315,587 +908,80 @@ namespace OutOfPhase
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
-                for (int i = 0; i < this.NumFilters; i += 1)
+                for (int i = 0; i < FilterVector.Length; i++)
                 {
                     SynthErrorCodes error;
+
                     double Cutoff = Double.NaN;
                     double BandwidthOrSlope = Double.NaN;
-#if DEBUG
-                    bool BandwidthOrSlopeSet = false;
-#endif
                     double Gain = Double.NaN;
-#if DEBUG
-                    bool GainSet = false;
-#endif
-                    double DoubleTemp;
 
-                    FilterRec Scan = this.FilterVector[i];
+                    FilterRec Scan = FilterVector[i];
 
+                    double OutputMultiplier;
                     error = ScalarParamEval(
                         Scan.TrackFilter.OutputMultiplier,
                         ref Accents,
                         SynthParams,
-                        out DoubleTemp);
+                        out OutputMultiplier);
                     if (error != SynthErrorCodes.eSynthDone)
                     {
                         return error;
                     }
                     Scan.PreviousMultiplier = Scan.CurrentMultiplier;
-                    Scan.CurrentMultiplier = (float)DoubleTemp;
+                    Scan.CurrentMultiplier = (float)OutputMultiplier;
 
-                    error = ScalarParamEval(
-                        Scan.TrackFilter.Cutoff,
-                        ref Accents,
-                        SynthParams,
-                        out Cutoff);
-                    if (error != SynthErrorCodes.eSynthDone)
+                    Debug.Assert((Scan.FilterParamMask & (1 << (int)FilterParam.Cutoff)) != 0);
                     {
-                        return error;
+                        error = ScalarParamEval(
+                            Scan.TrackFilter.Cutoff,
+                            ref Accents,
+                            SynthParams,
+                            out Cutoff);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                     }
 
-                    switch (Scan.FilterType)
+                    if ((Scan.FilterParamMask & (1 << (int)FilterParam.BandwidthOrSlope)) != 0)
                     {
-                        default:
-                            Debug.Assert(false);
-                            throw new ArgumentException();
-
-                        case FilterTypes.eFilterFirstOrderLowpass:
-                        case FilterTypes.eFilterFirstOrderHighpass:
-                        case FilterTypes.eFilterButterworthLowpass:
-                        case FilterTypes.eFilterButterworthHighpass:
-                        case FilterTypes.eFilterNull:
-                            break;
-
-                        case FilterTypes.eFilterSecondOrderResonant:
-                        case FilterTypes.eFilterSecondOrderZero:
-                        case FilterTypes.eFilterButterworthBandpass:
-                        case FilterTypes.eFilterButterworthBandreject:
-                            error = ScalarParamEval(
-                                Scan.TrackFilter.BandwidthOrSlope,
-                                ref Accents,
-                                SynthParams,
-                                out BandwidthOrSlope);
-                            if (error != SynthErrorCodes.eSynthDone)
-                            {
-                                return error;
-                            }
-#if DEBUG
-                            BandwidthOrSlopeSet = true;
-#endif
-                            break;
-
-                        case FilterTypes.eFilterParametricEQ:
-                        case FilterTypes.eFilterParametricEQ2:
-                        case FilterTypes.eFilterLowShelfEQ:
-                        case FilterTypes.eFilterHighShelfEQ:
-                        case FilterTypes.eFilterResonantLowpass:
-                            error = ScalarParamEval(
-                                Scan.TrackFilter.BandwidthOrSlope,
-                                ref Accents,
-                                SynthParams,
-                                out BandwidthOrSlope);
-                            if (error != SynthErrorCodes.eSynthDone)
-                            {
-                                return error;
-                            }
-#if DEBUG
-                            BandwidthOrSlopeSet = true;
-#endif
-                            /* FALL THROUGH */
-                            goto Next;
-
-                        case FilterTypes.eFilterResonantLowpass2: /* just gain for him */
-                        Next:
-                            error = ScalarParamEval(
-                                Scan.TrackFilter.Gain,
-                                ref Accents,
-                                SynthParams,
-                                out Gain);
-                            if (error != SynthErrorCodes.eSynthDone)
-                            {
-                                return error;
-                            }
-#if DEBUG
-                            GainSet = true;
-#endif
-                            break;
+                        error = ScalarParamEval(
+                            Scan.TrackFilter.BandwidthOrSlope,
+                            ref Accents,
+                            SynthParams,
+                            out BandwidthOrSlope);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
                     }
-                    switch (Scan.FilterType)
+
+                    if ((Scan.FilterParamMask & (1 << (int)FilterParam.Gain)) != 0)
                     {
-                        default:
-                            Debug.Assert(false);
-                            throw new ArgumentException();
+                        error = ScalarParamEval(
+                            Scan.TrackFilter.Gain,
+                            ref Accents,
+                            SynthParams,
+                            out Gain);
+                        if (error != SynthErrorCodes.eSynthDone)
+                        {
+                            return error;
+                        }
+                    }
 
-                        case FilterTypes.eFilterFirstOrderLowpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
-                                    (FirstOrderLowpassRec)Scan.Left,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
-                                    (FirstOrderLowpassRec)Scan.Right,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterFirstOrderHighpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                FirstOrderHighpassRec.SetFirstOrderHighpassCoefficients(
-                                    (FirstOrderHighpassRec)Scan.Left,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                FirstOrderHighpassRec.SetFirstOrderHighpassCoefficients(
-                                    (FirstOrderHighpassRec)Scan.Right,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterSecondOrderResonant:
-#if DEBUG
-                            if (!BandwidthOrSlopeSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                SecondOrderResonRec.SetSecondOrderResonCoefficients(
-                                    (SecondOrderResonRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Scan.FilterScaling,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                SecondOrderResonRec.SetSecondOrderResonCoefficients(
-                                    (SecondOrderResonRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Scan.FilterScaling,
-                                    SynthParams.dSamplingRate);
-                            }
-                            break;
-
-                        case FilterTypes.eFilterSecondOrderZero:
-#if DEBUG
-                            if (!BandwidthOrSlopeSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                SecondOrderZeroRec.SetSecondOrderZeroCoefficients(
-                                    (SecondOrderZeroRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Scan.FilterScaling,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                SecondOrderZeroRec.SetSecondOrderZeroCoefficients(
-                                    (SecondOrderZeroRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Scan.FilterScaling,
-                                    SynthParams.dSamplingRate);
-                            }
-                            break;
-
-                        case FilterTypes.eFilterButterworthLowpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                ButterworthLowpassRec.SetButterworthLowpassCoefficients(
-                                    (ButterworthLowpassRec)Scan.Left,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ButterworthLowpassRec.SetButterworthLowpassCoefficients(
-                                    (ButterworthLowpassRec)Scan.Right,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterButterworthHighpass:
-                            if (Scan.LeftEnabled)
-                            {
-                                ButterworthHighpassRec.SetButterworthHighpassCoefficients(
-                                    (ButterworthHighpassRec)Scan.Left,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ButterworthHighpassRec.SetButterworthHighpassCoefficients(
-                                    (ButterworthHighpassRec)Scan.Right,
-                                    Cutoff,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterButterworthBandpass:
-#if DEBUG
-                            if (!BandwidthOrSlopeSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                ButterworthBandpassRec.SetButterworthBandpassCoefficients(
-                                    (ButterworthBandpassRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ButterworthBandpassRec.SetButterworthBandpassCoefficients(
-                                    (ButterworthBandpassRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterButterworthBandreject:
-#if DEBUG
-                            if (!BandwidthOrSlopeSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                ButterworthBandrejectRec.SetButterworthBandrejectCoefficients(
-                                    (ButterworthBandrejectRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ButterworthBandrejectRec.SetButterworthBandrejectCoefficients(
-                                    (ButterworthBandrejectRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterNull:
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterParametricEQ:
-#if DEBUG
-                            if (!BandwidthOrSlopeSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-#if DEBUG
-                            if (!GainSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                ParametricEqualizerRec.SetParametricEqualizerCoefficients(
-                                    (ParametricEqualizerRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ParametricEqualizerRec.SetParametricEqualizerCoefficients(
-                                    (ParametricEqualizerRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterParametricEQ2:
-#if DEBUG
-                            if (!BandwidthOrSlopeSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-#if DEBUG
-                            if (!GainSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                ParametricEqualizer2Rec.SetParametricEqualizer2Coefficients(
-                                    (ParametricEqualizer2Rec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ParametricEqualizer2Rec.SetParametricEqualizer2Coefficients(
-                                    (ParametricEqualizer2Rec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterLowShelfEQ:
-#if DEBUG
-                            if (!BandwidthOrSlopeSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-#if DEBUG
-                            if (!GainSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                LowShelfEqualizerRec.SetLowShelfEqualizerCoefficients(
-                                    (LowShelfEqualizerRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                LowShelfEqualizerRec.SetLowShelfEqualizerCoefficients(
-                                    (LowShelfEqualizerRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterHighShelfEQ:
-#if DEBUG
-                            if (!BandwidthOrSlopeSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-#if DEBUG
-                            if (!GainSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                HighShelfEqualizerRec.SetHighShelfEqualizerCoefficients(
-                                    (HighShelfEqualizerRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                HighShelfEqualizerRec.SetHighShelfEqualizerCoefficients(
-                                    (HighShelfEqualizerRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterResonantLowpass:
-#if DEBUG
-                            if (!BandwidthOrSlopeSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-#if DEBUG
-                            if (!GainSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                ResonantLowpassRec.SetResonantLowpassCoefficients(
-                                    (ResonantLowpassRec)Scan.Left,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ResonantLowpassRec.SetResonantLowpassCoefficients(
-                                    (ResonantLowpassRec)Scan.Right,
-                                    Cutoff,
-                                    BandwidthOrSlope,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
-
-                        case FilterTypes.eFilterResonantLowpass2:
-#if DEBUG
-                            if (!GainSet)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            if (Scan.LeftEnabled)
-                            {
-                                ResonantLowpass2Rec.SetResonantLowpass2Coefficients(
-                                    (ResonantLowpass2Rec)Scan.Left,
-                                    Cutoff,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-                            if (Scan.RightEnabled)
-                            {
-                                ResonantLowpass2Rec.SetResonantLowpass2Coefficients(
-                                    (ResonantLowpass2Rec)Scan.Right,
-                                    Cutoff,
-                                    Gain,
-                                    SynthParams.dSamplingRate);
-                            }
-#if DEBUG
-                            if (Scan.FilterScaling != FilterScalings.eFilterDefaultScaling)
-                            {
-                                Debug.Assert(false);
-                                throw new ArgumentException();
-                            }
-#endif
-                            break;
+                    FilterParams Params = new FilterParams(
+                        SynthParams.dSamplingRate,
+                        Cutoff,
+                        BandwidthOrSlope,
+                        Gain);
+                    if (Scan.Left != null)
+                    {
+                        Scan.Left.UpdateParams(ref Params);
+                    }
+                    if (Scan.Right != null)
+                    {
+                        Scan.Right.UpdateParams(ref Params);
                     }
                 }
 
@@ -1949,33 +1035,32 @@ namespace OutOfPhase
                     nActualFrames);
 
                 /* iterate over parallel filter array, accumulating into output */
-                for (int i = 0; i < this.NumFilters; i += 1)
+                for (int i = 0; i < FilterVector.Length; i++)
                 {
-                    FilterRec FilterScan = this.FilterVector[i];
+                    FilterRec Scan = FilterVector[i];
 
-#if true // TODO:experimental - smoothing
                     if (Program.Config.EnableEnvelopeSmoothing
                         // case of no motion in smoothed axis can use fast code path
-                        && (FilterScan.CurrentMultiplier != FilterScan.PreviousMultiplier))
+                        && (Scan.CurrentMultiplier != Scan.PreviousMultiplier))
                     {
                         // envelope smoothing
 
-                        float LocalPreviousMultiplier = FilterScan.PreviousMultiplier;
+                        float LocalPreviousMultiplier = Scan.PreviousMultiplier;
 
                         // intentional discretization by means of sample-and-hold lfo should not be smoothed.
-                        if ((FilterScan.OscFilter != null) && IsLFOSampleAndHold(FilterScan.OscFilter.OutputMultiplierLFO))
+                        if ((Scan.OscFilter != null) && IsLFOSampleAndHold(Scan.OscFilter.OutputMultiplierLFO))
                         {
-                            LocalPreviousMultiplier = FilterScan.CurrentMultiplier;
+                            LocalPreviousMultiplier = Scan.CurrentMultiplier;
                         }
 
-                        if ((FilterScan.OscFilter == null)
-                            || !EnvelopeCurrentSegmentExponential(FilterScan.OscFilter.OutputMultiplierEnvelope))
+                        if ((Scan.OscFilter == null)
+                            || !EnvelopeCurrentSegmentExponential(Scan.OscFilter.OutputMultiplierEnvelope))
                         {
                             FloatVectorAdditiveRecurrence(
                                 workspace,
                                 LoudnessWorkspaceOffset,
                                 LocalPreviousMultiplier,
-                                FilterScan.CurrentMultiplier,
+                                Scan.CurrentMultiplier,
                                 nActualFrames);
                         }
                         else
@@ -1984,17 +1069,17 @@ namespace OutOfPhase
                                 workspace,
                                 LoudnessWorkspaceOffset,
                                 LocalPreviousMultiplier,
-                                FilterScan.CurrentMultiplier,
+                                Scan.CurrentMultiplier,
                                 nActualFrames);
                         }
 
-                        if (FilterScan.LeftEnabled)
+                        if (Scan.Left != null)
                         {
                             FloatVectorZero(
                                 workspace,
                                 TemporaryOutputWorkspaceOffset,
                                 nActualFrames);
-                            FilterScan.Left.Apply(
+                            Scan.Left.Apply(
                                 workspace,
                                 LeftCopyOffset,
                                 workspace,
@@ -2011,13 +1096,13 @@ namespace OutOfPhase
                                 lOffset,
                                 nActualFrames);
                         }
-                        if (FilterScan.RightEnabled)
+                        if (Scan.Right != null)
                         {
                             FloatVectorZero(
                                 workspace,
                                 TemporaryOutputWorkspaceOffset,
                                 nActualFrames);
-                            FilterScan.Right.Apply(
+                            Scan.Right.Apply(
                                 workspace,
                                 RightCopyOffset,
                                 workspace,
@@ -2036,28 +1121,27 @@ namespace OutOfPhase
                         }
                     }
                     else
-#endif
                     {
-                        if (FilterScan.LeftEnabled)
+                        if (Scan.Left != null)
                         {
-                            FilterScan.Left.Apply(
+                            Scan.Left.Apply(
                                 workspace,
                                 LeftCopyOffset,
                                 workspace,
                                 lOffset,
                                 nActualFrames,
-                                FilterScan.CurrentMultiplier,
+                                Scan.CurrentMultiplier,
                                 synthParams);
                         }
-                        if (FilterScan.RightEnabled)
+                        if (Scan.Right != null)
                         {
-                            FilterScan.Right.Apply(
+                            Scan.Right.Apply(
                                 workspace,
                                 RightCopyOffset,
                                 workspace,
                                 rOffset,
                                 nActualFrames,
-                                FilterScan.CurrentMultiplier,
+                                Scan.CurrentMultiplier,
                                 synthParams);
                         }
                     }

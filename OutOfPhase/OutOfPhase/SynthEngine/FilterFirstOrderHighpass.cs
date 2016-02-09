@@ -44,7 +44,6 @@ namespace OutOfPhase
 
             public FilterTypes FilterType { get { return FilterTypes.eFilterFirstOrderHighpass; } }
 
-            /* compute filter coefficients */
             private static void ComputeFirstOrderHighpassCoefficients(
                 ref IIR1AllPoleRec Coeff,
                 double Cutoff,
@@ -72,7 +71,6 @@ namespace OutOfPhase
                 Coeff.A = (float)(1 - B);
             }
 
-            /* adjust filter coefficients */
             public static void SetFirstOrderHighpassCoefficients(
                 FirstOrderHighpassRec Filter,
                 double Cutoff,
@@ -88,6 +86,15 @@ namespace OutOfPhase
                     ref Filter.iir,
                     Cutoff,
                     SamplingRate);
+            }
+
+            public void UpdateParams(
+                ref FilterParams Params)
+            {
+                SetFirstOrderHighpassCoefficients(
+                    this,
+                    Params.Cutoff,
+                    Params.SamplingRate);
             }
 
             /* apply filter to an array of values, adding result to output array */

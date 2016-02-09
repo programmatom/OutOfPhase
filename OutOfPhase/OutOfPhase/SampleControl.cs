@@ -22,19 +22,19 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
+using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
 {
-    public partial class SampleControl : UserControl
+    public partial class SampleControl : ScrollableControl
     {
         private const float MINIMUMHORIZSCALE = 0.03125f;
         private const float MAXIMUMHORIZSCALE = 65536;
 
-        private const bool UseGDITranslation = false;
         private int HorizontalIndex;
 
         private SampleObjectRec sampleObject;
@@ -242,7 +242,6 @@ namespace OutOfPhase
         {
             EnsureGraphicsObjects();
 
-            // custom paint code
             if (sampleObject != null)
             {
                 Redraw(pe.Graphics, true/*drawSample*/);
@@ -255,24 +254,20 @@ namespace OutOfPhase
                 pe.Graphics.DrawLine(forePen, Width, 0, 0, Height);
             }
 
-            // Calling the base class OnPaint
             base.OnPaint(pe);
         }
 
         private void SetScrollOffsetsForRendering(Graphics graphics)
         {
-            if (UseGDITranslation)
-            {
-                HorizontalIndex = 0;
-                graphics.TranslateTransform(AutoScrollPosition.X, AutoScrollPosition.Y);
-            }
-            else
-            {
-                HorizontalIndex = -AutoScrollPosition.X;
-            }
+            HorizontalIndex = -AutoScrollPosition.X;
         }
 
         private int OVERLINEHEIGHT { get { return FontHeight + 1; } }
+
+        private Rectangle GetBoundsOverline()
+        {
+            return new Rectangle(0, 0, ClientSize.Width, 3 * OVERLINEHEIGHT);
+        }
 
         private Rectangle GetBoundsWave()
         {
@@ -285,32 +280,6 @@ namespace OutOfPhase
 
             SetScrollOffsetsForRendering(graphics);
 
-#if false
-            graphics.DrawRectangle(P`ens.Black, -HorizontalIndex, 0, ContentWidth, OVERLINEHEIGHT + 1);
-            graphics.DrawRectangle(Pe`ns.Black, -HorizontalIndex, OVERLINEHEIGHT, ContentWidth, OVERLINEHEIGHT + 1);
-            graphics.DrawRectangle(Pen`s.Black, -HorizontalIndex, 2 * OVERLINEHEIGHT, ContentWidth, OVERLINEHEIGHT + 1);
-            graphics.FillRectangle(Brus`hes.White, -HorizontalIndex + 1, 1, ContentWidth - 2, OVERLINEHEIGHT + 1 - 2);
-            graphics.FillRectangle(Brush`es.White, -HorizontalIndex + 1, 1 + OVERLINEHEIGHT, ContentWidth - 2, OVERLINEHEIGHT + 1 - 2);
-            graphics.FillRectangle(Brushe`s.White, -HorizontalIndex + 1, 1 + 2 * OVERLINEHEIGHT, ContentWidth - 2, OVERLINEHEIGHT + 1 - 2);
-            graphics.Draw_String("Origin", Font, Brush`es.Black, -HorizontalIndex + 5, 1);
-            graphics.Draw_String(loopStartLabel, Font, Br`ushes.Black, -HorizontalIndex + 5, 1 + OVERLINEHEIGHT);
-            graphics.Draw_String(loopEndLabel, Font, Brush`es.Black, -HorizontalIndex + 5, 1 + 2 * OVERLINEHEIGHT);
-#else
-            {
-                string[] lines = new string[] { "Origin", loopStartLabel, loopEndLabel };
-                Rectangle rect = new Rectangle(0, 0, ClientSize.Width, OVERLINEHEIGHT - 1);
-                foreach (string line in lines)
-                {
-                    const TextFormatFlags format = TextFormatFlags.Left | TextFormatFlags.LeftAndRightPadding
-                        | TextFormatFlags.NoPrefix | TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.SingleLine;
-                    graphics.FillRectangle(backBrush, rect);
-                    MyTextRenderer.DrawText(graphics, line, Font, rect, ForeColor, BackColor, format);
-                    graphics.DrawLine(forePen, 0, rect.Y + rect.Height, ClientSize.Width, rect.Y + rect.Height);
-                    rect.Offset(0, OVERLINEHEIGHT);
-                }
-            }
-#endif
-
             Rectangle boundsWave = GetBoundsWave();
             if (sampleObject != null)
             {
@@ -320,16 +289,6 @@ namespace OutOfPhase
                 }
                 if (sampleObject.NumChannels == NumChannelsType.eSampleStereo)
                 {
-#if false
-                    RedrawSampleViewHelper(
-                        graphics,
-                        ChannelType.eLeftChannel,
-                        new Rectangle(boundsWave.X, boundsWave.Y, boundsWave.Width - 1, boundsWave.Height / 2 - 1));
-                    RedrawSampleViewHelper(
-                        graphics, 
-                        ChannelType.eRightChannel, 
-                        new Rectangle(boundsWave.Y, boundsWave.Y + boundsWave.Height / 2 - 1 + 1, boundsWave.Width - 1, boundsWave.Height - boundsWave.Height / 2 - 1));
-#endif
                     graphics.DrawLine(
                         trimPen,
                         0,
@@ -337,28 +296,77 @@ namespace OutOfPhase
                         ContentWidth,
                         boundsWave.Y + boundsWave.Height / 2 - 1);
                 }
-#if false
-                else
-                {
-                    RedrawSampleViewHelper(
-                        graphics, 
-                        ChannelType.eMonoChannel, 
-                        new Rectangle(boundsWave.X, boundsWave.Y, boundsWave.Width - 1, boundsWave.Height - 1));
-                }
-#endif
             }
 
-            int Location = (int)((origin - HorizontalIndex) / xScale);
-            graphics.FillPolygon(foreBrush, new Point[] { new Point(-4 + Location, 0), new Point(4 + Location, 0), new Point(Location, 8 - 1) });
-            graphics.DrawLine(forePen, Location, 0, Location, Height);
+            using (Bitmap offscreenBitmap = new Bitmap(ClientSize.Width, 3 * OVERLINEHEIGHT, System.Drawing.Imaging.PixelFormat.Format32bppRgb))
+            {
+                using (Graphics offscreenGraphics = Graphics.FromImage(offscreenBitmap))
+                {
+                    string[] lines = new string[] { "Origin", loopStartLabel, loopEndLabel };
+                    Rectangle rect = new Rectangle(0, 0, ClientSize.Width, OVERLINEHEIGHT - 1);
+                    foreach (string line in lines)
+                    {
+                        const TextFormatFlags format = TextFormatFlags.Left | TextFormatFlags.LeftAndRightPadding
+                            | TextFormatFlags.NoPrefix | TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.SingleLine;
+                        offscreenGraphics.FillRectangle(backBrush, rect);
+                        MyTextRenderer.DrawText(offscreenGraphics, line, Font, rect, ForeColor, BackColor, format);
+                        offscreenGraphics.DrawLine(forePen, 0, rect.Y + rect.Height, ClientSize.Width, rect.Y + rect.Height);
+                        rect.Offset(0, OVERLINEHEIGHT);
+                    }
 
-            Location = (int)((loopStart - HorizontalIndex) / xScale);
-            graphics.FillPolygon(foreBrush, new Point[] { new Point(-4 + Location, OVERLINEHEIGHT), new Point(4 + Location, OVERLINEHEIGHT), new Point(Location, 7 + OVERLINEHEIGHT) });
-            graphics.DrawLine(forePen, Location, OVERLINEHEIGHT, Location, Height);
+                    int prevIndex = -1;
+                    for (int X = 0; X < ClientSize.Width; X++)
+                    {
+                        int Index = (int)((X + HorizontalIndex) * xScale);
+                        int IndexNext = (int)((X + 1 + HorizontalIndex) * xScale);
+                        if (IndexNext < Index + 1)
+                        {
+                            IndexNext = Index + 1;
+                        }
 
-            Location = (int)((loopEnd - HorizontalIndex) / xScale);
-            graphics.FillPolygon(foreBrush, new Point[] { new Point(-4 + Location, 2 * OVERLINEHEIGHT), new Point(4 + Location, 2 * OVERLINEHEIGHT), new Point(Location, 7 + 2 * OVERLINEHEIGHT) });
-            graphics.DrawLine(forePen, Location, 2 * OVERLINEHEIGHT, Location, Height);
+                        if (prevIndex != Index)
+                        {
+                            bool[] which = new bool[]
+                            {
+                                (origin >= Index) && (origin < IndexNext),
+                                (loopStart >= Index) && (loopStart < IndexNext),
+                                (loopEnd >= Index) && (loopEnd < IndexNext),
+                            };
+                            for (int i = 0; i < which.Length; i++)
+                            {
+                                if (which[i])
+                                {
+                                    SmoothingMode oldSmoothingMode = offscreenGraphics.SmoothingMode;
+                                    offscreenGraphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+                                    int Location = X;
+                                    offscreenGraphics.FillPolygon(
+                                        foreBrush,
+                                        new Point[]
+                                        {
+                                            new Point(-4 + Location, i * OVERLINEHEIGHT - 1),
+                                            new Point(Location, 7 + i * OVERLINEHEIGHT),
+                                            new Point(4 + Location, i * OVERLINEHEIGHT - 1),
+                                        });
+
+                                    offscreenGraphics.SmoothingMode = oldSmoothingMode;
+
+                                    offscreenGraphics.DrawLine(
+                                        forePen,
+                                        Location,
+                                        i * OVERLINEHEIGHT,
+                                        Location,
+                                        Height);
+                                }
+                            }
+                        }
+
+                        prevIndex = Index;
+                    }
+                }
+
+                graphics.DrawImage(offscreenBitmap, 0, 0, offscreenBitmap.Width, offscreenBitmap.Height);
+            }
         }
 
         private void RedrawSamplePartial(Graphics graphics, int x, int width)
@@ -391,146 +399,173 @@ namespace OutOfPhase
         {
             int YMin = bounds.Y;
             int YMax = bounds.Y + bounds.Height;
+            if (YMax <= YMin)
+            {
+                return;
+            }
 
             int NumSampleFrames = sampleObject.SampleData.NumFrames;
 
-            for (int X = bounds.Left; X < bounds.Left + bounds.Width; X++)
+            const int OffscreenStripWidth = 16;
+            using (Bitmap offscreenBitmap = new Bitmap(OffscreenStripWidth, YMax - YMin, System.Drawing.Imaging.PixelFormat.Format32bppRgb))
             {
-                int Index;
-                Brush DotColor;
-                Brush BackgroundColor;
-
-                Index = (int)((X * xScale) + HorizontalIndex);
-
-                if ((Index >= selectionStart) && (Index < selectionEnd))
+                int prevIndex = -1;
+                for (int XX = bounds.Left; XX < bounds.Left + bounds.Width + (OffscreenStripWidth - 1); XX += OffscreenStripWidth)
                 {
-                    DotColor = Focused ? selectedForeBrush : selectedForeBrushInactive;
-                    BackgroundColor = Focused ? selectedBackBrush : selectedBackBrushInactive;
-                }
-                else if ((selectionStart == selectionEnd) && (Index == selectionStart))
-                {
-                    DotColor = foreBrush;
-                    BackgroundColor = insertionPointBrush;
-                }
-                else
-                {
-                    DotColor = foreBrush;
-                    BackgroundColor = backBrush;
-                }
+                    int Limit = Math.Min(XX + OffscreenStripWidth, bounds.Left + bounds.Width);
 
-                if ((Index >= 0) && (Index < NumSampleFrames))
-                {
-                    float ValMin;
-                    float ValMax;
-                    int IndexNext;
-                    int i;
-                    int PositionMin;
-                    int PositionMax;
+                    using (Graphics offscreenGraphics = Graphics.FromImage(offscreenBitmap))
+                    {
+                        for (int X = XX; X < Limit; X++)
+                        {
+                            int Index = (int)((X + HorizontalIndex) * xScale);
+                            int IndexNext = (int)((X + 1 + HorizontalIndex) * xScale);
+                            if (IndexNext > NumSampleFrames)
+                            {
+                                IndexNext = NumSampleFrames;
+                            }
+                            if (IndexNext < Index + 1)
+                            {
+                                IndexNext = Index + 1;
+                            }
 
-                    IndexNext = (int)(((X + 1) * xScale) + HorizontalIndex);
-                    if (IndexNext > NumSampleFrames)
-                    {
-                        IndexNext = NumSampleFrames;
-                    }
-                    if (IndexNext < Index + 1)
-                    {
-                        IndexNext = Index + 1;
+                            Brush DotColor;
+                            Brush BackgroundColor;
+                            if ((Index >= selectionStart) && (Index < selectionEnd))
+                            {
+                                DotColor = Focused ? selectedForeBrush : selectedForeBrushInactive;
+                                BackgroundColor = Focused ? selectedBackBrush : selectedBackBrushInactive;
+                            }
+                            else if ((selectionStart == selectionEnd) && (selectionStart >= Index) && (SelectionStart < IndexNext))
+                            {
+                                DotColor = foreBrush;
+                                BackgroundColor = insertionPointBrush;
+                            }
+                            else
+                            {
+                                DotColor = foreBrush;
+                                BackgroundColor = backBrush;
+                            }
+
+                            if ((Index >= 0) && (Index < NumSampleFrames))
+                            {
+                                /* draw left line */
+                                float ValMin = 1;
+                                float ValMax = -1;
+                                for (int i = Index; i < IndexNext; i++)
+                                {
+                                    float Value;
+
+                                    switch (channel)
+                                    {
+                                        default:
+                                            throw new ArgumentException();
+                                        case ChannelType.eMonoChannel:
+                                            Value = sampleObject.SampleData.Buffer[i];
+                                            break;
+                                        case ChannelType.eLeftChannel:
+                                            Value = sampleObject.SampleData.Buffer[2 * i + 0];
+                                            break;
+                                        case ChannelType.eRightChannel:
+                                            Value = sampleObject.SampleData.Buffer[2 * i + 1];
+                                            break;
+                                    }
+                                    if (Value < ValMin)
+                                    {
+                                        ValMin = Value;
+                                    }
+                                    if (Value > ValMax)
+                                    {
+                                        ValMax = Value;
+                                    }
+                                }
+                                int PositionMin = (int)(((1 - ValMin) / 2) * (YMax - YMin - 1));
+                                int PositionMax = (int)(((1 - ValMax) / 2) * (YMax - YMin - 1));
+                                /* zero point:  displace very nearly zero points away from the */
+                                /* origin line so you can see they aren't zero */
+                                if (PositionMin == (YMax - YMin - 1) / 2)
+                                {
+                                    if (ValMin < 0)
+                                    {
+                                        PositionMin += 1;
+                                    }
+                                    else if (ValMin > 0)
+                                    {
+                                        PositionMin -= 1;
+                                    }
+                                }
+                                if (PositionMax == (YMax - YMin - 1) / 2)
+                                {
+                                    if (ValMax < 0)
+                                    {
+                                        PositionMax += 1;
+                                    }
+                                    else if (ValMax > 0)
+                                    {
+                                        PositionMax -= 1;
+                                    }
+                                }
+                                offscreenGraphics.FillRectangle(
+                                    BackgroundColor,
+                                    X - XX,
+                                    YMin - YMin,
+                                    1,
+                                    YMax - YMin - 1 + 1);
+                                offscreenGraphics.FillRectangle(
+                                    DotColor,
+                                    X - XX,
+                                    YMin - YMin + PositionMax,
+                                    1,
+                                    PositionMin - PositionMax + 1);
+
+                                /* draw separating line */
+                                if (((int)(Index / xScale)) % 8 == 0)
+                                {
+                                    offscreenGraphics.FillRectangle(
+                                        DotColor,
+                                        X - XX,
+                                        YMin - YMin + (YMax - YMin - 1) / 2,
+                                        1,
+                                        1);
+                                }
+
+                                // draw descending overline if needed
+                                if ((prevIndex != Index)
+                                    && (((origin >= Index) && (origin < IndexNext))
+                                        || ((loopStart >= Index) && (loopStart < IndexNext))
+                                        || ((loopEnd >= Index) && (loopEnd < IndexNext))))
+                                {
+                                    offscreenGraphics.DrawLine(
+                                        forePen,
+                                        X - XX,
+                                        2 * OVERLINEHEIGHT - YMin,
+                                        X - XX,
+                                        Height - YMin);
+                                }
+                            }
+                            else
+                            {
+                                offscreenGraphics.FillRectangle(
+                                    afterEndBrush,
+                                    X - XX,
+                                    YMin - YMin,
+                                    1,
+                                    YMax - YMin - 1 + 1);
+                            }
+
+                            prevIndex = Index;
+                        }
                     }
 
-                    /* draw left line */
-                    ValMin = 1;
-                    ValMax = -1;
-                    for (i = Index; i < IndexNext; i += 1)
-                    {
-                        float Value;
-
-                        switch (channel)
-                        {
-                            default:
-                                throw new ArgumentException();
-                            case ChannelType.eMonoChannel:
-                                Value = sampleObject.SampleData.Buffer[i];
-                                break;
-                            case ChannelType.eLeftChannel:
-                                Value = sampleObject.SampleData.Buffer[2 * i + 0];
-                                break;
-                            case ChannelType.eRightChannel:
-                                Value = sampleObject.SampleData.Buffer[2 * i + 1];
-                                break;
-                        }
-                        if (Value < ValMin)
-                        {
-                            ValMin = Value;
-                        }
-                        if (Value > ValMax)
-                        {
-                            ValMax = Value;
-                        }
-                    }
-                    PositionMin = (int)(((1 - ValMin) / 2) * (YMax - YMin - 1));
-                    PositionMax = (int)(((1 - ValMax) / 2) * (YMax - YMin - 1));
-                    /* zero point:  displace very nearly zero points away from the */
-                    /* origin line so you can see they aren't zero */
-                    if (PositionMin == (YMax - YMin - 1) / 2)
-                    {
-                        if (ValMin < 0)
-                        {
-                            PositionMin += 1;
-                        }
-                        else if (ValMin > 0)
-                        {
-                            PositionMin -= 1;
-                        }
-                    }
-                    if (PositionMax == (YMax - YMin - 1) / 2)
-                    {
-                        if (ValMax < 0)
-                        {
-                            PositionMax += 1;
-                        }
-                        else if (ValMax > 0)
-                        {
-                            PositionMax -= 1;
-                        }
-                    }
-                    graphics.FillRectangle(
-                        BackgroundColor,
-                        X,
-                        YMin,
-                        1,
-                        YMax - YMin - 1 + 1);
-                    graphics.FillRectangle(
-                        DotColor,
-                        X,
-                        YMin + PositionMax,
-                        1,
-                        PositionMin - PositionMax + 1);
-
-                    /* draw separating line */
-                    if (((int)(Index / xScale)) % 8 == 0)
-                    {
-                        graphics.FillRectangle(
-                            DotColor,
-                            X,
-                            YMin + (YMax - YMin - 1) / 2,
-                            1,
-                            1);
-                    }
-                }
-                else
-                {
-                    graphics.FillRectangle(
-                        afterEndBrush,
-                        X,
-                        YMin,
-                        1,
-                        YMax - YMin - 1 + 1);
+                    graphics.SetClip(new Rectangle(XX, YMin, Math.Min(OffscreenStripWidth, Limit - XX), YMax - YMin));
+                    graphics.DrawImage(offscreenBitmap, XX, YMin, OffscreenStripWidth, YMax - YMin);
                 }
             }
         }
 
         public void Redraw()
         {
+            EnsureGraphicsObjects();
             using (Graphics graphics = CreateGraphics())
             {
                 Redraw(graphics, true/*drawSample*/);
@@ -539,6 +574,7 @@ namespace OutOfPhase
 
         public void RedrawSamplePartial(int x, int width)
         {
+            EnsureGraphicsObjects();
             using (Graphics graphics = CreateGraphics())
             {
                 RedrawSamplePartial(graphics, x, width);
@@ -547,6 +583,7 @@ namespace OutOfPhase
 
         public void RedrawSampleOneLine(int x)
         {
+            EnsureGraphicsObjects();
             using (Graphics graphics = CreateGraphics())
             {
                 RedrawSamplePartial(graphics, x, 1);
@@ -560,6 +597,17 @@ namespace OutOfPhase
             {
                 return (int)((ClientSize.Width - 2) * xScale - 1);
             }
+        }
+
+        protected override void OnScroll(ScrollEventArgs se)
+        {
+            // Because of the position-invariant text on the loop/origin bar it creates artifacts when scrolled.
+
+            Invalidate(GetBoundsOverline());
+
+            base.OnScroll(se);
+
+            Update(); // redraw scrolled-in area immediately
         }
 
 
@@ -599,15 +647,18 @@ namespace OutOfPhase
             }
             else if (e.Y <= OVERLINEHEIGHT)
             {
-                mouseMoveMethod = MouseMoveOrigin;
+                int initialOrigin = origin;
+                mouseMoveMethod = delegate (MouseEventArgs ee, bool final) { MouseMoveOrigin(ee, final, initialOrigin); };
             }
             else if (e.Y <= OVERLINEHEIGHT * 2)
             {
-                mouseMoveMethod = MouseMoveLoopStart;
+                int initialLoopStart = loopStart;
+                mouseMoveMethod = delegate (MouseEventArgs ee, bool final) { MouseMoveLoopStart(ee, final, initialLoopStart); };
             }
             else if (e.Y <= OVERLINEHEIGHT * 3)
             {
-                mouseMoveMethod = MouseMoveLoopEnd;
+                int initialLoopEnd = LoopEnd;
+                mouseMoveMethod = delegate (MouseEventArgs ee, bool final) { MouseMoveLoopEnd(ee, final, initialLoopEnd); };
             }
         }
 
@@ -626,16 +677,24 @@ namespace OutOfPhase
         // assumes HorizontalIndex is set, i.e. call SetScrollOffsetsForRendering()
         private int ClientXToFrame(int x)
         {
-            return (int)(x * xScale + HorizontalIndex);
+            return (int)((x + HorizontalIndex) * xScale);
         }
 
         // assumes HorizontalIndex is set, i.e. call SetScrollOffsetsForRendering()
         private int FrameToClientX(int frame)
         {
-            return (int)((frame - HorizontalIndex) / xScale);
+            return (int)(frame / xScale - HorizontalIndex);
         }
 
-        private void MouseMoveOrigin(MouseEventArgs e, bool final)
+        private delegate int GetValue();
+        private delegate void SetValue(int value);
+        private void MouseMoveOverline(
+            MouseEventArgs e,
+            bool final,
+            int initialValue,
+            GetValue getValue,
+            SetValue setValue,
+            EventHandler changed)
         {
             using (Graphics graphics = CreateGraphics())
             {
@@ -649,62 +708,50 @@ namespace OutOfPhase
                 }
 
                 SetScrollOffsetsForRendering(graphics);
-                RedrawSamplePartial(FrameToClientX(origin), 1);
-                origin = ClientXToFrame(e.X);
-                Redraw(graphics, false/*drawSample*/);
-                if (OriginChanged != null)
+                int oldValue = getValue();
+                int newValue = (e.Y >= 0) && (e.Y < ClientSize.Height) ? ClientXToFrame(e.X) : initialValue;
+                setValue(newValue);
+                RedrawSamplePartial(FrameToClientX(oldValue), 1);
+                RedrawSamplePartial(FrameToClientX(newValue), 1);
+                Redraw(graphics, false/*drawSample*/); // update overline header
+                if (changed != null)
                 {
-                    OriginChanged.Invoke(this, EventArgs.Empty);
+                    changed.Invoke(this, EventArgs.Empty);
                 }
             }
         }
 
-        private void MouseMoveLoopStart(MouseEventArgs e, bool final)
+        private void MouseMoveOrigin(MouseEventArgs e, bool final, int initialValue)
         {
-            using (Graphics graphics = CreateGraphics())
-            {
-                if (e.X < 0)
-                {
-                    MouseScrollLeft();
-                }
-                else if (e.X >= ClientSize.Width)
-                {
-                    MouseScrollRight();
-                }
-
-                SetScrollOffsetsForRendering(graphics);
-                RedrawSamplePartial(FrameToClientX(loopStart), 1);
-                loopStart = ClientXToFrame(e.X);
-                Redraw(graphics, false/*drawSample*/);
-                if (LoopStartChanged != null)
-                {
-                    LoopStartChanged.Invoke(this, EventArgs.Empty);
-                }
-            }
+            MouseMoveOverline(
+                e,
+                final,
+                initialValue,
+                delegate () { return origin; },
+                delegate (int value) { origin = value; },
+                OriginChanged);
         }
 
-        private void MouseMoveLoopEnd(MouseEventArgs e, bool final)
+        private void MouseMoveLoopStart(MouseEventArgs e, bool final, int initialValue)
         {
-            using (Graphics graphics = CreateGraphics())
-            {
-                if (e.X < 0)
-                {
-                    MouseScrollLeft();
-                }
-                else if (e.X >= ClientSize.Width)
-                {
-                    MouseScrollRight();
-                }
+            MouseMoveOverline(
+                e,
+                final,
+                initialValue,
+                delegate () { return loopStart; },
+                delegate (int value) { loopStart = value; },
+                LoopStartChanged);
+        }
 
-                SetScrollOffsetsForRendering(graphics);
-                RedrawSamplePartial(FrameToClientX(loopEnd), 1);
-                loopEnd = ClientXToFrame(e.X);
-                Redraw(graphics, false/*drawSample*/);
-                if (LoopEndChanged != null)
-                {
-                    LoopEndChanged.Invoke(this, EventArgs.Empty);
-                }
-            }
+        private void MouseMoveLoopEnd(MouseEventArgs e, bool final, int initialValue)
+        {
+            MouseMoveOverline(
+                e,
+                final,
+                initialValue,
+                delegate () { return loopEnd; },
+                delegate (int value) { loopEnd = value; },
+                LoopEndChanged);
         }
 
         private void MouseMoveSelection(MouseEventArgs e, bool final, int BaseSelectionStart, int BaseSelectionEnd)

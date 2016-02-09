@@ -68,18 +68,15 @@ namespace OutOfPhase
             }
         }
 
-        /* parse a top-level form, which is either a prototype or a function.  prototypes */
-        /* are entered into the symbol table and return null in *FunctionBodyOut but returns */
-        /*CompileErrors. eCompileNoError. */
+        /* parse a top-level form, which is... a function. */
         /*   1:   <form>             ::= <function> ; */
-        /*   2:                      ::= <prototype> ; */
         /* FIRST SET: */
-        /* <form>             : {func, proto, <function>, <prototype>} */
+        /* <form>             : {func, <function>} */
         /* FOLLOW SET: */
         /* <form>             : {$$$} */
         public static CompileErrors ParseForm(
             out SymbolRec FunctionSymbolTableEntryOut,
-            out ASTExpressionRec FunctionBodyOut,
+            out ASTExpression FunctionBodyOut,
             ParserContext Context,
             out int LineNumberOut)
         {
@@ -109,34 +106,18 @@ namespace OutOfPhase
                 {
                     return Error;
                 }
-            }
 
-#if true // TODO: remove 'proto'
-            /* do lookahead on "proto" */
-            else if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
-                && (Token.GetTokenKeywordTag() == KeywordsType.eExprKwrdProto))
-            {
-                /* push token back */
-                Context.Scanner.UngetToken(Token);
-
-                /* parse prototype */
-                Error = ParsePrototype(
-                    out FunctionSymbolTableEntryOut,
-                    Context,
-                    out LineNumberOut);
-                FunctionBodyOut = null; /* no code body for a prototype */
-                if (Error != CompileErrors.eCompileNoError)
+                int start, count;
+                if (ASTFunctionCall.TryFindBuiltInFunctionRange(FunctionSymbolTableEntryOut.SymbolName, out start, out count))
                 {
-                    return Error;
+                    LineNumberOut = FunctionBodyOut.LineNumber;
+                    return CompileErrors.eCompileFunctionNameConflictsWithBuiltIn;
                 }
             }
-#endif
-
-            /* otherwise, it's an error */
             else
             {
                 LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                return CompileErrors.eCompileExpectedFuncOrProto;
+                return CompileErrors.eCompileExpectedFunc;
             }
 
 
@@ -165,7 +146,7 @@ namespace OutOfPhase
         /* <function>         : {;} */
         private static CompileErrors ParseFunction(
             out SymbolRec FunctionSymbolTableEntryOut,
-            out ASTExpressionRec FunctionBodyOut,
+            out ASTExpression FunctionBodyOut,
             ParserContext Context,
             out int LineNumberOut)
         {
@@ -202,17 +183,10 @@ namespace OutOfPhase
 
             /* add the identifier to the symbol table */
             FunctionSymbolTableEntryOut = new SymbolRec(FunctionName.GetTokenIdentifierString());
-            switch (Context.SymbolTable.AddSymbolToTable(FunctionSymbolTableEntryOut))
+            if (!Context.SymbolTable.Add(FunctionSymbolTableEntryOut))
             {
-                case AddSymbolType.eAddSymbolNoErr:
-                    break;
-                case AddSymbolType.eAddSymbolAlreadyExists:
-                    LineNumberOut = LineNumberOfIdentifier;
-                    return CompileErrors.eCompileMultiplyDefinedIdentifier;
-                default:
-                    // bad value from AddSymbolToTable
-                    Debug.Assert(false);
-                    throw new InvalidOperationException();
+                LineNumberOut = LineNumberOfIdentifier;
+                return CompileErrors.eCompileMultiplyDefinedIdentifier;
             }
 
             /* create a new lexical level */
@@ -286,126 +260,6 @@ namespace OutOfPhase
 
 
 
-#if true // TODO: remove 'proto'
-        /* this parses a prototype of a function and returns a symbol table entry in */
-        /* the *PrototypeSymbolTableEntryOut place. */
-        /*  21:   <prototype>        ::= proto <identifier> ( <formalparamstart> ) : */
-        /*      <type> */
-        /* FIRST SET: */
-        /* <prototype>        : {proto} */
-        /* FOLLOW SET: */
-        /*  <prototype>        : {then, else, elseif, while, until, do, to, ), CLOSEBRACKET, */
-        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
-        private static CompileErrors ParsePrototype(
-            out SymbolRec PrototypeSymbolTableEntryOut,
-            ParserContext Context,
-            out int LineNumberOut)
-        {
-            TokenRec<KeywordsType> Token;
-            TokenRec<KeywordsType> FunctionName;
-            int LineNumberOfIdentifier;
-            CompileErrors Error;
-            SymbolListRec FormalArgumentList;
-            DataTypes ReturnType;
-
-            PrototypeSymbolTableEntryOut = null;
-            LineNumberOut = -1;
-
-            /* swallow "proto" */
-            Token = Context.Scanner.GetNextToken();
-            if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
-                || (Token.GetTokenKeywordTag() != KeywordsType.eExprKwrdProto))
-            {
-                LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                return CompileErrors.eCompileExpectedFunc;
-            }
-
-            /* get the identifier */
-            FunctionName = Context.Scanner.GetNextToken();
-            if (FunctionName.GetTokenType() != TokenTypes.eTokenIdentifier)
-            {
-                LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                return CompileErrors.eCompileExpectedIdentifier;
-            }
-            LineNumberOfIdentifier = Context.Scanner.GetCurrentLineNumber();
-
-            /* add the identifier to the symbol table */
-            PrototypeSymbolTableEntryOut = new SymbolRec(FunctionName.GetTokenIdentifierString());
-            switch (Context.SymbolTable.AddSymbolToTable(PrototypeSymbolTableEntryOut))
-            {
-                case AddSymbolType.eAddSymbolNoErr:
-                    break;
-                case AddSymbolType.eAddSymbolAlreadyExists:
-                    LineNumberOut = LineNumberOfIdentifier;
-                    return CompileErrors.eCompileMultiplyDefinedIdentifier;
-                default:
-                    // bad value from AddSymbolToTable
-                    Debug.Assert(false);
-                    throw new InvalidOperationException();
-            }
-
-            /* create a new lexical level */
-            Context.SymbolTable.IncrementSymbolTableLevel();
-
-            /* swallow the open parenthesis */
-            Token = Context.Scanner.GetNextToken();
-            if (Token.GetTokenType() != TokenTypes.eTokenOpenParen)
-            {
-                LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                return CompileErrors.eCompileExpectedOpenParen;
-            }
-
-            /* parse <formalparamstart> */
-            Error = ParseFormalParamStart(
-                out FormalArgumentList,
-                Context,
-                out LineNumberOut);
-            if (Error != CompileErrors.eCompileNoError)
-            {
-                return Error;
-            }
-
-            /* swallow the close parenthesis */
-            Token = Context.Scanner.GetNextToken();
-            if (Token.GetTokenType() != TokenTypes.eTokenCloseParen)
-            {
-                LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                return CompileErrors.eCompileExpectedCloseParen;
-            }
-
-            /* swallow the colon */
-            Token = Context.Scanner.GetNextToken();
-            if (Token.GetTokenType() != TokenTypes.eTokenColon)
-            {
-                LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                return CompileErrors.eCompileExpectedColon;
-            }
-
-            /* parse the return type of the function */
-            Error = ParseType(
-                out ReturnType,
-                Context,
-                out LineNumberOut);
-            if (Error != CompileErrors.eCompileNoError)
-            {
-                return Error;
-            }
-
-            /* store the interesting information into the symbol table entry */
-            PrototypeSymbolTableEntryOut.SymbolBecomeFunction(
-                FormalArgumentList,
-                ReturnType);
-
-            /* pop lexical level */
-            Context.SymbolTable.DecrementSymbolTableLevel();
-
-            return CompileErrors.eCompileNoError;
-        }
-#endif
-
-
-
-
         /* this parses an argument list.  the argument list may be empty, in which case */
         /* the empty list (null) is returned in *FormalArgListOut. */
         /*  15:   <formalparamstart> ::= <formalparamlist> */
@@ -469,13 +323,13 @@ namespace OutOfPhase
         /*      intarray, singlearray, doublearray, fixedarray} */
         /* FOLLOW SET: */
         /*  <type>             : {<identifier>, <integer>, <single>, <double>, <fixed>, */
-        /*       <string>, bool, int, single, double, fixed, proto, var, not, sin, cos, */
+        /*       <string>, bool, int, single, double, fixed, var, not, sin, cos, */
         /*       tan, asin, acos, atan, ln, exp, sqr, sqrt, abs, neg, sign, length, if, */
-        /*       then, else, elseif, while, until, do, resize, to, error, true, */
-        /*       false, set, (, ), CLOSEBRACKET, , , :=, ;, -, EQ, <prototype>, <expr>, */
+        /*       then, else, elseif, while, do, resize, to, error, true, */
+        /*       false, set, (, ), CLOSEBRACKET, , , :=, ;, -, EQ, <expr>, */
         /*       <formalargtail>, <vartail>, <expr2>, <expr3>, <expr4>, <expr5>, <expr6>, */
         /*       <unary_oper>, <expr7>, <expr8>, <actualtail>, <iftail>, <whileloop>, */
-        /*       <loopwhileuntil>, <untilloop>, <exprlisttail>} */
+        /*       <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseType(
             out DataTypes TypeOut,
             ParserContext Context,
@@ -518,9 +372,6 @@ namespace OutOfPhase
                 case KeywordsType.eExprKwrdDouble:
                     TypeOut = DataTypes.eDouble;
                     break;
-                case KeywordsType.eExprKwrdFixed:
-                    TypeOut = DataTypes.eFloat;
-                    break;
                 case KeywordsType.eExprKwrdBoolarray:
                     TypeOut = DataTypes.eArrayOfBoolean;
                     break;
@@ -537,9 +388,6 @@ namespace OutOfPhase
                 case KeywordsType.eExprKwrdDoublearray:
                     TypeOut = DataTypes.eArrayOfDouble;
                     break;
-                case KeywordsType.eExprKwrdFixedarray:
-                    TypeOut = DataTypes.eArrayOfFloat;
-                    break;
             }
 
             return CompileErrors.eCompileNoError;
@@ -551,8 +399,7 @@ namespace OutOfPhase
         /*   26:   <expr>             ::= <expr2> */
         /*  109:   <expr>             ::= if <ifrest> */
         /*  114:   <expr>             ::= <whileloop> */
-        /*  115:                      ::= do <expr> <loopwhileuntil> */
-        /*  116:                      ::= <untilloop> */
+        /*  115:                      ::= do <expr> <loopwhile> */
         /*  121:   <expr>             ::= set <expr> := <expr> */
         /*  125:   <expr>             ::= resize <expr> to <expr> */
         /*  126:                      ::= error <string> [resumable <expr>] */
@@ -569,16 +416,16 @@ namespace OutOfPhase
         /*  XXX:                      ::= vecsqrt ( <actualstart> )  */
         /* FIRST SET: */
         /*  <expr>             : {<identifier>, <integer>, <single>, <double>, <fixed>, */
-        /*       <string>, bool, int, single, double, fixed, proto, var, not, sin, cos, */
+        /*       <string>, bool, int, single, double, fixed, var, not, sin, cos, */
         /*       tan, asin, acos, atan, ln, exp, sqr, sqrt, abs, neg, sign, length, if, */
-        /*       while, until, do, resize, error, true, false, set, (, -, */
-        /*       <prototype>, <expr2>, <expr3>, <expr4>, <expr5>, <expr6>, <unary_oper>, */
-        /*       <expr7>, <expr8>, <whileloop>, <untilloop>} */
+        /*       while, do, resize, error, true, false, set, (, -, */
+        /*       <expr2>, <expr3>, <expr4>, <expr5>, <expr6>, <unary_oper>, */
+        /*       <expr7>, <expr8>, <whileloop> } */
         /* FOLLOW SET: */
-        /*  <expr>             : {then, else, elseif, while, until, do, to, ), CLOSEBRACKET, */
-        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*  <expr>             : {then, else, elseif, while, do, to, ), CLOSEBRACKET, */
+        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         public static CompileErrors ParseExpr(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
@@ -597,6 +444,7 @@ namespace OutOfPhase
             switch (Token.GetTokenType())
             {
                 default:
+                DefaultAction:
                     Context.Scanner.UngetToken(Token);
                     return ParseExpr2(
                         out ExpressionOut,
@@ -631,10 +479,10 @@ namespace OutOfPhase
                                 Context,
                                 out LineNumberOut);
 
-                        /*  115:                      ::= do <expr> <loopwhileuntil> */
+                        /*  115:                      ::= do <expr> <loopwhile> */
                         case KeywordsType.eExprKwrdDo:
                             {
-                                ASTExpressionRec BodyExpression;
+                                ASTExpression BodyExpression;
                                 CompileErrors Error;
 
                                 Error = ParseExpr(
@@ -647,7 +495,7 @@ namespace OutOfPhase
                                 }
 
                                 /* parse the rest of it */
-                                return ParseLoopWhileUntil(
+                                return ParseLoopWhile(
                                     out ExpressionOut,
                                     BodyExpression,
                                     Context,
@@ -655,23 +503,13 @@ namespace OutOfPhase
                                     LineNumberForFirstToken);
                             }
 
-                        /*  116:                      ::= <untilloop> */
-                        /* FIRST SET */
-                        /*  <untilloop>        : {until} */
-                        case KeywordsType.eExprKwrdUntil:
-                            Context.Scanner.UngetToken(Token);
-                            return ParseUntilLoop(
-                                out ExpressionOut,
-                                Context,
-                                out LineNumberOut);
-
                         /*  121:   <expr>             ::= set <expr> := <expr> */
                         case KeywordsType.eExprKwrdSet:
                             {
-                                ASTExpressionRec LValue;
-                                ASTExpressionRec RValue;
+                                ASTExpression LValue;
+                                ASTExpression RValue;
                                 CompileErrors Error;
-                                ASTAssignRec TotalAssignment;
+                                ASTAssignment TotalAssignment;
 
                                 Error = ParseExpr(
                                     out LValue,
@@ -699,12 +537,12 @@ namespace OutOfPhase
                                     return Error;
                                 }
 
-                                TotalAssignment = NewAssignment(
+                                TotalAssignment = new ASTAssignment(
                                     LValue,
                                     RValue,
                                     LineNumberForFirstToken);
 
-                                ExpressionOut = NewExprAssignment(
+                                ExpressionOut = new ASTExpression(
                                     TotalAssignment,
                                     LineNumberForFirstToken);
 
@@ -714,10 +552,10 @@ namespace OutOfPhase
                         /*  125:   <expr>             ::= resize <expr> to <expr> */
                         case KeywordsType.eExprKwrdResize:
                             {
-                                ASTExpressionRec ArrayGenerator;
-                                ASTExpressionRec NewSizeExpression;
+                                ASTExpression ArrayGenerator;
+                                ASTExpression NewSizeExpression;
                                 CompileErrors Error;
-                                ASTBinaryOpRec BinaryOperator;
+                                ASTBinaryOperation BinaryOperator;
 
                                 Error = ParseExpr(
                                     out ArrayGenerator,
@@ -746,13 +584,13 @@ namespace OutOfPhase
                                     return Error;
                                 }
 
-                                BinaryOperator = NewBinaryOperator(
-                                    BinaryOpType.eBinaryResizeArray,
+                                BinaryOperator = new ASTBinaryOperation(
+                                    BinaryOperatorKind.eBinaryResizeArray,
                                     ArrayGenerator,
                                     NewSizeExpression,
                                     LineNumberForFirstToken);
 
-                                ExpressionOut = NewExprBinaryOperator(
+                                ExpressionOut = new ASTExpression(
                                     BinaryOperator,
                                     LineNumberForFirstToken);
 
@@ -763,9 +601,9 @@ namespace OutOfPhase
                         case KeywordsType.eExprKwrdError:
                             {
                                 TokenRec<KeywordsType> MessageString;
-                                ASTExpressionRec ResumableCondition;
+                                ASTExpression ResumableCondition;
                                 CompileErrors Error;
-                                ASTErrorFormRec ErrorForm;
+                                ASTErrorForm ErrorForm;
 
                                 MessageString = Context.Scanner.GetNextToken();
                                 if (MessageString.GetTokenType() != TokenTypes.eTokenString)
@@ -792,19 +630,19 @@ namespace OutOfPhase
                                 {
                                     // ought to check follow set here, but parser has been modified by hand so unreliable.
                                     Context.Scanner.UngetToken(Token);
-                                    ResumableCondition = NewExprOperand(
-                                        NewBooleanLiteral(
+                                    ResumableCondition = new ASTExpression(
+                                        new ASTOperand(
                                             false,
                                             Context.Scanner.GetCurrentLineNumber()),
                                         Context.Scanner.GetCurrentLineNumber());
                                 }
 
-                                ErrorForm = NewErrorForm(
+                                ErrorForm = new ASTErrorForm(
                                     ResumableCondition,
                                     MessageString.GetTokenStringValue(),
                                     LineNumberForFirstToken);
 
-                                ExpressionOut = NewExprErrorForm(
+                                ExpressionOut = new ASTExpression(
                                     ErrorForm,
                                     LineNumberForFirstToken);
 
@@ -824,8 +662,8 @@ namespace OutOfPhase
                         case KeywordsType.eExprKwrdGetsampleright:
                         case KeywordsType.eExprKwrdGetsampleleft:
                             {
-                                ASTWaveGetterRec WaveGetterThang;
-                                WaveGetterOp Op;
+                                ASTWaveGetter WaveGetterThang;
+                                WaveGetterKind Op;
 
                                 switch (TokenKeywordTag)
                                 {
@@ -833,22 +671,22 @@ namespace OutOfPhase
                                         Debug.Assert(false);
                                         throw new InvalidOperationException();
                                     case KeywordsType.eExprKwrdGetsampleleft:
-                                        Op = WaveGetterOp.eWaveGetterSampleLeft;
+                                        Op = WaveGetterKind.eWaveGetterSampleLeft;
                                         break;
                                     case KeywordsType.eExprKwrdGetsampleright:
-                                        Op = WaveGetterOp.eWaveGetterSampleRight;
+                                        Op = WaveGetterKind.eWaveGetterSampleRight;
                                         break;
                                     case KeywordsType.eExprKwrdGetsample:
-                                        Op = WaveGetterOp.eWaveGetterSampleMono;
+                                        Op = WaveGetterKind.eWaveGetterSampleMono;
                                         break;
                                     case KeywordsType.eExprKwrdGetwavenumframes:
-                                        Op = WaveGetterOp.eWaveGetterWaveFrames;
+                                        Op = WaveGetterKind.eWaveGetterWaveFrames;
                                         break;
                                     case KeywordsType.eExprKwrdGetwavenumtables:
-                                        Op = WaveGetterOp.eWaveGetterWaveTables;
+                                        Op = WaveGetterKind.eWaveGetterWaveTables;
                                         break;
                                     case KeywordsType.eExprKwrdGetwavedata:
-                                        Op = WaveGetterOp.eWaveGetterWaveArray;
+                                        Op = WaveGetterKind.eWaveGetterWaveArray;
                                         break;
                                 }
 
@@ -859,12 +697,12 @@ namespace OutOfPhase
                                     return CompileErrors.eCompileExpectedStringLiteral;
                                 }
 
-                                WaveGetterThang = NewWaveGetter(
+                                WaveGetterThang = new ASTWaveGetter(
                                     Token.GetTokenStringValue(),
                                     Op,
                                     Context.Scanner.GetCurrentLineNumber());
 
-                                ExpressionOut = NewExprWaveGetter(
+                                ExpressionOut = new ASTExpression(
                                     WaveGetterThang,
                                     Context.Scanner.GetCurrentLineNumber());
 
@@ -876,20 +714,20 @@ namespace OutOfPhase
                             Token = Context.Scanner.GetNextToken();
                             if (Token.GetTokenType() == TokenTypes.eTokenString)
                             {
-                                ASTPrintStringRec PrintString;
+                                ASTPrintString PrintString;
 
                                 /* print string literal part */
-                                PrintString = NewPrintString(
+                                PrintString = new ASTPrintString(
                                     Token.GetTokenStringValue(),
                                     LineNumberForFirstToken);
-                                ExpressionOut = NewExprPrintString(
+                                ExpressionOut = new ASTExpression(
                                     PrintString,
                                     LineNumberForFirstToken);
                             }
                             else
                             {
-                                ASTPrintExprRec PrintExpr;
-                                ASTExpressionRec Operand;
+                                ASTPrintExpression PrintExpr;
+                                ASTExpression Operand;
                                 CompileErrors Error;
 
                                 /* print expression part */
@@ -902,181 +740,12 @@ namespace OutOfPhase
                                 {
                                     return Error;
                                 }
-                                PrintExpr = NewPrintExpr(
+                                PrintExpr = new ASTPrintExpression(
                                     Operand,
                                     LineNumberForFirstToken);
-                                ExpressionOut = NewExprPrintExpr(
+                                ExpressionOut = new ASTExpression(
                                     PrintExpr,
                                     LineNumberForFirstToken);
-                            }
-                            return CompileErrors.eCompileNoError;
-
-                        /*  XXX:                      ::= butterworthbandpass ( <formalparamlist> ) */
-                        /*  XXX:                      ::= firstorderlowpass ( <actualstart> )  */
-                        /*  XXX:                      ::= vecsqr ( <actualstart> )  */
-                        /*  XXX:                      ::= vecsqrt ( <actualstart> )  */
-                        case KeywordsType.eExprKwrdButterworthbandpass:
-                        case KeywordsType.eExprKwrdFirstorderlowpass:
-                        case KeywordsType.eExprKwrdVecsqr:
-                        case KeywordsType.eExprKwrdVecsqrt:
-                            {
-                                ASTExprListRec ListOfParameters;
-                                ASTExpressionRec ArrayExpr;
-                                ASTExpressionRec StartIndexExpr;
-                                ASTExpressionRec EndIndexExpr;
-                                ASTExpressionRec SamplingRateExpr = null;
-                                ASTExpressionRec CutoffExpr = null;
-                                ASTExpressionRec BandwidthExpr = null;
-                                ASTFilterRec Filter;
-                                ASTExpressionRec TotalFilter;
-                                CompileErrors Error;
-
-                                /* swallow open parenthesis */
-                                Token = Context.Scanner.GetNextToken();
-                                if (Token.GetTokenType() != TokenTypes.eTokenOpenParen)
-                                {
-                                    LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                    return CompileErrors.eCompileExpectedOpenParen;
-                                }
-
-                                /* parse the argument list */
-                                Error = ParseActualStart(
-                                    out ListOfParameters,
-                                    Context,
-                                    out LineNumberOut);
-                                if (Error != CompileErrors.eCompileNoError)
-                                {
-                                    return Error;
-                                }
-
-                                /* swallow close parenthesis */
-                                Token = Context.Scanner.GetNextToken();
-                                if (Token.GetTokenType() != TokenTypes.eTokenCloseParen)
-                                {
-                                    LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                    return CompileErrors.eCompileExpectedCommaOrCloseParen;
-                                }
-
-                                /* build arguments for filter AST */
-
-                                /* arg 1 = array */
-                                if (ListOfParameters == null)
-                                {
-                                    LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                    return CompileErrors.eCompileWrongNumberOfArgsToFunction;
-                                }
-                                ArrayExpr = ExprListGetFirstExpr(ListOfParameters);
-                                ListOfParameters = ExprListGetRestList(ListOfParameters);
-
-                                /* arg 2 = start index */
-                                if (ListOfParameters == null)
-                                {
-                                    LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                    return CompileErrors.eCompileWrongNumberOfArgsToFunction;
-                                }
-                                StartIndexExpr = ExprListGetFirstExpr(ListOfParameters);
-                                ListOfParameters = ExprListGetRestList(ListOfParameters);
-
-                                /* arg 3 = end index */
-                                if (ListOfParameters == null)
-                                {
-                                    LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                    return CompileErrors.eCompileWrongNumberOfArgsToFunction;
-                                }
-                                EndIndexExpr = ExprListGetFirstExpr(ListOfParameters);
-                                ListOfParameters = ExprListGetRestList(ListOfParameters);
-
-                                /* arg 4 = sampling rate */
-                                if ((TokenKeywordTag == KeywordsType.eExprKwrdButterworthbandpass)
-                                    || (TokenKeywordTag == KeywordsType.eExprKwrdFirstorderlowpass))
-                                {
-                                    if (ListOfParameters == null)
-                                    {
-                                        LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                        return CompileErrors.eCompileWrongNumberOfArgsToFunction;
-                                    }
-                                    SamplingRateExpr = ExprListGetFirstExpr(ListOfParameters);
-                                    ListOfParameters = ExprListGetRestList(ListOfParameters);
-                                }
-
-                                /* arg 5 = cutoff */
-                                if ((TokenKeywordTag == KeywordsType.eExprKwrdButterworthbandpass)
-                                    || (TokenKeywordTag == KeywordsType.eExprKwrdFirstorderlowpass))
-                                {
-                                    if (ListOfParameters == null)
-                                    {
-                                        LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                        return CompileErrors.eCompileWrongNumberOfArgsToFunction;
-                                    }
-                                    CutoffExpr = ExprListGetFirstExpr(ListOfParameters);
-                                    ListOfParameters = ExprListGetRestList(ListOfParameters);
-                                }
-
-                                /* arg 6 = bandwidth */
-                                if (TokenKeywordTag == KeywordsType.eExprKwrdButterworthbandpass)
-                                {
-                                    if (ListOfParameters == null)
-                                    {
-                                        LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                        return CompileErrors.eCompileWrongNumberOfArgsToFunction;
-                                    }
-                                    BandwidthExpr = ExprListGetFirstExpr(ListOfParameters);
-                                    ListOfParameters = ExprListGetRestList(ListOfParameters);
-                                }
-
-                                if (ListOfParameters != null)
-                                {
-                                    LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                    return CompileErrors.eCompileWrongNumberOfArgsToFunction;
-                                }
-
-                                switch (TokenKeywordTag)
-                                {
-                                    default:
-                                        Debug.Assert(false);
-                                        throw new InvalidOperationException();
-
-                                    case KeywordsType.eExprKwrdButterworthbandpass:
-                                        Filter = NewASTFilterButterworthBandpass(
-                                            ArrayExpr,
-                                            StartIndexExpr,
-                                            EndIndexExpr,
-                                            SamplingRateExpr,
-                                            CutoffExpr,
-                                            BandwidthExpr,
-                                            Context.Scanner.GetCurrentLineNumber());
-                                        break;
-
-                                    case KeywordsType.eExprKwrdFirstorderlowpass:
-                                        Filter = NewASTFilterFirstOrderLowpass(
-                                            ArrayExpr,
-                                            StartIndexExpr,
-                                            EndIndexExpr,
-                                            SamplingRateExpr,
-                                            CutoffExpr,
-                                            Context.Scanner.GetCurrentLineNumber());
-                                        break;
-
-                                    case KeywordsType.eExprKwrdVecsqr:
-                                        Filter = NewASTFilterSquare(
-                                            ArrayExpr,
-                                            StartIndexExpr,
-                                            EndIndexExpr,
-                                            Context.Scanner.GetCurrentLineNumber());
-                                        break;
-
-                                    case KeywordsType.eExprKwrdVecsqrt:
-                                        Filter = NewASTFilterSquareRoot(
-                                            ArrayExpr,
-                                            StartIndexExpr,
-                                            EndIndexExpr,
-                                            Context.Scanner.GetCurrentLineNumber());
-                                        break;
-                                }
-
-                                TotalFilter = NewExprFilterExpr(Filter, Context.Scanner.GetCurrentLineNumber());
-
-                                ExpressionOut = TotalFilter;
                             }
                             return CompileErrors.eCompileNoError;
 
@@ -1087,9 +756,9 @@ namespace OutOfPhase
                         case KeywordsType.eExprKwrdLoadsampleright:
                         case KeywordsType.eExprKwrdLoadsample:
                             {
-                                ASTSampleLoaderRec SampleLoaderThang;
+                                ASTSampleLoader SampleLoaderThang;
                                 TokenRec<KeywordsType> Token2;
-                                SampleLoaderOp Op;
+                                SampleLoaderKind Op;
 
                                 switch (TokenKeywordTag)
                                 {
@@ -1097,13 +766,13 @@ namespace OutOfPhase
                                         Debug.Assert(false);
                                         throw new InvalidOperationException();
                                     case KeywordsType.eExprKwrdLoadsampleleft:
-                                        Op = SampleLoaderOp.eSampleLoaderSampleLeft;
+                                        Op = SampleLoaderKind.eSampleLoaderSampleLeft;
                                         break;
                                     case KeywordsType.eExprKwrdLoadsampleright:
-                                        Op = SampleLoaderOp.eSampleLoaderSampleRight;
+                                        Op = SampleLoaderKind.eSampleLoaderSampleRight;
                                         break;
                                     case KeywordsType.eExprKwrdLoadsample:
-                                        Op = SampleLoaderOp.eSampleLoaderSampleMono;
+                                        Op = SampleLoaderKind.eSampleLoaderSampleMono;
                                         break;
                                 }
 
@@ -1128,13 +797,13 @@ namespace OutOfPhase
                                     return CompileErrors.eCompileExpectedStringLiteral;
                                 }
 
-                                SampleLoaderThang = NewSampleLoader(
+                                SampleLoaderThang = new ASTSampleLoader(
                                     Token.GetTokenStringValue(), /* filetype */
                                     Token2.GetTokenStringValue(), /* filename */
                                     Op,
                                     Context.Scanner.GetCurrentLineNumber());
 
-                                ExpressionOut = NewExprSampleLoader(
+                                ExpressionOut = new ASTExpression(
                                     SampleLoaderThang,
                                     Context.Scanner.GetCurrentLineNumber());
 
@@ -1149,7 +818,7 @@ namespace OutOfPhase
 
                                 SymbolRec LoopVariable;
                                 int LoopVariableLineNumber;
-                                ASTExpressionRec InitialValue;
+                                ASTExpression InitialValue;
                                 {
                                     TokenRec<KeywordsType> LoopVariableName = Context.Scanner.GetNextToken();
                                     if (LoopVariableName.GetTokenType() != TokenTypes.eTokenIdentifier)
@@ -1181,7 +850,8 @@ namespace OutOfPhase
                                     /* create symbol table entry */
                                     LoopVariable = new SymbolRec(LoopVariableName.GetTokenIdentifierString());
                                     LoopVariable.SymbolBecomeVariable(VariableType);
-                                    Context.SymbolTable.AddSymbolToTable(LoopVariable);
+                                    bool f = Context.SymbolTable.Add(LoopVariable);
+                                    Debug.Assert(f); // should never fail with duplicate since we pushed a lexical scope just for this stmt
 
                                     /* get the = */
                                     Token = Context.Scanner.GetNextToken();
@@ -1210,7 +880,7 @@ namespace OutOfPhase
                                     return CompileErrors.eCompileExpectedWhile;
                                 }
 
-                                ASTExpressionRec WhileExpression;
+                                ASTExpression WhileExpression;
                                 Error = ParseExpr(
                                     out WhileExpression,
                                     Context,
@@ -1220,7 +890,7 @@ namespace OutOfPhase
                                     return Error;
                                 }
 
-                                ASTAssignRec IncrementExpression;
+                                ASTAssignment IncrementExpression;
                                 Token = Context.Scanner.GetNextToken();
                                 if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
                                     && (Token.GetTokenKeywordTag() == KeywordsType.eExprKwrdDo))
@@ -1229,16 +899,16 @@ namespace OutOfPhase
 
                                     Context.Scanner.UngetToken(Token);
 
-                                    IncrementExpression = NewAssignment(
-                                        NewExprOperand(NewSymbolReference(LoopVariable, LoopVariableLineNumber), LoopVariableLineNumber),
-                                        NewExprBinaryOperator(
-                                            NewBinaryOperator(
-                                                BinaryOpType.eBinaryPlus,
-                                                NewExprOperand(NewSymbolReference(LoopVariable, LoopVariableLineNumber), LoopVariableLineNumber),
-                                                NewExprOperand(
-                                                    LoopVariable.GetSymbolVariableDataType() != DataTypes.eFloat
-                                                        ? NewIntegerLiteral(1, Context.Scanner.GetCurrentLineNumber())
-                                                        : NewSingleLiteral(1, Context.Scanner.GetCurrentLineNumber()),
+                                    IncrementExpression = new ASTAssignment(
+                                        new ASTExpression(new ASTOperand(LoopVariable, LoopVariableLineNumber), LoopVariableLineNumber),
+                                        new ASTExpression(
+                                            new ASTBinaryOperation(
+                                                BinaryOperatorKind.eBinaryPlus,
+                                                new ASTExpression(new ASTOperand(LoopVariable, LoopVariableLineNumber), LoopVariableLineNumber),
+                                                new ASTExpression(
+                                                    LoopVariable.VariableDataType != DataTypes.eFloat
+                                                        ? new ASTOperand(1, Context.Scanner.GetCurrentLineNumber())
+                                                        : new ASTOperand(1, Context.Scanner.GetCurrentLineNumber()),
                                                     Context.Scanner.GetCurrentLineNumber()),
                                                 Context.Scanner.GetCurrentLineNumber()),
                                             Context.Scanner.GetCurrentLineNumber()),
@@ -1252,8 +922,8 @@ namespace OutOfPhase
                                     {
                                         // general form: step set <lvalue> := <rvalue>
 
-                                        ASTExpressionRec LValue;
-                                        ASTExpressionRec RValue;
+                                        ASTExpression LValue;
+                                        ASTExpression RValue;
 
                                         Error = ParseExpr(
                                             out LValue,
@@ -1281,7 +951,7 @@ namespace OutOfPhase
                                             return Error;
                                         }
 
-                                        IncrementExpression = NewAssignment(
+                                        IncrementExpression = new ASTAssignment(
                                             LValue,
                                             RValue,
                                             LineNumberForFirstToken);
@@ -1292,7 +962,7 @@ namespace OutOfPhase
 
                                         // special form: step <expression>
 
-                                        ASTExpressionRec RValue;
+                                        ASTExpression RValue;
                                         Error = ParseExpr(
                                             out RValue,
                                             Context,
@@ -1302,12 +972,12 @@ namespace OutOfPhase
                                             return Error;
                                         }
 
-                                        IncrementExpression = NewAssignment(
-                                            NewExprOperand(NewSymbolReference(LoopVariable, LoopVariableLineNumber), LoopVariableLineNumber),
-                                            NewExprBinaryOperator(
-                                                NewBinaryOperator(
-                                                    BinaryOpType.eBinaryPlus,
-                                                    NewExprOperand(NewSymbolReference(LoopVariable, LoopVariableLineNumber), LoopVariableLineNumber),
+                                        IncrementExpression = new ASTAssignment(
+                                            new ASTExpression(new ASTOperand(LoopVariable, LoopVariableLineNumber), LoopVariableLineNumber),
+                                            new ASTExpression(
+                                                new ASTBinaryOperation(
+                                                    BinaryOperatorKind.eBinaryPlus,
+                                                    new ASTExpression(new ASTOperand(LoopVariable, LoopVariableLineNumber), LoopVariableLineNumber),
                                                     RValue,
                                                     RValue.LineNumber),
                                                 RValue.LineNumber),
@@ -1324,7 +994,7 @@ namespace OutOfPhase
                                     return CompileErrors.eCompileExpectedDo;
                                 }
 
-                                ASTExpressionRec Body;
+                                ASTExpression Body;
                                 Error = ParseExpr(
                                     out Body,
                                     Context,
@@ -1336,7 +1006,7 @@ namespace OutOfPhase
 
                                 Context.SymbolTable.DecrementSymbolTableLevel();
 
-                                ASTForLoop ForLoop = NewForLoop(
+                                ASTForLoop ForLoop = new ASTForLoop(
                                     LoopVariable,
                                     InitialValue,
                                     WhileExpression,
@@ -1344,7 +1014,7 @@ namespace OutOfPhase
                                     Body,
                                     LineNumberForFirstToken);
 
-                                ExpressionOut = NewExprForLoop(
+                                ExpressionOut = new ASTExpression(
                                     ForLoop,
                                     LineNumberForFirstToken);
 
@@ -1391,7 +1061,7 @@ namespace OutOfPhase
                 return Error;
             }
 
-            FormalArgListOut = SymbolListRec.SymbolListCons(
+            FormalArgListOut = SymbolListRec.Cons(
                 FormalArgOut,
                 ListTail);
 
@@ -1405,18 +1075,18 @@ namespace OutOfPhase
         /* FIRST SET: */
         /*  <whileloop>        : {while} */
         /* FOLLOW SET: */
-        /*  <whileloop>        : {then, else, elseif, while, until, do, to, ), CLOSEBRACKET, */
-        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*  <whileloop>        : {then, else, elseif, while, do, to, ), CLOSEBRACKET, */
+        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseWhileLoop(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
-            ASTExpressionRec ConditionalExpr;
-            ASTExpressionRec BodyExpr;
+            ASTExpression ConditionalExpr;
+            ASTExpression BodyExpr;
             CompileErrors Error;
-            ASTLoopRec WhileLoopThing;
+            ASTLoop WhileLoopThing;
             int LineNumberOfWholeForm;
 
             ExpressionOut = null;
@@ -1459,88 +1129,14 @@ namespace OutOfPhase
                 return Error;
             }
 
-            WhileLoopThing = NewLoop(
-                LoopTypes.eLoopWhileDo,
+            WhileLoopThing = new ASTLoop(
+                LoopKind.eLoopWhileDo,
                 ConditionalExpr,
                 BodyExpr,
                 LineNumberOfWholeForm);
 
-            ExpressionOut = NewExprLoop(
+            ExpressionOut = new ASTExpression(
                 WhileLoopThing,
-                LineNumberOfWholeForm);
-
-            return CompileErrors.eCompileNoError;
-        }
-
-
-
-
-        /*  118:   <untilloop>        ::= until <expr> do <expr> */
-        /* FIRST SET: */
-        /*  <untilloop>        : {until} */
-        /* FOLLOW SET: */
-        /*  <untilloop>        : {then, else, elseif, while, until, do, to, ), CLOSEBRACKET, */
-        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
-        private static CompileErrors ParseUntilLoop(
-            out ASTExpressionRec ExpressionOut,
-            ParserContext Context,
-            out int LineNumberOut)
-        {
-            TokenRec<KeywordsType> Token;
-            ASTExpressionRec ConditionalExpr;
-            ASTExpressionRec BodyExpr;
-            CompileErrors Error;
-            ASTLoopRec UntilLoopThing;
-            int LineNumberOfWholeForm;
-
-            ExpressionOut = null;
-
-            LineNumberOfWholeForm = Context.Scanner.GetCurrentLineNumber();
-
-            /* munch until */
-            Token = Context.Scanner.GetNextToken();
-            if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
-                || (Token.GetTokenKeywordTag() != KeywordsType.eExprKwrdUntil))
-            {
-                LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                return CompileErrors.eCompileExpectedUntil;
-            }
-
-            Error = ParseExpr(
-                out ConditionalExpr,
-                Context,
-                out LineNumberOut);
-            if (Error != CompileErrors.eCompileNoError)
-            {
-                return Error;
-            }
-
-            /* munch do */
-            Token = Context.Scanner.GetNextToken();
-            if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
-                || (Token.GetTokenKeywordTag() != KeywordsType.eExprKwrdDo))
-            {
-                LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                return CompileErrors.eCompileExpectedDo;
-            }
-
-            Error = ParseExpr(
-                out BodyExpr,
-                Context,
-                out LineNumberOut);
-            if (Error != CompileErrors.eCompileNoError)
-            {
-                return Error;
-            }
-
-            UntilLoopThing = NewLoop(
-                LoopTypes.eLoopUntilDo,
-                ConditionalExpr,
-                BodyExpr,
-                LineNumberOfWholeForm);
-
-            ExpressionOut = NewExprLoop(
-                UntilLoopThing,
                 LineNumberOfWholeForm);
 
             return CompileErrors.eCompileNoError;
@@ -1554,10 +1150,10 @@ namespace OutOfPhase
         /* FIRST SET: */
         /*  <vartail>          : {(, EQ} */
         /* FOLLOW SET: */
-        /*  <vartail>          : {then, else, elseif, while, until, do, to, ), CLOSEBRACKET, */
-        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*  <vartail>          : {then, else, elseif, while, do, to, ), CLOSEBRACKET, */
+        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseVarTail(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             TokenRec<KeywordsType> VariableName,
             int VariableDeclLine,
             DataTypes VariableType,
@@ -1585,9 +1181,9 @@ namespace OutOfPhase
                 /* array declaration */
                 case TokenTypes.eTokenOpenParen:
                     {
-                        ASTExpressionRec ArraySizeExpression;
+                        ASTExpression ArraySizeExpression;
                         CompileErrors Error;
-                        ASTArrayDeclRec ArrayConstructor;
+                        ASTArrayDeclaration ArrayConstructor;
 
                         if ((VariableType != DataTypes.eArrayOfBoolean)
                             && (VariableType != DataTypes.eArrayOfByte)
@@ -1617,13 +1213,13 @@ namespace OutOfPhase
                         }
 
                         /* build the array constructor node */
-                        ArrayConstructor = NewArrayConstruction(
+                        ArrayConstructor = new ASTArrayDeclaration(
                             SymbolTableEntry,
                             ArraySizeExpression,
                             VariableDeclLine);
 
                         /* build AST node */
-                        ExpressionOut = NewExprArrayDecl(
+                        ExpressionOut = new ASTExpression(
                             ArrayConstructor,
                             VariableDeclLine);
                     }
@@ -1632,9 +1228,9 @@ namespace OutOfPhase
                 /* variable construction */
                 case TokenTypes.eTokenEqual:
                     {
-                        ASTExpressionRec Initializer;
+                        ASTExpression Initializer;
                         CompileErrors Error;
-                        ASTVarDeclRec VariableConstructor;
+                        ASTVariableDeclaration VariableConstructor;
 
                         Error = ParseExpr(
                             out Initializer,
@@ -1646,13 +1242,13 @@ namespace OutOfPhase
                         }
 
                         /* build variable thing */
-                        VariableConstructor = NewVariableDeclaration(
+                        VariableConstructor = new ASTVariableDeclaration(
                             SymbolTableEntry,
                             Initializer,
                             VariableDeclLine);
 
                         /* encapsulate */
-                        ExpressionOut = NewExprVariableDeclaration(
+                        ExpressionOut = new ASTExpression(
                             VariableConstructor,
                             VariableDeclLine);
                     }
@@ -1660,16 +1256,10 @@ namespace OutOfPhase
             }
 
             /* add the identifier to the symbol table */
-            switch (Context.SymbolTable.AddSymbolToTable(SymbolTableEntry))
+            if (!Context.SymbolTable.Add(SymbolTableEntry))
             {
-                case AddSymbolType.eAddSymbolNoErr:
-                    break;
-                case AddSymbolType.eAddSymbolAlreadyExists:
-                    LineNumberOut = VariableDeclLine;
-                    return CompileErrors.eCompileMultiplyDefinedIdentifier;
-                default:
-                    Debug.Assert(false);
-                    throw new InvalidOperationException();
+                LineNumberOut = VariableDeclLine;
+                return CompileErrors.eCompileMultiplyDefinedIdentifier;
             }
 
             return CompileErrors.eCompileNoError;
@@ -1681,23 +1271,23 @@ namespace OutOfPhase
         /*  110:   <ifrest>           ::= <expr> then <expr> <iftail> */
         /* FIRST SET: */
         /*  <ifrest>           : {<identifier>, <integer>, <single>, <double>, <fixed>, */
-        /*       <string>, bool, int, single, double, fixed, proto, var, not, sin, */
+        /*       <string>, bool, int, single, double, fixed, var, not, sin, */
         /*       cos, tan, asin, acos, atan, ln, exp, sqr, sqrt, abs, neg, sign, length, */
-        /*       if, while, until, do, resize, error, true, false, set, (, -, */
-        /*       <prototype>, <expr>, <expr2>, <expr3>, <expr4>, <expr5>, <expr6>, */
-        /*       <unary_oper>, <expr7>, <expr8>, <whileloop>, <untilloop>} */
+        /*       if, while, do, resize, error, true, false, set, (, -, */
+        /*       <expr>, <expr2>, <expr3>, <expr4>, <expr5>, <expr6>, */
+        /*       <unary_oper>, <expr7>, <expr8>, <whileloop>} */
         /* FOLLOW SET: */
-        /*  <ifrest>           : {then, else, elseif, while, until, do, to, ), CLOSEBRACKET, */
-        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*  <ifrest>           : {then, else, elseif, while, do, to, ), CLOSEBRACKET, */
+        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseIfRest(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
             CompileErrors Error;
-            ASTExpressionRec Predicate;
-            ASTExpressionRec Consequent;
+            ASTExpression Predicate;
+            ASTExpression Consequent;
 
             ExpressionOut = null;
 
@@ -1739,51 +1329,38 @@ namespace OutOfPhase
 
 
 
-        /*  119:   <loopwhileuntil>   ::= while <expr> */
-        /*  120:                      ::= until <expr> */
+        /*  119:   <loopwhile> ::= while <expr> */
         /* FIRST SET: */
-        /*  <loopwhileuntil>   : {while, until} */
+        /*  <loopwhile>        : {while} */
         /* FOLLOW SET: */
-        /*  <loopwhileuntil>   : {then, else, elseif, while, until, do, to, */
-        /*       ), CLOSEBRACKET, , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, */
+        /*  <loopwhile>        : {then, else, elseif, while, do, to, */
+        /*       ), CLOSEBRACKET, , , :=, ;, <actualtail>, <iftail>, <loopwhile>, */
         /*       <exprlisttail>} */
-        private static CompileErrors ParseLoopWhileUntil(
-            out ASTExpressionRec ExpressionOut,
-            ASTExpressionRec LoopBodyExpression,
+        private static CompileErrors ParseLoopWhile(
+            out ASTExpression ExpressionOut,
+            ASTExpression LoopBodyExpression,
             ParserContext Context,
             out int LineNumberOut,
             int LineNumberOfLoop)
         {
             TokenRec<KeywordsType> Token;
-            LoopTypes LoopKind;
-            ASTExpressionRec ConditionalExpression;
+            LoopKind LoopKind;
+            ASTExpression ConditionalExpression;
             CompileErrors Error;
-            ASTLoopRec LoopThang;
+            ASTLoop LoopThang;
 
             ExpressionOut = null;
 
             /* see what there is to do */
             Token = Context.Scanner.GetNextToken();
-            if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+            if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                || (Token.GetTokenKeywordTag() != KeywordsType.eExprKwrdWhile))
             {
                 LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                return CompileErrors.eCompileExpectedWhileOrUntil;
+                return CompileErrors.eCompileExpectedWhile;
             }
 
-            switch (Token.GetTokenKeywordTag())
-            {
-                default:
-                    LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                    return CompileErrors.eCompileExpectedWhileOrUntil;
-
-                case KeywordsType.eExprKwrdWhile:
-                    LoopKind = LoopTypes.eLoopDoWhile;
-                    break;
-
-                case KeywordsType.eExprKwrdUntil:
-                    LoopKind = LoopTypes.eLoopDoUntil;
-                    break;
-            }
+            LoopKind = LoopKind.eLoopDoWhile;
 
             Error = ParseExpr(
                 out ConditionalExpression,
@@ -1794,13 +1371,13 @@ namespace OutOfPhase
                 return Error;
             }
 
-            LoopThang = NewLoop(
+            LoopThang = new ASTLoop(
                 LoopKind,
                 ConditionalExpression,
                 LoopBodyExpression,
                 LineNumberOfLoop);
 
-            ExpressionOut = NewExprLoop(
+            ExpressionOut = new ASTExpression(
                 LoopThang,
                 LineNumberOfLoop);
 
@@ -1818,15 +1395,15 @@ namespace OutOfPhase
         /*       false, (, -, <expr3>, <expr4>, <expr5>, <expr6>, <unary_oper>, <expr7>, */
         /*       <expr8>} */
         /* FOLLOW SET: */
-        /*  <expr2>            : {then, else, elseif, while, until, do, to, ), CLOSEBRACKET, */
-        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*  <expr2>            : {then, else, elseif, while, do, to, ), CLOSEBRACKET, */
+        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr2(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             CompileErrors Error;
-            ASTExpressionRec LeftHandSide;
+            ASTExpression LeftHandSide;
 
             ExpressionOut = null;
 
@@ -1896,16 +1473,10 @@ namespace OutOfPhase
             FormalArgOut = new SymbolRec(IdentifierName.GetTokenIdentifierString());
             FormalArgOut.SymbolBecomeVariable(Type);
 
-            switch (Context.SymbolTable.AddSymbolToTable(FormalArgOut))
+            if (!Context.SymbolTable.Add(FormalArgOut))
             {
-                case AddSymbolType.eAddSymbolNoErr:
-                    break;
-                case AddSymbolType.eAddSymbolAlreadyExists:
-                    LineNumberOut = LineNumberOfIdentifier;
-                    return CompileErrors.eCompileMultiplyDefinedIdentifier;
-                default:
-                    Debug.Assert(false);
-                    throw new InvalidOperationException();
+                LineNumberOut = LineNumberOfIdentifier;
+                return CompileErrors.eCompileMultiplyDefinedIdentifier;
             }
 
             return CompileErrors.eCompileNoError;
@@ -1960,21 +1531,21 @@ namespace OutOfPhase
         /* FIRST SET: */
         /*  <iftail>           : {else, elseif} */
         /* FOLLOW SET: */
-        /*  <iftail>           : {then, else, elseif, while, until, do, to, ), CLOSEBRACKET, */
-        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*  <iftail>           : {then, else, elseif, while, do, to, ), CLOSEBRACKET, */
+        /*       , , :=, ;, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         /* note that 'else' and 'elseif' are in both the first and follow set.  this is */
         /* because if-then-else isn't LL(1).  we handle this by binding else to the deepest */
         /* if statement. */
         private static CompileErrors ParseIfTail(
-            out ASTExpressionRec ExpressionOut,
-            ASTExpressionRec Predicate,
-            ASTExpressionRec Consequent,
+            out ASTExpression ExpressionOut,
+            ASTExpression Predicate,
+            ASTExpression Consequent,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
-            ASTCondRec Conditional;
-            ASTExpressionRec Alternative;
+            ASTConditional Conditional;
+            ASTExpression Alternative;
             CompileErrors Error;
 
             ExpressionOut = null;
@@ -1990,7 +1561,7 @@ namespace OutOfPhase
                 default:
                 NullificationPoint:
                     Context.Scanner.UngetToken(Token);
-                    Conditional = NewConditional(
+                    Conditional = new ASTConditional(
                         Predicate,
                         Consequent,
                         null,
@@ -2014,7 +1585,7 @@ namespace OutOfPhase
                             {
                                 return Error;
                             }
-                            Conditional = NewConditional(
+                            Conditional = new ASTConditional(
                                 Predicate,
                                 Consequent,
                                 Alternative,
@@ -2031,7 +1602,7 @@ namespace OutOfPhase
                             {
                                 return Error;
                             }
-                            Conditional = NewConditional(
+                            Conditional = new ASTConditional(
                                 Predicate,
                                 Consequent,
                                 Alternative,
@@ -2042,7 +1613,7 @@ namespace OutOfPhase
             }
 
             /* finish building expression node */
-            ExpressionOut = NewExprConditional(
+            ExpressionOut = new ASTExpression(
                 Conditional,
                 Context.Scanner.GetCurrentLineNumber());
 
@@ -2059,16 +1630,16 @@ namespace OutOfPhase
         /*       acos, atan, ln, exp, sqr, sqrt, abs, neg, sign, length, true, */
         /*       false, (, -, <expr4>, <expr5>, <expr6>, <unary_oper>, <expr7>, <expr8>} */
         /* FOLLOW SET: */
-        /*  <expr3>            : {and, or, xor, then, else, elseif, while, until, do, */
+        /*  <expr3>            : {and, or, xor, then, else, elseif, while, do, */
         /*       to, ), CLOSEBRACKET, , , :=, ;, <expr2prime>, <conj_oper>, <actualtail>, */
-        /*       <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr3(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             CompileErrors Error;
-            ASTExpressionRec LeftHandSide;
+            ASTExpression LeftHandSide;
 
             ExpressionOut = null;
 
@@ -2096,21 +1667,21 @@ namespace OutOfPhase
         /* FIRST SET: */
         /*  <expr2prime>       : {and, or, xor, <conj_oper>} */
         /* FOLLOW SET: */
-        /*  <expr2prime>       : {then, else, elseif, while, until, do, to, ), */
-        /*       CLOSEBRACKET, , , :=, ;, <actualtail>, <iftail>, <loopwhileuntil>, */
+        /*  <expr2prime>       : {then, else, elseif, while, do, to, ), */
+        /*       CLOSEBRACKET, , , :=, ;, <actualtail>, <iftail>, <loopwhile>, */
         /*       <exprlisttail>} */
         private static CompileErrors ParseExpr2Prime(
-            out ASTExpressionRec ExpressionOut,
-            ASTExpressionRec LeftHandSide,
+            out ASTExpression ExpressionOut,
+            ASTExpression LeftHandSide,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
-            BinaryOpType OperatorType;
+            BinaryOperatorKind OperatorType;
             CompileErrors Error;
-            ASTExpressionRec RightHandSide;
-            ASTBinaryOpRec WholeOperator;
-            ASTExpressionRec ThisWholeNode;
+            ASTExpression RightHandSide;
+            ASTBinaryOperation WholeOperator;
+            ASTExpression ThisWholeNode;
 
             ExpressionOut = null;
             LineNumberOut = -1;
@@ -2153,12 +1724,12 @@ namespace OutOfPhase
                                 return Error;
                             }
                             /* build the operator node */
-                            WholeOperator = NewBinaryOperator(
+                            WholeOperator = new ASTBinaryOperation(
                                 OperatorType,
                                 LeftHandSide,
                                 RightHandSide,
                                 Context.Scanner.GetCurrentLineNumber());
-                            ThisWholeNode = NewExprBinaryOperator(
+                            ThisWholeNode = new ASTExpression(
                                 WholeOperator,
                                 Context.Scanner.GetCurrentLineNumber());
                             return ParseExpr2Prime(
@@ -2180,17 +1751,17 @@ namespace OutOfPhase
         /*       acos, atan, ln, exp, sqr, sqrt, abs, neg, sign, length, true, */
         /*       false, (, -, <expr5>, <expr6>, <unary_oper>, <expr7>, <expr8>} */
         /* FOLLOW SET: */
-        /*  <expr4>            : {and, or, xor, then, else, elseif, while, until, do, */
+        /*  <expr4>            : {and, or, xor, then, else, elseif, while, do, */
         /*       to, ), CLOSEBRACKET, , , :=, ;, EQ, NEQ, LT, LTEQ, GR, GREQ, <expr2prime>, */
         /*       <conj_oper>, <expr3prime>, <rel_oper>, <actualtail>, <iftail>, */
-        /*       <loopwhileuntil>, <exprlisttail>} */
+        /*       <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr4(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             CompileErrors Error;
-            ASTExpressionRec LeftHandSide;
+            ASTExpression LeftHandSide;
 
             ExpressionOut = null;
 
@@ -2218,21 +1789,21 @@ namespace OutOfPhase
         /* FIRST SET: */
         /*  <expr3prime>       : {EQ, NEQ, LT, LTEQ, GR, GREQ, <rel_oper>} */
         /* FOLLOW SET: */
-        /*  <expr3prime>       : {and, or, xor, then, else, elseif, while, until, */
+        /*  <expr3prime>       : {and, or, xor, then, else, elseif, while, */
         /*       do, to, ), CLOSEBRACKET, , , :=, ;, <expr2prime>, <conj_oper>, */
-        /*       <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr3Prime(
-            out ASTExpressionRec ExpressionOut,
-            ASTExpressionRec LeftHandSide,
+            out ASTExpression ExpressionOut,
+            ASTExpression LeftHandSide,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
-            BinaryOpType OperatorType;
+            BinaryOperatorKind OperatorType;
             CompileErrors Error;
-            ASTExpressionRec RightHandSide;
-            ASTBinaryOpRec WholeOperator;
-            ASTExpressionRec ThisWholeNode;
+            ASTExpression RightHandSide;
+            ASTBinaryOperation WholeOperator;
+            ASTExpression ThisWholeNode;
 
             ExpressionOut = null;
             LineNumberOut = -1;
@@ -2271,12 +1842,12 @@ namespace OutOfPhase
                         return Error;
                     }
                     /* build the operator node */
-                    WholeOperator = NewBinaryOperator(
+                    WholeOperator = new ASTBinaryOperation(
                         OperatorType,
                         LeftHandSide,
                         RightHandSide,
                         Context.Scanner.GetCurrentLineNumber());
-                    ThisWholeNode = NewExprBinaryOperator(
+                    ThisWholeNode = new ASTExpression(
                         WholeOperator,
                         Context.Scanner.GetCurrentLineNumber());
                     return ParseExpr3Prime(
@@ -2302,13 +1873,13 @@ namespace OutOfPhase
         /*       true, false, (, -, <expr3>, <expr4>, <expr5>, <expr6>, <unary_oper>, */
         /*       <expr7>, <expr8>} */
         private static CompileErrors ParseConjOper(
-            out BinaryOpType OperatorOut,
+            out BinaryOperatorKind OperatorOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
 
-            OperatorOut = BinaryOpType.eInvalid;
+            OperatorOut = BinaryOperatorKind.eInvalid;
             LineNumberOut = -1;
 
             Token = Context.Scanner.GetNextToken();
@@ -2327,15 +1898,15 @@ namespace OutOfPhase
                             return CompileErrors.eCompileExpectedOperatorOrStatement;
 
                         case KeywordsType.eExprKwrdAnd:
-                            OperatorOut = BinaryOpType.eBinaryAnd;
+                            OperatorOut = BinaryOperatorKind.eBinaryAnd;
                             return CompileErrors.eCompileNoError;
 
                         case KeywordsType.eExprKwrdOr:
-                            OperatorOut = BinaryOpType.eBinaryOr;
+                            OperatorOut = BinaryOperatorKind.eBinaryOr;
                             return CompileErrors.eCompileNoError;
 
                         case KeywordsType.eExprKwrdXor:
-                            OperatorOut = BinaryOpType.eBinaryXor;
+                            OperatorOut = BinaryOperatorKind.eBinaryXor;
                             return CompileErrors.eCompileNoError;
                     }
             }
@@ -2351,17 +1922,17 @@ namespace OutOfPhase
         /*       acos, atan, ln, exp, sqr, sqrt, abs, neg, sign, length, true, */
         /*       false, (, -, <expr6>, <unary_oper>, <expr7>, <expr8>} */
         /* FOLLOW SET: */
-        /*  <expr5>            : {and, or, xor, then, else, elseif, while, until, do, */
+        /*  <expr5>            : {and, or, xor, then, else, elseif, while, do, */
         /*       to, ), CLOSEBRACKET, , , :=, ;, +, -, EQ, NEQ, LT, LTEQ, GR, GREQ, */
         /*       <expr2prime>, <conj_oper>, <expr3prime>, <rel_oper>, <expr4prime>, */
-        /*       <add_oper>, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <add_oper>, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr5(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             CompileErrors Error;
-            ASTExpressionRec LeftHandSide;
+            ASTExpression LeftHandSide;
 
             ExpressionOut = null;
 
@@ -2389,22 +1960,22 @@ namespace OutOfPhase
         /* FIRST SET: */
         /*  <expr4prime>       : {+, -, <add_oper>} */
         /* FOLLOW SET: */
-        /*  <expr4prime>       : {and, or, xor, then, else, elseif, while, until, */
+        /*  <expr4prime>       : {and, or, xor, then, else, elseif, while, */
         /*       do, to, ), CLOSEBRACKET, , , :=, ;, EQ, NEQ, LT, LTEQ, GR, GREQ, */
         /*       <expr2prime>, <conj_oper>, <expr3prime>, <rel_oper>, <actualtail>, */
-        /*       <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr4Prime(
-            out ASTExpressionRec ExpressionOut,
-            ASTExpressionRec LeftHandSide,
+            out ASTExpression ExpressionOut,
+            ASTExpression LeftHandSide,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
-            BinaryOpType OperatorType;
+            BinaryOperatorKind OperatorType;
             CompileErrors Error;
-            ASTExpressionRec RightHandSide;
-            ASTBinaryOpRec WholeOperator;
-            ASTExpressionRec ThisWholeNode;
+            ASTExpression RightHandSide;
+            ASTBinaryOperation WholeOperator;
+            ASTExpression ThisWholeNode;
 
             ExpressionOut = null;
             LineNumberOut = -1;
@@ -2438,12 +2009,12 @@ namespace OutOfPhase
                         return Error;
                     }
                     /* create the node */
-                    WholeOperator = NewBinaryOperator(
+                    WholeOperator = new ASTBinaryOperation(
                         OperatorType,
                         LeftHandSide,
                         RightHandSide,
                         Context.Scanner.GetCurrentLineNumber());
-                    ThisWholeNode = NewExprBinaryOperator(
+                    ThisWholeNode = new ASTExpression(
                         WholeOperator,
                         Context.Scanner.GetCurrentLineNumber());
                     return ParseExpr4Prime(
@@ -2472,13 +2043,13 @@ namespace OutOfPhase
         /*       true, false, (, -, <expr4>, <expr5>, <expr6>, <unary_oper>, <expr7>, */
         /*       <expr8>} */
         private static CompileErrors ParseRelOper(
-            out BinaryOpType OperatorOut,
+            out BinaryOperatorKind OperatorOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
 
-            OperatorOut = BinaryOpType.eInvalid;
+            OperatorOut = BinaryOperatorKind.eInvalid;
             LineNumberOut = -1;
 
             Token = Context.Scanner.GetNextToken();
@@ -2490,27 +2061,27 @@ namespace OutOfPhase
                     return CompileErrors.eCompileExpectedOperatorOrStatement;
 
                 case TokenTypes.eTokenEqual:
-                    OperatorOut = BinaryOpType.eBinaryEqual;
+                    OperatorOut = BinaryOperatorKind.eBinaryEqual;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenLessGreater:
-                    OperatorOut = BinaryOpType.eBinaryNotEqual;
+                    OperatorOut = BinaryOperatorKind.eBinaryNotEqual;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenLess:
-                    OperatorOut = BinaryOpType.eBinaryLessThan;
+                    OperatorOut = BinaryOperatorKind.eBinaryLessThan;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenLessEqual:
-                    OperatorOut = BinaryOpType.eBinaryLessThanOrEqual;
+                    OperatorOut = BinaryOperatorKind.eBinaryLessThanOrEqual;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenGreater:
-                    OperatorOut = BinaryOpType.eBinaryGreaterThan;
+                    OperatorOut = BinaryOperatorKind.eBinaryGreaterThan;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenGreaterEqual:
-                    OperatorOut = BinaryOpType.eBinaryGreaterThanOrEqual;
+                    OperatorOut = BinaryOperatorKind.eBinaryGreaterThanOrEqual;
                     return CompileErrors.eCompileNoError;
             }
         }
@@ -2527,20 +2098,21 @@ namespace OutOfPhase
         /*       false, (, -, <unary_oper>, <expr7>, <expr8>} */
         /* FOLLOW SET: */
         /*  <expr6>            : {and, or, xor, div, mod, SHR, SHL, then, else, elseif, */
-        /*       while, until, do, to, ), CLOSEBRACKET, , , :=, ;, *, /, +, -, EQ, NEQ, */
+        /*       while, do, to, ), CLOSEBRACKET, , , :=, ;, *, /, +, -, EQ, NEQ, */
         /*       LT, LTEQ, GR, GREQ, <expr2prime>, <conj_oper>, <expr3prime>, <rel_oper>, */
         /*       <expr4prime>, <add_oper>, <expr5prime>, <mult_oper>, <actualtail>, */
-        /*       <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr6(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
-            UnaryOpType UnaryOperatorThing;
-            ASTExpressionRec UnaryArgument;
+            UnaryOpKind UnaryOperatorThing;
+            bool ExplicitCast = false;
+            ASTExpression UnaryArgument;
             CompileErrors Error;
-            ASTUnaryOpRec UnaryOpNode;
+            ASTUnaryOperation UnaryOpNode;
 
             ExpressionOut = null;
 
@@ -2557,7 +2129,7 @@ namespace OutOfPhase
                         out LineNumberOut);
 
                 case TokenTypes.eTokenMinus:
-                    UnaryOperatorThing = UnaryOpType.eUnaryNegation;
+                    UnaryOperatorThing = UnaryOpKind.eUnaryNegation;
                     break;
 
                 case TokenTypes.eTokenKeyword:
@@ -2567,88 +2139,112 @@ namespace OutOfPhase
                             goto OtherPoint;
 
                         case KeywordsType.eExprKwrdNot:
-                            UnaryOperatorThing = UnaryOpType.eUnaryNot;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryNot;
                             break;
 
                         case KeywordsType.eExprKwrdSin:
-                            UnaryOperatorThing = UnaryOpType.eUnarySine;
+                            UnaryOperatorThing = UnaryOpKind.eUnarySine;
                             break;
 
                         case KeywordsType.eExprKwrdCos:
-                            UnaryOperatorThing = UnaryOpType.eUnaryCosine;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryCosine;
                             break;
 
                         case KeywordsType.eExprKwrdTan:
-                            UnaryOperatorThing = UnaryOpType.eUnaryTangent;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryTangent;
                             break;
 
                         case KeywordsType.eExprKwrdAsin:
-                            UnaryOperatorThing = UnaryOpType.eUnaryArcSine;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryArcSine;
                             break;
 
                         case KeywordsType.eExprKwrdAcos:
-                            UnaryOperatorThing = UnaryOpType.eUnaryArcCosine;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryArcCosine;
                             break;
 
                         case KeywordsType.eExprKwrdAtan:
-                            UnaryOperatorThing = UnaryOpType.eUnaryArcTangent;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryArcTangent;
                             break;
 
                         case KeywordsType.eExprKwrdLn:
-                            UnaryOperatorThing = UnaryOpType.eUnaryLogarithm;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryLogarithm;
                             break;
 
                         case KeywordsType.eExprKwrdExp:
-                            UnaryOperatorThing = UnaryOpType.eUnaryExponentiation;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryExponentiation;
                             break;
 
                         case KeywordsType.eExprKwrdBool:
-                            UnaryOperatorThing = UnaryOpType.eUnaryCastToBoolean;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryCastToBoolean;
+                            ExplicitCast = true;
                             break;
 
                         case KeywordsType.eExprKwrdInt:
-                            UnaryOperatorThing = UnaryOpType.eUnaryCastToInteger;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryCastToInteger;
+                            ExplicitCast = true;
                             break;
 
                         case KeywordsType.eExprKwrdSingle:
                         case KeywordsType.eExprKwrdFloat:
-                            UnaryOperatorThing = UnaryOpType.eUnaryCastToSingle;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryCastToSingle;
+                            ExplicitCast = true;
                             break;
 
                         case KeywordsType.eExprKwrdDouble:
-                            UnaryOperatorThing = UnaryOpType.eUnaryCastToDouble;
-                            break;
-
-                        case KeywordsType.eExprKwrdFixed:
-                            UnaryOperatorThing = UnaryOpType.eUnaryCastToSingle;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryCastToDouble;
+                            ExplicitCast = true;
                             break;
 
                         case KeywordsType.eExprKwrdSqr:
-                            UnaryOperatorThing = UnaryOpType.eUnarySquare;
+                            UnaryOperatorThing = UnaryOpKind.eUnarySquare;
                             break;
 
                         case KeywordsType.eExprKwrdSqrt:
-                            UnaryOperatorThing = UnaryOpType.eUnarySquareRoot;
+                            UnaryOperatorThing = UnaryOpKind.eUnarySquareRoot;
                             break;
 
                         case KeywordsType.eExprKwrdAbs:
-                            UnaryOperatorThing = UnaryOpType.eUnaryAbsoluteValue;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryAbsoluteValue;
                             break;
 
                         case KeywordsType.eExprKwrdNeg:
-                            UnaryOperatorThing = UnaryOpType.eUnaryTestNegative;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryTestNegative;
                             break;
 
                         case KeywordsType.eExprKwrdSign:
-                            UnaryOperatorThing = UnaryOpType.eUnaryGetSign;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryGetSign;
                             break;
 
                         case KeywordsType.eExprKwrdLength:
-                            UnaryOperatorThing = UnaryOpType.eUnaryGetArrayLength;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryGetArrayLength;
                             break;
 
                         case KeywordsType.eExprKwrdDup:
-                            UnaryOperatorThing = UnaryOpType.eUnaryDuplicateArray;
+                            UnaryOperatorThing = UnaryOpKind.eUnaryDuplicateArray;
+                            break;
+
+                        case KeywordsType.eExprKwrdFloor:
+                            UnaryOperatorThing = UnaryOpKind.eUnaryFloor;
+                            break;
+
+                        case KeywordsType.eExprKwrdCeil:
+                            UnaryOperatorThing = UnaryOpKind.eUnaryCeil;
+                            break;
+
+                        case KeywordsType.eExprKwrdRound:
+                            UnaryOperatorThing = UnaryOpKind.eUnaryRound;
+                            break;
+
+                        case KeywordsType.eExprKwrdCosh:
+                            UnaryOperatorThing = UnaryOpKind.eUnaryCosh;
+                            break;
+
+                        case KeywordsType.eExprKwrdSinh:
+                            UnaryOperatorThing = UnaryOpKind.eUnarySinh;
+                            break;
+
+                        case KeywordsType.eExprKwrdTanh:
+                            UnaryOperatorThing = UnaryOpKind.eUnaryTanh;
                             break;
                     }
                     break;
@@ -2665,12 +2261,13 @@ namespace OutOfPhase
             }
 
             /* build node */
-            UnaryOpNode = NewUnaryOperator(
+            UnaryOpNode = new ASTUnaryOperation(
                 UnaryOperatorThing,
                 UnaryArgument,
-                Context.Scanner.GetCurrentLineNumber());
+                Context.Scanner.GetCurrentLineNumber(),
+                ExplicitCast);
 
-            ExpressionOut = NewExprUnaryOperator(
+            ExpressionOut = new ASTExpression(
                 UnaryOpNode,
                 Context.Scanner.GetCurrentLineNumber());
 
@@ -2685,22 +2282,22 @@ namespace OutOfPhase
         /* FIRST SET: */
         /*  <expr5prime>       : {div, mod, SHR, SHL, *, /, <mult_oper>} */
         /* FOLLOW SET: */
-        /*  <expr5prime>       : {and, or, xor, then, else, elseif, while, until, */
+        /*  <expr5prime>       : {and, or, xor, then, else, elseif, while, */
         /*       do, to, ), CLOSEBRACKET, , , :=, ;, +, -, EQ, NEQ, LT, LTEQ, GR, */
         /*       GREQ, <expr2prime>, <conj_oper>, <expr3prime>, <rel_oper>, <expr4prime>, */
-        /*       <add_oper>, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <add_oper>, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr5Prime(
-            out ASTExpressionRec ExpressionOut,
-            ASTExpressionRec LeftHandSide,
+            out ASTExpression ExpressionOut,
+            ASTExpression LeftHandSide,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
-            ASTExpressionRec RightHandSide;
-            BinaryOpType OperatorThing;
+            ASTExpression RightHandSide;
+            BinaryOperatorKind OperatorThing;
             CompileErrors Error;
-            ASTBinaryOpRec BinaryOperator;
-            ASTExpressionRec WholeThingThing;
+            ASTBinaryOperation BinaryOperator;
+            ASTExpression WholeThingThing;
 
             ExpressionOut = null;
             LineNumberOut = -1;
@@ -2762,12 +2359,12 @@ namespace OutOfPhase
                         return Error;
                     }
                     /* create the node */
-                    BinaryOperator = NewBinaryOperator(
+                    BinaryOperator = new ASTBinaryOperation(
                         OperatorThing,
                         LeftHandSide,
                         RightHandSide,
                         Context.Scanner.GetCurrentLineNumber());
-                    WholeThingThing = NewExprBinaryOperator(
+                    WholeThingThing = new ASTExpression(
                         BinaryOperator,
                         Context.Scanner.GetCurrentLineNumber());
                     return ParseExpr5Prime(
@@ -2789,13 +2386,13 @@ namespace OutOfPhase
         /*       asin, acos, atan, ln, exp, sqr, sqrt, abs, neg, sign, length, */
         /*       true, false, (, -, <expr5>, <expr6>, <unary_oper>, <expr7>, <expr8>} */
         private static CompileErrors ParseAddOper(
-            out BinaryOpType OperatorOut,
+            out BinaryOperatorKind OperatorOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
 
-            OperatorOut = BinaryOpType.eInvalid;
+            OperatorOut = BinaryOperatorKind.eInvalid;
             LineNumberOut = -1;
 
             Token = Context.Scanner.GetNextToken();
@@ -2807,11 +2404,11 @@ namespace OutOfPhase
                     return CompileErrors.eCompileExpectedOperatorOrStatement;
 
                 case TokenTypes.eTokenPlus:
-                    OperatorOut = BinaryOpType.eBinaryPlus;
+                    OperatorOut = BinaryOperatorKind.eBinaryPlus;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenMinus:
-                    OperatorOut = BinaryOpType.eBinaryMinus;
+                    OperatorOut = BinaryOperatorKind.eBinaryMinus;
                     return CompileErrors.eCompileNoError;
             }
         }
@@ -2825,16 +2422,16 @@ namespace OutOfPhase
         /*       <string>, true, false, (, <expr8>} */
         /* FOLLOW SET: */
         /*  <expr7>            : {and, or, xor, div, mod, SHR, SHL, then, else, elseif, */
-        /*       while, until, do, to, ), CLOSEBRACKET, , , :=, ;, *, /, +, -, EQ, NEQ, */
+        /*       while, do, to, ), CLOSEBRACKET, , , :=, ;, *, /, +, -, EQ, NEQ, */
         /*       LT, LTEQ, GR, GREQ, <expr2prime>, <conj_oper>, <expr3prime>, <rel_oper>, */
         /*       <expr4prime>, <add_oper>, <expr5prime>, <mult_oper>, <actualtail>, */
-        /*       <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr7(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
-            ASTExpressionRec ResultOfExpr8;
+            ASTExpression ResultOfExpr8;
             CompileErrors Error;
 
             ExpressionOut = null;
@@ -2870,13 +2467,13 @@ namespace OutOfPhase
         /*       asin, acos, atan, ln, exp, sqr, sqrt, abs, neg, sign, length, */
         /*       true, false, (, -, <expr6>, <unary_oper>, <expr7>, <expr8>} */
         private static CompileErrors ParseMultOper(
-            out BinaryOpType OperatorOut,
+            out BinaryOperatorKind OperatorOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
 
-            OperatorOut = BinaryOpType.eInvalid;
+            OperatorOut = BinaryOperatorKind.eInvalid;
             LineNumberOut = -1;
 
             Token = Context.Scanner.GetNextToken();
@@ -2888,19 +2485,19 @@ namespace OutOfPhase
                     return CompileErrors.eCompileExpectedOperatorOrStatement;
 
                 case TokenTypes.eTokenStar:
-                    OperatorOut = BinaryOpType.eBinaryMultiplication;
+                    OperatorOut = BinaryOperatorKind.eBinaryMultiplication;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenSlash:
-                    OperatorOut = BinaryOpType.eBinaryImpreciseDivision;
+                    OperatorOut = BinaryOperatorKind.eBinaryImpreciseDivision;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenLeftLeft:
-                    OperatorOut = BinaryOpType.eBinaryShiftLeft;
+                    OperatorOut = BinaryOperatorKind.eBinaryShiftLeft;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenRightRight:
-                    OperatorOut = BinaryOpType.eBinaryShiftRight;
+                    OperatorOut = BinaryOperatorKind.eBinaryShiftRight;
                     return CompileErrors.eCompileNoError;
 
                 case TokenTypes.eTokenKeyword:
@@ -2911,11 +2508,11 @@ namespace OutOfPhase
                             return CompileErrors.eCompileExpectedOperatorOrStatement;
 
                         case KeywordsType.eExprKwrdDiv:
-                            OperatorOut = BinaryOpType.eBinaryIntegerDivision;
+                            OperatorOut = BinaryOperatorKind.eBinaryIntegerDivision;
                             return CompileErrors.eCompileNoError;
 
                         case KeywordsType.eExprKwrdMod:
-                            OperatorOut = BinaryOpType.eBinaryIntegerRemainder;
+                            OperatorOut = BinaryOperatorKind.eBinaryIntegerRemainder;
                             return CompileErrors.eCompileNoError;
                     }
             }
@@ -2936,17 +2533,17 @@ namespace OutOfPhase
         /*  <expr8>            : {<identifier>, <integer>, <single>, <double>, <fixed>, */
         /*       <string>, true, false, (} */
         /*  <expr8>            : {and, or, xor, div, mod, SHR, SHL, then, else, elseif, */
-        /*       while, until, do, to, (, ), OPENBRACKET, CLOSEBRACKET, , , :=, ;, *, */
+        /*       while, do, to, (, ), OPENBRACKET, CLOSEBRACKET, , , :=, ;, *, */
         /*       /, +, -, ^, EQ, NEQ, LT, LTEQ, GR, GREQ, <expr2prime>, <conj_oper>, */
         /*       <expr3prime>, <rel_oper>, <expr4prime>, <add_oper>, <expr5prime>, */
         /*       <mult_oper>, <expr7prime>, <arraysubscript>, <funccall>, <exponentiation>, */
-        /*       <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr8(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
-            ASTOperandRec TheOperand;
+            ASTOperand TheOperand;
             TokenRec<KeywordsType> Token;
 
             ExpressionOut = null;
@@ -2965,25 +2562,19 @@ namespace OutOfPhase
                     {
                         SymbolRec TheSymbolTableEntry;
 
-                        TheSymbolTableEntry = Context.SymbolTable.GetSymbolFromTable(Token.GetTokenIdentifierString());
+                        TheSymbolTableEntry = Context.SymbolTable.Lookup(Token.GetTokenIdentifierString());
                         if (TheSymbolTableEntry == null)
                         {
                             /* LineNumberOut = Context.Scanner.GetCurrentLineNumber(); */
                             /* return CompileErrors.eCompileIdentifierNotDeclared; */
                             TheSymbolTableEntry = new SymbolRec(Token.GetTokenIdentifierString());
-                            switch (Context.SymbolTable.AddSymbolToTable(TheSymbolTableEntry))
+                            if (!Context.SymbolTable.Add(TheSymbolTableEntry))
                             {
-                                default:
-                                    Debug.Assert(false);
-                                    throw new InvalidOperationException();
-                                case AddSymbolType.eAddSymbolNoErr:
-                                    break;
-                                case AddSymbolType.eAddSymbolAlreadyExists:
-                                    LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                                    return CompileErrors.eCompileMultiplyDefinedIdentifier;
+                                LineNumberOut = Context.Scanner.GetCurrentLineNumber();
+                                return CompileErrors.eCompileMultiplyDefinedIdentifier;
                             }
                         }
-                        TheOperand = NewSymbolReference(
+                        TheOperand = new ASTOperand(
                             TheSymbolTableEntry,
                             Context.Scanner.GetCurrentLineNumber());
                     }
@@ -2991,21 +2582,21 @@ namespace OutOfPhase
 
                 /*   93:                      ::= <integer> */
                 case TokenTypes.eTokenInteger:
-                    TheOperand = NewIntegerLiteral(
+                    TheOperand = new ASTOperand(
                         Token.GetTokenIntegerValue(),
                         Context.Scanner.GetCurrentLineNumber());
                     break;
 
                 /*   94:                      ::= <single> */
                 case TokenTypes.eTokenSingle:
-                    TheOperand = NewSingleLiteral(
+                    TheOperand = new ASTOperand(
                         Token.GetTokenSingleValue(),
                         Context.Scanner.GetCurrentLineNumber());
                     break;
 
                 /*   95:                      ::= <double> */
                 case TokenTypes.eTokenDouble:
-                    TheOperand = NewDoubleLiteral(
+                    TheOperand = new ASTOperand(
                         Token.GetTokenDoubleValue(),
                         Context.Scanner.GetCurrentLineNumber());
                     break;
@@ -3015,7 +2606,7 @@ namespace OutOfPhase
 
                 /*   97:                      ::= <string> */
                 case TokenTypes.eTokenString:
-                    TheOperand = NewStringLiteral(
+                    TheOperand = new ASTOperand(
                         Token.GetTokenStringValue(),
                         Context.Scanner.GetCurrentLineNumber());
                     break;
@@ -3024,7 +2615,7 @@ namespace OutOfPhase
                 case TokenTypes.eTokenOpenParen:
                     {
                         CompileErrors Error;
-                        ASTExprListRec ListOfExpressions;
+                        ASTExpressionList ListOfExpressions;
 
                         /* open a new scope */
                         Context.SymbolTable.IncrementSymbolTableLevel();
@@ -3043,7 +2634,7 @@ namespace OutOfPhase
                         Context.SymbolTable.DecrementSymbolTableLevel();
 
                         /* build the thing */
-                        ExpressionOut = NewExprSequence(
+                        ExpressionOut = new ASTExpression(
                             ListOfExpressions,
                             Context.Scanner.GetCurrentLineNumber());
 
@@ -3066,21 +2657,21 @@ namespace OutOfPhase
 
                         /*   98:                      ::= true */
                         case KeywordsType.eExprKwrdTrue:
-                            TheOperand = NewBooleanLiteral(
+                            TheOperand = new ASTOperand(
                                 true,
                                 Context.Scanner.GetCurrentLineNumber());
                             break;
 
                         /*   99:                      ::= false */
                         case KeywordsType.eExprKwrdFalse:
-                            TheOperand = NewBooleanLiteral(
+                            TheOperand = new ASTOperand(
                                 false,
                                 Context.Scanner.GetCurrentLineNumber());
                             break;
 
                         /* this was added later. */
                         case KeywordsType.eExprKwrdPi:
-                            TheOperand = NewDoubleLiteral(
+                            TheOperand = new ASTOperand(
                                 Math.PI,
                                 Context.Scanner.GetCurrentLineNumber());
                             break;
@@ -3088,7 +2679,7 @@ namespace OutOfPhase
                     break;
             }
 
-            ExpressionOut = NewExprOperand(TheOperand, Context.Scanner.GetCurrentLineNumber());
+            ExpressionOut = new ASTExpression(TheOperand, Context.Scanner.GetCurrentLineNumber());
 
             return CompileErrors.eCompileNoError;
         }
@@ -3103,13 +2694,13 @@ namespace OutOfPhase
         /*  <expr7prime>       : {(, OPENBRACKET, ^, <arraysubscript>, <funccall>, */
         /*       <exponentiation>} */
         /*  <expr7prime>       : {and, or, xor, div, mod, SHR, SHL, then, else, */
-        /*       elseif, while, until, do, to, ), CLOSEBRACKET, , , :=, ;, *, /, */
+        /*       elseif, while, do, to, ), CLOSEBRACKET, , , :=, ;, *, /, */
         /*       +, -, EQ, NEQ, LT, LTEQ, GR, GREQ, <expr2prime>, <conj_oper>, */
         /*       <expr3prime>, <rel_oper>, <expr4prime>, <add_oper>, <expr5prime>, */
-        /*       <mult_oper>, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <mult_oper>, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExpr7Prime(
-            out ASTExpressionRec ExpressionOut,
-            ASTExpressionRec TheExpr8Thing,
+            out ASTExpression ExpressionOut,
+            ASTExpression TheExpr8Thing,
             ParserContext Context,
             out int LineNumberOut)
         {
@@ -3148,8 +2739,8 @@ namespace OutOfPhase
                 /*   82:                      ::= <exponentiation> */
                 case TokenTypes.eTokenCircumflex:
                     {
-                        ASTExpressionRec RightHandSide;
-                        ASTBinaryOpRec TheOperator;
+                        ASTExpression RightHandSide;
+                        ASTBinaryOperation TheOperator;
                         CompileErrors Error;
 
                         Context.Scanner.UngetToken(Token);
@@ -3161,12 +2752,12 @@ namespace OutOfPhase
                         {
                             return Error;
                         }
-                        TheOperator = NewBinaryOperator(
-                            BinaryOpType.eBinaryExponentiation,
+                        TheOperator = new ASTBinaryOperation(
+                            BinaryOperatorKind.eBinaryExponentiation,
                             TheExpr8Thing,
                             RightHandSide,
                             Context.Scanner.GetCurrentLineNumber());
-                        ExpressionOut = NewExprBinaryOperator(
+                        ExpressionOut = new ASTExpression(
                             TheOperator,
                             Context.Scanner.GetCurrentLineNumber());
                         return CompileErrors.eCompileNoError;
@@ -3178,25 +2769,24 @@ namespace OutOfPhase
 
 
         /*   85:   <funccall>         ::= ( <actualstart> ) */
-        /*   85:   <funccall>         ::= ( <actualstart> ) : <type> */
         /* FIRST SET: */
         /*  <funccall>         : {(} */
         /* FOLLOW SET: */
         /*  <funccall>         : {and, or, xor, div, mod, SHR, SHL, then, else, elseif, */
-        /*       while, until, do, to, ), CLOSEBRACKET, , , :=, ;, *, /, +, -, EQ, */
+        /*       while, do, to, ), CLOSEBRACKET, , , :=, ;, *, /, +, -, EQ, */
         /*       NEQ, LT, LTEQ, GR, GREQ, <expr2prime>, <conj_oper>, <expr3prime>, */
         /*       <rel_oper>, <expr4prime>, <add_oper>, <expr5prime>, <mult_oper>, */
-        /*       <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseFuncCall(
-            out ASTExpressionRec ExpressionOut,
-            ASTExpressionRec FunctionGenerator,
+            out ASTExpression ExpressionOut,
+            ASTExpression FunctionGenerator,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
-            ASTExprListRec ListOfParameters;
+            ASTExpressionList ListOfParameters;
             CompileErrors Error;
-            ASTFuncCallRec TheFunctionCall;
+            ASTFunctionCall TheFunctionCall;
 
             ExpressionOut = null;
 
@@ -3226,25 +2816,17 @@ namespace OutOfPhase
                 return CompileErrors.eCompileExpectedCommaOrCloseParen;
             }
 
-            SymbolRec FunctionNameSymbol = GetSymbolFromOperand(GetOperandOutOfExpression(FunctionGenerator));
-
-            // TODO: remove deprecated code:
+            SymbolRec FunctionNameSymbol = FunctionGenerator.InnerOperand.Symbol;
 
             /* see if we should infer a function prototype from here */
-            bool colon;
-            Token = Context.Scanner.GetNextToken();
-            colon = Token.GetTokenType() == TokenTypes.eTokenColon;
-            Context.Scanner.UngetToken(Token);
             bool undeclared = false;
-            if ((undeclared = (WhatKindOfExpressionIsThis(FunctionGenerator) == ExprTypes.eExprOperand)
-                && (OperandWhatIsIt(GetOperandOutOfExpression(FunctionGenerator)) == ASTOperandType.eASTOperandSymbol)
-                && (GetSymbolFromOperand(GetOperandOutOfExpression(FunctionGenerator)).WhatIsThisSymbol() == SymbolType.eSymbolUndefined))
-                || colon/*deprecated - but if user specifies return type, must parse it*/)
+            if ((undeclared = (FunctionGenerator.Kind == ExprKind.eExprOperand)
+                && (FunctionGenerator.InnerOperand.Kind == ASTOperandKind.eASTOperandSymbol)
+                && (FunctionGenerator.InnerOperand.Symbol.Kind == SymbolKind.Undefined)))
             {
-                DataTypes ReturnType;
-                SymbolListRec FormalArgumentList;
-                ASTExprListRec ReversedExprList;
-                ASTExprListRec ExprListScan;
+#if false // TODO:Remove
+                ASTExpressionList ReversedExprList;
+                ASTExpressionList ExprListScan;
 
                 /* yes we should -- parse the ": <type>" after it */
 
@@ -3275,12 +2857,12 @@ namespace OutOfPhase
                 while (ExprListScan != null)
                 {
                     /* cons first element on so it will be last of the new list */
-                    ReversedExprList = ASTExprListCons(
-                        ExprListGetFirstExpr(ExprListScan),
+                    ReversedExprList = new ASTExpressionList(
+                        ExprListScan.First,
                         ReversedExprList,
                         Context.Scanner.GetCurrentLineNumber());
                     /* go to next */
-                    ExprListScan = ExprListGetRestList(ExprListScan);
+                    ExprListScan = ExprListScan.Rest;
                 }
                 /* now build arg symbol list from expression list */
                 FormalArgumentList = null;
@@ -3293,7 +2875,7 @@ namespace OutOfPhase
 
                     /* create symbol with same type as actual argument */
                     NewDummySymbol = new SymbolRec(String.Empty);
-                    if (TypeCheckExpression(out ArgumentDataType, ExprListGetFirstExpr(ExprListScan), out DummyLine)
+                    if (ExprListScan.First.TypeCheck(out ArgumentDataType, out DummyLine)
                         != CompileErrors.eCompileNoError)
                     {
                         /* the types don't check -- this will be caught later, so we'll */
@@ -3303,39 +2885,45 @@ namespace OutOfPhase
                     NewDummySymbol.SymbolBecomeVariable(
                         ArgumentDataType);
                     /* add symbol to list */
-                    FormalArgumentList = SymbolListRec.SymbolListCons(
+                    FormalArgumentList = SymbolListRec.Cons(
                         NewDummySymbol,
                         FormalArgumentList);
                     /* go to next */
-                    ExprListScan = ExprListGetRestList(ExprListScan);
+                    ExprListScan = ExprListScan.Rest;
                 }
-
-                /* fix up the function symbol */
-                if (undeclared)
-                {
-                    FunctionNameSymbol.SymbolBecomeFunction(
-                        FormalArgumentList,
-                        ReturnType);
-                }
-                // otherwise, disregard deprecated return type specification - with whole program compilation
-                // the return types are determined correctly in a later pass.
+#endif
+                // Create a function entry symbol - arguments and return type do not matter at this time because of whole-program
+                // compilation: type checking is deferred until all functions are parsed and signatures known.
+                FunctionNameSymbol.SymbolBecomeFunction(
+                    null/*FormalArgumentList*/,
+                    DataTypes.eInvalidDataType/*ReturnType*/);
             }
 
-            // record function reference for later fixup (whole program compilation case)
-            List<ParserContext.FunctionSymbolRefInfo> symbols;
-            if (!Context.FunctionSymbolList.TryGetValue(FunctionNameSymbol.GetSymbolName(), out symbols))
+            // record function in global function table for later fixup (whole program compilation case)
+            int start, count;
+            if (ASTFunctionCall.TryFindBuiltInFunctionRange(FunctionNameSymbol.SymbolName, out start, out count))
             {
-                symbols = new List<ParserContext.FunctionSymbolRefInfo>();
-                Context.FunctionSymbolList.Add(FunctionNameSymbol.GetSymbolName(), symbols);
+                // do not add built-in functions to the global function table
             }
-            symbols.Add(new ParserContext.FunctionSymbolRefInfo(FunctionNameSymbol, FunctionGenerator.LineNumber));
+            else
+            {
+                List<ParserContext.FunctionSymbolRefInfo> symbols;
+                if (!Context.FunctionSymbolList.TryGetValue(FunctionNameSymbol.SymbolName, out symbols))
+                {
+                    symbols = new List<ParserContext.FunctionSymbolRefInfo>();
+                    Context.FunctionSymbolList.Add(FunctionNameSymbol.SymbolName, symbols);
+                }
+                symbols.Add(new ParserContext.FunctionSymbolRefInfo(FunctionNameSymbol, FunctionGenerator.LineNumber));
+            }
 
-            TheFunctionCall = NewFunctionCall(
-                ListOfParameters,
+            TheFunctionCall = new ASTFunctionCall(
+                new ASTFunctionArgumentsExpressionList(
+                    ListOfParameters,
+                    Context.Scanner.GetCurrentLineNumber()),
                 FunctionGenerator,
                 Context.Scanner.GetCurrentLineNumber());
 
-            ExpressionOut = NewExprFunctionCall(
+            ExpressionOut = new ASTExpression(
                 TheFunctionCall,
                 Context.Scanner.GetCurrentLineNumber());
 
@@ -3350,21 +2938,21 @@ namespace OutOfPhase
         /*  <arraysubscript>   : {OPENBRACKET} */
         /* FOLLOW SET: */
         /*  <arraysubscript>   : {and, or, xor, div, mod, SHR, SHL, then, else, */
-        /*       elseif, while, until, do, to, ), CLOSEBRACKET, , , :=, ;, *, */
+        /*       elseif, while, do, to, ), CLOSEBRACKET, , , :=, ;, *, */
         /*       /, +, -, EQ, NEQ, LT, LTEQ, GR, GREQ, <expr2prime>, <conj_oper>, */
         /*       <expr3prime>, <rel_oper>, <expr4prime>, <add_oper>, <expr5prime>, */
-        /*       <mult_oper>, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <mult_oper>, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseArraySubscript(
-            out ASTExpressionRec ExpressionOut,
-            ASTExpressionRec ArrayGenerator,
+            out ASTExpression ExpressionOut,
+            ASTExpression ArrayGenerator,
             ParserContext Context,
             out int LineNumberOut)
         {
             TokenRec<KeywordsType> Token;
-            ASTExpressionRec Subscript;
+            ASTExpression Subscript;
             CompileErrors Error;
-            ASTBinaryOpRec ArraySubsOperation;
-            ASTExprListRec SubscriptRaw;
+            ASTBinaryOperation ArraySubsOperation;
+            ASTExpressionList SubscriptRaw;
 
             ExpressionOut = null;
 
@@ -3383,7 +2971,7 @@ namespace OutOfPhase
             {
                 return Error;
             }
-            Subscript = NewExprSequence(
+            Subscript = new ASTExpression(
                 SubscriptRaw,
                 Context.Scanner.GetCurrentLineNumber());
 
@@ -3394,12 +2982,12 @@ namespace OutOfPhase
                 return CompileErrors.eCompileExpectedCloseBracket;
             }
 
-            ArraySubsOperation = NewBinaryOperator(
-                BinaryOpType.eBinaryArraySubscripting,
+            ArraySubsOperation = new ASTBinaryOperation(
+                BinaryOperatorKind.eBinaryArraySubscripting,
                 ArrayGenerator,
                 Subscript,
                 Context.Scanner.GetCurrentLineNumber());
-            ExpressionOut = NewExprBinaryOperator(
+            ExpressionOut = new ASTExpression(
                 ArraySubsOperation,
                 Context.Scanner.GetCurrentLineNumber());
 
@@ -3412,22 +3000,22 @@ namespace OutOfPhase
         /*  124:   <exprlist>         ::= <exprlistelem> <exprlisttail> */
         /* FIRST SET: */
         /*  <exprlist>         : {<identifier>, <integer>, <single>, <double>, <fixed>, */
-        /*       <string>, bool, int, single, double, fixed, proto, var, not, sin, */
+        /*       <string>, bool, int, single, double, fixed, var, not, sin, */
         /*       cos, tan, asin, acos, atan, ln, exp, sqr, sqrt, abs, neg, sign, */
-        /*       length, if, while, until, do, resize, error, true, false, */
-        /*       set, (, -, <prototype>, <expr>, <expr2>, <expr3>, <expr4>, <expr5>, */
-        /*       <expr6>, <unary_oper>, <expr7>, <expr8>, <whileloop>, <untilloop>} */
+        /*       length, if, while, do, resize, error, true, false, */
+        /*       set, (, -, <expr>, <expr2>, <expr3>, <expr4>, <expr5>, */
+        /*       <expr6>, <unary_oper>, <expr7>, <expr8>, <whileloop>} */
         /* FOLLOW SET: */
         /*  <exprlist>         : {), CLOSEBRACKET, EOF} */
         public static CompileErrors ParseExprList(
-            out ASTExprListRec ExpressionOut,
+            out ASTExpressionList ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
             CompileErrors Error;
-            ASTExpressionRec FirstExpression;
+            ASTExpression FirstExpression;
             TokenRec<KeywordsType> Token;
-            ASTExprListRec RestOfList;
+            ASTExpressionList RestOfList;
 
             ExpressionOut = null;
             LineNumberOut = -1;
@@ -3441,39 +3029,6 @@ namespace OutOfPhase
                 Context.Scanner.UngetToken(Token);
                 ExpressionOut = null; /* empty list */
                 return CompileErrors.eCompileNoError;
-            }
-
-            /* see if we should parse a non-existent element (prototype) which */
-            /* generates no code */
-            if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
-                && (Token.GetTokenKeywordTag() == KeywordsType.eExprKwrdProto))
-            {
-                SymbolRec ProtoSymbolOut;
-
-                Context.Scanner.UngetToken(Token);
-                Error = ParsePrototype(
-                    out ProtoSymbolOut,
-                    Context,
-                    out LineNumberOut);
-                if (Error != CompileErrors.eCompileNoError)
-                {
-                    return Error;
-                }
-                /* this is declarative and generates no code */
-                /* as a hack to get this to work, we'll expect a semicolon and */
-                /* another expression list */
-                Token = Context.Scanner.GetNextToken();
-                /* eat up the semicolon */
-                if (Token.GetTokenType() != TokenTypes.eTokenSemicolon)
-                {
-                    LineNumberOut = Context.Scanner.GetCurrentLineNumber();
-                    return CompileErrors.eCompilePrototypeCantBeLastThingInExprList;
-                }
-                /* now just parse the rest of the expression list */
-                return ParseExprList(
-                    out ExpressionOut,
-                    Context,
-                    out LineNumberOut);
             }
 
             /* get first part of list */
@@ -3497,7 +3052,7 @@ namespace OutOfPhase
                 return Error;
             }
 
-            ExpressionOut = ASTExprListCons(
+            ExpressionOut = new ASTExpressionList(
                 FirstExpression,
                 RestOfList,
                 Context.Scanner.GetCurrentLineNumber());
@@ -3513,12 +3068,12 @@ namespace OutOfPhase
         /*  <exponentiation>   : {^} */
         /* FOLLOW SET: */
         /*  <exponentiation>   : {and, or, xor, div, mod, SHR, SHL, then, else, */
-        /*       elseif, while, until, do, to, ), CLOSEBRACKET, , , :=, ;, *, */
+        /*       elseif, while, do, to, ), CLOSEBRACKET, , , :=, ;, *, */
         /*       /, +, -, EQ, NEQ, LT, LTEQ, GR, GREQ, <expr2prime>, <conj_oper>, */
         /*       <expr3prime>, <rel_oper>, <expr4prime>, <add_oper>, <expr5prime>, */
-        /*       <mult_oper>, <actualtail>, <iftail>, <loopwhileuntil>, <exprlisttail>} */
+        /*       <mult_oper>, <actualtail>, <iftail>, <loopwhile>, <exprlisttail>} */
         private static CompileErrors ParseExponentiation(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {
@@ -3546,16 +3101,16 @@ namespace OutOfPhase
         /*   87:                      ::=  */
         /* FIRST SET: */
         /*  <actualstart>      : {<identifier>, <integer>, <single>, <double>, */
-        /*       <fixed>, <string>, bool, int, single, double, fixed, proto, var, */
+        /*       <fixed>, <string>, bool, int, single, double, fixed, var, */
         /*       not, sin, cos, tan, asin, acos, atan, ln, exp, sqr, sqrt, abs, */
-        /*       neg, sign, length, if, while, until, do, resize, error, */
-        /*       true, false, set, (, -, <prototype>, <expr>, <expr2>, */
+        /*       neg, sign, length, if, while, do, resize, error, */
+        /*       true, false, set, (, -, <expr>, <expr2>, */
         /*       <expr3>, <expr4>, <expr5>, <expr6>, <unary_oper>, <expr7>, <expr8>, */
-        /*       <actuallist>, <whileloop>, <untilloop>} */
+        /*       <actuallist>, <whileloop>} */
         /* FOLLOW SET: */
         /*  <actualstart>      : {)} */
         private static CompileErrors ParseActualStart(
-            out ASTExprListRec ParamListOut,
+            out ASTExpressionList ParamListOut,
             ParserContext Context,
             out int LineNumberOut)
         {
@@ -3586,22 +3141,22 @@ namespace OutOfPhase
         /*   88:   <actuallist>       ::= <expr> <actualtail> */
         /* FIRST SET: */
         /*  <actuallist>       : {<identifier>, <integer>, <single>, <double>, */
-        /*       <fixed>, <string>, bool, int, single, double, fixed, proto, var, */
+        /*       <fixed>, <string>, bool, int, single, double, fixed, var, */
         /*       not, sin, cos, tan, asin, acos, atan, ln, exp, sqr, sqrt, abs, */
-        /*       neg, sign, length, if, while, until, do, resize, error, */
-        /*       true, false, set, (, -, <prototype>, <expr>, <expr2>, */
+        /*       neg, sign, length, if, while, do, resize, error, */
+        /*       true, false, set, (, -, <expr>, <expr2>, */
         /*       <expr3>, <expr4>, <expr5>, <expr6>, <unary_oper>, <expr7>, <expr8>, */
-        /*       <whileloop>, <untilloop>} */
+        /*       <whileloop>} */
         /* FOLLOW SET: */
         /*  <actuallist>       : {)} */
         private static CompileErrors ParseActualList(
-            out ASTExprListRec ParamListOut,
+            out ASTExpressionList ParamListOut,
             ParserContext Context,
             out int LineNumberOut)
         {
-            ASTExpressionRec FirstExpression;
+            ASTExpression FirstExpression;
             CompileErrors Error;
-            ASTExprListRec RestOfList;
+            ASTExpressionList RestOfList;
 
             ParamListOut = null;
 
@@ -3623,7 +3178,7 @@ namespace OutOfPhase
                 return Error;
             }
 
-            ParamListOut = ASTExprListCons(
+            ParamListOut = new ASTExpressionList(
                 FirstExpression,
                 RestOfList,
                 Context.Scanner.GetCurrentLineNumber());
@@ -3641,7 +3196,7 @@ namespace OutOfPhase
         /* FOLLOW SET: */
         /*  <actualtail>       : {)} */
         private static CompileErrors ParseActualTail(
-            out ASTExprListRec ParamListOut,
+            out ASTExpressionList ParamListOut,
             ParserContext Context,
             out int LineNumberOut)
         {
@@ -3682,7 +3237,7 @@ namespace OutOfPhase
         /* FOLLOW SET: */
         /*  <exprlisttail>     : {), CLOSEBRACKET, EOF} */
         private static CompileErrors ParseExprListTail(
-            out ASTExprListRec ListOut,
+            out ASTExpressionList ListOut,
             ParserContext Context,
             out int LineNumberOut)
         {
@@ -3720,19 +3275,18 @@ namespace OutOfPhase
 
         /*  124:   <exprlistelem>     ::= <expr> */
         /*  125:                      ::= var <identifier> : <type> <vartail> */
-        /*   22:   <exprlistelem>     ::= <prototype> */
         /* FIRST SET: */
         /*  <exprlistelem>     : {<identifier>, <integer>, <single>, <double>, */
-        /*       <fixed>, <string>, bool, int, single, double, fixed, proto, */
+        /*       <fixed>, <string>, bool, int, single, double, fixed, */
         /*       var, not, sin, cos, tan, asin, acos, atan, ln, exp, sqr, sqrt, */
-        /*       abs, neg, sign, length, if, while, until, do, resize, error, */
-        /*       true, false, set, (, -, <prototype>, <expr>, */
+        /*       abs, neg, sign, length, if, while, do, resize, error, */
+        /*       true, false, set, (, -, <expr>, */
         /*       <expr2>, <expr3>, <expr4>, <expr5>, <expr6>, <unary_oper>, <expr7>, */
-        /*       <expr8>, <whileloop>, <untilloop>} */
+        /*       <expr8>, <whileloop>} */
         /* FOLLOW SET: */
         /*  <exprlistelem>     : {), CLOSEBRACKET, ;, <exprlisttail>} */
         private static CompileErrors ParseExprListElem(
-            out ASTExpressionRec ExpressionOut,
+            out ASTExpression ExpressionOut,
             ParserContext Context,
             out int LineNumberOut)
         {

@@ -289,7 +289,6 @@ namespace OutOfPhase
             public readonly double dEnvelopeRate;
             /* number of sample frames per second */
             public readonly double dSamplingRate;
-            public readonly double dSamplingRateReciprocal;
             /* integer versions */
             public readonly int iEnvelopeRate;
             public readonly int iSamplingRate;
@@ -398,12 +397,15 @@ namespace OutOfPhase
 
             public PcodeSystem.PcodeThreadContext pcodeThreadContext;
 
+            public readonly int threadIndex;
+
             // tracing support
             public AutomationSettings.TraceFlags level2TraceFlags;
 
 
             public SynthParamRec(
-                SynthParamRec template)
+                SynthParamRec template,
+                int threadIndex)
                 : this(
                     template.iEnvelopeRate,
                     template.iSamplingRate,
@@ -417,11 +419,11 @@ namespace OutOfPhase
                     template.randomSeedProvider,
                     template.SectionInputAccumulationWorkspaces.Length / 2,
                     template.AllScratchWorkspaces32.Length,
-                    template.AllScratchWorkspaces64.Length)
+                    template.AllScratchWorkspaces64.Length,
+                    threadIndex)
             {
                 this.dEnvelopeRate = template.dEnvelopeRate;
                 this.dSamplingRate = template.dSamplingRate;
-                this.dSamplingRateReciprocal = template.dSamplingRateReciprocal;
                 this.lElapsedTimeInEnvelopeTicks = template.lElapsedTimeInEnvelopeTicks;
                 this.dElapsedTimeInSeconds = template.dElapsedTimeInSeconds;
                 this.dCurrentBeatsPerMinute = template.dCurrentBeatsPerMinute;
@@ -440,11 +442,11 @@ namespace OutOfPhase
                 RandomSeedProvider randomSeedProvider,
                 int sectionCount,
                 int required32BitWorkspaceCount,
-                int required64BitWorkspaceCount)
+                int required64BitWorkspaceCount,
+                int threadIndex)
             {
                 this.dEnvelopeRate = this.iEnvelopeRate = iEnvelopeRate;
                 this.dSamplingRate = this.iSamplingRate = iSamplingRate;
-                this.dSamplingRateReciprocal = 1d / this.dSamplingRate;
                 this.iOversampling = iOversampling;
                 this.iScanningGapWidthInEnvelopeTicks = iScanningGapWidthInEnvelopeTicks;
                 this.Document = Document;
@@ -453,6 +455,7 @@ namespace OutOfPhase
                 this.fOverallVolumeScaling = fOverallVolumeScaling;
                 this.CodeCenter = CodeCenter;
                 this.randomSeedProvider = randomSeedProvider;
+                this.threadIndex = threadIndex;
 
                 this.FormulaEvalContext = new ParamStackRec();
                 this.ErrorInfo = new SynthErrorInfoRec();
@@ -1019,7 +1022,14 @@ namespace OutOfPhase
                     for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
                     {
                         int scratch32Count1, scratch64Count1;
-                        ComputeWorkspaceRequirements(BuiltInPluggableProcessors[i].Value, out scratch32Count1, out scratch64Count1);
+                        ComputeWorkspaceRequirements1(BuiltInPluggableProcessors[i].Value, out scratch32Count1, out scratch64Count1);
+                        scratch32Count = Math.Max(scratch32Count, scratch32Count1);
+                        scratch64Count = Math.Max(scratch64Count, scratch64Count1);
+                    }
+                    for (int i = 0; i < ExternalPluggableProcessors.Length; i++)
+                    {
+                        int scratch32Count1, scratch64Count1;
+                        ComputeWorkspaceRequirements1(ExternalPluggableProcessors[i].Value, out scratch32Count1, out scratch64Count1);
                         scratch32Count = Math.Max(scratch32Count, scratch32Count1);
                         scratch64Count = Math.Max(scratch64Count, scratch64Count1);
                     }
@@ -1037,7 +1047,8 @@ namespace OutOfPhase
                         SynthState.randomSeedProvider,
                         sectionCount,
                         scratch32Count,
-                        scratch64Count);
+                        scratch64Count,
+                        0);
 
                     SynthState.ListOfTracks = ListOfTracks;
                     SynthState.KeyTrack = KeyTrack;
@@ -1257,7 +1268,7 @@ namespace OutOfPhase
                         SynthState.SynthParamsPerProc[0] = SynthParams;
                         for (int i = 1; i < SynthState.concurrency; i++)
                         {
-                            SynthState.SynthParamsPerProc[i] = new SynthParamRec(SynthParams);
+                            SynthState.SynthParamsPerProc[i] = new SynthParamRec(SynthParams, i);
                         }
 
                         // create synchronization objects
@@ -1363,14 +1374,14 @@ namespace OutOfPhase
                 }
             }
 
-            private static void ComputeWorkspaceRequirements(
+            private static void ComputeWorkspaceRequirements1(
                 IPluggableProcessorFactory pluggable,
-                out int scratch32Count,
-                out int scratch64Count)
+                out int scratch32Count1,
+                out int scratch64Count1)
             {
-                scratch32Count = pluggable.MaximumRequired32BitWorkspaceCount;
-                scratch64Count = pluggable.MaximumRequired64BitWorkspaceCount;
-                scratch32Count += Math.Max(pluggable.MaximumSmoothedParameterCount, Program.Config.MaximumSmoothedParameterCount);
+                scratch32Count1 = pluggable.MaximumRequired32BitWorkspaceCount;
+                scratch64Count1 = pluggable.MaximumRequired64BitWorkspaceCount;
+                scratch32Count1 += Math.Max(pluggable.MaximumSmoothedParameterCount, Program.Config.MaximumSmoothedParameterCount);
             }
 
             /* compare tracks for sorting based on the section they are in.  before sorting, */
@@ -3499,9 +3510,11 @@ namespace OutOfPhase
             throw new Exception("Could not find performance counter instance name for current process. This is truly strange ...");
         }
 
-        // Taken from: https://social.msdn.microsoft.com/Forums/vstudio/en-US/73860618-21cb-459f-af6d-6ecb77c9c5f1/latency-for-realtime-audio-in-clr?forum=clr
+        // Initial idea for this came from:
+        // https://social.msdn.microsoft.com/Forums/vstudio/en-US/73860618-21cb-459f-af6d-6ecb77c9c5f1/latency-for-realtime-audio-in-clr?forum=clr
         private struct ThreadPriorityBoostEncapsulator
         {
+            private int mode;
             private bool boosted;
             private IntPtr hThread;
             private int savedPriority;
@@ -3509,11 +3522,40 @@ namespace OutOfPhase
             private int taskIndex;
             private IntPtr hAVTask;
 
+            // Determining how to set the various classes of prioritization can be a bit tricky. You probably *don't* want to just
+            // set everything on maximum. Here are some considerations:
+            //
+            // The realtime priority and AvSetMmThreadCharacteristics of "Pro Audio" should be reserved for a true realtime
+            // scenario where the threads are servicing the request for audio data. It should not be done in the buffered mode because
+            // some audio drivers do not run themselves at a high enough priority causing unbounded processing in the buffered mode
+            // rendering to preempt the audio driver and cause glitches even when the WASAPI buffer is full.
+            //
+            // Boosting the process priority is of dubious value. In particular, setting the process to realtime could preempt
+            // other services on the system that need to run for audio processing. Also, boosting the process priority applies to
+            // the UI thread and other less important tasks. HIGH_PRIORITY_CLASS should be used instead of REALTIME_PRIORITY_CLASS
+            // unless it is known that there are other HIGH_PRIORITY_CLASS tasks on the system that are interfering, and it is
+            // a true realtime rendering scenario.
+            // (see https://msdn.microsoft.com/en-us/library/windows/desktop/ms685100%28v=vs.85%29.aspx for classes)
+            // THREAD_PRIORITY_TIME_CRITICAL always results in level 15 even for low priority processes, except in
+            // REALTIME_PRIORITY_CLASS where it results in 31.
+
             public void Boost(bool mainThread)
             {
-                if (!Program.Config.EnablePriorityBoost)
+                bool highest = false;
+                switch (Program.Config.PriorityMode)
                 {
-                    return;
+                    default:
+                    case 1: // no priority boost
+                        mode = 1;
+                        return;
+                    case 0: // default policy
+                    case 2: // boost priority for buffered rendering mode
+                        mode = 2;
+                        break;
+                    case 3: // boost priority for realtime rendering
+                        mode = 3;
+                        highest = true;
+                        break;
                 }
 
                 bool f;
@@ -3527,15 +3569,24 @@ namespace OutOfPhase
 
                     Thread.BeginThreadAffinity(); // tie to .NET thread to OS thread
 
+                    // TODO: should we set processor affinity?
+
                     hThread = GetCurrentThread();
                     savedPriority = GetThreadPriority(hThread);
-                    f = SetThreadPriority(hThread, THREAD_PRIORITY_TIME_CRITICAL); // Native highest priority is higher than .net highest priority
+                    f = SetThreadPriority(hThread, highest ? THREAD_PRIORITY_TIME_CRITICAL : THREAD_PRIORITY_HIGHEST); // Native highest priority is higher than .net highest priority
                     if (mainThread)
                     {
-                        // DwmEnableMMCSS: https://social.msdn.microsoft.com/Forums/windowsdesktop/en-US/6d4429db-1cc1-4d79-a7c3-53a828198ce0/dwmenablemmcss?forum=windowsuidevelopment
-                        // (not strictly necessary - has to do with expedient rendering of visuals)
-                        r = DwmEnableMMCSS(true);
-                        Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.RealTime; // boost whole process priority
+                        if (highest)
+                        {
+                            // DwmEnableMMCSS: https://social.msdn.microsoft.com/Forums/windowsdesktop/en-US/6d4429db-1cc1-4d79-a7c3-53a828198ce0/dwmenablemmcss?forum=windowsuidevelopment
+                            // (not strictly necessary - has to do with expedient rendering of visuals)
+                            // This is only important in the true realtime scenario with synchronized UI visuals
+                            r = DwmEnableMMCSS(true);
+
+                            // TODO: REVIEW: probably don't ever want this - e.g. process's UI thread shouldn't starve essential
+                            // services on the system
+                            //Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.RealTime; // boost whole process priority
+                        }
 
 #if NETNEW
                         // Enable low latency mode to reduce impact of garbage collections.
@@ -3543,15 +3594,23 @@ namespace OutOfPhase
                         GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 #endif
                     }
-                    hAVTask = AvSetMmThreadCharacteristics("Pro Audio", ref taskIndex); // Ask MMCSS to boost the thread priority
+                    if (highest)
+                    {
+                        hAVTask = AvSetMmThreadCharacteristics(highest ? "Pro Audio" : "Audio", ref taskIndex); // Ask MMCSS to boost the thread priority
+                    }
                 }
             }
 
             public void Revert(bool mainThread)
             {
-                if (!Program.Config.EnablePriorityBoost)
+                switch (mode)
                 {
-                    return;
+                    default:
+                    case 1: // no priority boost
+                        return;
+                    case 2: // "Audio" (AboveNormal) priority
+                    case 3: // "Pro Audio" (High) priority
+                        break;
                 }
 
                 bool f;
@@ -3584,6 +3643,12 @@ namespace OutOfPhase
             [DllImport("kernel32.dll", EntryPoint = "SetThreadPriority", SetLastError = true)]
             private static extern bool SetThreadPriority(IntPtr hThread, int nPriority);
 
+            private const int THREAD_PRIORITY_IDLE = -15;
+            private const int THREAD_PRIORITY_LOWEST = -2;
+            private const int THREAD_PRIORITY_BELOW_NORMAL = -1;
+            private const int THREAD_PRIORITY_NORMAL = 0;
+            private const int THREAD_PRIORITY_ABOVE_NORMAL = 1;
+            private const int THREAD_PRIORITY_HIGHEST = 2;
             private const int THREAD_PRIORITY_TIME_CRITICAL = 15;
 
             [DllImport("dwmapi.dll", EntryPoint = "DwmEnableMMCSS")]

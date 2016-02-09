@@ -436,13 +436,13 @@ namespace OutOfPhase
 
         // TODO: figure out how to support enharmonics in non-et tunings
 
-        private enum PitchMode
+        public enum PitchMode
         {
             CentsRelative,
             CentsAbsolute,
         }
 
-        private class PitchEntry
+        public class PitchEntry
         {
             public readonly string Name;
             public readonly PitchMode Mode;
@@ -485,7 +485,7 @@ namespace OutOfPhase
             }
         }
 
-        private static readonly PitchEntry[] PitchTables = new PitchEntry[]
+        public static readonly PitchEntry[] PitchTables = new PitchEntry[]
         {
             //      C        C#/Db      D        D#/Eb      E         F        F#/Gb      G        G#/Ab      A        A#/Bb      B
 

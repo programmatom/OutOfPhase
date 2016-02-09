@@ -68,6 +68,7 @@ namespace OutOfPhase
                 editNotePropertiesToolStripMenuItem,
                 editTrackPropertiesToolStripMenuItem,
                 disassembleToolStripMenuItem,
+                envelopeSegmentCalculatorToolStripMenuItem,
                 openAsSampleToolStripMenuItem,
                 openAsWaveTableToolStripMenuItem,
                 exportAIFFSampleToolStripMenuItem,

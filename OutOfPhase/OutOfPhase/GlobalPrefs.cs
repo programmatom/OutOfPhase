@@ -113,10 +113,10 @@ namespace OutOfPhase
             set { FindSimpleProperty<bool>("EnableEnvelopeSmoothing").Value = value; Notify("EnableEnvelopeSmoothing"); }
         }
 
-        public bool EnablePriorityBoost // enable for synth engine threads priority boost during synthesis
+        public int PriorityMode // 0: default (#2), 1: no priority boost, 0: "Audio" (AboveNormal), 3: "Pro Audio" (High)
         {
-            get { return FindSimpleProperty<bool>("EnablePriorityBoost").Value; }
-            set { FindSimpleProperty<bool>("EnablePriorityBoost").Value = value; Notify("EnablePriorityBoost"); }
+            get { return FindSimpleProperty<int>("PriorityMode").Value; }
+            set { FindSimpleProperty<int>("PriorityMode").Value = value; Notify("PriorityMode"); }
         }
 
         public bool EnableDirectWrite // enable DirectWrite rendering of UI instead of GDI rendering
@@ -125,10 +125,22 @@ namespace OutOfPhase
             set { FindSimpleProperty<bool>("EnableDirectWrite").Value = value; Notify("EnableDirectWrite"); }
         }
 
-        public int MaximumSmoothedParameterCount
+        public int MaximumSmoothedParameterCount // specifies number of vector-aligned workspaces reserved during synth engine creation
         {
             get { return FindSimpleProperty<int>("MaximumSmoothedParameterCount").Value; }
             set { FindSimpleProperty<int>("MaximumSmoothedParameterCount").Value = value; Notify("MaximumSmoothedParameterCount"); }
+        }
+
+        public bool EnableTrackViewOffscreenCompositing
+        {
+            get { return FindSimpleProperty<bool>("EnableTrackViewOffscreenCompositing").Value; }
+            set { FindSimpleProperty<bool>("EnableTrackViewOffscreenCompositing").Value = value; Notify("EnableTrackViewOffscreenCompositing"); }
+        }
+
+        public bool EnableBravura
+        {
+            get { return FindSimpleProperty<bool>("EnableBravura").Value; }
+            set { FindSimpleProperty<bool>("EnableBravura").Value = value; Notify("EnableBravura"); }
         }
 
 
@@ -155,23 +167,18 @@ namespace OutOfPhase
                 RecentDocuments.RemoveAt(i);
             }
             RecentDocuments.Insert(0, path);
-#if false // BindingList doesn't support RemoveRange()
-            if (RecentDocuments.Count > RecentDocumentsMax)
-            {
-                RecentDocuments.RemoveRange(RecentDocumentsMax, RecentDocuments.Count - RecentDocumentsMax);
-            }
-#else
-            while (RecentDocuments.Count > RecentDocumentsMax)
+            while (RecentDocuments.Count > RecentDocumentsMax) // BindingList doesn't support RemoveRange()
             {
                 RecentDocuments.RemoveAt(RecentDocuments.Count - 1);
             }
-#endif
         }
 
 
         //
 
         private readonly GlobalPrefsItem[] items;
+
+        private static readonly bool WriteAll = false;
 
         public GlobalPrefs()
         {
@@ -184,18 +191,21 @@ namespace OutOfPhase
                 new GlobalPrefsSimpleItem<int>("AutosaveIntervalSeconds", 5 * 60),
                 new GlobalPrefsSimpleItem<string>("OutputDevice", ERole.eMultimedia.ToString()),
                 new GlobalPrefsSimpleItem<string>("OutputDeviceName", String.Empty),
-                new GlobalPrefsSimpleItem<string>("FFTWWisdom32f", String.Empty),
-                new GlobalPrefsSimpleItem<string>("FFTWWisdom64f", String.Empty),
+                new GlobalPrefsComputerNameKeyedItem<string>("FFTWWisdom32f", String.Empty),
+                new GlobalPrefsComputerNameKeyedItem<string>("FFTWWisdom64f", String.Empty),
                 new GlobalPrefsSimpleItem<int>("Concurrency", 0),
+                new GlobalPrefsSimpleItem<int>("PriorityMode", 0),
                 new GlobalPrefsSimpleItem<int>("RecentDocumentsMax", 10),
                 new GlobalPrefsListItem<string>("RecentDocuments"),
 
                 // unadvertised properties
                 new GlobalPrefsSimpleItem<bool>("EnableCIL", true),
                 new GlobalPrefsSimpleItem<bool>("EnableEnvelopeSmoothing", true),
-                new GlobalPrefsSimpleItem<bool>("EnablePriorityBoost", true),
                 new GlobalPrefsSimpleItem<bool>("EnableDirectWrite", false),
-                new GlobalPrefsSimpleItem<int>("MaximumSmoothedParameterCount", 16),
+                new GlobalPrefsSimpleItem<int>("MaximumSmoothedParameterCount",
+                    Synthesizer.PluggableEffectUserEffectFactory.DefaultMaximumSmoothedParameterCount),
+                new GlobalPrefsSimpleItem<bool>("EnableTrackViewOffscreenCompositing", true),
+                new GlobalPrefsSimpleItem<bool>("EnableBravura", false),
             };
         }
 
@@ -261,6 +271,18 @@ namespace OutOfPhase
             }
         }
 
+        public bool CopyTo(GlobalPrefs dest)
+        {
+            bool changed = false;
+            Debug.Assert(this.items.Length == dest.items.Length);
+            for (int i = 0; i < this.items.Length; i++)
+            {
+                Debug.Assert(this.items[i].GetType() == dest.items[i].GetType());
+                changed = this.items[i].CopyTo(dest.items[i]) || changed;
+            }
+            return changed;
+        }
+
 
         // generic property immplementation
 
@@ -277,12 +299,14 @@ namespace OutOfPhase
             public abstract void Write(XmlWriter writer);
 
             public string PropertyName { get { return propertyName; } }
+
+            public abstract bool CopyTo(GlobalPrefsItem dest);
         }
 
         private class GlobalPrefsSimpleItem<T> : GlobalPrefsItem
         {
             private T value;
-            private T defaultValue;
+            protected readonly T defaultValue;
             private bool explicitlySet;
 
             public GlobalPrefsSimpleItem(string propertyName, T defaultValue)
@@ -304,7 +328,7 @@ namespace OutOfPhase
 
             public override void Write(XmlWriter writer)
             {
-                if (explicitlySet || !EqualityComparer<T>.Default.Equals(value, defaultValue))
+                if (NeedsWriting)
                 {
                     writer.WriteStartElement(propertyName);
                     string text = TypeDescriptor.GetConverter(typeof(T)).ConvertToString(value);
@@ -313,7 +337,132 @@ namespace OutOfPhase
                 }
             }
 
-            public T Value { get { return value; } set { this.value = value; explicitlySet = true; } }
+            public virtual T Value { get { return value; } set { this.value = value; explicitlySet = true; } }
+
+            public virtual bool NeedsWriting { get { return explicitlySet || !EqualityComparer<T>.Default.Equals(value, defaultValue) || WriteAll; } }
+
+            public override bool CopyTo(GlobalPrefsItem destBase)
+            {
+                GlobalPrefsSimpleItem<T> dest = (GlobalPrefsSimpleItem<T>)destBase; // covariant
+                if (explicitlySet || !EqualityComparer<T>.Default.Equals(this.value, dest.value))
+                {
+                    dest.Value = this.value;
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // Support for roaming profiles - so machine-specific items can be kept separate
+        private class GlobalPrefsComputerNameKeyedItem<T> : GlobalPrefsSimpleItem<T>
+        {
+            private readonly Dictionary<string, GlobalPrefsSimpleItem<T>> values = new Dictionary<string, GlobalPrefsSimpleItem<T>>();
+            private const string ItemName = "item";
+            private const string ComputerName = "computerName";
+            private const string ValueName = "value";
+
+            public GlobalPrefsComputerNameKeyedItem(string propertyName, T defaultValue)
+                : base(propertyName, defaultValue)
+            {
+            }
+
+            public override void Read(XPathNavigator containerNav)
+            {
+                XPathNavigator navTop = containerNav.SelectSingleNode(propertyName);
+                if (navTop != null)
+                {
+                    foreach (XPathNavigator navItem in navTop.Select(ItemName))
+                    {
+                        string computerName = navItem.SelectSingleNode(ComputerName).Value;
+                        GlobalPrefsSimpleItem<T> item = new GlobalPrefsSimpleItem<T>(ValueName, defaultValue);
+                        item.Read(navItem);
+                        values.Add(computerName, item);
+                    }
+                }
+            }
+
+            public override void Write(XmlWriter writer)
+            {
+                if (NeedsWriting)
+                {
+                    writer.WriteStartElement(propertyName);
+
+                    foreach (KeyValuePair<string, GlobalPrefsSimpleItem<T>> item in values)
+                    {
+                        if (item.Value.NeedsWriting)
+                        {
+                            writer.WriteStartElement(ItemName);
+
+                            writer.WriteStartElement(ComputerName);
+                            writer.WriteValue(item.Key);
+                            writer.WriteEndElement();
+
+                            item.Value.Write(writer);
+
+                            writer.WriteEndElement();
+                        }
+                    }
+
+                    writer.WriteEndElement();
+                }
+            }
+
+            public override T Value
+            {
+                get
+                {
+                    GlobalPrefsSimpleItem<T> item = GetItemForCurrentComputer();
+                    return item.Value;
+                }
+                set
+                {
+                    GlobalPrefsSimpleItem<T> item = GetItemForCurrentComputer();
+                    item.Value = value;
+                }
+            }
+
+            public override bool NeedsWriting
+            {
+                get
+                {
+                    bool needsWriting = false;
+                    foreach (GlobalPrefsSimpleItem<T> item in values.Values)
+                    {
+                        if (item.NeedsWriting)
+                        {
+                            needsWriting = true;
+                            break;
+                        }
+                    }
+                    return needsWriting || WriteAll;
+                }
+            }
+
+            private GlobalPrefsSimpleItem<T> GetItemForCurrentComputer()
+            {
+                string key = Environment.GetEnvironmentVariable("COMPUTERNAME");
+                GlobalPrefsSimpleItem<T> item;
+                if (!values.TryGetValue(key, out item))
+                {
+                    item = new GlobalPrefsSimpleItem<T>(ValueName, defaultValue);
+                    values.Add(key, item);
+                }
+                return item;
+            }
+
+            public override bool CopyTo(GlobalPrefsItem destBase)
+            {
+                bool result = false;
+                GlobalPrefsComputerNameKeyedItem<T> dest = (GlobalPrefsComputerNameKeyedItem<T>)destBase; // covariant
+                dest.values.Clear();
+                foreach (KeyValuePair<string, GlobalPrefsSimpleItem<T>> item in values)
+                {
+                    GlobalPrefsSimpleItem<T> copy = new GlobalPrefsSimpleItem<T>(ValueName, defaultValue);
+                    dest.values.Add(item.Key, copy);
+                    result = item.Value.CopyTo(copy) || result;
+                }
+                return result;
+            }
         }
 
         private class GlobalPrefsListItem<T> : GlobalPrefsItem
@@ -363,6 +512,29 @@ namespace OutOfPhase
             }
 
             public BindingList<T> List { get { return items; } }
+
+            public override bool CopyTo(GlobalPrefsItem destBase)
+            {
+                GlobalPrefsListItem<T> dest = (GlobalPrefsListItem<T>)destBase; // covariant
+                if (dest.items.Count == this.items.Count)
+                {
+                    for (int i = 0; i < this.items.Count; i++)
+                    {
+                        if (!EqualityComparer<T>.Default.Equals(dest.items[i], this.items[i]))
+                        {
+                            goto NotEqual;
+                        }
+                    }
+                    return false;
+                }
+            NotEqual:
+                dest.items.Clear();
+                for (int i = 0; i < this.items.Count; i++)
+                {
+                    dest.items.Add(this.items[i]);
+                }
+                return true;
+            }
         }
 
         private GlobalPrefsItem FindProperty(string propertyName)

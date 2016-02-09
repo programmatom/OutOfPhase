@@ -177,7 +177,7 @@ namespace OutOfPhase
                 int nActualFrames,
                 SynthParamRec SynthParams)
             {
-                double delta = TWOPI * pitch * SynthParams.dSamplingRateReciprocal;
+                double delta = TWOPI * pitch / SynthParams.dSamplingRate;
                 if (smoothed)
                 {
                     for (int i = 0; i < nActualFrames; i++)

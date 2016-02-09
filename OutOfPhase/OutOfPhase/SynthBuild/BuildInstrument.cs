@@ -447,7 +447,6 @@ namespace OutOfPhase
             eBuildInstrMultipleAccent6,
             eBuildInstrMultipleAccent7,
             eBuildInstrMultipleAccent8,
-            eBuildInstrMustSpecifyGoodOrBroken,
             eBuildInstrExpectedWrapOrClamp,
             eBuildInstrExpectedMinsamplingrateOrSemicolon,
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
@@ -472,6 +471,11 @@ namespace OutOfPhase
             eBuildInstrPluggableConfigParamsExpectedCommaOrSemicolon,
             eBuildInstrPluggableRequiredConfigParamIsMissing,
             eBuildInstrPluggableConfigParamsWrongNumberOfItems,
+            eBuildInstrPluggableConfigParamsMustComeBeforePluggableEffectParams,
+            eBuildInstrMultipleInterpolate,
+            eBuildInstrExpectedOnOrOff,
+            eBuildInstrInterpolateNotMeaningfulForThatOscillatorType,
+            eBuildInstrLFOInterpolateOnlyAppliesToWaveTable,
 
             eBuildInstr_End,
         }
@@ -642,6 +646,7 @@ namespace OutOfPhase
             new KeywordRec<InstrKeywordType>("integerarray", InstrKeywordType.eKeywordIntegerarray),
             new KeywordRec<InstrKeywordType>("interpolate", InstrKeywordType.eKeywordInterpolate),
             new KeywordRec<InstrKeywordType>("inversemult", InstrKeywordType.eKeywordInversemult),
+            new KeywordRec<InstrKeywordType>("joint", InstrKeywordType.eKeywordJoint),
             new KeywordRec<InstrKeywordType>("latency", InstrKeywordType.eKeywordLatency),
             new KeywordRec<InstrKeywordType>("left", InstrKeywordType.eKeywordLeft),
             new KeywordRec<InstrKeywordType>("leftintoleft", InstrKeywordType.eKeywordLeftintoleft),
@@ -697,6 +702,8 @@ namespace OutOfPhase
             new KeywordRec<InstrKeywordType>("normalpowerlfo", InstrKeywordType.eKeywordNormalpowerlfo),
             new KeywordRec<InstrKeywordType>("null", InstrKeywordType.eKeywordNull),
             new KeywordRec<InstrKeywordType>("numbins", InstrKeywordType.eKeywordNumbins),
+            new KeywordRec<InstrKeywordType>("off", InstrKeywordType.eKeywordOff),
+            new KeywordRec<InstrKeywordType>("on", InstrKeywordType.eKeywordOn),
             new KeywordRec<InstrKeywordType>("order", InstrKeywordType.eKeywordOrder),
             new KeywordRec<InstrKeywordType>("origin", InstrKeywordType.eKeywordOrigin),
             new KeywordRec<InstrKeywordType>("oscillator", InstrKeywordType.eKeywordOscillator),
@@ -867,10 +874,10 @@ namespace OutOfPhase
         public struct InstrErrorRec
         {
             /* for checking index consistency */
-            public BuildInstrErrors ErrorCode;
+            public readonly BuildInstrErrors ErrorCode;
 
             /* error message to print */
-            public string Message;
+            public readonly string Message;
 
             public InstrErrorRec(BuildInstrErrors ErrorCode, string Message)
             {
@@ -1155,7 +1162,7 @@ namespace OutOfPhase
             new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleOutputScalingAccent4,
                 "Parameter 'outputaccent4' has already been specified"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFilterChannel,
-                "Expected 'left', 'right', 'mono', 'defaultscaling', " +
+                "Expected 'left', 'right', 'joint', 'defaultscaling', " +
                 "'unitymidbandgain', 'unitynoisegain', or 'unityzerohertzgain'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrNullFilterHasNoFreqAccentX,
                 "Parameter 'freqaccent[1-8]' can't be specified for null filter"),
@@ -1198,11 +1205,11 @@ namespace OutOfPhase
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBandwidthEnvelope,
                 "Expected 'bandwidthenvelope'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedFreqLfoOrScalingOrChannel,
-                "Expected 'freqlfo', 'left', 'right', 'mono', 'defaultscaling', " +
+                "Expected 'freqlfo', 'left', 'right', 'joint', 'defaultscaling', " +
                 "'unitymidbandgain', 'unitynoisegain', 'unityzerohertzgain', " +
                 "or 'bandwidthenvelope'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedBandwidthLfoOrScalingOrChannel,
-                "Expected 'bandwidthlfo', 'gainenvelope', 'left', 'right', 'mono', " +
+                "Expected 'bandwidthlfo', 'gainenvelope', 'left', 'right', 'joint', " +
                 "'defaultscaling', 'unitymidbandgain', 'unitynoisegain', " +
                 "or 'unityzerohertzgain'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOutputScalingLfoOrSemicolon,
@@ -1238,7 +1245,7 @@ namespace OutOfPhase
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGainEnvelope,
                 "Expected 'gainenvelope'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedGainLfoOrScalingOrChannel,
-                "Expected 'gainlfo', 'left', 'right', 'mono', " +
+                "Expected 'gainlfo', 'left', 'right', 'joint', " +
                 "'defaultscaling', 'unitymidbandgain', 'unitynoisegain', " +
                 "or 'unityzerohertzgain'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrFilterHasNoGainAccentX,
@@ -1598,7 +1605,7 @@ namespace OutOfPhase
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSlopeEnvelope,
                 "Expected 'slopeenvelope'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedSlopeLfoOrScalingOrChannel,
-                "Expected 'slopelfo', 'gainenvelope', 'left', 'right', or 'mono'"),
+                "Expected 'slopelfo', 'gainenvelope', 'left', 'right', or 'joint'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrFilterHasNoSlopeAccentX,
                 "Parameter 'slopeaccent[1-8]' can only be specified for " +
                 "lowshelfeq and highshelfeq"),
@@ -1740,8 +1747,6 @@ namespace OutOfPhase
                 "The parameter 'accent7' has already been specified"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleAccent8,
                 "The parameter 'accent8' has already been specified"),
-            new InstrErrorRec(BuildInstrErrors.eBuildInstrMustSpecifyGoodOrBroken,
-                "Filter of order 4 or 6 must specify 'good' or 'broken'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedWrapOrClamp,
                 "Expected 'wrap' or 'clamp'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedMinsamplingrateOrSemicolon,
@@ -1785,9 +1790,19 @@ namespace OutOfPhase
             new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigParamsExpectedCommaOrSemicolon,
                 "Expected ',' or ';'"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableRequiredConfigParamIsMissing,
-                "Required configuration parameter is missing"),
+                "Required configuration parameter is missing (or is listed after an effect parameter: all configuration parameters must come before effect parameters)"),
             new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigParamsWrongNumberOfItems,
                 "Configuration parameter contains an invalid number of items"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrPluggableConfigParamsMustComeBeforePluggableEffectParams,
+                "Configuration parameter cannot be specified here - all configuration parameters must come before any effect parameters"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrMultipleInterpolate,
+                "Parameter 'interpolate' has already been specified"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrExpectedOnOrOff,
+                "Expected 'on' or 'off'"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrInterpolateNotMeaningfulForThatOscillatorType,
+                "Oscillator parameter 'interpolate' does not apply to oscillator types algorithmic, sampled, or pluggable"),
+            new InstrErrorRec(BuildInstrErrors.eBuildInstrLFOInterpolateOnlyAppliesToWaveTable,
+                "LFO parameter 'interpolate' only applies to LFO oscillators of type wave table"),
         };
 
         public class BuildInstrumentContext
@@ -2395,6 +2410,9 @@ namespace OutOfPhase
             eKeywordFloatarray,
             eKeywordDoublearray,
             eKeywordSmoothed,
+            eKeywordJoint,
+            eKeywordOn,
+            eKeywordOff,
         }
 
         /* symbols for detecting redundant or missing declarations in instruments */
@@ -2418,6 +2436,8 @@ namespace OutOfPhase
             LFODEFINITION_REQUIREDONCEONLY_LOOPENVELOPE,
 #endif
 
+            LFODEFINITION_ONCEONLY_INTERPOLATE,
+
 
             OSCILLATORDEFINITION_ONCEONLY_LOUDNESS,
             OSCILLATORDEFINITION_ONCEONLY_FREQMULTIPLIER,
@@ -2438,6 +2458,8 @@ namespace OutOfPhase
             OSCILLATORDEFINITION_MAYBEREQUIREDONCEONLY_FOFENVELOPE,
 
             OSCILLATORDEFINITION_MAYBEREQUIREDONCEONLY_NETWORK,
+
+            OSCILLATORDEFINITION_ONCEONLY_INTERPOLATE,
 
 
             ENVELOPEDEFINITION_ONCEONLY_TOTALSCALING,
@@ -2978,7 +3000,7 @@ namespace OutOfPhase
                         CompileErrors CompileError;
                         int CompileErrorLine;
                         DataTypes ReturnType;
-                        Compiler.ASTExpressionRec Expr;
+                        Compiler.ASTExpression Expr;
                         PcodeRec FuncOut;
 
                         CompileError = Compiler.CompileSpecialFunction(
@@ -2996,7 +3018,7 @@ namespace OutOfPhase
                             return BuildInstrErrors.eBuildInstrExpectedNumber;
                         }
                         /* ensure expression is compile-time constant */
-                        if (Compiler.ExprTypes.eExprOperand != Compiler.WhatKindOfExpressionIsThis(Expr))
+                        if (Compiler.ExprKind.eExprOperand != Expr.Kind)
                         {
                             ErrorLine = Context.Scanner.GetCurrentLineNumber();
                             return BuildInstrErrors.eBuildInstrExpectedNumber;
@@ -3007,17 +3029,16 @@ namespace OutOfPhase
                                 ErrorLine = Context.Scanner.GetCurrentLineNumber();
                                 return BuildInstrErrors.eBuildInstrExpectedNumber;
                             case DataTypes.eBoolean:
-                                Number = Compiler.GetOperandBooleanLiteral(
-                                    Compiler.GetOperandFromExpression(Expr)) ? 1 : 0;
+                                Number = Expr.InnerOperand.BooleanLiteralValue ? 1 : 0;
                                 break;
                             case DataTypes.eInteger:
-                                Number = Compiler.GetOperandIntegerLiteral(Compiler.GetOperandFromExpression(Expr));
+                                Number = Expr.InnerOperand.IntegerLiteralValue;
                                 break;
                             case DataTypes.eFloat:
-                                Number = Compiler.GetOperandSingleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                Number = Expr.InnerOperand.SingleLiteralValue;
                                 break;
                             case DataTypes.eDouble:
-                                Number = Compiler.GetOperandDoubleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                Number = Expr.InnerOperand.DoubleLiteralValue;
                                 break;
                         }
                     }
@@ -3191,6 +3212,7 @@ namespace OutOfPhase
         /*  XXX:                           ::= sampleandhold freqenvelope ( */
         /*                                     <envelope_definition> ) { freqlfo ( */
         /*                                     <lfo_definition> ) } */
+        //  XXX:                           ::= interpolate { on | off }
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
         /*  XXX:                           ::= loopenvelope ( <envelope_definition> ) */
 #endif
@@ -3712,6 +3734,34 @@ namespace OutOfPhase
 
                     return ScanEnvelopeSpec(GetLFOSpecLoopedEnvelope(LFO), Context, out ErrorLine);
 #endif
+
+                case InstrKeywordType.eKeywordInterpolate:
+                    if (MarkOnceOnlyPresent(RequiredOnceOnly, Req.LFODEFINITION_ONCEONLY_INTERPOLATE))
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrMultipleInterpolate;
+                    }
+
+                    Token = Context.Scanner.GetNextToken();
+                    if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrExpectedOnOrOff;
+                    }
+                    switch (Token.GetTokenKeywordTag())
+                    {
+                        default:
+                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                            return BuildInstrErrors.eBuildInstrExpectedOnOrOff;
+                        case InstrKeywordType.eKeywordOn:
+                            LFOSpecSetEnableCrossWaveTableInterpolation(LFO, true);
+                            break;
+                        case InstrKeywordType.eKeywordOff:
+                            LFOSpecSetEnableCrossWaveTableInterpolation(LFO, false);
+                            break;
+                    }
+
+                    break;
             }
 
             return BuildInstrErrors.eBuildInstrNoError;
@@ -3739,6 +3789,7 @@ namespace OutOfPhase
         /*   XXX:                          ::= fofsamprateenvelope ( <envelope_definition> ) */
         /*   XXX:                          ::= fofsampratelfo ( <lfo_definition> ) */
         /*   XXX:                          ::= network ( ... ) */
+        /*   XXX:                          ::= interpolate { on | off }*/
         /* FIRST SET: */
         /*  <oscillator_elem>       : {loudness, type, samplelist, */
         /*       freqmultiplier, freqdivisor, loudnessenvelope, */
@@ -4157,6 +4208,32 @@ namespace OutOfPhase
                         return Error;
                     }
                     break;
+
+                case InstrKeywordType.eKeywordInterpolate:
+                    if (MarkOnceOnlyPresent(RequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_INTERPOLATE))
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrMultipleInterpolate;
+                    }
+                    Token = Context.Scanner.GetNextToken();
+                    if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                    {
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrExpectedOnOrOff;
+                    }
+                    switch (Token.GetTokenKeywordTag())
+                    {
+                        default:
+                            ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                            return BuildInstrErrors.eBuildInstrExpectedOnOrOff;
+                        case InstrKeywordType.eKeywordOn:
+                            OscillatorSetEnableCrossWaveTableInterpolation(Oscillator, true);
+                            break;
+                        case InstrKeywordType.eKeywordOff:
+                            OscillatorSetEnableCrossWaveTableInterpolation(Oscillator, false);
+                            break;
+                    }
+                    break;
             }
 
             return BuildInstrErrors.eBuildInstrNoError;
@@ -4529,7 +4606,7 @@ namespace OutOfPhase
                         int CompileErrorLine;
                         DataTypes ReturnType;
                         PcodeRec FuncCode;
-                        Compiler.ASTExpressionRec Expr;
+                        Compiler.ASTExpression Expr;
 
                         if (MarkOnceOnlyPresent(RequiredOnceOnly, Req.ENVELOPEDEFINITION_ONCEONLY_FORMULA))
                         {
@@ -4710,7 +4787,7 @@ namespace OutOfPhase
                     {
                         int CompileErrorLine;
                         DataTypes ReturnType;
-                        Compiler.ASTExpressionRec Expr;
+                        Compiler.ASTExpression Expr;
 
                         CompileErrors CompileError = Compiler.CompileSpecialFunction(
                             Context.CodeCenter,
@@ -4732,7 +4809,7 @@ namespace OutOfPhase
                             return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
                         }
 
-                        if (Compiler.ExprTypes.eExprOperand == Compiler.WhatKindOfExpressionIsThis(Expr))
+                        if (Compiler.ExprKind.eExprOperand == Expr.Kind)
                         {
                             // expression evaluates at compile time to a constant
                             switch (ReturnType)
@@ -4741,13 +4818,13 @@ namespace OutOfPhase
                                     ErrorLine = Context.Scanner.GetCurrentLineNumber();
                                     return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
                                 case DataTypes.eInteger:
-                                    Delay = Compiler.GetOperandIntegerLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    Delay = Expr.InnerOperand.IntegerLiteralValue;
                                     break;
                                 case DataTypes.eFloat:
-                                    Delay = Compiler.GetOperandSingleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    Delay = Expr.InnerOperand.SingleLiteralValue;
                                     break;
                                 case DataTypes.eDouble:
-                                    Delay = Compiler.GetOperandDoubleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    Delay = Expr.InnerOperand.DoubleLiteralValue;
                                     break;
                             }
                             DelayFunction = null; // force use constant
@@ -4782,7 +4859,7 @@ namespace OutOfPhase
                     {
                         int CompileErrorLine;
                         DataTypes ReturnType;
-                        Compiler.ASTExpressionRec Expr;
+                        Compiler.ASTExpression Expr;
 
                         CompileErrors CompileError = Compiler.CompileSpecialFunction(
                             Context.CodeCenter,
@@ -4804,7 +4881,7 @@ namespace OutOfPhase
                             return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
                         }
 
-                        if (Compiler.ExprTypes.eExprOperand == Compiler.WhatKindOfExpressionIsThis(Expr))
+                        if (Compiler.ExprKind.eExprOperand == Expr.Kind)
                         {
                             // expression evaluates at compile time to a constant
                             switch (ReturnType)
@@ -4813,13 +4890,13 @@ namespace OutOfPhase
                                     ErrorLine = Context.Scanner.GetCurrentLineNumber();
                                     return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
                                 case DataTypes.eInteger:
-                                    Level = Compiler.GetOperandIntegerLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    Level = Expr.InnerOperand.IntegerLiteralValue;
                                     break;
                                 case DataTypes.eFloat:
-                                    Level = Compiler.GetOperandSingleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    Level = Expr.InnerOperand.SingleLiteralValue;
                                     break;
                                 case DataTypes.eDouble:
-                                    Level = Compiler.GetOperandDoubleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                    Level = Expr.InnerOperand.DoubleLiteralValue;
                                     break;
                             }
                             LevelFunction = null; // force use constant
@@ -6961,14 +7038,10 @@ namespace OutOfPhase
                             }
                             else
                             {
-#if false // TODO: reenable for broken=false
                                 Context.Scanner.UngetToken(Token);
+
                                 // default to good behavior
                                 broken = false;
-#else
-                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                                return BuildInstrErrors.eBuildInstrMustSpecifyGoodOrBroken;
-#endif
                             }
                             SetFilterBroken(FilterElement, broken);
                         }
@@ -7201,6 +7274,7 @@ namespace OutOfPhase
                     SetSingleFilterChannel(FilterElement, FilterChannels.eFilterRight);
                     break;
                 case InstrKeywordType.eKeywordMono:
+                case InstrKeywordType.eKeywordJoint:
                     SetSingleFilterChannel(FilterElement, FilterChannels.eFilterBoth);
                     break;
             }
@@ -7655,14 +7729,10 @@ namespace OutOfPhase
                             }
                             else
                             {
-#if false // TODO: reenable for broken=false
                                 Context.Scanner.UngetToken(Token);
+
                                 // default to good behavior
                                 broken = false;
-#else
-                                ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                                return BuildInstrErrors.eBuildInstrMustSpecifyGoodOrBroken;
-#endif
                             }
                             SetFilterBroken(GetSingleFilterSpec(FilterSpec, Index), broken);
                         }
@@ -7898,6 +7968,7 @@ namespace OutOfPhase
                     SetSingleFilterChannel(OneFilter, FilterChannels.eFilterRight);
                     break;
                 case InstrKeywordType.eKeywordMono:
+                case InstrKeywordType.eKeywordJoint:
                     SetSingleFilterChannel(OneFilter, FilterChannels.eFilterBoth);
                     break;
             }
@@ -8726,9 +8797,9 @@ namespace OutOfPhase
         private delegate void ParseConvolverSpecSetImpulseResponseMethod(ConvolverSpecRec Spec, string Name);
         private struct ConvolveParseRec
         {
-            public InstrKeywordType Keyword;
-            public BuildInstrErrors Error;
-            public ParseConvolverSpecSetImpulseResponseMethod ConvolverSpecSetImpulseResponse;
+            public readonly InstrKeywordType Keyword;
+            public readonly BuildInstrErrors Error;
+            public readonly ParseConvolverSpecSetImpulseResponseMethod ConvolverSpecSetImpulseResponse;
 
             public ConvolveParseRec(InstrKeywordType Keyword, BuildInstrErrors Error, ParseConvolverSpecSetImpulseResponseMethod ConvolverSpecSetImpulseResponse)
             {
@@ -9819,7 +9890,7 @@ namespace OutOfPhase
                         CompileErrors CompileError;
                         int CompileErrorLine;
                         DataTypes ReturnType;
-                        Compiler.ASTExpressionRec Expr;
+                        Compiler.ASTExpression Expr;
                         PcodeRec FuncCode;
 
                         if (Sign < 0)
@@ -9853,7 +9924,7 @@ namespace OutOfPhase
                                 return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
                             }
 
-                            if (Compiler.WhatKindOfExpressionIsThis(Expr) == Compiler.ExprTypes.eExprOperand)
+                            if (Expr.Kind == Compiler.ExprKind.eExprOperand)
                             {
                                 /* expression is compile-time constant */
                                 switch (ReturnType)
@@ -9862,16 +9933,16 @@ namespace OutOfPhase
                                         ErrorLine = Context.Scanner.GetCurrentLineNumber();
                                         return BuildInstrErrors.eBuildInstrExpectedNumber;
                                     case DataTypes.eBoolean:
-                                        ConstantOut = Sign * (Compiler.GetOperandBooleanLiteral(Compiler.GetOperandFromExpression(Expr)) ? 1 : 0);
+                                        ConstantOut = Sign * (Expr.InnerOperand.BooleanLiteralValue ? 1 : 0);
                                         break;
                                     case DataTypes.eInteger:
-                                        ConstantOut = Sign * Compiler.GetOperandIntegerLiteral(Compiler.GetOperandFromExpression(Expr));
+                                        ConstantOut = Sign * Expr.InnerOperand.IntegerLiteralValue;
                                         break;
                                     case DataTypes.eFloat:
-                                        ConstantOut = Sign * Compiler.GetOperandSingleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                        ConstantOut = Sign * Expr.InnerOperand.SingleLiteralValue;
                                         break;
                                     case DataTypes.eDouble:
-                                        ConstantOut = Sign * Compiler.GetOperandDoubleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                        ConstantOut = Sign * Expr.InnerOperand.DoubleLiteralValue;
                                         break;
                                 }
 
@@ -12374,6 +12445,34 @@ namespace OutOfPhase
             }
             PutVocoderSpecWaveTableIndex(VocSpec, Number, Formula);
 
+            Token = Context.Scanner.GetNextToken();
+            if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
+                && (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordInterpolate))
+            {
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrExpectedOnOrOff;
+                }
+                switch (Token.GetTokenKeywordTag())
+                {
+                    default:
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrExpectedOnOrOff;
+                    case InstrKeywordType.eKeywordOn:
+                        VocoderSetEnableCrossWaveTableInterpolation(VocSpec, true);
+                        break;
+                    case InstrKeywordType.eKeywordOff:
+                        VocoderSetEnableCrossWaveTableInterpolation(VocSpec, false);
+                        break;
+                }
+            }
+            else
+            {
+                Context.Scanner.UngetToken(Token);
+            }
+
             /* outputgain */
             Token = Context.Scanner.GetNextToken();
             if ((Token.GetTokenType() != TokenTypes.eTokenKeyword)
@@ -12794,6 +12893,34 @@ namespace OutOfPhase
             if (Error != BuildInstrErrors.eBuildInstrNoError)
             {
                 return Error;
+            }
+
+            Token = Context.Scanner.GetNextToken();
+            if ((Token.GetTokenType() == TokenTypes.eTokenKeyword)
+                && (Token.GetTokenKeywordTag() == InstrKeywordType.eKeywordInterpolate))
+            {
+                Token = Context.Scanner.GetNextToken();
+                if (Token.GetTokenType() != TokenTypes.eTokenKeyword)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrExpectedOnOrOff;
+                }
+                switch (Token.GetTokenKeywordTag())
+                {
+                    default:
+                        ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                        return BuildInstrErrors.eBuildInstrExpectedOnOrOff;
+                    case InstrKeywordType.eKeywordOn:
+                        VocoderSetEnableCrossWaveTableInterpolation(VocSpec, true);
+                        break;
+                    case InstrKeywordType.eKeywordOff:
+                        VocoderSetEnableCrossWaveTableInterpolation(VocSpec, false);
+                        break;
+                }
+            }
+            else
+            {
+                Context.Scanner.UngetToken(Token);
             }
 
             /* outputgainenvelope */
@@ -14273,6 +14400,7 @@ namespace OutOfPhase
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
             AddOnceOnlyCode(LFORequiredOnceOnly, Req.LFODEFINITION_REQUIREDONCEONLY_LOOPENVELOPE);
 #endif
+            AddOnceOnlyCode(LFORequiredOnceOnly, Req.LFODEFINITION_ONCEONLY_INTERPOLATE);
             Error = ParseLfoDefinition(
                 LFO,
                 Context,
@@ -14292,6 +14420,15 @@ namespace OutOfPhase
                     case Req.LFODEFINITION_REQUIREDONCEONLY_AMPENVELOPE:
                         ErrorLine = Context.Scanner.GetCurrentLineNumber();
                         return BuildInstrErrors.eBuildInstrMissingRequiredAmpEnvelope;
+                }
+            }
+
+            if (LFOSpecGetEnableCrossWaveTableInterpolationExplicitlySet(LFO))
+            {
+                if (LFOSpecGetOscillatorType(LFO) != LFOOscTypes.eLFOWaveTable)
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrLFOInterpolateOnlyAppliesToWaveTable;
                 }
             }
 
@@ -14399,6 +14536,7 @@ namespace OutOfPhase
             AddRequiredOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_MAYBEREQUIREDONCEONLY_FOFEXPAND);
             AddRequiredOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_MAYBEREQUIREDONCEONLY_FOFENVELOPE);
             AddRequiredOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_MAYBEREQUIREDONCEONLY_NETWORK);
+            AddOnceOnlyCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_ONCEONLY_INTERPOLATE);
             Error = ParseOscillatorDefinition(
                 Oscillator,
                 Context,
@@ -14425,6 +14563,16 @@ namespace OutOfPhase
             {
                 /* algorithm doesn't need sample list */
                 CancelRequireCode(OscillatorRequiredOnceOnly, Req.OSCILLATORDEFINITION_REQUIREDONCEONLY_SAMPLELIST);
+            }
+            if ((OscillatorGetWhatKindItIs(Oscillator) == OscillatorTypes.eOscillatorAlgorithm)
+                || (OscillatorGetWhatKindItIs(Oscillator) == OscillatorTypes.eOscillatorSampled)
+                || (OscillatorGetWhatKindItIs(Oscillator) == OscillatorTypes.eOscillatorPluggable))
+            {
+                if (OscillatorGetEnableCrossWaveTableInterpolationExplicitlySet(Oscillator))
+                {
+                    ErrorLine = Context.Scanner.GetCurrentLineNumber();
+                    return BuildInstrErrors.eBuildInstrInterpolateNotMeaningfulForThatOscillatorType;
+                }
             }
             if (AnyUnmarkedRequireds(OscillatorRequiredOnceOnly))
             {
@@ -15299,7 +15447,7 @@ namespace OutOfPhase
                     out paramId);
                 if (Error != BuildInstrErrors.eBuildInstrNoError)
                 {
-                    Context.ErrorExtraMessage = GetPluggableParameterListForError(templateObject); // add contextually helpful description
+                    Context.ErrorExtraMessage = String.Format("must be one of: {0}", GetPluggableParameterListForError(templateObject)); // add contextually helpful description
                     return Error;
                 }
 
@@ -15307,7 +15455,7 @@ namespace OutOfPhase
                 if (paramIndex < 0)
                 {
                     ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                    Context.ErrorExtraMessage = GetPluggableParameterListForError(templateObject); // add contextually helpful description
+                    Context.ErrorExtraMessage = String.Format("must be one of: {0}", GetPluggableParameterListForError(templateObject)); // add contextually helpful description
                     return BuildInstrErrors.eBuildInstrReferencedUnknownPluggableProcessor;
                 }
                 if (spec.IsParameterSpecified(paramIndex))
@@ -15833,7 +15981,7 @@ namespace OutOfPhase
                     out paramId);
                 if (Error != BuildInstrErrors.eBuildInstrNoError)
                 {
-                    Context.ErrorExtraMessage = GetPluggableParameterListForError(templateObject); // add contextually helpful description
+                    Context.ErrorExtraMessage = String.Format("must be one of: {0}", GetPluggableParameterListForError(templateObject)); // add contextually helpful description
                     return Error;
                 }
 
@@ -15841,8 +15989,17 @@ namespace OutOfPhase
                 if (paramIndex < 0)
                 {
                     ErrorLine = Context.Scanner.GetCurrentLineNumber();
-                    Context.ErrorExtraMessage = GetPluggableParameterListForError(templateObject); // add contextually helpful description
-                    return BuildInstrErrors.eBuildInstrReferencedUnknownPluggableProcessor;
+
+                    int configIndex = Array.FindIndex(configs, delegate (KeyValuePair<string, string[]> candidate) { return String.Equals(candidate.Key, paramId); });
+                    if (configIndex >= 0)
+                    {
+                        return BuildInstrErrors.eBuildInstrPluggableConfigParamsMustComeBeforePluggableEffectParams;
+                    }
+                    else
+                    {
+                        Context.ErrorExtraMessage = String.Format("must be one of: {0}", GetPluggableParameterListForError(templateObject)); // add contextually helpful description
+                        return BuildInstrErrors.eBuildInstrExpectedPluggableParameterIdentifier;
+                    }
                 }
                 if (spec.IsParameterSpecified(paramIndex))
                 {
@@ -15959,7 +16116,7 @@ namespace OutOfPhase
                             {
                                 int CompileErrorLine;
                                 DataTypes ReturnType;
-                                Compiler.ASTExpressionRec Expr;
+                                Compiler.ASTExpression Expr;
 
                                 CompileErrors CompileError = Compiler.CompileSpecialFunction(
                                     Context.CodeCenter,
@@ -15981,7 +16138,7 @@ namespace OutOfPhase
                                     return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
                                 }
 
-                                if (Compiler.ExprTypes.eExprOperand == Compiler.WhatKindOfExpressionIsThis(Expr))
+                                if (Compiler.ExprKind.eExprOperand == Expr.Kind)
                                 {
                                     // expression evaluates at compile time to a constant
                                     switch (ReturnType)
@@ -15990,13 +16147,13 @@ namespace OutOfPhase
                                             ErrorLine = Context.Scanner.GetCurrentLineNumber();
                                             return BuildInstrErrors.eBuildInstrEnvFormulaMustHaveTypeDouble;
                                         case DataTypes.eInteger:
-                                            value = Compiler.GetOperandIntegerLiteral(Compiler.GetOperandFromExpression(Expr));
+                                            value = Expr.InnerOperand.IntegerLiteralValue;
                                             break;
                                         case DataTypes.eFloat:
-                                            value = Compiler.GetOperandSingleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                            value = Expr.InnerOperand.SingleLiteralValue;
                                             break;
                                         case DataTypes.eDouble:
-                                            value = Compiler.GetOperandDoubleLiteral(Compiler.GetOperandFromExpression(Expr));
+                                            value = Expr.InnerOperand.DoubleLiteralValue;
                                             break;
                                     }
                                     function = null; // force use constant
@@ -16317,11 +16474,11 @@ namespace OutOfPhase
                 Guid classGuid;
                 if (Guid.TryParse(classIdentifier, out classGuid))
                 {
-                    for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
+                    foreach (KeyValuePair<string, IPluggableProcessorFactory> item in AllPluggableProcessors)
                     {
-                        if (classGuid == BuiltInPluggableProcessors[i].Value.UniqueId)
+                        if (classGuid == item.Value.UniqueId)
                         {
-                            classObject = BuiltInPluggableProcessors[i].Value;
+                            classObject = item.Value;
                             break;
                         }
                     }
@@ -16330,20 +16487,20 @@ namespace OutOfPhase
             else
             {
                 // friendly name - built-in table first
-                for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
+                foreach (KeyValuePair<string, IPluggableProcessorFactory> item in BuiltInPluggableProcessors)
                 {
-                    if (String.Equals(classIdentifier, BuiltInPluggableProcessors[i].Key))
+                    if (String.Equals(classIdentifier, item.Key))
                     {
-                        classObject = BuiltInPluggableProcessors[i].Value;
+                        classObject = item.Value;
                         break;
                     }
                 }
                 // name property next
-                for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
+                foreach (KeyValuePair<string, IPluggableProcessorFactory> item in AllPluggableProcessors)
                 {
-                    if (String.Equals(classIdentifier, BuiltInPluggableProcessors[i].Value.ParserName))
+                    if (String.Equals(classIdentifier, item.Value.ParserName))
                     {
-                        classObject = BuiltInPluggableProcessors[i].Value;
+                        classObject = item.Value;
                         break;
                     }
                 }
@@ -16354,9 +16511,9 @@ namespace OutOfPhase
         private static string GetPluggableClassListForError()
         {
             List<string> strings = new List<string>();
-            for (int i = 0; i < BuiltInPluggableProcessors.Length; i++)
+            foreach (KeyValuePair<string, IPluggableProcessorFactory> item in AllPluggableProcessors)
             {
-                strings.Add(BuiltInPluggableProcessors[i].Key);
+                strings.Add(item.Key);
             }
             return GetPluggableIdentifierListForError(strings);
         }
@@ -16426,7 +16583,7 @@ namespace OutOfPhase
             }
             if (list.Length != 0)
             {
-                return String.Format(" ({0})", list);
+                return list.ToString();
             }
             return String.Empty;
         }

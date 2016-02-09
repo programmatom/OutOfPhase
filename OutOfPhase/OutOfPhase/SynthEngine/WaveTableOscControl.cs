@@ -59,6 +59,8 @@ namespace OutOfPhase
             /* effect specifier, may be null */
             public EffectSpecListRec OscEffectTemplate;
 
+            public bool EnableCrossWaveTableInterpolation;
+
 
             /* create a new wave table template */
             public static WaveTableTemplateRec NewWaveTableTemplate(
@@ -104,6 +106,8 @@ namespace OutOfPhase
                 {
                     Template.OscEffectTemplate = null;
                 }
+
+                Template.EnableCrossWaveTableInterpolation = OscillatorGetEnableCrossWaveTableInterpolation(Oscillator);
 
                 return Template;
             }
@@ -152,7 +156,7 @@ namespace OutOfPhase
                 State.NumberOfTablesMinus1 = NumberOfTables - 1;
 
                 State.FramesPerTableOverFinalOutputSamplingRate
-                    = (double)State.FramesPerTable * SynthParams.dSamplingRateReciprocal;
+                    = (double)State.FramesPerTable / SynthParams.dSamplingRate;
 
                 /* State.FramesPerTable > 0: */
                 /*   if the wave table is empty, then we don't do any work (and we must not, */
@@ -300,6 +304,8 @@ namespace OutOfPhase
                     }
                 }
 
+                State.EnableCrossWaveTableInterpolation = Template.EnableCrossWaveTableInterpolation;
+
                 PreOriginTimeOut = MaxPreOrigin;
                 StateOut = State;
                 return SynthErrorCodes.eSynthDone;
@@ -367,6 +373,8 @@ namespace OutOfPhase
 
             /* static information for the wave table */
             public WaveTableTemplateRec Template;
+
+            public bool EnableCrossWaveTableInterpolation;
 
 
             /* perform one envelope update cycle, and set a new frequency for a wave table */
@@ -795,7 +803,6 @@ namespace OutOfPhase
                 Fixed64 LocalWaveTableSamplePositionDifferential = State.WaveTableSamplePositionDifferential;
                 int LocalSamplePositionMask = State.FramesPerTable - 1;
 
-#if true // TODO:experimental - smoothing
                 if (Program.Config.EnableEnvelopeSmoothing
                     // case of no motion in either smoothed axes can use fast code path
                     && ((State.Loudness != State.PreviousLoudness)
@@ -831,8 +838,9 @@ namespace OutOfPhase
                     }
 
                     /* select method */
-                    if ((State.WaveTableIndex == State.NumberOfTablesMinus1)
-                        && (State.PreviousWaveTableIndex == State.NumberOfTablesMinus1))
+                    if (((State.WaveTableIndex == State.NumberOfTablesMinus1)
+                            && (State.PreviousWaveTableIndex == State.NumberOfTablesMinus1))
+                        || !State.EnableCrossWaveTableInterpolation)
                     {
                         /* process at end of table, where there is no extra table for interpolation */
 
@@ -932,7 +940,6 @@ namespace OutOfPhase
                     }
                 }
                 else
-#endif
                 {
                     // non-smoothing case
 
@@ -940,7 +947,8 @@ namespace OutOfPhase
                     float LocalRightLoudness = LocalLoudness * RightPan;
 
                     /* select method */
-                    if (State.WaveTableIndex == State.NumberOfTablesMinus1)
+                    if ((State.WaveTableIndex == State.NumberOfTablesMinus1)
+                        || !State.EnableCrossWaveTableInterpolation)
                     {
                         /* process at end of table, where there is no extra table for interpolation */
 

@@ -48,7 +48,6 @@ namespace OutOfPhase
 
             public FilterTypes FilterType { get { return FilterTypes.eFilterResonantLowpass; } }
 
-            /* initialize filter record */
             public ResonantLowpassRec(
                 int LowpassOrder,
                 int BandpassOrder)
@@ -73,7 +72,6 @@ namespace OutOfPhase
                 this.iir = new IIR2DirectIRec[this.NumLowpassSections + this.NumBandpassSections];
             }
 
-            /* adjust filter coefficients */
             public static void SetResonantLowpassCoefficients(
                 ResonantLowpassRec Filter,
                 double Cutoff,
@@ -129,6 +127,17 @@ namespace OutOfPhase
                 }
 
                 Filter.BandpassGain = (float)Gain;
+            }
+
+            public void UpdateParams(
+                ref FilterParams Params)
+            {
+                SetResonantLowpassCoefficients(
+                    this,
+                    Params.Cutoff,
+                    Params.BandwidthOrSlope,
+                    Params.Gain,
+                    Params.SamplingRate);
             }
 
             /* apply filter to an array of values, adding result to output array */

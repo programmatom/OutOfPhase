@@ -70,6 +70,8 @@ namespace OutOfPhase
             public EnvelopeRec FOFSamplingRateEnvelopeTemplate;
             public LFOListSpecRec FOFSamplingRateLFOTemplate;
 
+            public bool EnableCrossWaveTableInterpolation;
+
 
             /* create a new FOF template */
             public static FOFTemplateRec NewFOFTemplate(
@@ -112,6 +114,8 @@ namespace OutOfPhase
                 {
                     Template.OscEffectTemplate = null;
                 }
+
+                Template.EnableCrossWaveTableInterpolation = OscillatorGetEnableCrossWaveTableInterpolation(Oscillator);
 
                 return Template;
             }
@@ -163,7 +167,7 @@ namespace OutOfPhase
                     /* we want the first grain to go on the first sampling point, so we */
                     /* set this up to start on the next interval. */
                     State.WaveTableSamplePosition = new Fixed64(State.FramesPerTable - State.FramesPerTable
-                        * (InitialFrequency * SynthParams.dSamplingRateReciprocal));
+                        * (InitialFrequency / SynthParams.dSamplingRate));
                 }
                 /* State.WaveTableSamplePositionDifferential specified in separate call */
 
@@ -456,7 +460,7 @@ namespace OutOfPhase
                     }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier + State.Template.FrequencyAdder;
-                Differential = NewFrequencyHertz * SynthParams.dSamplingRateReciprocal * State.FramesPerTable;
+                Differential = NewFrequencyHertz / SynthParams.dSamplingRate * State.FramesPerTable;
                 State.WaveTableSamplePositionDifferential = new Fixed64(Differential);
 
                 /* this is for the benefit of resampling only -- envelope generators do their */
@@ -945,7 +949,7 @@ namespace OutOfPhase
                         /* number of frames in the table. */
                         NewGrain.FOFSamplePositionDifferential = new Fixed64(
                             State.FOFSamplingRateContour * State.Template.FOFSamplingRate
-                                * SynthParams.dSamplingRateReciprocal);
+                                / SynthParams.dSamplingRate);
 
                         /* establish link, only if differential isn't really close to zero */
                         if ((NewGrain.FOFSamplePositionDifferential.FracI < 0x00010000)
@@ -1014,7 +1018,7 @@ namespace OutOfPhase
                         float Right0Value = GrainScan.WaveData0[ArraySubscript + 1];
                         float CombinedValue = Left0Value + (RightWeight * (Right0Value - Left0Value));
 
-                        if (GrainScan.WaveData1 != null)
+                        if ((GrainScan.WaveData1 != null) && State.Template.EnableCrossWaveTableInterpolation)
                         {
                             /* L+F(R-L) -- applied twice */
                             float Left1Value = GrainScan.WaveData1[ArraySubscript];

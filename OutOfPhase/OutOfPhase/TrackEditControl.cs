@@ -71,42 +71,42 @@ namespace OutOfPhase
             ToolStripButton[] group;
             //
             group = new ToolStripButton[] { toolStripButtonArrow, toolStripButtonCommand, toolStripButtonSixtyFourth, toolStripButtonThirtySecond, toolStripButtonSixteenth, toolStripButtonEighth, toolStripButtonQuarter, toolStripButtonHalf, toolStripButtonWhole, toolStripButtonDouble, toolStripButtonQuad };
-            SetButton(toolStripButtonArrow, Bitmaps.gdiArrowButtonBits, Bitmaps.gdiArrowButtonSelectedBits, group, new ToolStripButton[] { toolStripButtonQuarter, toolStripButtonDiv1, toolStripButtonNatural, toolStripButtonNoDot, toolStripButtonNoteVsRest });
+            SetButton(toolStripButtonArrow, Bitmaps1Class.gdiArrowButtonBits, Bitmaps1Class.gdiArrowButtonSelectedBits, group, new ToolStripButton[] { toolStripButtonQuarter, toolStripButtonDiv1, toolStripButtonNatural, toolStripButtonNoDot, toolStripButtonNoteVsRest });
             toolStripButtonArrow.Checked = true;
             //
-            SetButton(toolStripButtonCommand, Bitmaps.gdiCommandButtonBits, Bitmaps.gdiCommandButtonSelectedBits, group, null);
+            SetButton(toolStripButtonCommand, Bitmaps1Class.gdiCommandButtonBits, Bitmaps1Class.gdiCommandButtonSelectedBits, group, null);
             //
-            SetButton(toolStripButtonSixtyFourth, Bitmaps.gdiSixtyFourthButtonBits, Bitmaps.gdiSixtyFourthButtonSelectedBits, group, null);
-            SetButton(toolStripButtonThirtySecond, Bitmaps.gdiThirtySecondButtonBits, Bitmaps.gdiThirtySecondButtonSelectedBits, group, null);
-            SetButton(toolStripButtonSixteenth, Bitmaps.gdiSixteenthButtonBits, Bitmaps.gdiSixteenthButtonSelectedBits, group, null);
-            SetButton(toolStripButtonEighth, Bitmaps.gdiEighthButtonBits, Bitmaps.gdiEighthButtonSelectedBits, group, null);
-            SetButton(toolStripButtonQuarter, Bitmaps.gdiQuarterButtonBits, Bitmaps.gdiQuarterButtonSelectedBits, group, null);
-            SetButton(toolStripButtonHalf, Bitmaps.gdiHalfButtonBits, Bitmaps.gdiHalfButtonSelectedBits, group, null);
-            SetButton(toolStripButtonWhole, Bitmaps.gdiWholeButtonBits, Bitmaps.gdiWholeButtonSelectedBits, group, null);
-            SetButton(toolStripButtonDouble, Bitmaps.gdiDoubleButtonBits, Bitmaps.gdiDoubleButtonSelectedBits, group, null);
-            SetButton(toolStripButtonQuad, Bitmaps.gdiQuadButtonBits, Bitmaps.gdiQuadButtonSelectedBits, group, null);
+            SetButton(toolStripButtonSixtyFourth, Bitmaps1Class.gdiSixtyFourthButtonBits, Bitmaps1Class.gdiSixtyFourthButtonSelectedBits, group, null);
+            SetButton(toolStripButtonThirtySecond, Bitmaps1Class.gdiThirtySecondButtonBits, Bitmaps1Class.gdiThirtySecondButtonSelectedBits, group, null);
+            SetButton(toolStripButtonSixteenth, Bitmaps1Class.gdiSixteenthButtonBits, Bitmaps1Class.gdiSixteenthButtonSelectedBits, group, null);
+            SetButton(toolStripButtonEighth, Bitmaps1Class.gdiEighthButtonBits, Bitmaps1Class.gdiEighthButtonSelectedBits, group, null);
+            SetButton(toolStripButtonQuarter, Bitmaps1Class.gdiQuarterButtonBits, Bitmaps1Class.gdiQuarterButtonSelectedBits, group, null);
+            SetButton(toolStripButtonHalf, Bitmaps1Class.gdiHalfButtonBits, Bitmaps1Class.gdiHalfButtonSelectedBits, group, null);
+            SetButton(toolStripButtonWhole, Bitmaps1Class.gdiWholeButtonBits, Bitmaps1Class.gdiWholeButtonSelectedBits, group, null);
+            SetButton(toolStripButtonDouble, Bitmaps1Class.gdiDoubleButtonBits, Bitmaps1Class.gdiDoubleButtonSelectedBits, group, null);
+            SetButton(toolStripButtonQuad, Bitmaps1Class.gdiQuadButtonBits, Bitmaps1Class.gdiQuadButtonSelectedBits, group, null);
             //
             group = new ToolStripButton[] { toolStripButtonSharp, toolStripButtonFlat, toolStripButtonNatural };
-            SetButton(toolStripButtonSharp, Bitmaps.gdiSharpButtonBits, Bitmaps.gdiSharpButtonSelectedBits, group, null);
-            SetButton(toolStripButtonFlat, Bitmaps.gdiFlatButtonBits, Bitmaps.gdiFlatButtonSelectedBits, group, null);
-            SetButton(toolStripButtonNatural, Bitmaps.gdiNaturalButtonBits, Bitmaps.gdiNaturalButtonSelectedBits, group, null);
+            SetButton(toolStripButtonSharp, Bitmaps1Class.gdiSharpButtonBits, Bitmaps1Class.gdiSharpButtonSelectedBits, group, null);
+            SetButton(toolStripButtonFlat, Bitmaps1Class.gdiFlatButtonBits, Bitmaps1Class.gdiFlatButtonSelectedBits, group, null);
+            SetButton(toolStripButtonNatural, Bitmaps1Class.gdiNaturalButtonBits, Bitmaps1Class.gdiNaturalButtonSelectedBits, group, null);
             toolStripButtonNatural.Checked = true;
             //
             group = new ToolStripButton[] { toolStripButtonNoteVsRest, toolStripButtonNoteVsRest2 };
-            SetButton(toolStripButtonNoteVsRest, Bitmaps.gdiNoteVsRestButtonBits, Bitmaps.gdiNoteVsRestButtonSelectedBits, group, null);
-            SetButton(toolStripButtonNoteVsRest2, Bitmaps.gdiRestVsNoteButtonBits, Bitmaps.gdiRestVsNoteButtonSelectedBits, group, null);
+            SetButton(toolStripButtonNoteVsRest, Bitmaps1Class.gdiNoteVsRestButtonBits, Bitmaps1Class.gdiNoteVsRestButtonSelectedBits, group, null);
+            SetButton(toolStripButtonNoteVsRest2, Bitmaps1Class.gdiRestVsNoteButtonBits, Bitmaps1Class.gdiRestVsNoteButtonSelectedBits, group, null);
             toolStripButtonNoteVsRest.Checked = true;
             //
             group = new ToolStripButton[] { toolStripButtonNoDot, toolStripButtonYesDot };
-            SetButton(toolStripButtonNoDot, Bitmaps.gdiNoDotButtonBits, Bitmaps.gdiNoDotButtonSelectedBits, group, null);
-            SetButton(toolStripButtonYesDot, Bitmaps.gdiYesDotButtonBits, Bitmaps.gdiYesDotButtonSelectedBits, group, null);
+            SetButton(toolStripButtonNoDot, Bitmaps1Class.gdiNoDotButtonBits, Bitmaps1Class.gdiNoDotButtonSelectedBits, group, null);
+            SetButton(toolStripButtonYesDot, Bitmaps1Class.gdiYesDotButtonBits, Bitmaps1Class.gdiYesDotButtonSelectedBits, group, null);
             toolStripButtonNoDot.Checked = true;
             //
             group = new ToolStripButton[] { toolStripButtonDiv1, toolStripButtonDiv3, toolStripButtonDiv5, toolStripButtonDiv7 };
-            SetButton(toolStripButtonDiv1, Bitmaps.gdiDiv1ButtonBits, Bitmaps.gdiDiv1ButtonSelectedBits, group, null);
-            SetButton(toolStripButtonDiv3, Bitmaps.gdiDiv3ButtonBits, Bitmaps.gdiDiv3ButtonSelectedBits, group, null);
-            SetButton(toolStripButtonDiv5, Bitmaps.gdiDiv5ButtonBits, Bitmaps.gdiDiv5ButtonSelectedBits, group, null);
-            SetButton(toolStripButtonDiv7, Bitmaps.gdiDiv7ButtonBits, Bitmaps.gdiDiv7ButtonSelectedBits, group, null);
+            SetButton(toolStripButtonDiv1, Bitmaps1Class.gdiDiv1ButtonBits, Bitmaps1Class.gdiDiv1ButtonSelectedBits, group, null);
+            SetButton(toolStripButtonDiv3, Bitmaps1Class.gdiDiv3ButtonBits, Bitmaps1Class.gdiDiv3ButtonSelectedBits, group, null);
+            SetButton(toolStripButtonDiv5, Bitmaps1Class.gdiDiv5ButtonBits, Bitmaps1Class.gdiDiv5ButtonSelectedBits, group, null);
+            SetButton(toolStripButtonDiv7, Bitmaps1Class.gdiDiv7ButtonBits, Bitmaps1Class.gdiDiv7ButtonSelectedBits, group, null);
             toolStripButtonDiv1.Checked = true;
 
             PrepareInlineEditingMenu();
@@ -687,9 +687,9 @@ namespace OutOfPhase
             else if ((menuItem == menuStrip.playTrackFromHereToolStripMenuItem)
                 || (menuItem == menuStrip.playTrackFromHereToDiskToolStripMenuItem))
             {
-                int StartIndex;
-                List<TrackObjectRec> TrackList = new List<TrackObjectRec>();
+                IPlayPrefsProvider playPrefsProvider = mainWindow.GetPlayPrefsProvider();
 
+                int StartIndex;
                 if (trackViewControl.TrackViewIsARangeSelected())
                 {
                     StartIndex = trackViewControl.TrackViewGetRangeStart();
@@ -707,7 +707,10 @@ namespace OutOfPhase
                 {
                     StartIndex = 0; /* default to the beginning for other selections */
                 }
+
+                List<TrackObjectRec> TrackList = new List<TrackObjectRec>();
                 TrackList.Add(trackObject);
+
                 if (menuItem == menuStrip.playTrackFromHereToolStripMenuItem)
                 {
 #if true // prevents "Add New Data Source..." from working
@@ -715,7 +718,7 @@ namespace OutOfPhase
                         mainWindow.DisplayName,
                         OutputDeviceEnumerator.OutputDeviceGetDestination,
                         OutputDeviceEnumerator.CreateOutputDeviceDestinationHandler,
-                        new OutputDeviceArguments(mainWindow.Document.BufferDuration),
+                        new OutputDeviceArguments(playPrefsProvider.BufferDuration),
                         SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.SynthesizerMainLoop,
                         new SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>(
                             mainWindow,
@@ -723,25 +726,25 @@ namespace OutOfPhase
                             TrackList,
                             trackObject,
                             StartIndex,
-                            mainWindow.Document.SamplingRate,
-                            mainWindow.Document.EnvelopeUpdateRate,
-                            mainWindow.Document.NumChannels,
-                            (LargeBCDType)mainWindow.Document.DefaultBeatsPerMinute,
-                            mainWindow.Document.OverallVolumeScalingFactor,
-                            (LargeBCDType)mainWindow.Document.ScanningGap,
-                            mainWindow.Document.OutputNumBits,
+                            playPrefsProvider.SamplingRate,
+                            playPrefsProvider.EnvelopeUpdateRate,
+                            playPrefsProvider.NumChannels,
+                            (LargeBCDType)playPrefsProvider.DefaultBeatsPerMinute,
+                            playPrefsProvider.OverallVolumeScalingFactor,
+                            (LargeBCDType)playPrefsProvider.ScanningGap,
+                            playPrefsProvider.OutputNumBits,
                             false/*clipWarning*/,
-                            mainWindow.Document.Oversampling,
-                            mainWindow.Document.ShowSummary,
-                            mainWindow.Document.Deterministic,
-                            mainWindow.Document.Seed,
+                            playPrefsProvider.Oversampling,
+                            playPrefsProvider.ShowSummary,
+                            playPrefsProvider.Deterministic,
+                            playPrefsProvider.Seed,
                             null/*automationSettings*/),
                         SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.SynthesizerCompletion,
                         mainWindow,
-                        mainWindow.Document.NumChannels,
-                        mainWindow.Document.OutputNumBits,
-                        mainWindow.Document.SamplingRate,
-                        mainWindow.Document.Oversampling,
+                        playPrefsProvider.NumChannels,
+                        playPrefsProvider.OutputNumBits,
+                        playPrefsProvider.SamplingRate,
+                        playPrefsProvider.Oversampling,
                         true/*showProgressWindow*/,
                         true/*modal*/);
 #endif
@@ -761,25 +764,25 @@ namespace OutOfPhase
                             TrackList,
                             trackObject,
                             StartIndex,
-                            mainWindow.Document.SamplingRate,
-                            mainWindow.Document.EnvelopeUpdateRate,
-                            mainWindow.Document.NumChannels,
-                            (LargeBCDType)mainWindow.Document.DefaultBeatsPerMinute,
-                            mainWindow.Document.OverallVolumeScalingFactor,
-                            (LargeBCDType)mainWindow.Document.ScanningGap,
-                            mainWindow.Document.OutputNumBits,
+                            playPrefsProvider.SamplingRate,
+                            playPrefsProvider.EnvelopeUpdateRate,
+                            playPrefsProvider.NumChannels,
+                            (LargeBCDType)playPrefsProvider.DefaultBeatsPerMinute,
+                            playPrefsProvider.OverallVolumeScalingFactor,
+                            (LargeBCDType)playPrefsProvider.ScanningGap,
+                            playPrefsProvider.OutputNumBits,
                             false/*clipWarning*/,
-                            mainWindow.Document.Oversampling,
-                            mainWindow.Document.ShowSummary,
-                            mainWindow.Document.Deterministic,
-                            mainWindow.Document.Seed,
+                            playPrefsProvider.Oversampling,
+                            playPrefsProvider.ShowSummary,
+                            playPrefsProvider.Deterministic,
+                            playPrefsProvider.Seed,
                             null/*automationSettings*/),
                         SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.SynthesizerCompletion,
                         mainWindow,
-                        mainWindow.Document.NumChannels,
-                        mainWindow.Document.OutputNumBits,
-                        mainWindow.Document.SamplingRate,
-                        mainWindow.Document.Oversampling,
+                        playPrefsProvider.NumChannels,
+                        playPrefsProvider.OutputNumBits,
+                        playPrefsProvider.SamplingRate,
+                        playPrefsProvider.Oversampling,
                         true/*showProgressWindow*/,
                         true/*modal*/);
 #endif
@@ -789,9 +792,9 @@ namespace OutOfPhase
             else if ((menuItem == menuStrip.playAllFromHereToolStripMenuItem)
                 || (menuItem == menuStrip.playAllFromHereToDiskToolStripMenuItem))
             {
-                int StartIndex;
-                List<TrackObjectRec> TrackList;
+                IPlayPrefsProvider playPrefsProvider = mainWindow.GetPlayPrefsProvider();
 
+                int StartIndex;
                 if (trackViewControl.TrackViewIsARangeSelected())
                 {
                     StartIndex = trackViewControl.TrackViewGetRangeStart();
@@ -809,22 +812,17 @@ namespace OutOfPhase
                 {
                     StartIndex = 0; /* default to the beginning for other selections */
                 }
-                TrackList = new List<TrackObjectRec>(mainWindow.Document.TrackList);
-                int TrackListScan = 0;
-                /* keep only the tracks that are marked to be played */
-                while (TrackListScan < TrackList.Count)
+
+                List<TrackObjectRec> TrackList = new List<TrackObjectRec>();
+                TrackList.Add(trackObject); // we must include the current track
+                foreach (TrackObjectRec track in playPrefsProvider.IncludedTracks)
                 {
-                    TrackObjectRec MaybeTrack = TrackList[TrackListScan];
-                    if ((MaybeTrack != trackObject) /* we MUST keep the current track! */
-                        && !MaybeTrack.IncludeThisTrackInFinalPlayback)
+                    if (track != trackObject)
                     {
-                        TrackList.RemoveAt(TrackListScan);
-                    }
-                    else
-                    {
-                        TrackListScan += 1;
+                        TrackList.Add(track);
                     }
                 }
+
                 if (menuItem == menuStrip.playAllFromHereToolStripMenuItem)
                 {
 #if true // prevents "Add New Data Source..." from working
@@ -832,7 +830,7 @@ namespace OutOfPhase
                         mainWindow.DisplayName,
                         OutputDeviceEnumerator.OutputDeviceGetDestination,
                         OutputDeviceEnumerator.CreateOutputDeviceDestinationHandler,
-                        new OutputDeviceArguments(mainWindow.Document.BufferDuration),
+                        new OutputDeviceArguments(playPrefsProvider.BufferDuration),
                         SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.SynthesizerMainLoop,
                         new SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>(
                             mainWindow,
@@ -840,25 +838,25 @@ namespace OutOfPhase
                             TrackList,
                             trackObject,
                             StartIndex,
-                            mainWindow.Document.SamplingRate,
-                            mainWindow.Document.EnvelopeUpdateRate,
-                            mainWindow.Document.NumChannels,
-                            (LargeBCDType)mainWindow.Document.DefaultBeatsPerMinute,
-                            mainWindow.Document.OverallVolumeScalingFactor,
-                            (LargeBCDType)mainWindow.Document.ScanningGap,
-                            mainWindow.Document.OutputNumBits,
+                            playPrefsProvider.SamplingRate,
+                            playPrefsProvider.EnvelopeUpdateRate,
+                            playPrefsProvider.NumChannels,
+                            (LargeBCDType)playPrefsProvider.DefaultBeatsPerMinute,
+                            playPrefsProvider.OverallVolumeScalingFactor,
+                            (LargeBCDType)playPrefsProvider.ScanningGap,
+                            playPrefsProvider.OutputNumBits,
                             false/*clipWarning*/,
-                            mainWindow.Document.Oversampling,
-                            mainWindow.Document.ShowSummary,
-                            mainWindow.Document.Deterministic,
-                            mainWindow.Document.Seed,
+                            playPrefsProvider.Oversampling,
+                            playPrefsProvider.ShowSummary,
+                            playPrefsProvider.Deterministic,
+                            playPrefsProvider.Seed,
                             null/*automationSettings*/),
                         SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.SynthesizerCompletion,
                         mainWindow,
-                        mainWindow.Document.NumChannels,
-                        mainWindow.Document.OutputNumBits,
-                        mainWindow.Document.SamplingRate,
-                        mainWindow.Document.Oversampling,
+                        playPrefsProvider.NumChannels,
+                        playPrefsProvider.OutputNumBits,
+                        playPrefsProvider.SamplingRate,
+                        playPrefsProvider.Oversampling,
                         true/*showProgressWindow*/,
                         true/*modal*/);
 #endif
@@ -878,25 +876,25 @@ namespace OutOfPhase
                             TrackList,
                             trackObject,
                             StartIndex,
-                            mainWindow.Document.SamplingRate,
-                            mainWindow.Document.EnvelopeUpdateRate,
-                            mainWindow.Document.NumChannels,
-                            (LargeBCDType)mainWindow.Document.DefaultBeatsPerMinute,
-                            mainWindow.Document.OverallVolumeScalingFactor,
-                            (LargeBCDType)mainWindow.Document.ScanningGap,
-                            mainWindow.Document.OutputNumBits,
+                            playPrefsProvider.SamplingRate,
+                            playPrefsProvider.EnvelopeUpdateRate,
+                            playPrefsProvider.NumChannels,
+                            (LargeBCDType)playPrefsProvider.DefaultBeatsPerMinute,
+                            playPrefsProvider.OverallVolumeScalingFactor,
+                            (LargeBCDType)playPrefsProvider.ScanningGap,
+                            playPrefsProvider.OutputNumBits,
                             false/*clipWarning*/,
-                            mainWindow.Document.Oversampling,
-                            mainWindow.Document.ShowSummary,
-                            mainWindow.Document.Deterministic,
-                            mainWindow.Document.Seed,
+                            playPrefsProvider.Oversampling,
+                            playPrefsProvider.ShowSummary,
+                            playPrefsProvider.Deterministic,
+                            playPrefsProvider.Seed,
                             null/*automationSettings*/),
                         SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.SynthesizerCompletion,
                         mainWindow,
-                        mainWindow.Document.NumChannels,
-                        mainWindow.Document.OutputNumBits,
-                        mainWindow.Document.SamplingRate,
-                        mainWindow.Document.Oversampling,
+                        playPrefsProvider.NumChannels,
+                        playPrefsProvider.OutputNumBits,
+                        playPrefsProvider.SamplingRate,
+                        playPrefsProvider.Oversampling,
                         true/*showProgressWindow*/,
                         true/*modal*/);
 #endif

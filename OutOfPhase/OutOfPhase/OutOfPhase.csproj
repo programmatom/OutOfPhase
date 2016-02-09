@@ -147,6 +147,12 @@
       <DependentUpon>CalculatorWindow.cs</DependentUpon>
     </Compile>
     <Compile Include="ClipboardSerializers.cs" />
+    <Compile Include="CmdDlgLoadPitchTable.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="CmdDlgLoadPitchTable.Designer.cs">
+      <DependentUpon>CmdDlgLoadPitchTable.cs</DependentUpon>
+    </Compile>
     <Compile Include="CmdDlgOneBinaryChoice.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -277,6 +283,7 @@
       <DependentUpon>PlayAudioFileWithEffects.cs</DependentUpon>
     </Compile>
     <Compile Include="PlayFile.cs" />
+    <Compile Include="PlayPrefs.cs" />
     <Compile Include="PlayPrefsDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -307,6 +314,18 @@
     </Compile>
     <Compile Include="SectionWindow.Designer.cs">
       <DependentUpon>SectionWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SegmentCalculatorDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SegmentCalculatorDialog.Designer.cs">
+      <DependentUpon>SegmentCalculatorDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SegmentCalculatorGraph.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="SegmentCalculatorGraph.Designer.cs">
+      <DependentUpon>SegmentCalculatorGraph.cs</DependentUpon>
     </Compile>
     <Compile Include="SequencerConfigWindow.cs">
       <SubType>Form</SubType>
@@ -388,6 +407,9 @@
     <EmbeddedResource Include="CalculatorWindow.resx">
       <SubType>Designer</SubType>
       <DependentUpon>CalculatorWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CmdDlgLoadPitchTable.resx">
+      <DependentUpon>CmdDlgLoadPitchTable.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="CmdDlgOneBinaryChoice.resx">
       <SubType>Designer</SubType>
@@ -491,6 +513,12 @@
       <SubType>Designer</SubType>
       <DependentUpon>SectionWindow.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="SegmentCalculatorDialog.resx">
+      <DependentUpon>SegmentCalculatorDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SegmentCalculatorGraph.resx">
+      <DependentUpon>SegmentCalculatorGraph.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="SequencerConfigWindow.resx">
       <SubType>Designer</SubType>
       <DependentUpon>SequencerConfigWindow.cs</DependentUpon>
@@ -533,6 +561,7 @@
     <None Include="Properties\DataSources\AlgoWaveTableObjectRec.datasource" />
     <None Include="Properties\DataSources\Document.datasource" />
     <None Include="Properties\DataSources\FunctionObjectRec.datasource" />
+    <None Include="Properties\DataSources\GlobalPrefs.datasource" />
     <None Include="Properties\DataSources\Import.ImportRawSettings.datasource" />
     <None Include="Properties\DataSources\InstrObjectRec.datasource" />
     <None Include="Properties\DataSources\NoteNoteObjectRec.datasource" />
@@ -553,7 +582,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <Compile Include="SampleControl.cs">
-      <SubType>UserControl</SubType>
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="SampleControl.Designer.cs">
       <DependentUpon>SampleControl.cs</DependentUpon>
@@ -565,7 +594,7 @@
       <DependentUpon>SampleWindow.cs</DependentUpon>
     </Compile>
     <Compile Include="SymbolicPitch.cs" />
-    <Compile Include="Symbols.cs" />
+    <Compile Include="PcodeSystem\Symbols.cs" />
     <Compile Include="SynthEngine\64BitMath.cs" />
     <Compile Include="SynthEngine\AlgorithmicOscControl.cs" />
     <Compile Include="SynthEngine\Analyzer.cs" />
@@ -670,7 +699,7 @@
       <DependentUpon>TrackEditControl.cs</DependentUpon>
     </Compile>
     <Compile Include="TrackViewControl.cs">
-      <SubType>UserControl</SubType>
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="TrackViewControl.Designer.cs">
       <DependentUpon>TrackViewControl.cs</DependentUpon>

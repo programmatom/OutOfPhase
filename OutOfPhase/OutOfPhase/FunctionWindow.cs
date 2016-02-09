@@ -123,28 +123,57 @@ namespace OutOfPhase
 
         //
 
-        public bool BuildThis(bool force)
+        public enum BuildResult
+        {
+            Succeeded,
+            SyntaxCheckedOnly,
+            Failed,
+        }
+
+        public BuildResult BuildThis(bool force)
         {
             if (!Validate()) // ensure all controls commit data to store
             {
-                return false;
+                return BuildResult.Failed;
             }
 
-            return functionObject.EnsureBuilt(
+            if (functionObject.EnsureBuilt(
                 force,
                 new PcodeExterns(mainWindow),
-                delegate(object source, BuildErrorInfo errorInfo)
+                delegate (object source, BuildErrorInfo errorInfo) { }))
+            {
+                // Prefer proper full build - if it succeeds, since that populates the real CodeCenter object and also ensures
+                // function signatures match function call argument lists. Disassembly will be available in this case.
+                return BuildResult.Succeeded;
+            }
+            else
+            {
+                // If there are compile errors, perform a partial compilation that does not enforce linkability. Disassembly
+                // may not be available in this case if conflicting signagures have been inferred for a function.
+                if (functionObject.TestBuild(
+                    force,
+                    new PcodeExterns(mainWindow),
+                    delegate (object source, BuildErrorInfo errorInfo)
+                    {
+                        if (source == functionObject)
+                        {
+                            HighlightLine(errorInfo.LineNumber);
+                            MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
+                        }
+                        else
+                        {
+                            mainWindow.DefaultBuildFailedCallback(source, errorInfo);
+                        }
+                    },
+                    new CodeCenterRec()/*throw-away*/))
                 {
-                    if (source == functionObject)
-                    {
-                        HighlightLine(errorInfo.LineNumber);
-                        MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
-                    }
-                    else
-                    {
-                        mainWindow.DefaultBuildFailedCallback(source, errorInfo);
-                    }
-                });
+                    return BuildResult.SyntaxCheckedOnly;
+                }
+                else
+                {
+                    return BuildResult.Failed;
+                }
+            }
         }
 
 
@@ -152,9 +181,9 @@ namespace OutOfPhase
 
         public void HighlightLine(int line)
         {
-            line--;
             textBoxFunctionBody.Focus();
-            textBoxFunctionBody.SetSelectionLine(line);
+            textBoxFunctionBody.SetSelectionLine(line - 1);
+            textBoxFunctionBody.ScrollToSelection();
         }
 
 
@@ -196,21 +225,33 @@ namespace OutOfPhase
             }
             else if (menuItem == menuStrip.disassembleToolStripMenuItem)
             {
-                if (BuildThis(false/*force*/))
+                switch (BuildThis(false/*force*/))
                 {
-                    StringBuilder sb = new StringBuilder();
-                    foreach (FuncCodeRec TheFunction in document.CodeCenter.GetListOfFunctionsForModule(functionObject))
-                    {
-                        sb.AppendLine();
-                        sb.AppendLine();
-                        sb.AppendLine(TheFunction.GetFunctionName());
-                        sb.AppendLine();
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
 
-                        sb.Append(Compiler.DisassemblePcode(TheFunction.GetFunctionPcode(), Environment.NewLine));
-                    }
-                    sb.AppendLine();
+                    case BuildResult.Succeeded:
+                        StringBuilder sb = new StringBuilder();
+                        foreach (FuncCodeRec TheFunction in document.CodeCenter.GetListOfFunctionsForModule(functionObject))
+                        {
+                            sb.AppendLine();
+                            sb.AppendLine();
+                            sb.AppendLine(TheFunction.GetFunctionName());
+                            sb.AppendLine();
 
-                    new DisassemblyWindow(sb.ToString(), mainWindow, textBoxFunctionName.Text).Show();
+                            sb.Append(Compiler.DisassemblePcode(TheFunction.GetFunctionPcode(), Environment.NewLine));
+                        }
+                        sb.AppendLine();
+                        new DisassemblyWindow(sb.ToString(), mainWindow, textBoxFunctionName.Text).Show();
+                        break;
+
+                    case BuildResult.Failed:
+                        break;
+
+                    case BuildResult.SyntaxCheckedOnly:
+                        MessageBox.Show("Compile errors in other modules prevented the disassembly for this module from being generated.", "Out Of Phase");
+                        break;
                 }
                 return true;
             }

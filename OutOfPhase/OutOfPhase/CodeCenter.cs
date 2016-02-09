@@ -45,9 +45,7 @@ namespace OutOfPhase
 
         private KeyValuePair<string, FunctionSignature>[] retainedFunctionSignatures = new KeyValuePair<string, FunctionSignature>[0];
 
-#if true // TODO:experimental
         public readonly ManagedFunctionLinkerRec ManagedFunctionLinker = new ManagedFunctionLinkerRec();
-#endif
 
 
         /* if we have the pcode, but not the function, then find it */
@@ -108,13 +106,11 @@ namespace OutOfPhase
                         CodeList[j].Function.GetFunctionPcode().PcodeUnlink(
                             CodeList[i].Function.GetFunctionName());
                     }
-#if true // TODO:experimental
                     // remove managed reference
                     if (CodeList[i].Function.CILObject != null)
                     {
                         ManagedFunctionLinker.UnlinkFunctionName(CodeList[i].Function.GetFunctionName());
                     }
-#endif
                     /* delete the function from the array & adjust Limit (local array size) */
                     CodeList.RemoveAt(i);
                     Limit -= 1;
@@ -164,7 +160,6 @@ namespace OutOfPhase
                 throw new ArgumentException();
             }
             CodeList.Add(new CodeEntryRec(Signature, TheNewFunction));
-#if true // TODO:experimental
             // add managed reference
             if (TheNewFunction.CILObject != null)
             {
@@ -174,7 +169,6 @@ namespace OutOfPhase
                     TheNewFunction.GetFunctionParameterTypeList(),
                     TheNewFunction.GetFunctionReturnType());
             }
-#endif
         }
 
         public KeyValuePair<string, FunctionSignature>[] RetainedFunctionSignatures
@@ -252,7 +246,7 @@ namespace OutOfPhase
             return sb.ToString();
         }
 
-        private static string GetKeywordForDataType(DataTypes type)
+        public static string GetKeywordForDataType(DataTypes type)
         {
             switch (type)
             {
@@ -281,7 +275,6 @@ namespace OutOfPhase
         }
     }
 
-#if true // TODO:experimental
     public class ManagedFunctionLinkerRec
     {
         private readonly Dictionary<string, int> functionNameMapper = new Dictionary<string, int>();
@@ -347,5 +340,4 @@ namespace OutOfPhase
             functionSignatures[i] = -1;
         }
     }
-#endif
 }

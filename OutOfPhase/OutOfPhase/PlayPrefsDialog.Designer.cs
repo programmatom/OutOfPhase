@@ -116,7 +116,7 @@ namespace OutOfPhase
             this.flowLayoutPanel1.Controls.Add(this.buttonDone);
             this.flowLayoutPanel1.Controls.Add(this.buttonPlayToAudio);
             this.flowLayoutPanel1.Controls.Add(this.buttonPlayToDisk);
-            this.flowLayoutPanel1.Location = new System.Drawing.Point(20, 348);
+            this.flowLayoutPanel1.Location = new System.Drawing.Point(19, 348);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Size = new System.Drawing.Size(614, 29);
             this.flowLayoutPanel1.TabIndex = 14;
@@ -196,9 +196,9 @@ namespace OutOfPhase
             this.checkBoxClipWarning.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.checkBoxClipWarning.AutoSize = true;
             this.checkBoxClipWarning.DataBindings.Add(new System.Windows.Forms.Binding("CheckState", this.sourceBindingSource, "ClipWarning", true));
-            this.checkBoxClipWarning.Location = new System.Drawing.Point(514, 266);
+            this.checkBoxClipWarning.Location = new System.Drawing.Point(513, 266);
             this.checkBoxClipWarning.Name = "checkBoxClipWarning";
-            this.checkBoxClipWarning.Size = new System.Drawing.Size(128, 17);
+            this.checkBoxClipWarning.Size = new System.Drawing.Size(127, 17);
             this.checkBoxClipWarning.TabIndex = 11;
             this.checkBoxClipWarning.Text = "Warn On Clipping";
             this.checkBoxClipWarning.UseVisualStyleBackColor = true;
@@ -209,9 +209,9 @@ namespace OutOfPhase
             this.comboBoxNumChannels.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "NumChannelsAsString", true));
             this.comboBoxNumChannels.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxNumChannels.FormattingEnabled = true;
-            this.comboBoxNumChannels.Location = new System.Drawing.Point(514, 238);
+            this.comboBoxNumChannels.Location = new System.Drawing.Point(513, 238);
             this.comboBoxNumChannels.Name = "comboBoxNumChannels";
-            this.comboBoxNumChannels.Size = new System.Drawing.Size(128, 21);
+            this.comboBoxNumChannels.Size = new System.Drawing.Size(127, 21);
             this.comboBoxNumChannels.TabIndex = 9;
             // 
             // comboBoxBitDepth
@@ -220,72 +220,72 @@ namespace OutOfPhase
             this.comboBoxBitDepth.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "OutputNumBitsAsString", true));
             this.comboBoxBitDepth.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxBitDepth.FormattingEnabled = true;
-            this.comboBoxBitDepth.Location = new System.Drawing.Point(514, 211);
+            this.comboBoxBitDepth.Location = new System.Drawing.Point(513, 211);
             this.comboBoxBitDepth.Name = "comboBoxBitDepth";
-            this.comboBoxBitDepth.Size = new System.Drawing.Size(128, 21);
+            this.comboBoxBitDepth.Size = new System.Drawing.Size(127, 21);
             this.comboBoxBitDepth.TabIndex = 8;
             // 
             // textBoxOversampling
             // 
             this.textBoxOversampling.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxOversampling.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "Oversampling", true));
-            this.textBoxOversampling.Location = new System.Drawing.Point(514, 185);
+            this.textBoxOversampling.Location = new System.Drawing.Point(513, 185);
             this.textBoxOversampling.Name = "textBoxOversampling";
-            this.textBoxOversampling.Size = new System.Drawing.Size(128, 20);
+            this.textBoxOversampling.Size = new System.Drawing.Size(127, 20);
             this.textBoxOversampling.TabIndex = 7;
             // 
             // textBoxBufferSeconds
             // 
             this.textBoxBufferSeconds.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxBufferSeconds.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "BufferDuration", true));
-            this.textBoxBufferSeconds.Location = new System.Drawing.Point(514, 159);
+            this.textBoxBufferSeconds.Location = new System.Drawing.Point(513, 159);
             this.textBoxBufferSeconds.Name = "textBoxBufferSeconds";
-            this.textBoxBufferSeconds.Size = new System.Drawing.Size(128, 20);
+            this.textBoxBufferSeconds.Size = new System.Drawing.Size(127, 20);
             this.textBoxBufferSeconds.TabIndex = 6;
             // 
             // textBoxScanningGapSeconds
             // 
             this.textBoxScanningGapSeconds.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxScanningGapSeconds.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "ScanningGap", true));
-            this.textBoxScanningGapSeconds.Location = new System.Drawing.Point(514, 133);
+            this.textBoxScanningGapSeconds.Location = new System.Drawing.Point(513, 133);
             this.textBoxScanningGapSeconds.Name = "textBoxScanningGapSeconds";
-            this.textBoxScanningGapSeconds.Size = new System.Drawing.Size(128, 20);
+            this.textBoxScanningGapSeconds.Size = new System.Drawing.Size(127, 20);
             this.textBoxScanningGapSeconds.TabIndex = 5;
             // 
             // textBoxInverseVolume
             // 
             this.textBoxInverseVolume.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxInverseVolume.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "OverallVolumeScalingFactor", true));
-            this.textBoxInverseVolume.Location = new System.Drawing.Point(514, 107);
+            this.textBoxInverseVolume.Location = new System.Drawing.Point(513, 107);
             this.textBoxInverseVolume.Name = "textBoxInverseVolume";
-            this.textBoxInverseVolume.Size = new System.Drawing.Size(128, 20);
+            this.textBoxInverseVolume.Size = new System.Drawing.Size(127, 20);
             this.textBoxInverseVolume.TabIndex = 4;
             // 
             // textBoxBeatsPerMinute
             // 
             this.textBoxBeatsPerMinute.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxBeatsPerMinute.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "DefaultBeatsPerMinute", true));
-            this.textBoxBeatsPerMinute.Location = new System.Drawing.Point(514, 81);
+            this.textBoxBeatsPerMinute.Location = new System.Drawing.Point(513, 81);
             this.textBoxBeatsPerMinute.Name = "textBoxBeatsPerMinute";
-            this.textBoxBeatsPerMinute.Size = new System.Drawing.Size(128, 20);
+            this.textBoxBeatsPerMinute.Size = new System.Drawing.Size(127, 20);
             this.textBoxBeatsPerMinute.TabIndex = 3;
             // 
             // textBoxEnvelopeRate
             // 
             this.textBoxEnvelopeRate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxEnvelopeRate.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "EnvelopeUpdateRate", true));
-            this.textBoxEnvelopeRate.Location = new System.Drawing.Point(514, 55);
+            this.textBoxEnvelopeRate.Location = new System.Drawing.Point(513, 55);
             this.textBoxEnvelopeRate.Name = "textBoxEnvelopeRate";
-            this.textBoxEnvelopeRate.Size = new System.Drawing.Size(128, 20);
+            this.textBoxEnvelopeRate.Size = new System.Drawing.Size(127, 20);
             this.textBoxEnvelopeRate.TabIndex = 2;
             // 
             // textBoxSamplingRate
             // 
             this.textBoxSamplingRate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxSamplingRate.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "SamplingRate", true));
-            this.textBoxSamplingRate.Location = new System.Drawing.Point(514, 29);
+            this.textBoxSamplingRate.Location = new System.Drawing.Point(513, 29);
             this.textBoxSamplingRate.Name = "textBoxSamplingRate";
-            this.textBoxSamplingRate.Size = new System.Drawing.Size(128, 20);
+            this.textBoxSamplingRate.Size = new System.Drawing.Size(127, 20);
             this.textBoxSamplingRate.TabIndex = 1;
             // 
             // tableLayoutPanel1
@@ -297,7 +297,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 21.89781F));
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 12F));
             this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 21.89781F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 19F));
+            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tableLayoutPanel1.Controls.Add(this.label1, 3, 1);
             this.tableLayoutPanel1.Controls.Add(this.textBoxSamplingRate, 5, 1);
             this.tableLayoutPanel1.Controls.Add(this.label2, 3, 2);
@@ -354,7 +354,7 @@ namespace OutOfPhase
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(368, 32);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(128, 13);
+            this.label1.Size = new System.Drawing.Size(127, 13);
             this.label1.TabIndex = 3;
             this.label1.Text = "Sampling Rate:";
             // 
@@ -364,7 +364,7 @@ namespace OutOfPhase
             this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(368, 58);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(128, 13);
+            this.label2.Size = new System.Drawing.Size(127, 13);
             this.label2.TabIndex = 5;
             this.label2.Text = "Envelope Rate:";
             // 
@@ -374,7 +374,7 @@ namespace OutOfPhase
             this.label3.AutoSize = true;
             this.label3.Location = new System.Drawing.Point(368, 84);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(128, 13);
+            this.label3.Size = new System.Drawing.Size(127, 13);
             this.label3.TabIndex = 7;
             this.label3.Text = "Beats Per Minute:";
             // 
@@ -384,7 +384,7 @@ namespace OutOfPhase
             this.label4.AutoSize = true;
             this.label4.Location = new System.Drawing.Point(368, 110);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(128, 13);
+            this.label4.Size = new System.Drawing.Size(127, 13);
             this.label4.TabIndex = 9;
             this.label4.Text = "Inverse Volume:";
             // 
@@ -394,7 +394,7 @@ namespace OutOfPhase
             this.label5.AutoSize = true;
             this.label5.Location = new System.Drawing.Point(368, 136);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(128, 13);
+            this.label5.Size = new System.Drawing.Size(127, 13);
             this.label5.TabIndex = 11;
             this.label5.Text = "Scanning Gap:";
             // 
@@ -404,7 +404,7 @@ namespace OutOfPhase
             this.label6.AutoSize = true;
             this.label6.Location = new System.Drawing.Point(368, 162);
             this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(128, 13);
+            this.label6.Size = new System.Drawing.Size(127, 13);
             this.label6.TabIndex = 13;
             this.label6.Text = "Buffer Seconds:";
             // 
@@ -414,7 +414,7 @@ namespace OutOfPhase
             this.label7.AutoSize = true;
             this.label7.Location = new System.Drawing.Point(368, 188);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(128, 13);
+            this.label7.Size = new System.Drawing.Size(127, 13);
             this.label7.TabIndex = 15;
             this.label7.Text = "Oversampling:";
             // 
@@ -424,7 +424,7 @@ namespace OutOfPhase
             this.label8.AutoSize = true;
             this.label8.Location = new System.Drawing.Point(368, 215);
             this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(128, 13);
+            this.label8.Size = new System.Drawing.Size(127, 13);
             this.label8.TabIndex = 17;
             this.label8.Text = "Bit Depth:";
             // 
@@ -434,7 +434,7 @@ namespace OutOfPhase
             this.label9.AutoSize = true;
             this.label9.Location = new System.Drawing.Point(368, 242);
             this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(128, 13);
+            this.label9.Size = new System.Drawing.Size(127, 13);
             this.label9.TabIndex = 19;
             this.label9.Text = "Channels:";
             // 
@@ -455,7 +455,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.SetColumnSpan(this.label11, 3);
             this.label11.Location = new System.Drawing.Point(368, 6);
             this.label11.Name = "label11";
-            this.label11.Size = new System.Drawing.Size(274, 13);
+            this.label11.Size = new System.Drawing.Size(272, 13);
             this.label11.TabIndex = 23;
             this.label11.Text = "Output control parameters:";
             // 
@@ -478,7 +478,7 @@ namespace OutOfPhase
             this.checkBoxShowSummary.DataBindings.Add(new System.Windows.Forms.Binding("CheckState", this.sourceBindingSource, "ShowSummary", true));
             this.checkBoxShowSummary.Location = new System.Drawing.Point(368, 266);
             this.checkBoxShowSummary.Name = "checkBoxShowSummary";
-            this.checkBoxShowSummary.Size = new System.Drawing.Size(128, 17);
+            this.checkBoxShowSummary.Size = new System.Drawing.Size(127, 17);
             this.checkBoxShowSummary.TabIndex = 10;
             this.checkBoxShowSummary.Text = "Show Summary";
             this.checkBoxShowSummary.UseVisualStyleBackColor = true;
@@ -490,7 +490,7 @@ namespace OutOfPhase
             this.checkBoxDeterministic.DataBindings.Add(new System.Windows.Forms.Binding("CheckState", this.sourceBindingSource, "Deterministic", true));
             this.checkBoxDeterministic.Location = new System.Drawing.Point(368, 292);
             this.checkBoxDeterministic.Name = "checkBoxDeterministic";
-            this.checkBoxDeterministic.Size = new System.Drawing.Size(128, 17);
+            this.checkBoxDeterministic.Size = new System.Drawing.Size(127, 17);
             this.checkBoxDeterministic.TabIndex = 12;
             this.checkBoxDeterministic.Text = "Deterministic";
             this.checkBoxDeterministic.UseVisualStyleBackColor = true;
@@ -500,9 +500,9 @@ namespace OutOfPhase
             this.textBoxSeed.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxSeed.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sourceBindingSource, "Seed", true));
             this.textBoxSeed.Enabled = false;
-            this.textBoxSeed.Location = new System.Drawing.Point(514, 317);
+            this.textBoxSeed.Location = new System.Drawing.Point(513, 317);
             this.textBoxSeed.Name = "textBoxSeed";
-            this.textBoxSeed.Size = new System.Drawing.Size(128, 20);
+            this.textBoxSeed.Size = new System.Drawing.Size(127, 20);
             this.textBoxSeed.TabIndex = 13;
             // 
             // label12
@@ -511,7 +511,7 @@ namespace OutOfPhase
             this.label12.AutoSize = true;
             this.label12.Location = new System.Drawing.Point(368, 320);
             this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(128, 13);
+            this.label12.Size = new System.Drawing.Size(127, 13);
             this.label12.TabIndex = 31;
             this.label12.Text = "Seed:";
             // 

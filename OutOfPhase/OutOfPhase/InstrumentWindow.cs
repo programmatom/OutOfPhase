@@ -35,6 +35,7 @@ namespace OutOfPhase
         private readonly Registration registration;
         private readonly InstrObjectRec instrumentObject;
         private readonly MainWindow mainWindow;
+        private readonly List<SegmentCalculatorDialog> segmentCalculators = new List<SegmentCalculatorDialog>();
 
         public InstrumentWindow(Registration registration, InstrObjectRec instrumentObject, MainWindow mainWindow)
         {
@@ -63,7 +64,13 @@ namespace OutOfPhase
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            while (segmentCalculators.Count != 0)
+            {
+                segmentCalculators[0].Close();
+            }
+
             registration.Unregister(instrumentObject, this);
+
             base.OnFormClosed(e);
         }
 
@@ -131,7 +138,7 @@ namespace OutOfPhase
             return instrumentObject.EnsureBuilt(
                 force,
                 new PcodeExterns(mainWindow),
-                delegate(object source, BuildErrorInfo errorInfo)
+                delegate (object source, BuildErrorInfo errorInfo)
                 {
                     Debug.Assert(source == instrumentObject);
                     HighlightLine(errorInfo.LineNumber);
@@ -144,9 +151,9 @@ namespace OutOfPhase
 
         public void HighlightLine(int line)
         {
-            line--;
             textBoxInstrumentBody.Focus();
-            textBoxInstrumentBody.SetSelectionLine(line);
+            textBoxInstrumentBody.SetSelectionLine(line - 1);
+            textBoxInstrumentBody.ScrollToSelection();
         }
 
 
@@ -174,6 +181,9 @@ namespace OutOfPhase
             textBoxWindowHelper.MenuActivateDelegate();
 
             menuStrip.buildObjectToolStripMenuItem.Enabled = true;
+
+            menuStrip.envelopeSegmentCalculatorToolStripMenuItem.Visible = true;
+            menuStrip.envelopeSegmentCalculatorToolStripMenuItem.Enabled = true;
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -183,7 +193,23 @@ namespace OutOfPhase
                 BuildThis(true/*force*/);
                 return true;
             }
+            else if (menuItem == menuStrip.envelopeSegmentCalculatorToolStripMenuItem)
+            {
+                SegmentCalculatorDialog segmentCalculator = new SegmentCalculatorDialog(this);
+                segmentCalculators.Add(segmentCalculator);
+                segmentCalculator.Show();
+                return true;
+            }
+
             return false;
+        }
+
+
+        //
+
+        public void SegmentCalculatorClosed(SegmentCalculatorDialog segmentCalculator)
+        {
+            segmentCalculators.Remove(segmentCalculator);
         }
 
 

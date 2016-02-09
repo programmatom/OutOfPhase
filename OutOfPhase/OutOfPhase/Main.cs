@@ -32,19 +32,23 @@ namespace OutOfPhase
 {
     public static class Program
     {
-        public static GlobalPrefs Config = new GlobalPrefs();
-        public static string ConfigDirectory;
+        private static GlobalPrefs config = new GlobalPrefs();
+        public static GlobalPrefs Config { get { return config; } }
+
+        private static string configDirectory;
+        public static string ConfigDirectory { get { return configDirectory; } }
+
         private const string SettingsFileName = "Settings.xml";
 
         public static void LoadSettings()
         {
-            ConfigDirectory = GetLocalAppDataPath(false, true);
+            configDirectory = GetLocalAppDataPath(false, true);
             string path = Path.Combine(ConfigDirectory, SettingsFileName);
             if (File.Exists(path))
             {
                 try
                 {
-                    Config = new GlobalPrefs(path);
+                    config = new GlobalPrefs(path);
                 }
                 catch (Exception exception)
                 {
@@ -258,6 +262,8 @@ namespace OutOfPhase
                                 {
                                     using (Synthesizer.FFT rightComposite = Synthesizer.FFT.Create(windowLength))
                                     {
+                                        int skipLeft = 0, skipRight = 0;
+
                                         float bestObservedSig = 1;
 
                                         bool success = false;
@@ -267,52 +273,56 @@ namespace OutOfPhase
                                         int c;
                                         if (readerLeft.NumChannels == NumChannelsType.eSampleStereo)
                                         {
-                                            using (Synthesizer.AlignedWorkspace workspace = new Synthesizer.AlignedWorkspace(windowLength * 2))
+                                            // stereo
+
+                                            float[] workspace = new float[windowLength * 2];
+
+                                            if (iterations == 1)
                                             {
-                                                if (iterations == 1)
-                                                {
-                                                    // skip first n
-                                                    c = readerLeft.ReadPoints(workspace.Base, workspace.Offset, windowLength * 2);
-                                                    if (c != windowLength * 2)
-                                                    {
-                                                        goto Done;
-                                                    }
-                                                    c = readerRight.ReadPoints(workspace.Base, workspace.Offset, windowLength * 2);
-                                                    if (c != windowLength * 2)
-                                                    {
-                                                        goto Done;
-                                                    }
-                                                }
+                                                // skip first n
 
-                                                // load second n
-
-                                                c = readerLeft.ReadPoints(workspace.Base, workspace.Offset, windowLength * 2);
+                                                c = readerLeft.ReadPoints(workspace, 0, windowLength * 2);
                                                 if (c != windowLength * 2)
                                                 {
                                                     goto Done;
                                                 }
-                                                for (int i = 0; i < windowLength; i++)
-                                                {
-                                                    leftComposite.Base[i + leftComposite.Offset]
-                                                        = workspace.Base[2 * i + 0 + workspace.Offset]
-                                                        + workspace.Base[2 * i + 1 + workspace.Offset];
-                                                }
-
-                                                c = readerRight.ReadPoints(workspace.Base, workspace.Offset, windowLength * 2);
+                                                c = readerRight.ReadPoints(workspace, 0, windowLength * 2);
                                                 if (c != windowLength * 2)
                                                 {
                                                     goto Done;
                                                 }
-                                                for (int i = 0; i < windowLength; i++)
-                                                {
-                                                    rightComposite.Base[i + rightComposite.Offset]
-                                                        = workspace.Base[2 * i + 0 + workspace.Offset]
-                                                        + workspace.Base[2 * i + 1 + workspace.Offset];
-                                                }
+                                            }
+
+                                            // load second n
+
+                                            c = readerLeft.ReadPoints(workspace, 0, windowLength * 2);
+                                            if (c != windowLength * 2)
+                                            {
+                                                goto Done;
+                                            }
+                                            for (int i = 0; i < windowLength; i++)
+                                            {
+                                                leftComposite.Base[i + leftComposite.Offset]
+                                                    = workspace[2 * i + 0]
+                                                    + workspace[2 * i + 1];
+                                            }
+
+                                            c = readerRight.ReadPoints(workspace, 0, windowLength * 2);
+                                            if (c != windowLength * 2)
+                                            {
+                                                goto Done;
+                                            }
+                                            for (int i = 0; i < windowLength; i++)
+                                            {
+                                                rightComposite.Base[i + rightComposite.Offset]
+                                                    = workspace[2 * i + 0]
+                                                    + workspace[2 * i + 1];
                                             }
                                         }
                                         else
                                         {
+                                            // mono
+
                                             if (iterations == 1)
                                             {
                                                 // skip first n
@@ -321,7 +331,7 @@ namespace OutOfPhase
                                                 {
                                                     goto Done;
                                                 }
-                                                c = readerRight.ReadPoints(leftComposite.Base, leftComposite.Offset, windowLength);
+                                                c = readerRight.ReadPoints(rightComposite.Base, rightComposite.Offset, windowLength);
                                                 if (c != windowLength * 2)
                                                 {
                                                     goto Done;
@@ -384,7 +394,7 @@ namespace OutOfPhase
 
                                         success = true;
 
-                                        int skipLeft = 0, skipRight = 0;
+                                        // compute skip counts
                                         if (maxIndex == 0)
                                         {
                                             log.WriteLine("      auto-align: skipping 0 frames - files are already aligned");
@@ -402,6 +412,7 @@ namespace OutOfPhase
                                         skipLeftOut = skipLeft;
                                         skipRightOut = skipRight;
 
+                                    Done:
                                         // reset readers
                                         readerLeft = TryGetAudioReader(streamLeft);
                                         readerRight = TryGetAudioReader(streamRight);
@@ -426,7 +437,6 @@ namespace OutOfPhase
                                             skipRight--;
                                         }
 
-                                    Done:
                                         if (!success)
                                         {
                                             log.WriteLine("      AUTO-ALIGN NOT DONE: unable to find sufficiently distinct ({0}) offset - either window is too large or data too similar (best observed: {1})", ThreshholdOfSignificance, bestObservedSig);
@@ -645,12 +655,14 @@ namespace OutOfPhase
             }
         }
 
+        private delegate void DeltaFunction(float[] l, float[] r, float[] y);
         private static void WriteAudioFileDelta(
             string leftPath,
             string rightPath,
             string outputPath,
             int skipLeft,
-            int skipRight)
+            int skipRight,
+            DeltaFunction delta)
         {
             using (Stream streamOutput = new FileStream(outputPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, Constants.BufferSize))
             {
@@ -721,8 +733,12 @@ namespace OutOfPhase
                                     {
                                         Array.Clear(r, 0, r.Length);
                                     }
-                                    l[0] -= r[0];
-                                    l[1] -= r[1];
+                                    if (ch == 1)
+                                    {
+                                        l[1] = l[0];
+                                        r[1] = r[0];
+                                    }
+                                    delta(l, r, l);
                                     writerOutput.WritePoints(l, 0, ch);
                                 }
                             }
@@ -748,6 +764,20 @@ namespace OutOfPhase
                 {
                 }
             }
+        }
+
+        private static void Delta(float[] l, float[] r, float[] y)
+        {
+            y[0] = l[0] - r[0];
+            y[1] = l[1] - r[1];
+        }
+
+        private static void LRAudition(float[] l, float[] r, float[] y)
+        {
+            float ll = .5f * (l[0] + l[1]);
+            float rr = .5f * (r[0] + r[1]);
+            y[0] = ll;
+            y[1] = rr;
         }
 
         private class AsyncPlaybackTestTask : IDisposable
@@ -1070,6 +1100,7 @@ namespace OutOfPhase
             }
 
             List<Assembly> pluginAssembliesList = new List<Assembly>();
+            List<KeyValuePair<string, Synthesizer.IPluggableProcessorFactory>> pluggableProcessorList = new List<KeyValuePair<string, Synthesizer.IPluggableProcessorFactory>>();
             foreach (string file in files)
             {
                 try
@@ -1077,6 +1108,23 @@ namespace OutOfPhase
                     // TODO: SECURITY REVIEW
                     Assembly assembly = Assembly.Load(File.ReadAllBytes(file));
                     pluginAssembliesList.Add(assembly);
+
+                    foreach (Type type in assembly.GetTypes())
+                    {
+                        if (typeof(Synthesizer.IPluggableProcessorFactory).IsAssignableFrom(type))
+                        {
+                            try
+                            {
+                                ConstructorInfo constructor = type.GetConstructor(new Type[0]);
+                                Synthesizer.IPluggableProcessorFactory factory = (Synthesizer.IPluggableProcessorFactory)constructor.Invoke(new object[0]);
+                                pluggableProcessorList.Add(new KeyValuePair<string, Synthesizer.IPluggableProcessorFactory>(factory.ParserName, factory));
+                            }
+                            catch (Exception)
+                            {
+                                // TODO: report errors
+                            }
+                        }
+                    }
                 }
                 catch (Exception)
                 {
@@ -1084,6 +1132,7 @@ namespace OutOfPhase
                 }
             }
             pluginAssemblies = pluginAssembliesList.ToArray();
+            Synthesizer.ExternalPluggableProcessors = pluggableProcessorList.ToArray();
         }
 
         [STAThread]
@@ -1408,6 +1457,7 @@ namespace OutOfPhase
                                         bool histogram = false;
                                         int ignoreDriftUnder = 0;
                                         bool writeDiff = false;
+                                        bool writeAudition = false;
                                         foreach (string option in options.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
                                         {
                                             string[] parts = option.Split('=');
@@ -1446,6 +1496,9 @@ namespace OutOfPhase
                                                 case "writediff":
                                                     writeDiff = Boolean.Parse(parts[1]);
                                                     break;
+                                                case "writeaudition":
+                                                    writeAudition = Boolean.Parse(parts[1]);
+                                                    break;
                                             }
                                         }
 
@@ -1468,7 +1521,18 @@ namespace OutOfPhase
                                                 two,
                                                 Path.Combine(Path.GetDirectoryName(two), Path.GetFileNameWithoutExtension(two) + "-DELTA.AIF"),
                                                 skipLeft,
-                                                skipRight);
+                                                skipRight,
+                                                Delta);
+                                        }
+                                        if (writeAudition)
+                                        {
+                                            WriteAudioFileDelta(
+                                                one,
+                                                two,
+                                                Path.Combine(Path.GetDirectoryName(two), Path.GetFileNameWithoutExtension(two) + "-LRAUDITION.AIF"),
+                                                skipLeft,
+                                                skipRight,
+                                                LRAudition);
                                         }
                                     }
                                     used = 4;

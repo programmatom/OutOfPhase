@@ -44,7 +44,7 @@ namespace OutOfPhase
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
                 dialog.Title = "Import AIFF Sample";
-                dialog.Filter = "AIFF Audio File (.aif)|*.aif|AIFF Audio File (.aiff)|*.aiff|Any File Type (*)|*";
+                dialog.Filter = "AIFF Audio File (.aif, .aiff)|*.aif;*.aiff|Any File Type (*)|*";
                 DialogResult result = dialog.ShowDialog();
                 if (result != DialogResult.OK)
                 {

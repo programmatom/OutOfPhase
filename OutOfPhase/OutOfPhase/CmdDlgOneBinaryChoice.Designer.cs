@@ -110,7 +110,7 @@ namespace OutOfPhase
             this.radioButtonFalse.Name = "radioButtonFalse";
             this.radioButtonFalse.Padding = new System.Windows.Forms.Padding(0, 10, 0, 0);
             this.radioButtonFalse.Size = new System.Drawing.Size(372, 27);
-            this.radioButtonFalse.TabIndex = 1;
+            this.radioButtonFalse.TabIndex = 2;
             this.radioButtonFalse.TabStop = true;
             this.radioButtonFalse.Text = "radioButtonFalse";
             this.radioButtonFalse.UseVisualStyleBackColor = true;
@@ -122,7 +122,7 @@ namespace OutOfPhase
             this.radioButtonTrue.Location = new System.Drawing.Point(3, 16);
             this.radioButtonTrue.Name = "radioButtonTrue";
             this.radioButtonTrue.Size = new System.Drawing.Size(372, 17);
-            this.radioButtonTrue.TabIndex = 0;
+            this.radioButtonTrue.TabIndex = 1;
             this.radioButtonTrue.TabStop = true;
             this.radioButtonTrue.Text = "radioButtonTrue";
             this.radioButtonTrue.UseVisualStyleBackColor = true;
@@ -149,7 +149,7 @@ namespace OutOfPhase
             this.flowLayoutPanel1.Location = new System.Drawing.Point(73, 116);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Size = new System.Drawing.Size(288, 29);
-            this.flowLayoutPanel1.TabIndex = 2;
+            this.flowLayoutPanel1.TabIndex = 5;
             // 
             // buttonCancel
             // 
@@ -157,7 +157,7 @@ namespace OutOfPhase
             this.buttonCancel.Location = new System.Drawing.Point(3, 3);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(110, 23);
-            this.buttonCancel.TabIndex = 0;
+            this.buttonCancel.TabIndex = 3;
             this.buttonCancel.Text = "Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
             // 
@@ -174,7 +174,7 @@ namespace OutOfPhase
             this.buttonOK.Location = new System.Drawing.Point(175, 3);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(110, 23);
-            this.buttonOK.TabIndex = 2;
+            this.buttonOK.TabIndex = 4;
             this.buttonOK.Text = "OK";
             this.buttonOK.UseVisualStyleBackColor = true;
             // 

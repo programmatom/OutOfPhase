@@ -44,7 +44,6 @@ namespace OutOfPhase
 
             public FilterTypes FilterType { get { return FilterTypes.eFilterButterworthLowpass; } }
 
-            /* compute filter coefficients */
             public static void ComputeButterworthLowpassCoefficients(
                 ref IIR2DirectIRec Coeff,
                 double Cutoff,
@@ -76,7 +75,6 @@ namespace OutOfPhase
                 Coeff.B2 = (float)((1 - SQRT2 * C + C * C) * A0);
             }
 
-            /* adjust filter coefficients */
             public static void SetButterworthLowpassCoefficients(
                 ButterworthLowpassRec Filter,
                 double Cutoff,
@@ -92,6 +90,15 @@ namespace OutOfPhase
                     ref Filter.iir,
                     Cutoff,
                     SamplingRate);
+            }
+
+            public void UpdateParams(
+                ref FilterParams Params)
+            {
+                SetButterworthLowpassCoefficients(
+                    this,
+                    Params.Cutoff,
+                    Params.SamplingRate);
             }
 
             /* apply filter to an array of values, adding result to output array */

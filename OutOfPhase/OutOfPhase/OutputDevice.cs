@@ -144,6 +144,7 @@ namespace OutOfPhase
         private readonly NumBitsType bits;
         private readonly int samplingRate;
         private readonly int pointsPerFrame;
+        private readonly int pointsPerFrameDevice;
 
         private IAudioClient audioClient;
         private IAudioRenderClient renderClient;
@@ -234,6 +235,7 @@ namespace OutOfPhase
                 {
                     throw new ApplicationException(String.Format("The current sampling rate {0} does not match the default audio device's sampling rate {1}. Either set the current sampling rate to the device's sampling rate or reconfigure the audio device to support the desired sampling rate.", samplingRate, mixFormat.nSamplesPerSec));
                 }
+                pointsPerFrameDevice = mixFormat.nChannels;
                 audioClient.Initialize(
                     AUDCLNT_SHAREMODE.AUDCLNT_SHAREMODE_SHARED,
                     (int)AUDCLNT_STREAMFLAGS.AUDCLNT_STREAMFLAGS_NOPERSIST,
@@ -323,7 +325,7 @@ namespace OutOfPhase
 
                 lastBufferedFrames = padding; // update current status; consumed by progress UI
 
-                int framesToWrite = points / 2;
+                int framesToWrite = points / pointsPerFrame;
                 int framesAvailable = maxBufferedFrames - padding;
 
                 // Start (or restart) playback when buffer is sufficiently filled
@@ -350,7 +352,20 @@ namespace OutOfPhase
                 {
                     IntPtr pData;
                     hr = renderClient.GetBuffer(framesToWrite, out pData);
-                    Marshal.Copy(data, offset, pData, points);
+                    if (pointsPerFrameDevice == pointsPerFrame)
+                    {
+                        Marshal.Copy(data, offset, pData, points);
+                    }
+                    else
+                    {
+                        // mix format may be stereo even if our data is mono
+                        Debug.Assert(pointsPerFrameDevice > pointsPerFrame);
+                        for (int i = 0; i < framesToWrite; i++)
+                        {
+                            Marshal.WriteInt32(pData, (2 * i + 0) * sizeof(float), UnsafeScalarCast.AsInt(data[offset + i]));
+                            Marshal.WriteInt32(pData, (2 * i + 1) * sizeof(float), UnsafeScalarCast.AsInt(data[offset + i]));
+                        }
+                    }
                     renderClient.ReleaseBuffer(framesToWrite, 0);
                 }
             }

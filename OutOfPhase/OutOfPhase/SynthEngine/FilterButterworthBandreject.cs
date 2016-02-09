@@ -45,7 +45,6 @@ namespace OutOfPhase
 
             public FilterTypes FilterType { get { return FilterTypes.eFilterButterworthBandreject; } }
 
-            /* compute filter coefficients */
             private static void ComputeButterworthBandrejectCoefficients(
                 ref IIR2DirectIRec Coeff,
                 double Cutoff,
@@ -90,7 +89,6 @@ namespace OutOfPhase
                 Coeff.B2 = (float)((1 - C) * A0);
             }
 
-            /* adjust filter coefficients */
             public static void SetButterworthBandrejectCoefficients(
                 ButterworthBandrejectRec Filter,
                 double Cutoff,
@@ -109,6 +107,16 @@ namespace OutOfPhase
                     Cutoff,
                     Bandwidth,
                     SamplingRate);
+            }
+
+            public void UpdateParams(
+                ref FilterParams Params)
+            {
+                SetButterworthBandrejectCoefficients(
+                    this,
+                    Params.Cutoff,
+                    Params.BandwidthOrSlope,
+                    Params.SamplingRate);
             }
 
             /* apply filter to an array of values, adding result to output array */

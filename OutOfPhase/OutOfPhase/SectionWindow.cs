@@ -129,7 +129,7 @@ namespace OutOfPhase
             return section.EnsureBuilt(
                 force,
                 new PcodeExterns(mainWindow),
-                delegate(object source, BuildErrorInfo errorInfo)
+                delegate (object source, BuildErrorInfo errorInfo)
                 {
                     Debug.Assert(source == section);
                     HighlightLine(errorInfo.LineNumber);
@@ -142,9 +142,9 @@ namespace OutOfPhase
 
         public void HighlightLine(int line)
         {
-            line--;
             textBoxSectionText.Focus();
-            textBoxSectionText.SetSelectionLine(line);
+            textBoxSectionText.SetSelectionLine(line - 1);
+            textBoxSectionText.ScrollToSelection();
         }
 
 

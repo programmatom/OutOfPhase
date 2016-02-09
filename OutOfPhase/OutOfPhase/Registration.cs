@@ -252,7 +252,6 @@ namespace OutOfPhase
             }
         }
 
-#if false // TODO: later, if needed (untested)
         public delegate bool SelectionMethod(FormRegistrationToken token);
         public FormRegistrationToken Find(SelectionMethod selector)
         {
@@ -269,7 +268,6 @@ namespace OutOfPhase
             }
             return null;
         }
-#endif
     }
 
     public class FormRegistrationToken
@@ -281,6 +279,9 @@ namespace OutOfPhase
         private FormRegistrationToken()
         {
         }
+
+        public object DataSource { get { return dataSource; } }
+        public Form Editor { get { return form; } }
 
         public FormRegistrationToken(Registration registration, object dataSource, Form form)
         {

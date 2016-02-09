@@ -55,7 +55,7 @@ namespace OutOfPhase
                 Resampler.ResampMethod = GetResamplingMethod(Template);
                 Resampler.OutputMethod = GetResampleOutputMethod(Template);
                 //Resampler.CurrentPhase = 0;
-                Resampler.PhaseDifferential = Resampler.EffectSamplingRate * SynthParams.dSamplingRateReciprocal;
+                Resampler.PhaseDifferential = Resampler.EffectSamplingRate / SynthParams.dSamplingRate;
                 //Resampler.Left0Value = 0;
                 //Resampler.Left1Value = 0;
                 //Resampler.Right0Value = 0;

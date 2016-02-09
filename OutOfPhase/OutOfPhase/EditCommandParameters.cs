@@ -364,6 +364,31 @@ namespace OutOfPhase
             return ChangedFlag;
         }
 
+        // dialog box for pitch table command -- with <1string> <2l> parameters
+        private static bool PitchTable(
+            CommandNoteObjectRec NoteCommand)
+        {
+            string StringParameter1;
+            double Parameter2;
+            bool ChangedFlag;
+
+            StringParameter1 = NoteCommand.GetCommandStringArg1();
+            if (StringParameter1 == null)
+            {
+                StringParameter1 = String.Empty;
+            }
+            Parameter2 = (double)LargeBCDType.FromRawInt32(NoteCommand.GetCommandNumericArg1());
+            ChangedFlag = CmdDlgLoadPitchTable.CommandDialogOneStringOneParam(
+                ref StringParameter1,
+                ref Parameter2);
+            if (ChangedFlag)
+            {
+                NoteCommand.PutCommandStringArg1(StringParameter1);
+                NoteCommand.PutCommandNumericArg1(((LargeBCDType)Parameter2).rawInt32);
+            }
+            return ChangedFlag;
+        }
+
 
         /* base class */
 
@@ -762,6 +787,25 @@ namespace OutOfPhase
                     this.Prompt,
                     this.Box1Text,
                     this.Box2Text);
+            }
+        }
+
+
+        /* dialog box for command with <1string> <2l> parameters */
+
+        private class XPitchTable : BaseRec
+        {
+            public XPitchTable(
+                NoteCommands Opcode)
+                : base(Opcode)
+            {
+            }
+
+            public override bool Conversion(CommandNoteObjectRec NoteCommand)
+            {
+                Debug.Assert(CommandMapping.GetCommandAddressingMode(NoteCommand.GetCommandOpcode()) == CommandAddrMode.e1String1LargeBCDParameters);
+                return PitchTable(
+                    NoteCommand);
             }
         }
 
@@ -1501,11 +1545,16 @@ namespace OutOfPhase
                 "Pitch Index:"),
 
             // <1s> = model name, <1l> = tonic offset (integer 0..11)
+#if false // TODO:Remove
             new XOneStrTwoL(
                 NoteCommands.eCmdLoadFrequencyModel,
                 "Load Pitch Table: Enter the name of the pitch table to load.",
                 "Name:",
                 "Tonic Offset:"),
+#else
+            new XPitchTable(
+                NoteCommands.eCmdLoadFrequencyModel),
+#endif
 
             // <1l> = new frequency factor, <2xs> = # of beats to get there
             new XOneLTwoXS(

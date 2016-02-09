@@ -85,6 +85,12 @@ namespace OutOfPhase
             base.OnFormClosed(e);
         }
 
+        protected override void OnDeactivate(EventArgs e)
+        {
+            Validate(); // commit current edit - we will accept noncommit in case where data is invalid
+            base.OnDeactivate(e);
+        }
+
         protected override void WndProc(ref Message m)
         {
             dpiChangeHelper.WndProcDelegate(ref m);
@@ -94,7 +100,7 @@ namespace OutOfPhase
         [Bindable(true)]
         public Source SourceProperty { get { return source; } }
 
-        public class Source : HierarchicalBindingRoot
+        public class Source : HierarchicalBindingRoot, IPlayPrefsProvider
         {
             private int _SamplingRate;
             public const string SamplingRate_PropertyName = "SamplingRate";
@@ -203,6 +209,21 @@ namespace OutOfPhase
             [Bindable(true)]
             public BindingList<TrackInclusionRec> IncludedTracks { get { return _IncludedTracks; } }
 
+            TrackObjectRec[] IPlayPrefsProvider.IncludedTracks
+            {
+                get
+                {
+                    List<TrackObjectRec> included = new List<TrackObjectRec>();
+                    foreach (TrackInclusionRec inclusion in _IncludedTracks)
+                    {
+                        if (inclusion.Included)
+                        {
+                            included.Add(inclusion.Track);
+                        }
+                    }
+                    return included.ToArray();
+                }
+            }
 
             private readonly Document _document;
 

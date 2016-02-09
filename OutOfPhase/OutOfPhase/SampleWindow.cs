@@ -111,6 +111,8 @@ namespace OutOfPhase
             if (state != null)
             {
                 state.stopper.Stop();
+                state.Dispose();
+                state = null;
             }
 
             undoHelper.Dispose();
@@ -488,7 +490,7 @@ namespace OutOfPhase
             int ErrorLineNumberCompilation;
             DataTypes ReturnType;
             PcodeRec FuncCode;
-            Compiler.ASTExpressionRec AST;
+            Compiler.ASTExpression AST;
             CompileErrors CompileError = Compiler.CompileSpecialFunction(
                 mainWindow.Document.CodeCenter,
                 sampleObject.NumChannels == NumChannelsType.eSampleStereo ? StereoArgList : MonoArgList,
@@ -502,6 +504,7 @@ namespace OutOfPhase
             {
                 textBoxFunction.Focus();
                 textBoxFunction.SetSelectionLine(ErrorLineNumberCompilation - 1);
+                textBoxFunction.ScrollToSelection();
                 LiteralBuildErrorInfo errorInfo = new LiteralBuildErrorInfo(Compiler.GetCompileErrorString(CompileError), ErrorLineNumberCompilation);
                 MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
                 return;
@@ -994,9 +997,11 @@ namespace OutOfPhase
             if (state != null)
             {
                 state.stopper.Stop();
+                state.Dispose();
+                state = null;
             }
 
-            int samplingRate = sampleObject.SamplingRate > 44100 ? 48000 : 44100;
+            IPlayPrefsProvider playPrefsProvider = mainWindow.GetPlayPrefsProvider();
 
 #if true // prevents "Add New Data Source..." from working
             state = SampleTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
@@ -1007,16 +1012,16 @@ namespace OutOfPhase
                 SampleTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.MainLoop,
                 generatorParams = new SampleTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>(
                     sampleObject.SampleData,
-                    44100,
+                    playPrefsProvider.SamplingRate,
                     GetCurrentLoopStart(),
                     GetCurrentLoopEnd(),
                     GetCurrentLoopBidirectionality() == LoopBidirectionalType.Yes,
-                    sampleObject.NaturalFrequency / GetTestPitch() * (sampleObject.SamplingRate / (double)samplingRate)),
+                    (GetTestPitch() / sampleObject.NaturalFrequency) * (sampleObject.SamplingRate / (double)playPrefsProvider.SamplingRate)),
                 SampleTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Completion,
                 mainWindow,
                 sampleObject.SampleData.NumChannels,
                 sampleObject.SampleData.NumBits,
-                samplingRate,
+                playPrefsProvider.SamplingRate,
                 1/*oversampling*/,
                 false/*showProgressWindow*/,
                 false/*modal*/);
@@ -1025,17 +1030,8 @@ namespace OutOfPhase
 
         private void buttonTest_MouseUp(object sender, MouseEventArgs e)
         {
-            //state.stopper.Stop(); -- don't stop on mouse-up, just release loop
+            // don't stop on mouse-up, just release loop
             generatorParams.loopReleaseSignaled = true;
-
-#if false
-            if (generatorParams.exception != null)
-            {
-                MessageBox.Show(generatorParams.exception.ToString());
-            }
-            state = null;
-            generatorParams = null;
-#endif
         }
     }
 

@@ -396,7 +396,7 @@ namespace OutOfPhase
                     }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier + State.Template.FrequencyAdder;
-                Differential = NewFrequencyHertz * SynthParams.dSamplingRateReciprocal;
+                Differential = NewFrequencyHertz / SynthParams.dSamplingRate;
                 //State.WaveTableSamplePositionDifferential = new Fixed64(Differential);
                 // strength reduction:
                 Fixed64 LocalWaveTableSamplePositionDifferential = new Fixed64(Differential);
@@ -773,7 +773,6 @@ namespace OutOfPhase
                 uint LocalWaveTableSamplePosition_FracI = State.WaveTableSamplePosition_FracI;
                 uint LocalWaveTableSamplePositionDifferential_FracI = State.WaveTableSamplePositionDifferential_FracI;
 
-#if true // TODO:experimental - smoothing
                 if (Program.Config.EnableEnvelopeSmoothing
                     // case of no motion in either smoothed axes can use fast code path
                     && ((State.Loudness != State.PreviousLoudness)
@@ -892,7 +891,7 @@ namespace OutOfPhase
                     }
                     else
                     {
-                        // index invariant
+                        // loudness invariant
 
                         //Fixed64 LocalIndex = State.Index64;
                         // strength reduction:
@@ -954,7 +953,6 @@ namespace OutOfPhase
                     }
                 }
                 else
-#endif
                 {
                     // no envelope smoothing
 
@@ -1143,7 +1141,6 @@ namespace OutOfPhase
                 uint LocalWaveTableSamplePosition_FracI = State.WaveTableSamplePosition_FracI;
                 uint LocalWaveTableSamplePositionDifferential_FracI = State.WaveTableSamplePositionDifferential_FracI;
 
-#if true // TODO:experimental - smoothing
                 if (Program.Config.EnableEnvelopeSmoothing
                     // case of no motion in either smoothed axes can use fast code path
                     && ((State.Loudness != State.PreviousLoudness)
@@ -1241,7 +1238,7 @@ namespace OutOfPhase
                     }
                     else
                     {
-                        // index invariant
+                        // loudness invariant
 
                         // in this variant, using a long, LocalIndex_FracI can be 1.0 (fixed), eliminating the index==1.0
                         // constant special case.
@@ -1274,7 +1271,6 @@ namespace OutOfPhase
                     }
                 }
                 else
-#endif
                 {
                     // no envelope smoothing
 

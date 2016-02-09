@@ -52,6 +52,9 @@ namespace OutOfPhase
             public EnvelopeRec OutputGainEnvelope;
             public LFOListSpecRec IndexLFO;
             public LFOListSpecRec OutputGainLFO;
+
+            // enable cross-wavetable interpolation
+            public bool EnableCrossWaveTableInterpolation;
         }
 
         public static VocoderSpecRec NewVocoderSpec(
@@ -72,6 +75,7 @@ namespace OutOfPhase
             VocSpec.FilterOrder = 2;
             //VocSpec.WaveTableIndexFormula = null;
             //VocSpec.OutputGainFormula = null;
+            VocSpec.EnableCrossWaveTableInterpolation = true;
 
             return VocSpec;
         }
@@ -212,6 +216,16 @@ namespace OutOfPhase
         public static int GetVocoderFilterOrder(VocoderSpecRec VocSpec)
         {
             return VocSpec.FilterOrder;
+        }
+
+        public static bool VocoderGetEnableCrossWaveTableInterpolation(VocoderSpecRec VocSpec)
+        {
+            return VocSpec.EnableCrossWaveTableInterpolation;
+        }
+
+        public static void VocoderSetEnableCrossWaveTableInterpolation(VocoderSpecRec VocSpec, bool enable)
+        {
+            VocSpec.EnableCrossWaveTableInterpolation = enable;
         }
     }
 }

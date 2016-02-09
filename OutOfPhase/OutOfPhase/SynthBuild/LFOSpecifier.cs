@@ -86,6 +86,10 @@ namespace OutOfPhase
             /* list of LFOs applied to the wave table index envelope output */
             public LFOListSpecRec WaveTableIndexLFOList;
 
+            // enable cross-wavetable interpolation; only used for wave table oscillator
+            public bool EnableCrossWaveTableInterpolation;
+            public bool EnableCrossWaveTableInterpolationExplicitlySet;
+
             /* envelope that determines the cutoff frequency for the lowpass filter */
             public EnvelopeRec FilterCutoffEnvelope;
 
@@ -150,6 +154,7 @@ namespace OutOfPhase
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
             LFOSpec.LoopedEnvelope = NewEnvelope();
 #endif
+            LFOSpec.EnableCrossWaveTableInterpolation = true;
 
             return LFOSpec;
         }
@@ -230,6 +235,22 @@ namespace OutOfPhase
         public static SampleSelectorRec GetLFOSpecSampleSelector(LFOSpecRec LFOSpec)
         {
             return LFOSpec.SampleSources;
+        }
+
+        public static bool LFOSpecGetEnableCrossWaveTableInterpolation(LFOSpecRec LFOSpec)
+        {
+            return LFOSpec.EnableCrossWaveTableInterpolation;
+        }
+
+        public static bool LFOSpecGetEnableCrossWaveTableInterpolationExplicitlySet(LFOSpecRec LFOSpec)
+        {
+            return LFOSpec.EnableCrossWaveTableInterpolationExplicitlySet;
+        }
+
+        public static void LFOSpecSetEnableCrossWaveTableInterpolation(LFOSpecRec LFOSpec, bool enable)
+        {
+            LFOSpec.EnableCrossWaveTableInterpolation = enable;
+            LFOSpec.EnableCrossWaveTableInterpolationExplicitlySet = true;
         }
 
         /* set the extra value */

@@ -31,7 +31,7 @@ namespace OutOfPhase
         /* what kind of oscillator is this */
         public enum OscillatorTypes
         {
-            eOscillatorSampled, /* unpublic static ured sample playback */
+            eOscillatorSampled, /* unstructured sample playback */
             eOscillatorWaveTable, /* indexed wave table (vector) synthesis */
             eOscillatorFOF, /* FOF pulse synthesis */
             eOscillatorAlgorithm, /* Algorithmically generated waveform */
@@ -95,6 +95,10 @@ namespace OutOfPhase
             /* used for wave table synthesis. */
             public LFOListSpecRec ExcitationLFOList;
 
+            // enable cross-wavetable interpolation; only used for wave table synthesis
+            public bool EnableCrossWaveTableInterpolation;
+            public bool EnableCrossWaveTableInterpolationExplicitlySet;
+
             /* stereo bias -- fixed amount to move this oscillator left or right by */
             public double StereoBias;
             /* surround bias -- fixed amount to move this oscillator front or back by */
@@ -156,6 +160,7 @@ namespace OutOfPhase
             Osc.FOFExpansion = OscFOFExpandType.eOscFOFSilenceFill;
             Osc.FOFSamplingRate = 0;
             Osc.Algorithm = OscAlgoType.eOscAlgoPulse;
+            Osc.EnableCrossWaveTableInterpolation = true;
 
             return Osc;
         }
@@ -264,6 +269,22 @@ namespace OutOfPhase
         public static LFOListSpecRec OscillatorGetExcitationLFOList(OscillatorRec Osc)
         {
             return Osc.ExcitationLFOList;
+        }
+
+        public static bool OscillatorGetEnableCrossWaveTableInterpolation(OscillatorRec Osc)
+        {
+            return Osc.EnableCrossWaveTableInterpolation;
+        }
+
+        public static bool OscillatorGetEnableCrossWaveTableInterpolationExplicitlySet(OscillatorRec Osc)
+        {
+            return Osc.EnableCrossWaveTableInterpolationExplicitlySet;
+        }
+
+        public static void OscillatorSetEnableCrossWaveTableInterpolation(OscillatorRec Osc, bool enable)
+        {
+            Osc.EnableCrossWaveTableInterpolation = enable;
+            Osc.EnableCrossWaveTableInterpolationExplicitlySet = true;
         }
 
         /* get the stereo bias factor */

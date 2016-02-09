@@ -54,7 +54,6 @@ namespace OutOfPhase
 
             public FilterTypes FilterType { get { return FilterTypes.eFilterParametricEQ; } }
 
-            /* adjust filter coefficients */
             public static void SetParametricEqualizerCoefficients(
                 ParametricEqualizerRec Filter,
                 double Cutoff,
@@ -96,6 +95,17 @@ namespace OutOfPhase
                 Filter.A = (float)((1 - X) / (1 + X));
                 Filter.B = (float)(-Math.Cos(TWOPI * Cutoff * OneOverSamplingRate));
                 Filter.K = (float)Gain;
+            }
+
+            public void UpdateParams(
+                ref FilterParams Params)
+            {
+                SetParametricEqualizerCoefficients(
+                    this,
+                    Params.Cutoff,
+                    Params.BandwidthOrSlope,
+                    Params.Gain,
+                    Params.SamplingRate);
             }
 
             /* apply filter to an array of values, adding result to output array */

@@ -568,7 +568,7 @@ namespace OutOfPhase
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier
                     + State.Template.FrequencyAdder;
                 Differential = (NewFrequencyHertz / State.NaturalFrequency)
-                    * SynthParams.dSamplingRateReciprocal
+                    / SynthParams.dSamplingRate
                     * State.NaturalSamplingRate;
                 if (Differential < 0)
                 {
@@ -1030,7 +1030,6 @@ namespace OutOfPhase
                 int LocalCurrentLoopEnd = State.CurrentLoopEnd;
                 float[] SampleData = State.Data;
 
-#if true // TODO:experimental - smoothing
                 if (Program.Config.EnableEnvelopeSmoothing
                     // case of no motion in any smoothed axis, can use fast code path
                     && (State.Loudness != State.PreviousLoudness))
@@ -1107,7 +1106,6 @@ namespace OutOfPhase
                     }
                 }
                 else
-#endif
                 {
                     // non-smoothing case
 
@@ -1181,7 +1179,6 @@ namespace OutOfPhase
                 int LocalCurrentLoopEnd = State.CurrentLoopEnd;
                 float[] SampleData = State.Data;
 
-#if true // TODO:experimental - smoothing
                 if (Program.Config.EnableEnvelopeSmoothing
                     // case of no motion in any smoothed axis, can use fast code path
                     && (State.Loudness != State.PreviousLoudness))
@@ -1264,7 +1261,6 @@ namespace OutOfPhase
                     }
                 }
                 else
-#endif
                 {
                     // non-smoothing case
 
@@ -1358,7 +1354,6 @@ namespace OutOfPhase
                 }
                 float[] SampleData = State.Data;
 
-#if true // TODO:experimental - smoothing
                 if (Program.Config.EnableEnvelopeSmoothing
                     // case of no motion in any smoothed axis, can use faster code path
                     && (State.Loudness != State.PreviousLoudness))
@@ -1393,7 +1388,6 @@ namespace OutOfPhase
                     }
                 }
                 else
-#endif
                 {
                     // no envelope smoothing
 
@@ -1546,7 +1540,6 @@ namespace OutOfPhase
                 }
                 float[] SampleData = State.Data;
 
-#if true // TODO:experimental - smoothing
                 if (Program.Config.EnableEnvelopeSmoothing
                     // case of no motion in any smoothed axis, can use faster code path
                     && (State.Loudness != State.PreviousLoudness))
@@ -1581,7 +1574,6 @@ namespace OutOfPhase
                     }
                 }
                 else
-#endif
                 {
                     // no envelope smoothing
 

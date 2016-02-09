@@ -130,16 +130,20 @@ namespace OutOfPhase
             int offset)
         {
 #if VECTOR
-            GCHandle hVector = GCHandle.Alloc(vector, GCHandleType.Pinned);
-            try
+            if (Environment.Is64BitProcess)
             {
-                int vectorLength = Vector<double>.Count;
-                Debug.Assert((hVector.AddrOfPinnedObject().ToInt64() + offset * sizeof(double)) % (vectorLength * sizeof(double)) == 0);
+                GCHandle hVector = GCHandle.Alloc(vector, GCHandleType.Pinned);
+                try
+                {
+                    int vectorLength = Vector<double>.Count;
+                    Debug.Assert((hVector.AddrOfPinnedObject().ToInt64() + offset * sizeof(double)) % (vectorLength * sizeof(double)) == 0);
+                }
+                finally
+                {
+                    hVector.Free();
+                }
             }
-            finally
-            {
-                hVector.Free();
-            }
+            // else: compensating for unaligned allocation isn't feasible for 64-bit types in 32-bit mode - see SynthParamRec for explanation
 #endif
         }
 #endif
@@ -807,6 +811,8 @@ namespace OutOfPhase
             int offsetTarget,
             int count)
         {
+            Debug.Assert(count % 2 == 0);
+
             int i = 0;
 
 #if DEBUG
@@ -869,6 +875,8 @@ namespace OutOfPhase
             int offset,
             int count)
         {
+            Debug.Assert(count % 2 == 0);
+
             int i = 0;
 
 #if DEBUG
@@ -877,6 +885,7 @@ namespace OutOfPhase
 #if VECTOR
             if (EnableVector)
             {
+                Vector<float> vectorINeg = VectorINeg;
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
                     Vector<float> s = vectorINeg * new Vector<float>(vector, i + offset);
@@ -887,21 +896,21 @@ namespace OutOfPhase
 
             for (; i < count; i += 2)
             {
-                float vR = vector[offset + i + 0];
+                //float vR = vector[offset + i + 0];
                 float vI = vector[offset + i + 1];
                 //vector[offset + i + 0] = vR; -- no-op
                 vector[offset + i + 1] = -vI;
             }
         }
 #if VECTOR
-        private static readonly Vector<float> vectorINeg = CreateVectorINegTemplate();
+        private static readonly Vector<float> VectorINeg = CreateVectorINegTemplate();
         private static Vector<float> CreateVectorINegTemplate()
         {
             float[] t = new float[Vector<float>.Count];
             for (int i = 0; i < Vector<float>.Count; i += 2)
             {
-                t[0] = 1;
-                t[1] = -1;
+                t[i + 0] = 1;
+                t[i + 1] = -1;
             }
             return new Vector<float>(t);
         }
@@ -1817,7 +1826,6 @@ namespace OutOfPhase
             }
         }
 
-#if true // TODO:experimental - smoothing
         public static void FloatVectorAdditiveRecurrence(
             float[] target,
             int targetOffset,
@@ -1941,7 +1949,6 @@ namespace OutOfPhase
                 target[targetOffset + i] = r;
             }
         }
-#endif
 
         public static void FloatVectorClamp(
             float[] vector,

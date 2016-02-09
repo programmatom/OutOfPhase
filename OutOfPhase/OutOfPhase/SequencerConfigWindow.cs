@@ -140,9 +140,9 @@ namespace OutOfPhase
 
         public void HighlightLine(int line)
         {
-            line--;
             textBoxSequencerConfig.Focus();
-            textBoxSequencerConfig.SetSelectionLine(line);
+            textBoxSequencerConfig.SetSelectionLine(line-1);
+            textBoxSequencerConfig.ScrollToSelection();
         }
 
 

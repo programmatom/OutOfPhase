@@ -441,6 +441,69 @@ namespace OutOfPhase
             return editor;
         }
 
+        public bool SelectAndMakeVisible(object dataObject)
+        {
+            int i;
+            MyListBox listBox;
+            if (dataObject is FunctionObjectRec)
+            {
+                i = document.FunctionList.IndexOf((FunctionObjectRec)dataObject);
+                listBox = myListBoxFunctions;
+            }
+            else if (dataObject is WaveTableObjectRec)
+            {
+                i = document.WaveTableList.IndexOf((WaveTableObjectRec)dataObject);
+                listBox = myListBoxWaveTables;
+            }
+            else if (dataObject is AlgoWaveTableObjectRec)
+            {
+                i = document.AlgoWaveTableList.IndexOf((AlgoWaveTableObjectRec)dataObject);
+                listBox = myListBoxAlgoWaveTables;
+            }
+            else if (dataObject is SampleObjectRec)
+            {
+                i = document.SampleList.IndexOf((SampleObjectRec)dataObject);
+                listBox = myListBoxSamples;
+            }
+            else if (dataObject is AlgoSampObjectRec)
+            {
+                i = document.AlgoSampList.IndexOf((AlgoSampObjectRec)dataObject);
+                listBox = myListBoxAlgoSamples;
+            }
+            else if (dataObject is InstrObjectRec)
+            {
+                i = document.InstrumentList.IndexOf((InstrObjectRec)dataObject);
+                listBox = myListBoxInstruments;
+            }
+            else if (dataObject is ScoreEffectsRec)
+            {
+                return false; // not applicable
+            }
+            else if (dataObject is SectionObjectRec)
+            {
+                return false; // not applicable
+            }
+            else if (dataObject is SequencerRec)
+            {
+                return false; // not applicable
+            }
+            else if (dataObject is TrackObjectRec)
+            {
+                i = document.TrackList.IndexOf((TrackObjectRec)dataObject);
+                listBox = myListBoxTracks;
+            }
+            else
+            {
+                throw new ArgumentException();
+            }
+            if (i >= 0)
+            {
+                listBox.SelectItem(i, true/*clearOtherSelections*/);
+                listBox.ScrollToCursor();
+            }
+            return true;
+        }
+
         // Requires that all active controls have been committed by calling .Validate() on them. That is the
         // responsibility of the window managing the UI that invokes this method, since this method can't possibly
         // know about all the possible controls wherever they may be.
@@ -460,6 +523,7 @@ namespace OutOfPhase
                     if (!registration.Activate(sender, out editor))
                     {
                         editor = CreateAndShowEditor(sender);
+                        SelectAndMakeVisible(sender);
 
                         // This is a bit of a hack for HighlightLine() below. Most editors set the IP to the beginning of the
                         // main body edit field in the OnShow() handler. This is going to happen during event processing of
@@ -1416,7 +1480,7 @@ namespace OutOfPhase
             }
             else if (menuItem == menuStrip.globalSettingsToolStripMenuItem)
             {
-                using (GlobalPrefsDialog dialog = new GlobalPrefsDialog())
+                using (GlobalPrefsDialog dialog = new GlobalPrefsDialog(Program.Config))
                 {
                     dialog.ShowDialog();
                 }
@@ -1727,6 +1791,26 @@ namespace OutOfPhase
             autosaveNeeded = false;
 
             Cursor.Current = Cursors.Default;
+        }
+
+
+        // Access to parameters edited by PlayPrefsDialog
+
+        // Return the provider of parameters - either the document directly or the PlayPrefsDialog if it is open.
+        // This allows PlayPrefsDialog to be cancelled without saving the parameters, but the parameters can affect
+        // playback as long as the dialog was open until then.
+        public IPlayPrefsProvider GetPlayPrefsProvider()
+        {
+            FormRegistrationToken playPrefsToken = registration.Find(
+                delegate (FormRegistrationToken token) { return token.DataSource == playPrefsDataSourceIdentity; });
+            if (playPrefsToken != null)
+            {
+                return ((PlayPrefsDialog)playPrefsToken.Editor).SourceProperty;
+            }
+            else
+            {
+                return new PlayPrefsDocumentDelegator(document);
+            }
         }
     }
 }

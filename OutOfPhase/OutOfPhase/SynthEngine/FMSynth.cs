@@ -95,6 +95,8 @@ namespace OutOfPhase
             /* effect specifier, may be null */
             public EffectSpecListRec OscEffectTemplate;
 
+            public bool EnableCrossWaveTableInterpolation;
+
             /* number of statements */
             public int NumStmts;
             public int NumStmtsOptimizable;
@@ -155,6 +157,8 @@ namespace OutOfPhase
                 {
                     Template.OscEffectTemplate = null;
                 }
+
+                Template.EnableCrossWaveTableInterpolation = OscillatorGetEnableCrossWaveTableInterpolation(Oscillator);
 
                 /* two initialization loops, one for the optimized ones, then for the nonoptimized */
                 iNextStmtPos = 0;
@@ -370,7 +374,7 @@ namespace OutOfPhase
                                 Wave.FramesPerTableMinus1 = FramesPerTable - 1;
 
                                 Wave.FramesPerTableOverFinalOutputSamplingRate
-                                    = (double)Wave.FloatFramesPerTable * SynthParams.dSamplingRateReciprocal;
+                                    = (double)Wave.FloatFramesPerTable / SynthParams.dSamplingRate;
 
                                 /* State.FramesPerTable > 0: */
                                 /*   if the wave table is empty, then we don't do any work (and we must not, */
@@ -1375,7 +1379,8 @@ namespace OutOfPhase
                                 float Left0Value = WaveData0[ArraySubscript];
                                 float Right0Value = WaveData0[ArraySubscript + 1];
                                 Result = Left0Value + (RightWeight * (Right0Value - Left0Value));
-                                if (Wave.WaveTableIndex != Wave.NumberOfTablesMinus1)
+                                if ((Wave.WaveTableIndex != Wave.NumberOfTablesMinus1)
+                                    && State.Template.EnableCrossWaveTableInterpolation)
                                 {
                                     /* full-interpolating processing */
 

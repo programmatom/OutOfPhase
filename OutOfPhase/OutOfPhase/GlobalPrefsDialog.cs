@@ -34,28 +34,48 @@ namespace OutOfPhase
     {
         private readonly KeyValuePair<string, string>[] devices;
         private int concurrency;
+        private readonly GlobalPrefs primaryPrefs;
+        private readonly GlobalPrefs localPrefs;
 
-        public GlobalPrefsDialog()
+        private static readonly KeyValuePair<string, int>[] priorities = new KeyValuePair<string, int>[]
         {
+            new KeyValuePair<string, int>("Default", 0),
+            new KeyValuePair<string, int>("Normal", 1),
+            new KeyValuePair<string, int>("Above Normal", 2),
+            new KeyValuePair<string, int>("Highest", 3),
+        };
+
+        public GlobalPrefsDialog(GlobalPrefs primaryPrefs)
+        {
+            this.primaryPrefs = primaryPrefs;
+            localPrefs = new GlobalPrefs();
+            primaryPrefs.CopyTo(localPrefs);
+
             InitializeComponent();
 
             devices = OutputDeviceEnumerator.EnumerateAudioOutputDeviceIdentifiers();
             for (int i = 0; i < devices.Length; i++)
             {
                 comboBoxOutputDevice.Items.Add(devices[i].Value);
-                if (String.Equals(devices[i].Key, Program.Config.OutputDevice))
+                if (String.Equals(devices[i].Key, localPrefs.OutputDevice))
                 {
                     comboBoxOutputDevice.SelectedIndex = i;
                 }
             }
 
-            textBoxTabSize.Text = Program.Config.TabSize.ToString();
-            checkBoxAutoIndent.Checked = Program.Config.AutoIndent;
-            checkBoxAutosaveEnabled.Checked = Program.Config.AutosaveEnabled;
-            textBoxAutosaveInterval.Text = Program.Config.AutosaveIntervalSeconds.ToString();
+            for (int i = 0; i < priorities.Length; i++)
+            {
+                comboBoxPriority.Items.Add(priorities[i].Key);
+                if (priorities[i].Value == localPrefs.PriorityMode)
+                {
+                    comboBoxPriority.SelectedIndex = i;
+                }
+            }
 
-            concurrency = Program.Config.Concurrency;
+            concurrency = localPrefs.Concurrency;
             UpdateConcurrencyEnables();
+
+            globalPrefsBindingSource.Add(localPrefs);
         }
 
         protected override void WndProc(ref Message m)
@@ -71,30 +91,13 @@ namespace OutOfPhase
 
         private void buttonOK_Click(object sender, EventArgs e)
         {
-            try
-            {
-                Program.Config.TabSize = Math.Min(Math.Max(Int32.Parse(textBoxTabSize.Text), Constants.MINTABCOUNT), Constants.MAXTABCOUNT);
-            }
-            catch (Exception)
-            {
-            }
-            Program.Config.AutoIndent = checkBoxAutoIndent.Checked;
+            // stage non-databound settings
+            localPrefs.Concurrency = concurrency;
+            localPrefs.OutputDevice = devices[comboBoxOutputDevice.SelectedIndex].Key;
+            localPrefs.OutputDeviceName = devices[comboBoxOutputDevice.SelectedIndex].Value;
+            localPrefs.PriorityMode = comboBoxPriority.SelectedIndex;
 
-            Program.Config.AutosaveEnabled = checkBoxAutosaveEnabled.Checked;
-
-            try
-            {
-                Program.Config.AutosaveIntervalSeconds = Math.Min(Math.Max(Int32.Parse(textBoxAutosaveInterval.Text), Constants.MINAUTOSAVEINTERVAL), Constants.MAXAUTOSAVEINTERVAL);
-            }
-            catch (Exception)
-            {
-            }
-
-            Program.Config.Concurrency = concurrency;
-
-            Program.Config.OutputDevice = devices[comboBoxOutputDevice.SelectedIndex].Key;
-            Program.Config.OutputDeviceName = devices[comboBoxOutputDevice.SelectedIndex].Value;
-
+            localPrefs.CopyTo(primaryPrefs);
             Program.SaveSettings();
 
             Close();

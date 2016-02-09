@@ -75,7 +75,7 @@ namespace OutOfPhase
             public int MaximumRequired64BitWorkspaceCount { get { return 0; } }
 
             public int MaximumSmoothedParameterCount { get { return Math.Max(DefaultMaximumSmoothedParameterCount, Program.Config.MaximumSmoothedParameterCount); } }
-            private const int DefaultMaximumSmoothedParameterCount = 16; // enough for most situations
+            public const int DefaultMaximumSmoothedParameterCount = 16; // enough for most situations
 
             public BuildInstrErrors Create(
                 KeyValuePair<string, string[]>[] configsTokens,

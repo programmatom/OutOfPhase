@@ -121,7 +121,7 @@ namespace OutOfPhase
                 raw = (raw & 0x00000000ffffffff) | ((long)h << 32);
             }
 
-            public static void Int32Int64Subtract(int i, ref  Fixed64 v)
+            public static void Int32Int64Subtract(int i, ref Fixed64 v)
             {
                 v = new Fixed64(((long)i << 32) - v.raw);
             }

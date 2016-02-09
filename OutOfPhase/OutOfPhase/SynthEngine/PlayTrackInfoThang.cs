@@ -890,7 +890,7 @@ namespace OutOfPhase
                                 }
                             }
 
-                            EndFrameScanPoint:
+                        EndFrameScanPoint:
                             ;
                         }
                     }

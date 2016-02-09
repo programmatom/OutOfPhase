@@ -157,7 +157,7 @@ namespace OutOfPhase
 
             if ((state.bits == NumBitsType.eSample8bit) || (state.bits == NumBitsType.eSample16bit))
             {
-                if (OutputGeneric<T, U, W>.UseHPTRI)
+                if (OutputGeneric<T, U, W>.UseHPTRI) // TODO: add dither selector to global settings
                 {
                     state.ditherState = new Synthesizer.StereoDither_HPTRI(bits);
                 }
@@ -200,7 +200,7 @@ namespace OutOfPhase
                     state.stopper,
                     state.waitFinishedHelper,
                     state.waitFinishedHelper,
-                    delegate()
+                    delegate ()
                     {
                         ClipInfo clipInfo = new ClipInfo(
                             state.totalSampleCount,
@@ -242,9 +242,14 @@ namespace OutOfPhase
 
         ~OutputGeneric()
         {
-            Debug.Assert(false, "OutputGeneric finalizer invoked - have you forgotten to .Dispose()?");
+#if DEBUG
+            Debug.Assert(false, "OutputGeneric finalizer invoked - have you forgotten to .Dispose()? " + allocatedFrom.ToString());
+#endif
             Dispose();
         }
+#if DEBUG
+        private readonly StackTrace allocatedFrom = new StackTrace(true);
+#endif
 
         private static void ThreadMain(object obj)
         {
@@ -287,10 +292,6 @@ namespace OutOfPhase
             int offset,
             int frameCount)
         {
-            int pointCount;
-            float localMaxClipExtent;
-            int localClippedSampleCount;
-
 #if DEBUG
             if ((state.bits != NumBitsType.eSample8bit)
                 && (state.bits != NumBitsType.eSample16bit)
@@ -301,15 +302,6 @@ namespace OutOfPhase
             }
 #endif
 
-            /* if output is mono, average the channels */
-            if (state.channels == NumChannelsType.eSampleMono)
-            {
-                for (int i = 0; i < frameCount; i++)
-                {
-                    data[i] = .5f * (data[2 * i + 0 + offset] + data[2 * i + 1 + offset]);
-                }
-            }
-
             /* drop samples for oversampling */
             if (state.oversamplingFactor > 1)
             {
@@ -318,32 +310,15 @@ namespace OutOfPhase
                 int readScan = state.oversamplingSkipCarryover;
 
                 /* scan over, dropping all but each OversamplingFactor sample */
-                if (state.channels == NumChannelsType.eSampleStereo)
+                while (readScan < frameCount)
                 {
-                    /* stereo copier */
-                    while (readScan < frameCount)
-                    {
-                        /* copy value over */
-                        data[2 * writeScan + 0 + offset] = data[2 * readScan + 0 + offset];
-                        data[2 * writeScan + 1 + offset] = data[2 * readScan + 1 + offset];
+                    /* copy value over */
+                    data[2 * writeScan + 0 + offset] = data[2 * readScan + 0 + offset];
+                    data[2 * writeScan + 1 + offset] = data[2 * readScan + 1 + offset];
 
-                        /* step to next value */
-                        writeScan += 1;
-                        readScan += state.oversamplingFactor;
-                    }
-                }
-                else
-                {
-                    /* mono copier */
-                    while (readScan < frameCount)
-                    {
-                        /* copy value over */
-                        data[writeScan + offset] = data[readScan + offset];
-
-                        /* step to next value */
-                        writeScan += 1;
-                        readScan += state.oversamplingFactor;
-                    }
+                    /* step to next value */
+                    writeScan += 1;
+                    readScan += state.oversamplingFactor;
                 }
 
                 /* update buffer size and save state */
@@ -351,16 +326,25 @@ namespace OutOfPhase
                 frameCount = writeScan;
             }
 
+            /* if output is mono, average the channels */
+            if (state.channels == NumChannelsType.eSampleMono)
+            {
+                for (int i = 0; i < frameCount; i++)
+                {
+                    data[i + offset] = .5f * (data[2 * i + 0 + offset] + data[2 * i + 1 + offset]);
+                }
+            }
+
             /* compute number of samples */
-            pointCount = frameCount;
+            int pointCount = frameCount;
             if (state.channels == NumChannelsType.eSampleStereo)
             {
                 pointCount *= 2;
             }
 
             /* load state */
-            localMaxClipExtent = state.maxClipExtent;
-            localClippedSampleCount = state.clippedSampleCount;
+            float localMaxClipExtent = state.maxClipExtent;
+            int localClippedSampleCount = state.clippedSampleCount;
 
             /* apply dither */
             if ((state.bits == NumBitsType.eSample8bit) || (state.bits == NumBitsType.eSample16bit))
@@ -387,11 +371,11 @@ namespace OutOfPhase
                 float value = data[i + offset];
 
                 /* find absolute value, and save sign */
-                float Sign = 1;
+                float sign = 1;
                 if (value < 0)
                 {
                     value = -value;
-                    Sign = -Sign;
+                    sign = -sign;
                 }
 
                 /* clip value at 1 */
@@ -405,7 +389,7 @@ namespace OutOfPhase
                     value = 1;
                 }
 
-                data[i + offset] = Sign * value;
+                data[i + offset] = sign * value;
             }
 
             /* save state */

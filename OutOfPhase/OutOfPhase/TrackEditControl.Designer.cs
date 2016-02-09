@@ -51,6 +51,7 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.trackViewControl = new OutOfPhase.TrackViewControl();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.toolStrip = new System.Windows.Forms.ToolStrip();
             this.toolStripButtonArrow = new System.Windows.Forms.ToolStripButton();
@@ -81,7 +82,6 @@ namespace OutOfPhase
             this.toolStripButtonDiv3 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonDiv5 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonDiv7 = new System.Windows.Forms.ToolStripButton();
-            this.trackViewControl = new OutOfPhase.TrackViewControl();
             this.noteViewControl = new OutOfPhase.NoteViewControl();
             this.noteParamStrip = new OutOfPhase.NoteParamStrip();
             this.trackObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
@@ -111,6 +111,17 @@ namespace OutOfPhase
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(918, 373);
             this.tableLayoutPanel1.TabIndex = 0;
+            // 
+            // trackViewControl
+            // 
+            this.trackViewControl.AutoScroll = true;
+            this.trackViewControl.BackColor = System.Drawing.SystemColors.Window;
+            this.trackViewControl.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.trackViewControl.Location = new System.Drawing.Point(0, 53);
+            this.trackViewControl.Margin = new System.Windows.Forms.Padding(0);
+            this.trackViewControl.Name = "trackViewControl";
+            this.trackViewControl.Size = new System.Drawing.Size(918, 320);
+            this.trackViewControl.TabIndex = 6;
             // 
             // flowLayoutPanel1
             // 
@@ -170,6 +181,7 @@ namespace OutOfPhase
             this.toolStripButtonArrow.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonArrow.Name = "toolStripButtonArrow";
             this.toolStripButtonArrow.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonArrow.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripSeparator1
             // 
@@ -185,6 +197,7 @@ namespace OutOfPhase
             this.toolStripButtonCommand.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonCommand.Name = "toolStripButtonCommand";
             this.toolStripButtonCommand.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonCommand.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripSeparator2
             // 
@@ -200,6 +213,7 @@ namespace OutOfPhase
             this.toolStripButtonSixtyFourth.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonSixtyFourth.Name = "toolStripButtonSixtyFourth";
             this.toolStripButtonSixtyFourth.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonSixtyFourth.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonThirtySecond
             // 
@@ -210,6 +224,7 @@ namespace OutOfPhase
             this.toolStripButtonThirtySecond.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonThirtySecond.Name = "toolStripButtonThirtySecond";
             this.toolStripButtonThirtySecond.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonThirtySecond.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonSixteenth
             // 
@@ -220,6 +235,7 @@ namespace OutOfPhase
             this.toolStripButtonSixteenth.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonSixteenth.Name = "toolStripButtonSixteenth";
             this.toolStripButtonSixteenth.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonSixteenth.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonEighth
             // 
@@ -230,6 +246,7 @@ namespace OutOfPhase
             this.toolStripButtonEighth.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonEighth.Name = "toolStripButtonEighth";
             this.toolStripButtonEighth.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonEighth.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonQuarter
             // 
@@ -240,6 +257,7 @@ namespace OutOfPhase
             this.toolStripButtonQuarter.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonQuarter.Name = "toolStripButtonQuarter";
             this.toolStripButtonQuarter.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonQuarter.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonHalf
             // 
@@ -250,6 +268,7 @@ namespace OutOfPhase
             this.toolStripButtonHalf.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonHalf.Name = "toolStripButtonHalf";
             this.toolStripButtonHalf.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonHalf.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonWhole
             // 
@@ -260,6 +279,7 @@ namespace OutOfPhase
             this.toolStripButtonWhole.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonWhole.Name = "toolStripButtonWhole";
             this.toolStripButtonWhole.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonWhole.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonDouble
             // 
@@ -270,6 +290,7 @@ namespace OutOfPhase
             this.toolStripButtonDouble.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonDouble.Name = "toolStripButtonDouble";
             this.toolStripButtonDouble.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonDouble.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonQuad
             // 
@@ -280,6 +301,7 @@ namespace OutOfPhase
             this.toolStripButtonQuad.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonQuad.Name = "toolStripButtonQuad";
             this.toolStripButtonQuad.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonQuad.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripSeparator3
             // 
@@ -295,6 +317,7 @@ namespace OutOfPhase
             this.toolStripButtonSharp.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonSharp.Name = "toolStripButtonSharp";
             this.toolStripButtonSharp.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonSharp.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonFlat
             // 
@@ -305,6 +328,7 @@ namespace OutOfPhase
             this.toolStripButtonFlat.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonFlat.Name = "toolStripButtonFlat";
             this.toolStripButtonFlat.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonFlat.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonNatural
             // 
@@ -315,6 +339,7 @@ namespace OutOfPhase
             this.toolStripButtonNatural.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonNatural.Name = "toolStripButtonNatural";
             this.toolStripButtonNatural.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonNatural.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripSeparator4
             // 
@@ -330,6 +355,7 @@ namespace OutOfPhase
             this.toolStripButtonNoteVsRest.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonNoteVsRest.Name = "toolStripButtonNoteVsRest";
             this.toolStripButtonNoteVsRest.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonNoteVsRest.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonNoteVsRest2
             // 
@@ -340,6 +366,7 @@ namespace OutOfPhase
             this.toolStripButtonNoteVsRest2.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonNoteVsRest2.Name = "toolStripButtonNoteVsRest2";
             this.toolStripButtonNoteVsRest2.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonNoteVsRest2.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripSeparator5
             // 
@@ -355,6 +382,7 @@ namespace OutOfPhase
             this.toolStripButtonNoDot.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonNoDot.Name = "toolStripButtonNoDot";
             this.toolStripButtonNoDot.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonNoDot.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonYesDot
             // 
@@ -365,6 +393,7 @@ namespace OutOfPhase
             this.toolStripButtonYesDot.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonYesDot.Name = "toolStripButtonYesDot";
             this.toolStripButtonYesDot.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonYesDot.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripSeparator6
             // 
@@ -380,6 +409,7 @@ namespace OutOfPhase
             this.toolStripButtonDiv1.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonDiv1.Name = "toolStripButtonDiv1";
             this.toolStripButtonDiv1.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonDiv1.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonDiv3
             // 
@@ -390,6 +420,7 @@ namespace OutOfPhase
             this.toolStripButtonDiv3.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonDiv3.Name = "toolStripButtonDiv3";
             this.toolStripButtonDiv3.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonDiv3.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonDiv5
             // 
@@ -400,6 +431,7 @@ namespace OutOfPhase
             this.toolStripButtonDiv5.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonDiv5.Name = "toolStripButtonDiv5";
             this.toolStripButtonDiv5.Size = new System.Drawing.Size(24, 24);
+            this.toolStripButtonDiv5.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // toolStripButtonDiv7
             // 
@@ -410,19 +442,7 @@ namespace OutOfPhase
             this.toolStripButtonDiv7.Margin = new System.Windows.Forms.Padding(0);
             this.toolStripButtonDiv7.Name = "toolStripButtonDiv7";
             this.toolStripButtonDiv7.Size = new System.Drawing.Size(24, 24);
-            // 
-            // trackViewControl
-            // 
-            this.trackViewControl.AutoScroll = true;
-            this.trackViewControl.AutoSize = true;
-            this.trackViewControl.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.trackViewControl.BackColor = System.Drawing.SystemColors.Window;
-            this.trackViewControl.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.trackViewControl.Location = new System.Drawing.Point(0, 53);
-            this.trackViewControl.Margin = new System.Windows.Forms.Padding(0);
-            this.trackViewControl.Name = "trackViewControl";
-            this.trackViewControl.Size = new System.Drawing.Size(918, 320);
-            this.trackViewControl.TabIndex = 6;
+            this.toolStripButtonDiv7.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
             // 
             // noteViewControl
             // 

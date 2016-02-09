@@ -130,6 +130,7 @@ namespace OutOfPhase
                 BuildErrorInfo errorInfo = new LiteralBuildErrorInfo(Synthesizer.BuildInstrGetErrorMessageText(Error, ErrorExtraMessage), ErrorLine);
                 textBoxEffectBody.Focus();
                 textBoxEffectBody.SetSelectionLine(ErrorLine - 1);
+                textBoxEffectBody.ScrollToSelection();
                 MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
                 return false;
             }
@@ -246,7 +247,7 @@ namespace OutOfPhase
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
                 dialog.Title = "Select Audio File";
-                dialog.Filter = "AIFF Audio File (.aif)|*.aif|AIFF Audio File (.aiff)|*.aiff|WAV Audio File (.wav)|*.wav|Any File Type (*)|*";
+                dialog.Filter = "AIFF Audio File (.aif, *.aiff)|*.aif;*.aiff|WAV Audio File (.wav)|*.wav|Any File Type (*)|*";
                 DialogResult result = dialog.ShowDialog();
                 if (result == DialogResult.OK)
                 {
