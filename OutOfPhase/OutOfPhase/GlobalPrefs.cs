@@ -98,6 +98,19 @@ namespace OutOfPhase
             get { return ((GlobalPrefsListItem<string>)FindProperty("RecentDocuments")).List; }
         }
 
+        public float AdditionalUIZoom
+        {
+            get { return FindSimpleProperty<float>("AdditionalUIZoom").Value; }
+            set { FindSimpleProperty<float>("AdditionalUIZoom").Value = value; Notify("AdditionalUIZoom"); }
+        }
+
+        public bool UseBravura
+        {
+            get { return FindSimpleProperty<bool>("UseBravura").Value; }
+            set { FindSimpleProperty<bool>("UseBravura").Value = value; Notify("UseBravura"); }
+        }
+
+
         // Unadvertised properties used for diagnostics and controlling experimental features.
         // As a rule, these properties are set at startup and must not change for the duration or broken behavior may occur.
 
@@ -135,12 +148,6 @@ namespace OutOfPhase
         {
             get { return FindSimpleProperty<bool>("EnableTrackViewOffscreenCompositing").Value; }
             set { FindSimpleProperty<bool>("EnableTrackViewOffscreenCompositing").Value = value; Notify("EnableTrackViewOffscreenCompositing"); }
-        }
-
-        public bool EnableBravura
-        {
-            get { return FindSimpleProperty<bool>("EnableBravura").Value; }
-            set { FindSimpleProperty<bool>("EnableBravura").Value = value; Notify("EnableBravura"); }
         }
 
 
@@ -188,11 +195,13 @@ namespace OutOfPhase
                 new GlobalPrefsSimpleItem<int>("TabSize", 4),
                 new GlobalPrefsSimpleItem<bool>("AutoIndent", true),
                 new GlobalPrefsSimpleItem<bool>("AutosaveEnabled", true),
-                new GlobalPrefsSimpleItem<int>("AutosaveIntervalSeconds", 5 * 60),
-                new GlobalPrefsSimpleItem<string>("OutputDevice", ERole.eMultimedia.ToString()),
+                new GlobalPrefsSimpleItem<int>("AutosaveIntervalSeconds", 60),
+                new GlobalPrefsSimpleItem<float>("AdditionalUIZoom", 1f),
+                new GlobalPrefsSimpleItem<bool>("UseBravura", true),
+                // ERole.eLegacy (WaveOut) is default OutputDevice because it is confusing when WASAPI refuses playback because
+                // document sampling rate is not the same as sampling rate set in hardware control panel.
+                new GlobalPrefsSimpleItem<string>("OutputDevice", ERole.eLegacy.ToString()),
                 new GlobalPrefsSimpleItem<string>("OutputDeviceName", String.Empty),
-                new GlobalPrefsComputerNameKeyedItem<string>("FFTWWisdom32f", String.Empty),
-                new GlobalPrefsComputerNameKeyedItem<string>("FFTWWisdom64f", String.Empty),
                 new GlobalPrefsSimpleItem<int>("Concurrency", 0),
                 new GlobalPrefsSimpleItem<int>("PriorityMode", 0),
                 new GlobalPrefsSimpleItem<int>("RecentDocumentsMax", 10),
@@ -201,11 +210,14 @@ namespace OutOfPhase
                 // unadvertised properties
                 new GlobalPrefsSimpleItem<bool>("EnableCIL", true),
                 new GlobalPrefsSimpleItem<bool>("EnableEnvelopeSmoothing", true),
-                new GlobalPrefsSimpleItem<bool>("EnableDirectWrite", false),
+                new GlobalPrefsSimpleItem<bool>("EnableDirectWrite", true),
                 new GlobalPrefsSimpleItem<int>("MaximumSmoothedParameterCount",
                     Synthesizer.PluggableEffectUserEffectFactory.DefaultMaximumSmoothedParameterCount),
                 new GlobalPrefsSimpleItem<bool>("EnableTrackViewOffscreenCompositing", true),
-                new GlobalPrefsSimpleItem<bool>("EnableBravura", false),
+
+                // for readability these are stashed at the end
+                new GlobalPrefsComputerNameKeyedItem<string>("FFTWWisdom32f", String.Empty),
+                new GlobalPrefsComputerNameKeyedItem<string>("FFTWWisdom64f", String.Empty),
             };
         }
 

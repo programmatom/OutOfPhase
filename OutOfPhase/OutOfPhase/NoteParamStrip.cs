@@ -56,6 +56,11 @@ namespace OutOfPhase
             this.Disposed += NoteParamStrip_Disposed;
         }
 
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+        }
+
         private void NoteParamStrip_Disposed(object sender, EventArgs e)
         {
             if (backBrush != null)
@@ -138,7 +143,7 @@ namespace OutOfPhase
                         lines.Add(one);
                     }
                 }
-                Size = MinimumSize = new Size(Size.Width, FontHeight * lines.Count);
+                Size = MinimumSize = new Size(MinimumSize.Width, FontHeight * lines.Count);
             }
         }
 

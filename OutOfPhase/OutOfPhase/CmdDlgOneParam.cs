@@ -45,6 +45,8 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             labelPrompt.Text = prompt;
             groupBox1.Text = boxName;
             textBox.Text = initialValue;

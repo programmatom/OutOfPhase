@@ -48,6 +48,8 @@ namespace OutOfPhase
             this.textBoxFunction.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxFunction.AutoIndent = Program.Config.AutoIndent;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             menuStripManager.SetGlobalHandler(mainWindow);
             menuStripManager.HookUpTextEditorWindowHelper(this.textEditorWindowHelper);
             menuStripManager.HookUpTextBoxWindowHelper(this.textBoxWindowHelper);
@@ -215,6 +217,9 @@ namespace OutOfPhase
 
             menuStrip.disassembleToolStripMenuItem.Enabled = true;
             menuStrip.disassembleToolStripMenuItem.Visible = true;
+
+            menuStrip.deleteObjectToolStripMenuItem.Enabled = true;
+            menuStrip.deleteObjectToolStripMenuItem.Text = "Delete Algorithmic Wave Table";
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -246,6 +251,12 @@ namespace OutOfPhase
                     mainWindow.Document.WaveTableList.Add(waveTableObject);
                     new WaveTableWindow(registration, waveTableObject, mainWindow).Show();
                 }
+                return true;
+            }
+            else if (menuItem == menuStrip.deleteObjectToolStripMenuItem)
+            {
+                Close();
+                mainWindow.DeleteObject(algoWaveTableObject, mainWindow.Document.AlgoWaveTableList);
                 return true;
             }
             return false;

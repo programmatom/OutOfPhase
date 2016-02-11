@@ -736,6 +736,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>AboutBoxContent.resx</DependentUpon>
     </Compile>
+    <Resource Include="_Resources\Bravura.otf" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="_Resources\Icon2.ico" />
@@ -747,6 +748,9 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Bravura.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

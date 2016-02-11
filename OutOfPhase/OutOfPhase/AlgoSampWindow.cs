@@ -48,6 +48,8 @@ namespace OutOfPhase
             this.textBoxFormula.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxFormula.AutoIndent = Program.Config.AutoIndent;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             menuStripManager.SetGlobalHandler(mainWindow);
             menuStripManager.HookUpTextEditorWindowHelper(this.textEditorWindowHelper);
             menuStripManager.HookUpTextBoxWindowHelper(this.textBoxWindowHelper);
@@ -222,6 +224,9 @@ namespace OutOfPhase
 
             menuStrip.disassembleToolStripMenuItem.Enabled = true;
             menuStrip.disassembleToolStripMenuItem.Visible = true;
+
+            menuStrip.deleteObjectToolStripMenuItem.Enabled = true;
+            menuStrip.deleteObjectToolStripMenuItem.Text = "Delete Algorithmic Sample";
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -262,6 +267,12 @@ namespace OutOfPhase
                     mainWindow.Document.SampleList.Add(sampleObject);
                     new SampleWindow(registration, sampleObject, mainWindow).Show();
                 }
+                return true;
+            }
+            else if (menuItem == menuStrip.deleteObjectToolStripMenuItem)
+            {
+                Close();
+                mainWindow.DeleteObject(algoSampObject, mainWindow.Document.AlgoSampList);
                 return true;
             }
             return false;

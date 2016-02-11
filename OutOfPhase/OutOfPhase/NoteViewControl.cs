@@ -89,6 +89,12 @@ namespace OutOfPhase
             forePen = new Pen(ForeColor);
         }
 
+        protected override void OnFontChanged(EventArgs e)
+        {
+            base.OnFontChanged(e);
+            MinimumSize = DefaultMinimumSize; // prevent height glitch on high dpi systems
+        }
+
 
         //
 

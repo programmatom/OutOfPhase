@@ -53,6 +53,8 @@ namespace OutOfPhase
             this.textBoxFormula.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxFormula.AutoIndent = Program.Config.AutoIndent;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             menuStripManager.SetGlobalHandler(mainWindow);
             menuStripManager.HookUpTextEditorWindowHelper(this.textEditorWindowHelper);
             menuStripManager.HookUpTextBoxWindowHelper(this.textBoxWindowHelper);
@@ -620,6 +622,9 @@ namespace OutOfPhase
             menuStrip.insertTableToolStripMenuItem.Enabled = true;
             menuStrip.deleteTableToolStripMenuItem.Visible = true;
             menuStrip.deleteTableToolStripMenuItem.Enabled = waveTableObject.NumTables != 0;
+
+            menuStrip.deleteObjectToolStripMenuItem.Enabled = true;
+            menuStrip.deleteObjectToolStripMenuItem.Text = "Delete Wave Table";
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -673,7 +678,12 @@ namespace OutOfPhase
                 }
                 return true;
             }
-
+            else if (menuItem == menuStrip.deleteObjectToolStripMenuItem)
+            {
+                Close();
+                mainWindow.DeleteObject(waveTableObject, mainWindow.Document.WaveTableList);
+                return true;
+            }
             return false;
         }
 
@@ -812,6 +822,9 @@ namespace OutOfPhase
         {
             try
             {
+                // Unoptimized - since only one runs at a time this codepath is not perf critical (unlike the
+                // resampler loops in the synth engine)
+
                 int NumTables = generatorParams.data.NumTables;
                 float[][] ReferenceArray = new float[NumTables][];
                 for (int i = 0; i < NumTables; i++)
@@ -832,10 +845,11 @@ namespace OutOfPhase
                 int FramesPerTable = generatorParams.data.NumFrames;
 
                 /* this is the initial index into the wave table */
-                uint WaveformIndex = 0;
+                Synthesizer.Fixed64 WaveformIndex = new Synthesizer.Fixed64();
                 /* this is the 16.16 bit fixed point number used to increment the index */
                 /* into the wave table */
-                uint WaveformIncrementor = (uint)(FramesPerTable * generatorParams.frequency / PlaybackSamplingRate * 65536);
+                Synthesizer.Fixed64 WaveformIncrementor = new Synthesizer.Fixed64(
+                    FramesPerTable * generatorParams.frequency / PlaybackSamplingRate);
 
                 /* the number of times each wave slice has to be used */
                 int NumberOfIterationsAttack = (int)(generatorParams.attack * PlaybackSamplingRate);
@@ -847,9 +861,8 @@ namespace OutOfPhase
 
                 for (int i = 0; i < NumberOfIterationsAttack + NumberOfIterationsDecay; i++)
                 {
-                    double TableIndex;
-
                     /* compute wave table index for attack/decay phase */
+                    double TableIndex;
                     if (i < NumberOfIterationsAttack)
                     {
                         TableIndex = (double)i / NumberOfIterationsAttack;
@@ -860,7 +873,7 @@ namespace OutOfPhase
                     }
 
                     float Value = Synthesizer.WaveTableIndexer(
-                        (double)WaveformIndex * ((double)1 / 65536),
+                        WaveformIndex.Double,
                         TableIndex * (NumTables - 1),
                         NumTables,
                         FramesPerTable,

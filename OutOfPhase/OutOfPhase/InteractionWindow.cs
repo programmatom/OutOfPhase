@@ -44,6 +44,8 @@ namespace OutOfPhase
 
             this.textBox.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             // Place interaction window across bottom of screen.
             const int Margin = 50;
             int width = Screen.PrimaryScreen.Bounds.Width - 2 * Margin;

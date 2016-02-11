@@ -37,6 +37,8 @@ namespace OutOfPhase
         {
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
+
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
         }
 
         protected override void WndProc(ref Message m)

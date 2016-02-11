@@ -50,27 +50,28 @@ namespace OutOfPhase
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.tableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
             this.menuStripManager = new OutOfPhase.MenuStripManager();
             this.trackEditControl = new OutOfPhase.TrackEditControl();
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
-            this.tableLayoutPanel1.SuspendLayout();
+            this.tableLayoutPanel.SuspendLayout();
             this.SuspendLayout();
             // 
-            // tableLayoutPanel1
+            // tableLayoutPanel
             // 
-            this.tableLayoutPanel1.ColumnCount = 1;
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.Controls.Add(this.menuStripManager, 0, 0);
-            this.tableLayoutPanel1.Controls.Add(this.trackEditControl, 0, 1);
-            this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
-            this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-            this.tableLayoutPanel1.RowCount = 2;
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(918, 373);
-            this.tableLayoutPanel1.TabIndex = 0;
+            this.tableLayoutPanel.ColumnCount = 1;
+            this.tableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel.Controls.Add(this.menuStripManager, 0, 0);
+            this.tableLayoutPanel.Controls.Add(this.trackEditControl, 0, 1);
+            this.tableLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tableLayoutPanel.Location = new System.Drawing.Point(0, 0);
+            this.tableLayoutPanel.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.tableLayoutPanel.Name = "tableLayoutPanel";
+            this.tableLayoutPanel.RowCount = 2;
+            this.tableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle());
+            this.tableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tableLayoutPanel.Size = new System.Drawing.Size(1224, 459);
+            this.tableLayoutPanel.TabIndex = 0;
             // 
             // menuStripManager
             // 
@@ -78,7 +79,7 @@ namespace OutOfPhase
             this.menuStripManager.Location = new System.Drawing.Point(0, 0);
             this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(918, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(1224, 24);
             this.menuStripManager.TabIndex = 7;
             // 
             // trackEditControl
@@ -87,7 +88,7 @@ namespace OutOfPhase
             this.trackEditControl.Location = new System.Drawing.Point(0, 24);
             this.trackEditControl.Margin = new System.Windows.Forms.Padding(0);
             this.trackEditControl.Name = "trackEditControl";
-            this.trackEditControl.Size = new System.Drawing.Size(918, 349);
+            this.trackEditControl.Size = new System.Drawing.Size(1224, 435);
             this.trackEditControl.TabIndex = 8;
             // 
             // dpiChangeHelper
@@ -96,19 +97,20 @@ namespace OutOfPhase
             // 
             // TrackWindow
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(918, 373);
-            this.Controls.Add(this.tableLayoutPanel1);
+            this.ClientSize = new System.Drawing.Size(1224, 459);
+            this.Controls.Add(this.tableLayoutPanel);
+            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.Name = "TrackWindow";
-            this.tableLayoutPanel1.ResumeLayout(false);
-            this.tableLayoutPanel1.PerformLayout();
+            this.tableLayoutPanel.ResumeLayout(false);
+            this.tableLayoutPanel.PerformLayout();
             this.ResumeLayout(false);
 
         }
 
         #endregion
-        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
+        private System.Windows.Forms.TableLayoutPanel tableLayoutPanel;
         private MenuStripManager menuStripManager;
         private TrackEditControl trackEditControl;
         private DpiChangeHelper dpiChangeHelper;

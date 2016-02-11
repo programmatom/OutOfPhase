@@ -36,6 +36,8 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             labelPrompt.Text = prompt;
             radioButtonTrue.Text = trueButtonName;
             radioButtonFalse.Text = falseButtonName;

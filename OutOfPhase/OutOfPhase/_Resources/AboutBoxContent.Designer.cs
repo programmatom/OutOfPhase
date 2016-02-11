@@ -83,7 +83,7 @@ namespace OutOfPhase._Resources {
         /// <summary>
         ///   Looks up a localized string similar to {\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}
         ///{\colortbl ;\red0\green0\blue255;}
-        ///{\*\generator Riched20 10.0.10240}\viewkind4\uc1 
+        ///{\*\generator Riched20 10.0.10586}\viewkind4\uc1 
         ///\pard\sl240\slmult1\qc\f0\fs22\lang9 Written by Thomas R. Lawrence (concertinatom@gmail.com)\par
         ///Copyright \&apos;a9 1994-2002, 2015-2016 Thomas R. Lawrence\par
         ///This program is distributed under version 3 of the GNU General Public\par

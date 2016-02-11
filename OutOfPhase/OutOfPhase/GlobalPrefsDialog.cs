@@ -37,12 +37,29 @@ namespace OutOfPhase
         private readonly GlobalPrefs primaryPrefs;
         private readonly GlobalPrefs localPrefs;
 
-        private static readonly KeyValuePair<string, int>[] priorities = new KeyValuePair<string, int>[]
+        private static readonly KeyValuePair<string, int>[] Priorities = new KeyValuePair<string, int>[]
         {
             new KeyValuePair<string, int>("Default", 0),
             new KeyValuePair<string, int>("Normal", 1),
             new KeyValuePair<string, int>("Above Normal", 2),
             new KeyValuePair<string, int>("Highest", 3),
+        };
+
+        private static readonly float[] ZoomLevels = new float[]
+        {
+            .5f,
+            .625f,
+            .75f,
+            .875f,
+            1f,
+            1.25f,
+            1.5f,
+            1.75f,
+            2f,
+            2.25f,
+            2.5f,
+            2.75f,
+            3f,
         };
 
         public GlobalPrefsDialog(GlobalPrefs primaryPrefs)
@@ -52,6 +69,9 @@ namespace OutOfPhase
             primaryPrefs.CopyTo(localPrefs);
 
             InitializeComponent();
+            this.Icon = OutOfPhase.Properties.Resources.Icon2;
+
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
 
             devices = OutputDeviceEnumerator.EnumerateAudioOutputDeviceIdentifiers();
             for (int i = 0; i < devices.Length; i++)
@@ -63,10 +83,10 @@ namespace OutOfPhase
                 }
             }
 
-            for (int i = 0; i < priorities.Length; i++)
+            for (int i = 0; i < Priorities.Length; i++)
             {
-                comboBoxPriority.Items.Add(priorities[i].Key);
-                if (priorities[i].Value == localPrefs.PriorityMode)
+                comboBoxPriority.Items.Add(Priorities[i].Key);
+                if (Priorities[i].Value == localPrefs.PriorityMode)
                 {
                     comboBoxPriority.SelectedIndex = i;
                 }
@@ -74,6 +94,21 @@ namespace OutOfPhase
 
             concurrency = localPrefs.Concurrency;
             UpdateConcurrencyEnables();
+
+            bool zoomSet = false;
+            for (int i = 0; i < ZoomLevels.Length; i++)
+            {
+                comboBoxZoom.Items.Add(ZoomLevels[i]);
+                if (!zoomSet && (primaryPrefs.AdditionalUIZoom <= ZoomLevels[i]))
+                {
+                    zoomSet = true;
+                    comboBoxZoom.SelectedIndex = i;
+                }
+            }
+            if (!zoomSet)
+            {
+                comboBoxZoom.SelectedIndex = ZoomLevels.Length - 1;
+            }
 
             globalPrefsBindingSource.Add(localPrefs);
         }
@@ -96,6 +131,7 @@ namespace OutOfPhase
             localPrefs.OutputDevice = devices[comboBoxOutputDevice.SelectedIndex].Key;
             localPrefs.OutputDeviceName = devices[comboBoxOutputDevice.SelectedIndex].Value;
             localPrefs.PriorityMode = comboBoxPriority.SelectedIndex;
+            localPrefs.AdditionalUIZoom = ZoomLevels[comboBoxZoom.SelectedIndex];
 
             localPrefs.CopyTo(primaryPrefs);
             Program.SaveSettings();

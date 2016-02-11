@@ -21,12 +21,17 @@
 */
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;   
+using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Text;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+
+using TextEditor;
 
 namespace OutOfPhase
 {
@@ -1135,6 +1140,35 @@ namespace OutOfPhase
             Synthesizer.ExternalPluggableProcessors = pluggableProcessorList.ToArray();
         }
 
+        public static IntPtr hFont;
+        public static PrivateFontCollection privateFonts = new PrivateFontCollection();
+        public static FontFamily bravuraFamily;
+
+        private static void LoadPrivateFonts()
+        {
+            int cFonts;
+            hFont = GDI.AddFontMemResourceEx(
+                Properties.Resources.Bravura,
+                Properties.Resources.Bravura.Length,
+                IntPtr.Zero,
+                out cFonts);
+
+            GCHandle pinFont = GCHandle.Alloc(Properties.Resources.Bravura, GCHandleType.Pinned);
+            try
+            {
+                privateFonts.AddMemoryFont(pinFont.AddrOfPinnedObject(), Properties.Resources.Bravura.Length);
+                Debug.Assert(privateFonts.Families.Length == 1);
+                bravuraFamily = privateFonts.Families[0];
+            }
+            finally
+            {
+                pinFont.Free();
+            }
+
+            DirectWriteTextRenderer.RegisterPrivateMemoryFont(
+                Properties.Resources.Bravura);
+        }
+
         [STAThread]
         public static void Main(string[] args)
         {
@@ -1169,6 +1203,8 @@ namespace OutOfPhase
                 }
             }
             #endregion
+
+            LoadPrivateFonts();
 
             LoadSettings();
             Synthesizer.FFTW.StaticInitialization(Config.FFTWWisdom);

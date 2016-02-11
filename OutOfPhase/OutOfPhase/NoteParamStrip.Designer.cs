@@ -72,12 +72,10 @@ namespace OutOfPhase
             // 
             // NoteParamStrip
             // 
-            this.AutoSize = true;
-            this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
             this.Controls.Add(this.textEditControl);
             this.Margin = new System.Windows.Forms.Padding(0);
             this.Name = "NoteParamStrip";
-            this.Size = new System.Drawing.Size(7, 13);
             this.ResumeLayout(false);
             this.PerformLayout();
 

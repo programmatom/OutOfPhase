@@ -48,6 +48,8 @@ namespace OutOfPhase
             this.textBoxSectionText.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxSectionText.AutoIndent = Program.Config.AutoIndent;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             menuStripManager.SetGlobalHandler(mainWindow);
             menuStripManager.HookUpTextEditorWindowHelper(this.textEditorWindowHelper);
             menuStripManager.HookUpTextBoxWindowHelper(this.textBoxWindowHelper);

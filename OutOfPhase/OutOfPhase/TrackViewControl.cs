@@ -84,13 +84,12 @@ namespace OutOfPhase
 
         // these values are cached to improve performance
         private readonly Dictionary<CachedTextWidthKey, int> cachedTextWidths = new Dictionary<CachedTextWidthKey, int>();
+        private readonly Dictionary<StrikeTextMaskRecord, Bitmap> strikeTextMaskCache = new Dictionary<StrikeTextMaskRecord, Bitmap>();
         private int fontHeight = -1;
         private LayoutMetrics layoutMetrics;
         private IBitmapsScore bitmaps;
-#if true // TODO: for testing, remove
         private float currentScaleFactor = 1;
-        public static bool currentBravura = Program.Config.EnableBravura;
-#endif
+        private float baselineFontSize;
         private Font bravuraFont;
         private int bravuraQuarterNoteWidth = -1;
         private int bravuraFontHeight = -1;
@@ -104,6 +103,8 @@ namespace OutOfPhase
         public TrackViewControl()
         {
             InitializeComponent();
+
+            baselineFontSize = Font.Size;
 
             undoHelper = new UndoHelper(this);
 
@@ -189,7 +190,10 @@ namespace OutOfPhase
         {
             base.OnFontChanged(e);
 
+            currentScaleFactor = Font.Size / baselineFontSize; // reverse WinForms scale indication
+
             cachedTextWidths.Clear();
+            strikeTextMaskCache.Clear();
             fontHeight = -1;
             layoutMetrics = null;
             bitmaps = null;
@@ -200,6 +204,7 @@ namespace OutOfPhase
             smallFontHeight = -1;
 
             RebuildSchedule(); // rebuild layout for new scaling factor
+            RebuildInlineStrip();
             RecalcTrackExtent(); // reset scrollbars
         }
 
@@ -501,30 +506,6 @@ namespace OutOfPhase
             {
                 return;
             }
-
-#if true // TODO: testing, remove
-            if (e.KeyCode == Keys.F12)
-            {
-                currentScaleFactor += .05f;
-                OnFontChanged(EventArgs.Empty);
-                e.Handled = true;
-                return;
-            }
-            else if (e.KeyCode == Keys.F11)
-            {
-                currentScaleFactor -= .05f;
-                OnFontChanged(EventArgs.Empty);
-                e.Handled = true;
-                return;
-            }
-            else if (e.KeyCode == Keys.F10)
-            {
-                currentBravura = !currentBravura;
-                OnFontChanged(EventArgs.Empty);
-                e.Handled = true;
-                return;
-            }
-#endif
 
             using (GraphicsContext gc = new GraphicsContext(this))
             {
@@ -2695,9 +2676,7 @@ namespace OutOfPhase
             bool layoutChanged = Schedule.TrackDisplayScheduleUpdate();
 
             Graphics primaryGraphics = gc.graphics;
-            GDIBitmap hBitmapOffscreen = null;
-            GDIDC hDCOffscreen = null;
-            Graphics gOffscreen = null;
+            GDIOffscreenBitmap hBitmapOffscreen = null;
             GraphicsContext gcOffscreen = null;
             bool translated = false;
             int updateLeft = 0, updateTop = 0;
@@ -2718,22 +2697,8 @@ namespace OutOfPhase
                     }
                     try
                     {
-                        // Create GDI objects for offscreen. Must be created through GDI because Uniscribe/DirectWrite do not
-                        // like objects created by GDI+ and will draw with very poor quality on them.
-                        using (GraphicsHDC hDC = new GraphicsHDC(gc.graphics))
-                        {
-                            hDCOffscreen = GDIDC.CreateCompatibleDC(hDC);
-                            hBitmapOffscreen = new GDIBitmap(updateBounds.Width, updateBounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                            GDI.SelectObject(hDCOffscreen, hBitmapOffscreen);
-                        }
-                        using (GDIBrush brush = new GDIBrush(Color.White))
-                        {
-                            Rectangle rect = ClientRectangle;
-                            GDI.FillRect(hDCOffscreen, ref rect, brush);
-                        }
-                        gOffscreen = Graphics.FromHdc(hDCOffscreen);
-
-                        gcOffscreen = new GraphicsContext(this, gOffscreen); // push context
+                        hBitmapOffscreen = new GDIOffscreenBitmap(gc.graphics, updateBounds.Width, updateBounds.Height);
+                        gcOffscreen = new GraphicsContext(this, hBitmapOffscreen.Graphics); // push context
 
                         PixelIndent += updateLeft;
                         VerticalOffset += updateTop;
@@ -2847,22 +2812,19 @@ namespace OutOfPhase
                     int ActualTrackIndex = Schedule.TrackDisplayGetTrackIndex(TrackObj);
                     if ((TrackObj != trackObject) || (iTrack == NumTracks))
                     {
-                        int Position;
                         bool Unused;
 
-                        Schedule.TrackDisplayPixelToIndex(TrackObj, PixelIndent, out Unused, out Position);
+                        // determine frame at left edge of viewport
+                        int leftFrameInView;
+                        Schedule.TrackDisplayPixelToIndex(TrackObj, PixelIndent, out Unused, out leftFrameInView);
 
-                        /* find out how much to draw.  this definitely needs to be */
-                        /* fixed since there is no reason to draw frames until the */
-                        /* end of the entire track */
-                        int Limit = TrackObj.FrameArray.Count;
+                        // determine frame at right edge of viewport
+                        int rightFrameInView;
+                        Schedule.TrackDisplayPixelToIndex(TrackObj, PixelIndent + ClientSize.Width, out Unused, out rightFrameInView);
 
-                        if (Position > 0)
-                        {
-                            /* this draws the note just off the left edge of the */
-                            /* screen to fix some update region alignment problems. */
-                            Position--;
-                        }
+                        // extend range a bit to ensure glyph overextensions are drawn
+                        leftFrameInView = Math.Max(leftFrameInView - 1, 0);
+                        rightFrameInView = Math.Min(rightFrameInView + 1, trackObject.FrameArray.Count - 1);
 
                         /* draw the insertion point, if there is one */
                         if ((TrackObj == trackObject) && (SelectionMode == SelectionModes.eTrackViewNoSelection))
@@ -2938,8 +2900,8 @@ namespace OutOfPhase
                             }
                         }
 
-                        /* draw all of the frames */
-                        for (int i = Position; i < Limit; i++)
+                        // enumerate frames within viewport
+                        for (int i = leftFrameInView; i <= rightFrameInView; i++)
                         {
                             int TheFrameWidth = Int32.MinValue;
 
@@ -2950,22 +2912,6 @@ namespace OutOfPhase
                             Schedule.TrackDisplayIndexToPixel(ActualTrackIndex, i, out PixelIndex);
                             if (Schedule.TrackDisplayShouldWeDrawIt(ActualTrackIndex, i))
                             {
-                                /* escape if we have gone past the end of the window */
-                                if (PixelIndex - PixelIndent - gc.LayoutMetrics.LEFTNOTEEDGEINSET >= Width)
-                                {
-                                    goto DonePoint;
-                                }
-                                // new code: TODO: this should be tightened up
-                                if (!gc.graphics.IsVisible(
-                                    new Rectangle(
-                                        PixelIndex - PixelIndent - Width / 2,
-                                        -VerticalOffset,
-                                        2 * Width,
-                                        gc.LayoutMetrics.MAXVERTICALSIZE)))
-                                {
-                                    continue;
-                                }
-
                                 /* get the frame to draw */
                                 FrameObjectRec Frame = TrackObj.FrameArray[i];
 
@@ -3107,9 +3053,6 @@ namespace OutOfPhase
                                 }
                             }
                         } /* end of frame scan */
-                          /* jump here when end of visible note series is reached */
-                    DonePoint:
-                        ;
                     }
                 } /* end of track scan */
 
@@ -3213,7 +3156,7 @@ namespace OutOfPhase
                 }
 
                 // put offscreen buffer to screen
-                if (hDCOffscreen != null)
+                if (hBitmapOffscreen != null)
                 {
                     using (GDIRegion gdiRgnClip = new GDIRegion(primaryGraphics.Clip.GetHrgn(primaryGraphics)))
                     {
@@ -3226,9 +3169,9 @@ namespace OutOfPhase
                                 hDC,
                                 updateLeft,
                                 updateTop,
-                                hBitmapOffscreen.width,
-                                hBitmapOffscreen.height,
-                                hDCOffscreen,
+                                hBitmapOffscreen.Width,
+                                hBitmapOffscreen.Height,
+                                hBitmapOffscreen.HDC,
                                 0,
                                 0,
                                 GDI.SRCCOPY);
@@ -3246,14 +3189,6 @@ namespace OutOfPhase
                 if (gcOffscreen != null) // pop context
                 {
                     gcOffscreen.Dispose();
-                }
-                if (gOffscreen != null)
-                {
-                    gOffscreen.Dispose();
-                }
-                if (hDCOffscreen != null)
-                {
-                    hDCOffscreen.Dispose();
                 }
                 if (hBitmapOffscreen != null)
                 {
@@ -3770,7 +3705,7 @@ namespace OutOfPhase
                 if (bravuraFont == null)
                 {
                     int size = ((IGraphicsContext)this).LayoutMetrics.BRAVURAFONTSIZE;
-                    bravuraFont = new Font(new FontFamily("Bravura"), size, FontStyle.Regular);
+                    bravuraFont = new Font(Program.bravuraFamily, size, FontStyle.Regular);
                 }
                 return bravuraFont;
             }
@@ -3825,6 +3760,14 @@ namespace OutOfPhase
                     smallFontHeight = smallFont.Height;
                 }
                 return smallFontHeight;
+            }
+        }
+
+        Dictionary<StrikeTextMaskRecord, Bitmap> IGraphicsContext.StrikeTextMaskCache
+        {
+            get
+            {
+                return strikeTextMaskCache;
             }
         }
 
@@ -3940,6 +3883,9 @@ namespace OutOfPhase
 
             [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             public int SmallFontHeight { get { return ((IGraphicsContext)view).SmallFontHeight; } }
+
+            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+            public Dictionary<StrikeTextMaskRecord, Bitmap> StrikeTextMaskCache { get { return ((IGraphicsContext)view).StrikeTextMaskCache; } }
 
             public void Dispose()
             {
@@ -4118,6 +4064,7 @@ namespace OutOfPhase
         int BravuraFontHeight { get; }
         Font SmallFont { get; }
         int SmallFontHeight { get; }
+        Dictionary<StrikeTextMaskRecord, Bitmap> StrikeTextMaskCache { get; }
     }
 
     public interface ITrackViewContextUI
@@ -5150,6 +5097,8 @@ namespace OutOfPhase
                 Width = 0;
                 for (int noteIndex = 0; noteIndex < Frame.Count; noteIndex++)
                 {
+                    List<TextTaskBase> tasks = new List<TextTaskBase>(4);
+
                     /* get the note to be drawn */
                     NoteNoteObjectRec Note = (NoteNoteObjectRec)Frame[noteIndex];
                     /* do the icon stuff */
@@ -5440,7 +5389,7 @@ namespace OutOfPhase
                         /* perform the drawing */
                         NoteOffset = Y + gc.LayoutMetrics.ConvertPitchToPixel(Note.GetNotePitch(), Note.GetNoteFlatOrSharpStatus())
                             - gc.LayoutMetrics.TOPNOTESTAFFINTERSECT - gc.LayoutMetrics.CENTERNOTEPIXEL;
-                        if (!TrackViewControl.currentBravura/*Program.Config.EnableBravura*/)
+                        if (!Program.Config.UseBravura)
                         {
                             using (Bitmap gdiImage = Image.ToGDI(Color.Transparent, GreyedOut ? gc.LightGreyColor : gc.ForeColor))
                             {
@@ -5463,58 +5412,65 @@ namespace OutOfPhase
                         }
                         else
                         {
+                            Color color = GreyedOut ? gc.LightGreyColor : gc.ForeColor;
                             int yFix = Program.Config.EnableDirectWrite ? gc.LayoutMetrics.BRAVURAYFIX : 0;
 
-                            //gc.graphics.DrawRectangle(Pens.Chartreuse, X, NoteOffset, 32, 32);
-                            //gc.graphics.DrawRectangle(Pens.Red, X + gc.LayoutMetrics.LEFTNOTEEDGEINSET - 1, NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT - 1, 3, 3);
-                            MyTextRenderer.DrawText(
-                                gc.graphics,
-                                unicodeNote,
-                                gc.BravuraFont,
-                                new Point(
-                                    X + gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX,
-                                    NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2),
-                                gc.ForeColor,
-                                TextFormatFlags.NoPadding);
+                            tasks.Add(
+                                new TextTaskPoint(
+                                    X,
+                                    NoteOffset,
+                                    gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX,
+                                    gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2,
+                                    gc.LayoutMetrics.GLYPHIMAGEWIDTH,
+                                    gc.LayoutMetrics.GLYPHIMAGEHEIGHT,
+                                    unicodeNote,
+                                    color));
 
                             if (unicodeDivision != null)
                             {
-                                MyTextRenderer.DrawText(
-                                    gc.graphics,
-                                    unicodeDivision,
-                                    gc.BravuraFont,
-                                    new Point(
-                                        X + gc.LayoutMetrics.BRAVURAXFIX,
-                                        NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT / 2 + yFix - gc.BravuraFontHeight / 2),
-                                    gc.ForeColor,
-                                    TextFormatFlags.NoPadding);
+                                tasks.Add(
+                                    new TextTaskPoint(
+                                        X,
+                                        NoteOffset,
+                                        gc.LayoutMetrics.BRAVURAXFIX,
+                                        gc.LayoutMetrics.TOPNOTESTAFFINTERSECT / 2 + yFix - gc.BravuraFontHeight / 2,
+                                        gc.LayoutMetrics.GLYPHIMAGEWIDTH,
+                                        gc.LayoutMetrics.GLYPHIMAGEHEIGHT,
+                                        unicodeDivision,
+                                        color));
                             }
 
                             if (unicodeDot != null)
                             {
-                                MyTextRenderer.DrawText(
-                                    gc.graphics,
-                                    unicodeDot,
-                                    gc.BravuraFont,
-                                    new Point(
-                                        X + gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX + 3 * gc.BravuraQuarterNoteWidth / 2,
-                                        NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2),
-                                    gc.ForeColor,
-                                    TextFormatFlags.NoPadding);
+                                tasks.Add(
+                                    new TextTaskPoint(
+                                        X,
+                                        NoteOffset,
+                                        gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX + 5 * gc.BravuraQuarterNoteWidth / 4,
+                                        gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2,
+                                        gc.LayoutMetrics.GLYPHIMAGEWIDTH,
+                                        gc.LayoutMetrics.GLYPHIMAGEHEIGHT,
+                                        unicodeDot,
+                                        color));
                             }
 
                             if (unicodeAccidental != null)
                             {
-                                int accidentalWidth = gc.MeasureText(unicodeAccidental, gc.BravuraFont);
-                                MyTextRenderer.DrawText(
-                                    gc.graphics,
+                                int accidentalWidth = gc.MeasureText(
                                     unicodeAccidental,
                                     gc.BravuraFont,
-                                    new Point(
-                                        X + gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX - 4 * accidentalWidth / 3,
-                                        NoteOffset + gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2),
-                                    gc.ForeColor,
+                                    new Size(gc.BravuraFontHeight, gc.BravuraFontHeight),
                                     TextFormatFlags.NoPadding);
+                                tasks.Add(
+                                    new TextTaskPoint(
+                                        X,
+                                        NoteOffset,
+                                        gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX - 4 * accidentalWidth / 3,
+                                        gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2,
+                                        gc.LayoutMetrics.GLYPHIMAGEWIDTH,
+                                        gc.LayoutMetrics.GLYPHIMAGEHEIGHT,
+                                        unicodeAccidental,
+                                        color));
                             }
                         }
                     }
@@ -5568,19 +5524,35 @@ namespace OutOfPhase
                         /* draw little attributions below */
                         if (!GreyedOut)
                         {
-                            if (!TrackViewControl.currentBravura/*Program.Config.EnableBravura*/)
+                            if (!Program.Config.UseBravura)
                             {
+                                int annotationLeft = rightEdge - 1;
+                                int annotationWidth = gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH;
+                                int annotationTopBase = NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT;
+                                int annotationVerticalSeparation = gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING;
+                                int annotationHeight = gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT;
+
                                 if (Note.GetNoteRetriggerEnvelopesOnTieStatus())
                                 {
-                                    using (Bitmap gdiRetrigger8x8 = gc.Bitmaps.Retrigger8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    using (Bitmap gdiMask = gc.Bitmaps.Retrigger8x8Mask.ToGDI(Color.Transparent, gc.BackColor))
                                     {
-                                        gc.graphics.DrawImage(
-                                            gdiRetrigger8x8,
-                                            rightEdge - 1,
-                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
-                                                + 0 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                        using (Bitmap gdiRetrigger8x8 = gc.Bitmaps.Retrigger8x8Image.ToGDI(Color.Transparent, gc.ForeColor))
+                                        {
+                                            gc.graphics.DrawImage(
+                                                gdiMask,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 0 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                            gc.graphics.DrawImage(
+                                                gdiRetrigger8x8,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 0 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                        }
                                     }
                                 }
                                 if (0 != Note.GetNotePortamentoDuration())
@@ -5588,86 +5560,146 @@ namespace OutOfPhase
                                     if (Note.GetNotePortamentoLeadsBeatFlag())
                                     {
                                         /* draw backwards "P" for portamento leading note */
-                                        using (Bitmap gdiReversePortamento8x8 = gc.Bitmaps.ReversePortamento8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                        using (Bitmap gdiMask = gc.Bitmaps.ReversePortamento8x8Mask.ToGDI(Color.Transparent, gc.BackColor))
                                         {
-                                            gc.graphics.DrawImage(
-                                                gdiReversePortamento8x8,
-                                                rightEdge - 1,
-                                                NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
-                                                    + 1 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
-                                                gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
-                                                gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                            using (Bitmap gdiReversePortamento8x8 = gc.Bitmaps.ReversePortamento8x8Image.ToGDI(Color.Transparent, gc.ForeColor))
+                                            {
+                                                gc.graphics.DrawImage(
+                                                    gdiMask,
+                                                    annotationLeft,
+                                                    annotationTopBase
+                                                        + 1 * annotationVerticalSeparation,
+                                                    annotationWidth,
+                                                    annotationHeight);
+                                                gc.graphics.DrawImage(
+                                                    gdiReversePortamento8x8,
+                                                    annotationLeft,
+                                                    annotationTopBase
+                                                        + 1 * annotationVerticalSeparation,
+                                                    annotationWidth,
+                                                    annotationHeight);
+                                            }
                                         }
                                     }
                                     else
                                     {
                                         /* draw "P" for portamento */
-                                        using (Bitmap gdiPortamento8x8 = gc.Bitmaps.Portamento8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                        using (Bitmap gdiMask = gc.Bitmaps.Portamento8x8Mask.ToGDI(Color.Transparent, gc.BackColor))
                                         {
-                                            gc.graphics.DrawImage(
-                                                gdiPortamento8x8,
-                                                rightEdge - 1,
-                                                NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
-                                                    + 1 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
-                                                gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
-                                                gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                            using (Bitmap gdiPortamento8x8 = gc.Bitmaps.Portamento8x8Image.ToGDI(Color.Transparent, gc.ForeColor))
+                                            {
+                                                gc.graphics.DrawImage(
+                                                    gdiMask,
+                                                    annotationLeft,
+                                                    annotationTopBase
+                                                        + 1 * annotationVerticalSeparation,
+                                                    annotationWidth,
+                                                    annotationHeight);
+                                                gc.graphics.DrawImage(
+                                                    gdiPortamento8x8,
+                                                    annotationLeft,
+                                                    annotationTopBase
+                                                        + 1 * annotationVerticalSeparation,
+                                                    annotationWidth,
+                                                    annotationHeight);
+                                            }
                                         }
                                     }
                                 }
                                 if (Note.GetNoteEarlyLateAdjust() < 0)
                                 {
                                     /* draw "<" for early adjust */
-                                    using (Bitmap gdiShiftEarly8x8 = gc.Bitmaps.ShiftEarly8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    using (Bitmap gdiMask = gc.Bitmaps.ShiftEarly8x8Mask.ToGDI(Color.Transparent, gc.BackColor))
                                     {
-                                        gc.graphics.DrawImage(
-                                            gdiShiftEarly8x8,
-                                            rightEdge - 1,
-                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
-                                                + 2 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                        using (Bitmap gdiShiftEarly8x8 = gc.Bitmaps.ShiftEarly8x8Image.ToGDI(Color.Transparent, gc.ForeColor))
+                                        {
+                                            gc.graphics.DrawImage(
+                                                gdiMask,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 2 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                            gc.graphics.DrawImage(
+                                                gdiShiftEarly8x8,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 2 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                        }
                                     }
                                 }
                                 else if (Note.GetNoteEarlyLateAdjust() > 0)
                                 {
                                     /* draw ">" for late adjust */
-                                    using (Bitmap gdiShiftLate8x8 = gc.Bitmaps.ShiftLate8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    using (Bitmap gdiMask = gc.Bitmaps.ShiftLate8x8Mask.ToGDI(Color.Transparent, gc.BackColor))
                                     {
-                                        gc.graphics.DrawImage(
-                                            gdiShiftLate8x8,
-                                            rightEdge - 1,
-                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
-                                                + 2 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                        using (Bitmap gdiShiftLate8x8 = gc.Bitmaps.ShiftLate8x8Image.ToGDI(Color.Transparent, gc.ForeColor))
+                                        {
+                                            gc.graphics.DrawImage(
+                                                gdiMask,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 2 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                            gc.graphics.DrawImage(
+                                                gdiShiftLate8x8,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 2 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                        }
                                     }
                                 }
                                 if (Note.GetNoteDetuning() < 0)
                                 {
                                     /* draw "-" for detuning down */
-                                    using (Bitmap gdiPitchDown8x8 = gc.Bitmaps.PitchDown8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    using (Bitmap gdiMask = gc.Bitmaps.PitchDown8x8Mask.ToGDI(Color.Transparent, gc.BackColor))
                                     {
-                                        gc.graphics.DrawImage(
-                                            gdiPitchDown8x8,
-                                            rightEdge - 1,
-                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
-                                                + 3 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                        using (Bitmap gdiPitchDown8x8 = gc.Bitmaps.PitchDown8x8Image.ToGDI(Color.Transparent, gc.ForeColor))
+                                        {
+                                            gc.graphics.DrawImage(
+                                                gdiMask,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 3 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                            gc.graphics.DrawImage(
+                                                gdiPitchDown8x8,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 3 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                        }
                                     }
                                 }
                                 else if (Note.GetNoteDetuning() > 0)
                                 {
                                     /* draw "+" for detuning up */
-                                    using (Bitmap gdiPitchUp8x8 = gc.Bitmaps.PitchUp8x8.ToGDI(Color.Transparent, gc.ForeColor))
+                                    using (Bitmap gdiMask = gc.Bitmaps.PitchUp8x8Mask.ToGDI(Color.Transparent, gc.BackColor))
                                     {
-                                        gc.graphics.DrawImage(
-                                            gdiPitchUp8x8,
-                                            rightEdge - 1,
-                                            NoteOffset + gc.LayoutMetrics.SMALLGLYPHVERTICALDESCENT
-                                                + 3 * gc.LayoutMetrics.SMALLGLYPHIMAGEVERTICALSPACING,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEWIDTH,
-                                            gc.LayoutMetrics.SMALLGLYPHIMAGEHEIGHT);
+                                        using (Bitmap gdiPitchUp8x8 = gc.Bitmaps.PitchUp8x8Image.ToGDI(Color.Transparent, gc.ForeColor))
+                                        {
+                                            gc.graphics.DrawImage(
+                                                gdiMask,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 3 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                            gc.graphics.DrawImage(
+                                                gdiPitchUp8x8,
+                                                annotationLeft,
+                                                annotationTopBase
+                                                    + 3 * annotationVerticalSeparation,
+                                                annotationWidth,
+                                                annotationHeight);
+                                        }
                                     }
                                 }
                             }
@@ -5680,111 +5712,69 @@ namespace OutOfPhase
 
                                 if (Note.GetNoteRetriggerEnvelopesOnTieStatus())
                                 {
-                                    MyTextRenderer.DrawText(
-                                        gc.graphics,
-                                        "R",
-                                        gc.SmallFont,
-                                        new Rectangle(
+                                    // "R" for retrigger
+                                    tasks.Add(
+                                        new TextTaskRect(
                                             annotationLeft,
                                             annotationTopBase + 0 * annotationVerticalSeparation,
                                             annotationWidth,
-                                            gc.SmallFontHeight),
-                                        gc.ForeColor,
-                                        TextFormatFlags.HorizontalCenter);
+                                            gc.SmallFontHeight,
+                                            "R",
+                                            gc.ForeColor));
                                 }
-                                if (0 != Note.GetNotePortamentoDuration())
+                                if (Note.GetNotePortamentoDuration() != 0)
                                 {
-                                    if (Note.GetNotePortamentoLeadsBeatFlag())
-                                    {
-                                        /* draw backwards "P" for portamento leading note */
-                                        MyTextRenderer.DrawText(
-                                            gc.graphics,
-                                            "\xA7FC", // TODO: is it sufficiently available?
-                                            gc.SmallFont,
-                                            new Rectangle(
-                                                annotationLeft,
-                                                annotationTopBase + 1 * annotationVerticalSeparation,
-                                                annotationWidth,
-                                                gc.SmallFontHeight),
-                                            gc.ForeColor,
-                                            TextFormatFlags.HorizontalCenter);
-                                    }
-                                    else
-                                    {
-                                        MyTextRenderer.DrawText(
-                                            gc.graphics,
-                                            "P",
-                                            gc.SmallFont,
-                                            new Rectangle(
-                                                annotationLeft,
-                                                annotationTopBase + 1 * annotationVerticalSeparation,
-                                                annotationWidth,
-                                                gc.SmallFontHeight),
-                                            gc.ForeColor,
-                                            TextFormatFlags.HorizontalCenter);
-                                    }
+                                    // "P" for portamento or backwards "P" for portamento leading note
+                                    tasks.Add(
+                                        new TextTaskRect(
+                                            annotationLeft,
+                                            annotationTopBase + 1 * annotationVerticalSeparation,
+                                            annotationWidth,
+                                            gc.SmallFontHeight,
+                                            Note.GetNotePortamentoLeadsBeatFlag()
+                                                ? "\xA7FC" // TODO: latin-reverse-P - is it sufficiently available?
+                                                : "P",
+                                            gc.ForeColor));
+
                                 }
-                                if (Note.GetNoteEarlyLateAdjust() < 0)
+                                if (Note.GetNoteEarlyLateAdjust() != 0)
                                 {
-                                    /* draw "<" for early adjust */
-                                    MyTextRenderer.DrawText(
-                                        gc.graphics,
-                                        "<",
-                                        gc.SmallFont,
-                                        new Rectangle(
+                                    // draw "<" for early adjust or ">" for late adjust
+                                    tasks.Add(
+                                        new TextTaskRect(
                                             annotationLeft,
                                             annotationTopBase + 2 * annotationVerticalSeparation,
                                             annotationWidth,
-                                            gc.SmallFontHeight),
-                                        gc.ForeColor,
-                                        TextFormatFlags.HorizontalCenter);
+                                            gc.SmallFontHeight,
+                                            Note.GetNoteEarlyLateAdjust() < 0
+                                                ? "<"
+                                                : ">",
+                                            gc.ForeColor));
                                 }
-                                else if (Note.GetNoteEarlyLateAdjust() > 0)
+                                if (Note.GetNoteDetuning() != 0)
                                 {
-                                    /* draw ">" for late adjust */
-                                    MyTextRenderer.DrawText(
-                                        gc.graphics,
-                                        ">",
-                                        gc.SmallFont,
-                                        new Rectangle(
-                                            annotationLeft,
-                                            annotationTopBase + 2 * annotationVerticalSeparation,
-                                            annotationWidth,
-                                            gc.SmallFontHeight),
-                                        gc.ForeColor,
-                                        TextFormatFlags.HorizontalCenter);
-                                }
-                                if (Note.GetNoteDetuning() < 0)
-                                {
-                                    /* draw "-" for detuning down */
-                                    MyTextRenderer.DrawText(
-                                        gc.graphics,
-                                        "-",
-                                        gc.SmallFont,
-                                        new Rectangle(
+                                    // draw "-" for detuning down or "+" for detuning up
+                                    tasks.Add(
+                                        new TextTaskRect(
                                             annotationLeft,
                                             annotationTopBase + 3 * annotationVerticalSeparation,
                                             annotationWidth,
-                                            gc.SmallFontHeight),
-                                        gc.ForeColor,
-                                        TextFormatFlags.HorizontalCenter);
-                                }
-                                else if (Note.GetNoteDetuning() > 0)
-                                {
-                                    /* draw "+" for detuning up */
-                                    MyTextRenderer.DrawText(
-                                        gc.graphics,
-                                        "+",
-                                        gc.SmallFont,
-                                        new Rectangle(
-                                            annotationLeft,
-                                            annotationTopBase + 3 * annotationVerticalSeparation,
-                                            annotationWidth,
-                                            gc.SmallFontHeight),
-                                        gc.ForeColor,
-                                        TextFormatFlags.HorizontalCenter);
+                                            gc.SmallFontHeight,
+                                            Note.GetNoteDetuning() < 0
+                                                ? "-"
+                                                : "+",
+                                            gc.ForeColor));
                                 }
                             }
+                        }
+
+                        foreach (TextTaskBase task in tasks)
+                        {
+                            task.Strike(gc);
+                        }
+                        foreach (TextTaskBase task in tasks)
+                        {
+                            task.Draw(gc);
                         }
                     }
 
@@ -5803,6 +5793,222 @@ namespace OutOfPhase
             }
 
             return Width;
+        }
+
+        public abstract class TextTaskBase
+        {
+            public abstract void Strike(
+                IGraphicsContext gc);
+            public abstract void Draw(
+                IGraphicsContext gc);
+
+            public abstract void DrawTextMethod(
+                Graphics graphics,
+                string text,
+                int x,
+                int y,
+                Font font,
+                Color color);
+
+            public void StrikeTextMask(
+                IGraphicsContext gc,
+                int x,
+                int y,
+                int offsetX,
+                int offsetY,
+                int width,
+                int height,
+                Font font,
+                string text)
+            {
+                StrikeTextMaskRecord key = new StrikeTextMaskRecord(offsetX, offsetY, width, height, text);
+                Bitmap gdiMask;
+                if (!gc.StrikeTextMaskCache.TryGetValue(key, out gdiMask))
+                {
+                    using (GDIOffscreenBitmap hBitmapOffscreen = new GDIOffscreenBitmap(gc.graphics, width, height))
+                    {
+                        hBitmapOffscreen.Graphics.FillRectangle(
+                            Brushes.White,
+                            0,
+                            0,
+                            width,
+                            height);
+                        DrawTextMethod(
+                            hBitmapOffscreen.Graphics,
+                            text,
+                            0,
+                            0,
+                            font,
+                            Color.Black);
+                        using (Bitmap b = Bitmap.FromHbitmap(hBitmapOffscreen.HBitmap))
+                        {
+                            ManagedBitmap2 copy = ManagedBitmap2.FromGDI(b);
+                            ManagedBitmap2 mask = copy.DeriveMask();
+                            gdiMask = mask.ToGDI(Color.Transparent, gc.BackColor);
+                            gc.StrikeTextMaskCache.Add(key, gdiMask);
+                        }
+                    }
+                }
+
+                gc.graphics.DrawImage(
+                    gdiMask,
+                    x,
+                    y,
+                    width,
+                    height);
+            }
+        }
+
+        public class TextTaskPoint : TextTaskBase
+        {
+            public readonly int x;
+            public readonly int y;
+            public readonly int offsetX;
+            public readonly int offsetY;
+            public readonly int width;
+            public readonly int height;
+            public readonly string text;
+            public readonly Color color;
+
+            public TextTaskPoint(
+                int x,
+                int y,
+                int offsetX,
+                int offsetY,
+                int width,
+                int height,
+                string text,
+                Color color)
+            {
+                this.x = x;
+                this.y = y;
+                this.offsetX = offsetX;
+                this.offsetY = offsetY;
+                this.width = width;
+                this.height = height;
+                this.text = text;
+                this.color = color;
+            }
+
+            public override void Strike(
+                IGraphicsContext gc)
+            {
+                StrikeTextMask(
+                    gc,
+                    x,
+                    y,
+                    offsetX,
+                    offsetY,
+                    width,
+                    height,
+                    gc.BravuraFont,
+                    text);
+            }
+
+            public override void Draw(
+                IGraphicsContext gc)
+            {
+                DrawTextMethod(
+                    gc.graphics,
+                    text,
+                    x,
+                    y,
+                    gc.BravuraFont,
+                    color);
+            }
+
+            public override void DrawTextMethod(
+                Graphics graphics,
+                string text,
+                int x,
+                int y,
+                Font font,
+                Color color)
+            {
+                MyTextRenderer.DrawText(
+                    graphics,
+                    text,
+                    font,
+                    new Point(
+                        x + offsetX,
+                        y + offsetY),
+                    color,
+                    TextFormatFlags.NoPadding);
+            }
+        }
+
+        public class TextTaskRect : TextTaskBase
+        {
+            public readonly int x;
+            public readonly int y;
+            public readonly int width;
+            public readonly int height;
+            public readonly string text;
+            public readonly Color color;
+
+            public TextTaskRect(
+                int x,
+                int y,
+                int width,
+                int height,
+                string text,
+                Color color)
+            {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.text = text;
+                this.color = color;
+            }
+
+            public override void Strike(
+                IGraphicsContext gc)
+            {
+                StrikeTextMask(
+                    gc,
+                    x,
+                    y,
+                    0,
+                    0,
+                    width,
+                    height,
+                    gc.SmallFont,
+                    text);
+            }
+
+            public override void Draw(
+                IGraphicsContext gc)
+            {
+                DrawTextMethod(
+                    gc.graphics,
+                    text,
+                    x,
+                    y,
+                    gc.SmallFont,
+                    color);
+            }
+
+            public override void DrawTextMethod(
+                Graphics graphics,
+                string text,
+                int x,
+                int y,
+                Font font,
+                Color color)
+            {
+                MyTextRenderer.DrawText(
+                    graphics,
+                    text,
+                    font,
+                    new Rectangle(
+                        x,
+                        y,
+                        width,
+                        height),
+                    color,
+                    TextFormatFlags.HorizontalCenter);
+            }
         }
 
         public static int WidthOfFrameAndDraw(
@@ -6283,6 +6489,52 @@ namespace OutOfPhase
                 }
             }
             return TotalWidth + 2 * gc.LayoutMetrics.BORDER;
+        }
+    }
+
+    public class StrikeTextMaskRecord
+    {
+        public readonly int offsetX;
+        public readonly int offsetY;
+        public readonly int width;
+        public readonly int height;
+        public readonly string text;
+
+        public StrikeTextMaskRecord(
+            int offsetX,
+            int offsetY,
+            int width,
+            int height,
+            string text)
+        {
+            this.offsetX = offsetX;
+            this.offsetY = offsetY;
+            this.width = width;
+            this.height = height;
+            this.text = text;
+        }
+
+        public override bool Equals(object obj)
+        {
+            StrikeTextMaskRecord other = obj as StrikeTextMaskRecord;
+            if (other == null)
+            {
+                return false;
+            }
+            return (this.offsetX == other.offsetX)
+                && (this.offsetY == other.offsetY)
+                && (this.width == other.width)
+                && (this.height == other.height)
+                && String.Equals(this.text, other.text);
+        }
+
+        public override int GetHashCode()
+        {
+            return unchecked(offsetX.GetHashCode()
+                + offsetY.GetHashCode()
+                + width.GetHashCode()
+                + height.GetHashCode()
+                + text.GetHashCode());
         }
     }
 

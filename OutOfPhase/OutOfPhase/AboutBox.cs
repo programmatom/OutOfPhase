@@ -37,6 +37,8 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             richTextBox1.Rtf = OutOfPhase._Resources.AboutBoxContent.License;
             pictureBox1.Image = OutOfPhase._Resources.AboutBoxContent.Icon2.ToBitmap();
             pictureBox2.Image = OutOfPhase._Resources.AboutBoxContent.Icon1.ToBitmap();

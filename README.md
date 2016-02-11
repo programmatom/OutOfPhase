@@ -18,3 +18,4 @@ The original Macintosh reference source code is in **Original Macintosh Version 
 Building
 -------------
 The project can be built with Visual Studio 2015 Community Edition. In order to build, you must also be enlisted in **TextEditor** as a sibling of **OutOfPhase**, which provides text-related controls that the build is dependent on.
+The project targets .NET Framework 4.6.1. It is possible that it runs on earlier frameworks, but not supported. In any case, the performance advantage of SIMD (SSE/AVX) support is available only on .NET Framework 4.6.1.

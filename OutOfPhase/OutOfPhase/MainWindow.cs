@@ -76,6 +76,8 @@ namespace OutOfPhase
 
             this.textEditComment.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             menuStripManager.SetGlobalHandler(this);
             localMenuHandler = new MainWindowLocalMenuHandler(this);
             menuStripManager.HookUpTextEditorWindowHelper(this.textEditorWindowHelper);

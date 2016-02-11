@@ -83,7 +83,11 @@ namespace OutOfPhase
 
         public static void ScaleFont(Control control, float scale)
         {
-            control.Font = new Font(control.Font.FontFamily, control.Font.Size * scale, control.Font.Style);
+            if (scale != 1)
+            {
+                Font newFont = new Font(control.Font.FontFamily, control.Font.Size * scale, control.Font.Style);
+                control.Font = newFont;
+            }
         }
     }
 }

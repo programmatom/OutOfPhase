@@ -46,6 +46,8 @@ namespace OutOfPhase
                 "checked, tonic will reset to concert" + Environment.NewLine +
                 "pitch equal-temperament reference.";
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             bool builtIn;
             string tableName = initialStringArgument1;
             if (!(initialStringArgument1.StartsWith("!") || initialStringArgument1.StartsWith("+!")))

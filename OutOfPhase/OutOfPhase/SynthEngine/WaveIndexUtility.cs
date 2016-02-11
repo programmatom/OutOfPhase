@@ -67,7 +67,7 @@ namespace OutOfPhase
             if ((IntegerTableIndex != NumTables - 1) && EnableCrossWaveTableInterpolation)
             {
                 float[] WaveData1 = Matrix[IntegerTableIndex + 1];
-                float Wave1Weight = (int)(TableIndex - IntegerTableIndex);
+                float Wave1Weight = (float)(TableIndex - IntegerTableIndex);
 
                 /* L+F(R-L) -- applied twice */
                 float Left1Value = WaveData1[ArraySubscript];

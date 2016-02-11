@@ -61,6 +61,8 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+            
             if (!showClipping)
             {
                 labelTotalClippedPoints.Visible = false;

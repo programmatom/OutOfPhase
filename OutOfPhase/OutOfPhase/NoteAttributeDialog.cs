@@ -40,6 +40,8 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             foreach (string item in EnumUtility.GetDescriptions(NoteNoteObjectRec.ReleasePoint1OriginAllowedValues, NoteNoteObjectRec.ReleasePoint1Origin_EnumCategoryName))
             {
                 comboBoxRelease1Origin.Items.Add(item);

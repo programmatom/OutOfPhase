@@ -50,6 +50,8 @@ namespace OutOfPhase
             this.textBoxFunctionBody.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxFunctionBody.AutoIndent = Program.Config.AutoIndent;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             menuStripManager.SetGlobalHandler(mainWindow);
             menuStripManager.HookUpTextEditorWindowHelper(this.textEditorWindowHelper);
             menuStripManager.HookUpTextBoxWindowHelper(this.textBoxWindowHelper);
@@ -214,6 +216,9 @@ namespace OutOfPhase
 
             menuStrip.disassembleToolStripMenuItem.Visible = true;
             menuStrip.disassembleToolStripMenuItem.Enabled = true;
+
+            menuStrip.deleteObjectToolStripMenuItem.Enabled = true;
+            menuStrip.deleteObjectToolStripMenuItem.Text = "Delete Function Module";
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -253,6 +258,12 @@ namespace OutOfPhase
                         MessageBox.Show("Compile errors in other modules prevented the disassembly for this module from being generated.", "Out Of Phase");
                         break;
                 }
+                return true;
+            }
+            else if (menuItem == menuStrip.deleteObjectToolStripMenuItem)
+            {
+                Close();
+                mainWindow.DeleteObject(functionObject, mainWindow.Document.FunctionList);
                 return true;
             }
             return false;

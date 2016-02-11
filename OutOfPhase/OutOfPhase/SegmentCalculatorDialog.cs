@@ -66,6 +66,8 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             this.textBoxInitial.Text = initial.ToString();
             this.textBoxDuration.Text = delay.ToString();
             this.textBoxFinal.Text = final.ToString();

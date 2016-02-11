@@ -49,6 +49,8 @@ namespace OutOfPhase
             this.textBoxInstrumentBody.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxInstrumentBody.AutoIndent = Program.Config.AutoIndent;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             menuStripManager.SetGlobalHandler(mainWindow);
             menuStripManager.HookUpTextEditorWindowHelper(this.textEditorWindowHelper);
             menuStripManager.HookUpTextBoxWindowHelper(this.textBoxWindowHelper);
@@ -184,6 +186,9 @@ namespace OutOfPhase
 
             menuStrip.envelopeSegmentCalculatorToolStripMenuItem.Visible = true;
             menuStrip.envelopeSegmentCalculatorToolStripMenuItem.Enabled = true;
+
+            menuStrip.deleteObjectToolStripMenuItem.Enabled = true;
+            menuStrip.deleteObjectToolStripMenuItem.Text = "Delete Instrument";
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -200,7 +205,12 @@ namespace OutOfPhase
                 segmentCalculator.Show();
                 return true;
             }
-
+            else if (menuItem == menuStrip.deleteObjectToolStripMenuItem)
+            {
+                Close();
+                mainWindow.DeleteObject(instrumentObject, mainWindow.Document.InstrumentList);
+                return true;
+            }
             return false;
         }
 

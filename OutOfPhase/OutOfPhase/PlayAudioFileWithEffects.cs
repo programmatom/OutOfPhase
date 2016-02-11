@@ -53,6 +53,8 @@ namespace OutOfPhase
             this.textBoxEffectBody.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxEffectBody.AutoIndent = Program.Config.AutoIndent;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             textBoxAudioFilePath.Text = filePath;
 
             textBoxEffectBody.TabSize = Program.Config.TabSize;

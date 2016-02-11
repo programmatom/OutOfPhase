@@ -55,6 +55,8 @@ namespace OutOfPhase
             textBoxDisassembly.Text = text;
             textBoxDisassembly.SetInsertionPoint(0, 0);
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             GlobalNameChanged();
         }
 

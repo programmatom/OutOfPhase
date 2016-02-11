@@ -53,6 +53,8 @@ namespace OutOfPhase
             this.textBoxFunction.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
             this.textBoxFunction.AutoIndent = Program.Config.AutoIndent;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             undoHelper = new UndoHelper(this);
 
             menuStripManager.SetGlobalHandler(mainWindow);
@@ -713,6 +715,9 @@ namespace OutOfPhase
                     menuStrip.pasteToolStripMenuItem.Text = "Paste Sample Data";
                 }
             }
+
+            menuStrip.deleteObjectToolStripMenuItem.Enabled = true;
+            menuStrip.deleteObjectToolStripMenuItem.Text = "Delete Sample";
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -878,7 +883,12 @@ namespace OutOfPhase
                 }
                 return true;
             }
-
+            else if (menuItem == menuStrip.deleteObjectToolStripMenuItem)
+            {
+                Close();
+                mainWindow.DeleteObject(sampleObject, mainWindow.Document.SampleList);
+                return true;
+            }
             return false;
         }
 
@@ -1016,11 +1026,11 @@ namespace OutOfPhase
                     GetCurrentLoopStart(),
                     GetCurrentLoopEnd(),
                     GetCurrentLoopBidirectionality() == LoopBidirectionalType.Yes,
-                    (GetTestPitch() / sampleObject.NaturalFrequency) * (sampleObject.SamplingRate / (double)playPrefsProvider.SamplingRate)),
+                    (GetTestPitch() / sampleObject.NaturalFrequency) * ((double)sampleObject.SamplingRate / playPrefsProvider.SamplingRate)),
                 SampleTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Completion,
                 mainWindow,
-                sampleObject.SampleData.NumChannels,
-                sampleObject.SampleData.NumBits,
+                NumChannelsType.eSampleStereo, // always send stereo to output - resampler handles sample data type
+                playPrefsProvider.OutputNumBits,
                 playPrefsProvider.SamplingRate,
                 1/*oversampling*/,
                 false/*showProgressWindow*/,
@@ -1107,194 +1117,86 @@ namespace OutOfPhase
         {
             try
             {
-                int NumFrames = generatorParams.data.NumFrames;
-                int LoopStart = Math.Min(Math.Max(generatorParams.loopStart, 0), NumFrames);
-                int LoopEnd = Math.Min(Math.Max(generatorParams.loopEnd, 0), NumFrames);
-                if (LoopEnd < LoopStart)
+                // A bit hacky (ought to expose an API) - patch up a sample oscillator so we can reuse the playback
+                // code from the synth engine
+                Synthesizer.SampleStateRec state = new Synthesizer.SampleStateRec();
+                state.Panning = 0;
+                state.Loudness = 1;
+                state.PreviousLoudness = 1;
+                state.Data = generatorParams.data.Buffer;
+                state.NumFrames = generatorParams.data.NumFrames;
+                state.SamplePositionDifferential = new Synthesizer.Fixed64(generatorParams.pitchScaling);
+                state.CurrentLoopStart = Math.Min(Math.Max(generatorParams.loopStart, 0), state.NumFrames);
+                state.CurrentLoopEnd = Math.Min(Math.Max(generatorParams.loopEnd, 0), state.NumFrames);
+                if (state.CurrentLoopEnd < state.CurrentLoopStart)
                 {
-                    LoopEnd = LoopStart;
+                    state.CurrentLoopEnd = state.CurrentLoopStart;
                 }
+                state.CurrentLoopBidirectionality = generatorParams.bidirectionalLoop;
                 if (generatorParams.bidirectionalLoop)
                 {
-                    if (LoopEnd - LoopStart < 2)
+                    if (state.CurrentLoopEnd - state.CurrentLoopStart < 2)
                     {
-                        LoopEnd = LoopStart;
+                        state.CurrentLoopEnd = state.CurrentLoopStart;
                     }
                 }
-
-                bool stereo = generatorParams.data.NumChannels == NumChannelsType.eSampleStereo;
-#if false
-                int PlaybackSamplingRate = generatorParams.samplingRate;
-                if (PlaybackSamplingRate < Constants.MINSAMPLINGRATE)
+                state.CurrentLoopLength = state.CurrentLoopEnd - state.CurrentLoopStart;
+                state.LoopState = state.EffectiveLoopState = Synthesizer.LoopType.eRepeatingLoop1;
+                if (state.CurrentLoopLength == 0)
                 {
-                    PlaybackSamplingRate = Constants.MINSAMPLINGRATE;
+                    state.CurrentLoopStart = 0;
+                    state.CurrentLoopEnd = state.NumFrames;
+                    state.EffectiveLoopState = Synthesizer.LoopType.eNoLoop;
                 }
-                if (PlaybackSamplingRate > Constants.MAXSAMPLINGRATE)
-                {
-                    PlaybackSamplingRate = Constants.MAXSAMPLINGRATE;
-                }
-#endif
 
-                /* initialize state variables for playback */
-                bool Looping;
-                if (!generatorParams.bidirectionalLoop)
-                {
-                    Looping = LoopEnd != LoopStart;
-                }
-                else
-                {
-                    /* bidirectional loop must have at least 2 points in it */
-                    Looping = (LoopEnd - LoopStart) > 1;
-                }
-                Synthesizer.Fixed64 LocalIndex = new Synthesizer.Fixed64((double)0);
-                Synthesizer.Fixed64 LocalDifferential = new Synthesizer.Fixed64(generatorParams.pitchScaling);
-
-                bool LoopReversing = false;
-
+                Synthesizer.SampleGenSamplesMethod generate = generatorParams.data.NumChannels == NumChannelsType.eSampleStereo
+                    ? (Synthesizer.SampleGenSamplesMethod)Synthesizer.SampleStateRec.Sample_StereoOut_StereoSamp_Bidir
+                    : (Synthesizer.SampleGenSamplesMethod)Synthesizer.SampleStateRec.Sample_StereoOut_MonoSamp_Bidir;
 
                 const int SOUNDBUFFERLENGTHFRAMES = 256;
-                float[] OutputBuffer = new float[SOUNDBUFFERLENGTHFRAMES * 2];
-                int Scan = 0;
-
-                float[] LocalData = generatorParams.data.Buffer;
-
-                bool PlaybackInProgress = true;
-                while (PlaybackInProgress)
+                // 2 channels, and 1) one private workspace used by playback overlaid with 2) 2 units for interleaved output
+                using (Synthesizer.AlignedWorkspace workspace = new Synthesizer.AlignedWorkspace(4 * SOUNDBUFFERLENGTHFRAMES))
                 {
-                    if (generatorParams.loopReleaseSignaled)
+                    bool PlaybackInProgress = true;
+                    while (PlaybackInProgress && !stopper.Stopped)
                     {
-                        Looping = false;
-                    }
-
-                    if (!Looping && !LoopReversing)
-                    {
-                        int LocalEnd = NumFrames; /* for no loop, the end is the real end */
-                        while ((Scan < SOUNDBUFFERLENGTHFRAMES) && (LocalIndex.Int < LocalEnd))
+                        if (generatorParams.loopReleaseSignaled)
                         {
-                            if (stereo)
-                            {
-                                OutputBuffer[Scan * 2 + 0] = LocalData[LocalIndex.Int * 2 + 0];
-                                OutputBuffer[Scan * 2 + 1] = LocalData[LocalIndex.Int * 2 + 1];
-                            }
-                            else
-                            {
-                                OutputBuffer[Scan * 2 + 0] = OutputBuffer[Scan * 2 + 1] = LocalData[LocalIndex.Int];
-                            }
-                            LocalIndex += LocalDifferential;
-                            Scan += 1;
+                            state.EffectiveLoopState = state.LoopState = Synthesizer.LoopType.eNoLoop;
                         }
-                        if (LocalIndex.Int >= LocalEnd)
+
+                        Synthesizer.FloatVectorZero(
+                            workspace.Base,
+                            workspace.Offset,
+                            2 * SOUNDBUFFERLENGTHFRAMES);
+                        generate(
+                            state,
+                            SOUNDBUFFERLENGTHFRAMES,
+                            workspace.Base,
+                            workspace.Offset,
+                            workspace.Offset + SOUNDBUFFERLENGTHFRAMES,
+                            workspace.Offset + 2 * SOUNDBUFFERLENGTHFRAMES);
+
+                        if (state.EffectiveLoopState == Synthesizer.LoopType.eSampleFinished)
                         {
-                            /* end has been reached, so halt playback */
                             PlaybackInProgress = false;
                         }
+
+                        Synthesizer.FloatVectorMakeInterleaved(
+                            workspace.Base,
+                            workspace.Offset,
+                            workspace.Base,
+                            workspace.Offset + SOUNDBUFFERLENGTHFRAMES,
+                            SOUNDBUFFERLENGTHFRAMES,
+                            workspace.Base,
+                            workspace.Offset + 2 * SOUNDBUFFERLENGTHFRAMES);
+                        dataCallback(
+                            dataCallbackState,
+                            workspace.Base,
+                            workspace.Offset + 2 * SOUNDBUFFERLENGTHFRAMES,
+                            SOUNDBUFFERLENGTHFRAMES);
                     }
-                    else
-                    {
-                        if (!generatorParams.bidirectionalLoop)
-                        {
-                            int LocalLoopEnd = LoopEnd; /* for loop, this is what the end is */
-                            int LocalLoopLength = LoopEnd - LoopStart;
-                            Debug.Assert(LocalLoopLength >= 1);
-
-                            while (Scan < SOUNDBUFFERLENGTHFRAMES)
-                            {
-                                while (LocalIndex.Int >= LocalLoopEnd)
-                                {
-                                    LocalIndex.SetInt64HighHalf(LocalIndex.Int - LocalLoopLength);
-                                }
-                                if (stereo)
-                                {
-                                    OutputBuffer[Scan * 2 + 0] = LocalData[LocalIndex.Int * 2 + 0];
-                                    OutputBuffer[Scan * 2 + 1] = LocalData[LocalIndex.Int * 2 + 1];
-                                }
-                                else
-                                {
-                                    OutputBuffer[Scan * 2 + 0] = OutputBuffer[Scan * 2 + 1] = LocalData[LocalIndex.Int];
-                                }
-                                LocalIndex += LocalDifferential;
-                                Scan += 1;
-                            }
-                        }
-                        else
-                        {
-                            int LocalLoopEnd = LoopEnd - 1; /* for loop, this is what the end is */
-                            /* the end is -1 because the bidirectional looper actually reads the */
-                            /* end element, when it reverses. */
-                            int LocalLoopStart = LoopStart;
-                            if (LoopReversing)
-                            {
-                                LocalDifferential = new Synthesizer.Fixed64((long)0) - LocalDifferential;
-                            }
-
-                            /* process the resampling */
-                            /* mono/stereo, yes loop */
-                            while (Scan < SOUNDBUFFERLENGTHFRAMES)
-                            {
-                                while ((!LoopReversing && LocalIndex.Int >= LocalLoopEnd - 1)
-                                    || (LoopReversing && LocalIndex.Int < LocalLoopStart))
-                                {
-                                    /* invert direction */
-                                    LocalDifferential = new Synthesizer.Fixed64((long)0) - LocalDifferential;
-                                    /* reflect sample index */
-                                    if (LoopReversing)
-                                    {
-                                        /* go from reverse to forward */
-                                        LoopReversing = false;
-                                        /* fold pointer around loop start */
-                                        LocalIndex -= new Synthesizer.Fixed64((long)(2 * LocalLoopStart) << 32) - LocalIndex;
-                                    }
-                                    else
-                                    {
-                                        /* go from forward to reverse */
-                                        LoopReversing = true;
-                                        /* fold pointer around loop end */
-                                        LocalIndex -= new Synthesizer.Fixed64((long)(2 * LocalLoopEnd) << 32) - LocalIndex;
-                                    }
-                                    /* see if loop has been broken */
-                                    if (!Looping && !LoopReversing)
-                                    {
-                                        /* if loop is done and we aren't rolling in */
-                                        /* reverse, then get out of here now so we can */
-                                        /* finish with straight through playback */
-                                        goto BreakLoopPoint;
-                                    }
-                                }
-                                if (stereo)
-                                {
-                                    OutputBuffer[Scan * 2 + 0] = LocalData[LocalIndex.Int * 2 + 0];
-                                    OutputBuffer[Scan * 2 + 1] = LocalData[LocalIndex.Int * 2 + 1];
-                                }
-                                else
-                                {
-                                    OutputBuffer[Scan * 2 + 0] = OutputBuffer[Scan * 2 + 1] = LocalData[LocalIndex.Int];
-                                }
-                                LocalIndex += LocalDifferential;
-                                Scan += 1;
-                            }
-                        }
-                    }
-
-                BreakLoopPoint:
-
-                    if (stopper.Stopped)
-                    {
-                        return;
-                    }
-
-                    dataCallback(
-                        dataCallbackState,
-                        OutputBuffer,
-                        0,
-                        Scan);
-                    Scan = 0;
                 }
-
-                dataCallback(
-                    dataCallbackState,
-                    OutputBuffer,
-                    0,
-                    Scan);
             }
             catch (Exception exception)
             {

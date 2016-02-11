@@ -48,6 +48,8 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             foreach (string item in EnumUtility.GetDescriptions(Source.OutputNumBitsAllowedValues))
             {
                 comboBoxBitDepth.Items.Add(item);

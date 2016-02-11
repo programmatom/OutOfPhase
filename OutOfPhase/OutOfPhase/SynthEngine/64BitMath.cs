@@ -129,7 +129,7 @@ namespace OutOfPhase
 #if DEBUG
             public override string ToString()
             {
-                return String.Format("{0} ({1:x16})", Double, raw);
+                return String.Format("{0} ({1:x8}.{2:x8})", Double, (uint)(raw >> 32), (uint)raw);
             }
 #endif
         }

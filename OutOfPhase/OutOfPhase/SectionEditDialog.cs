@@ -47,6 +47,8 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+
             myListBoxSections.SetUnderlying(displayList, DisplayNameOfListEntry);
             myListBoxSections.SelectionChanged += new EventHandler(delegate (object sender, EventArgs e) { OnSelectionChanged(); });
             myListBoxSections.DoubleClick2 += new MyListBox.DoubleClick2EventHandler(myListBoxSections_DoubleClick2);

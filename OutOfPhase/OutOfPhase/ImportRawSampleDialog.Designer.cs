@@ -186,7 +186,7 @@ namespace OutOfPhase
             this.textBoxInitialSkip.Location = new System.Drawing.Point(117, 26);
             this.textBoxInitialSkip.Name = "textBoxInitialSkip";
             this.textBoxInitialSkip.Size = new System.Drawing.Size(100, 20);
-            this.textBoxInitialSkip.TabIndex = 6;
+            this.textBoxInitialSkip.TabIndex = 1;
             // 
             // importRawSettingsBindingSource
             // 
@@ -199,7 +199,7 @@ namespace OutOfPhase
             this.textBoxFramePadding.Location = new System.Drawing.Point(117, 53);
             this.textBoxFramePadding.Name = "textBoxFramePadding";
             this.textBoxFramePadding.Size = new System.Drawing.Size(100, 20);
-            this.textBoxFramePadding.TabIndex = 7;
+            this.textBoxFramePadding.TabIndex = 2;
             // 
             // comboBoxBits
             // 
@@ -210,7 +210,7 @@ namespace OutOfPhase
             this.comboBoxBits.Location = new System.Drawing.Point(316, 26);
             this.comboBoxBits.Name = "comboBoxBits";
             this.comboBoxBits.Size = new System.Drawing.Size(121, 21);
-            this.comboBoxBits.TabIndex = 8;
+            this.comboBoxBits.TabIndex = 3;
             // 
             // comboBoxChannels
             // 
@@ -221,7 +221,7 @@ namespace OutOfPhase
             this.comboBoxChannels.Location = new System.Drawing.Point(316, 53);
             this.comboBoxChannels.Name = "comboBoxChannels";
             this.comboBoxChannels.Size = new System.Drawing.Size(121, 21);
-            this.comboBoxChannels.TabIndex = 9;
+            this.comboBoxChannels.TabIndex = 4;
             // 
             // comboBoxSignMode
             // 
@@ -232,7 +232,7 @@ namespace OutOfPhase
             this.comboBoxSignMode.Location = new System.Drawing.Point(534, 26);
             this.comboBoxSignMode.Name = "comboBoxSignMode";
             this.comboBoxSignMode.Size = new System.Drawing.Size(121, 21);
-            this.comboBoxSignMode.TabIndex = 10;
+            this.comboBoxSignMode.TabIndex = 5;
             // 
             // comboBoxEndianness
             // 
@@ -243,7 +243,7 @@ namespace OutOfPhase
             this.comboBoxEndianness.Location = new System.Drawing.Point(534, 53);
             this.comboBoxEndianness.Name = "comboBoxEndianness";
             this.comboBoxEndianness.Size = new System.Drawing.Size(121, 21);
-            this.comboBoxEndianness.TabIndex = 11;
+            this.comboBoxEndianness.TabIndex = 6;
             // 
             // flowLayoutPanel1
             // 
@@ -256,7 +256,7 @@ namespace OutOfPhase
             this.flowLayoutPanel1.Location = new System.Drawing.Point(346, 80);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Size = new System.Drawing.Size(278, 29);
-            this.flowLayoutPanel1.TabIndex = 12;
+            this.flowLayoutPanel1.TabIndex = 9;
             // 
             // buttonCancel
             // 
@@ -264,7 +264,7 @@ namespace OutOfPhase
             this.buttonCancel.Location = new System.Drawing.Point(3, 3);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(100, 23);
-            this.buttonCancel.TabIndex = 0;
+            this.buttonCancel.TabIndex = 8;
             this.buttonCancel.Text = "Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
             // 
@@ -281,7 +281,7 @@ namespace OutOfPhase
             this.buttonImport.Location = new System.Drawing.Point(175, 3);
             this.buttonImport.Name = "buttonImport";
             this.buttonImport.Size = new System.Drawing.Size(100, 23);
-            this.buttonImport.TabIndex = 2;
+            this.buttonImport.TabIndex = 7;
             this.buttonImport.Text = "Import";
             this.buttonImport.UseVisualStyleBackColor = true;
             // 
@@ -301,11 +301,10 @@ namespace OutOfPhase
             this.labelFileName.AutoSize = true;
             this.tableLayoutPanel1.SetColumnSpan(this.labelFileName, 7);
             this.labelFileName.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.importRawSettingsBindingSource, "Name", true));
-            this.labelFileName.Location = new System.Drawing.Point(117, 5);
+            this.labelFileName.Location = new System.Drawing.Point(117, 11);
             this.labelFileName.Name = "labelFileName";
-            this.labelFileName.Size = new System.Drawing.Size(538, 13);
+            this.labelFileName.Size = new System.Drawing.Size(538, 0);
             this.labelFileName.TabIndex = 14;
-            this.labelFileName.Text = "label9";
             // 
             // sampleView
             // 
@@ -317,15 +316,16 @@ namespace OutOfPhase
             this.sampleView.LoopStartLabel = null;
             this.sampleView.Name = "sampleView";
             this.sampleView.Size = new System.Drawing.Size(652, 220);
-            this.sampleView.TabIndex = 15;
+            this.sampleView.TabIndex = 10;
             // 
             // label9
             // 
             this.label9.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.label9.AutoSize = true;
+            this.tableLayoutPanel1.SetColumnSpan(this.label9, 8);
             this.label9.Location = new System.Drawing.Point(3, 115);
             this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(108, 13);
+            this.label9.Size = new System.Drawing.Size(652, 13);
             this.label9.TabIndex = 16;
             this.label9.Text = "Preview:";
             // 

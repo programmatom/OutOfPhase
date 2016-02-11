@@ -63,6 +63,8 @@ namespace OutOfPhase
 
             settings.PropertyChanged += new PropertyChangedEventHandler(settings_PropertyChanged);
             settings_PropertyChanged(this, null); // initial load
+
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
         }
 
         protected override void WndProc(ref Message m)
