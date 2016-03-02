@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -102,6 +103,7 @@ namespace OutOfPhase
         }
 
         /* combined control record for delay line tap */
+        [StructLayout(LayoutKind.Auto)]
         public struct UnifiedDelayCtrlRec
         {
             // exactly one of these is non-null
@@ -123,8 +125,8 @@ namespace OutOfPhase
             /* state information */
             public int SourceOffsetInteger;
             public int TargetOffsetInteger;
-            public float[] SourceLine; /* used for simple case */
-            public float[] TargetLine; /* used for simple case */
+            public byte SourceLine; // used for simple case: 0 = left, 1 = right
+            public byte TargetLine; // used for simple case: 0 = left, 1 = right
             public float Scaling;
             public FirstOrderLowpassRec LowpassFilter;
             public float SourceOffsetFraction;
@@ -149,7 +151,6 @@ namespace OutOfPhase
             public float[] RightDelayLineArray;
 
             /* tap arrays */
-            public int TapCount;
             public DelayLineTapRec[] TapVector;
             public UnifiedDelayCtrlRec[] CtrlVector;
 
@@ -435,7 +436,7 @@ namespace OutOfPhase
                     }
                     Delay.MaxDelayTime = (float)temp;
                 }
-                Delay.TapCount = GetDelayEffectSpecNumTaps(Template);
+                int TapCount = GetDelayEffectSpecNumTaps(Template);
                 Delay.ComplexCaseRequired = false; /* start out simple case */
 
                 int Temp = (int)(SynthParams.dSamplingRate * Delay.MaxDelayTime + 1);
@@ -449,20 +450,11 @@ namespace OutOfPhase
                 Delay.VectorMask = Delay.DelayLineLength - 1; /* power of 2 - 1 */
                 Delay.DelayLineIndex = 0;
 
-                Delay.TapVector = new DelayLineTapRec[Delay.TapCount];
-                Delay.CtrlVector = new UnifiedDelayCtrlRec[Delay.TapCount];
+                Delay.TapVector = new DelayLineTapRec[TapCount];
+                Delay.CtrlVector = new UnifiedDelayCtrlRec[TapCount];
 
-                /* allocate left/mono line */
-                Delay.LeftDelayLineArray = new float[Delay.DelayLineLength]; // zeroed
-                //FloatVectorZero(
-                //    Delay.LeftDelayLineArray,
-                //    Delay.DelayLineLength);
-
-                /* allocate right line */
-                Delay.RightDelayLineArray = new float[Delay.DelayLineLength]; // zeroed
-                //FloatVectorZero(
-                //    Delay.RightDelayLineArray,
-                //    Delay.DelayLineLength);
+                Delay.LeftDelayLineArray = New(ref SynthParams.freelists.FloatBufferFreeList, Delay.DelayLineLength); // zeroed
+                Delay.RightDelayLineArray = New(ref SynthParams.freelists.FloatBufferFreeList, Delay.DelayLineLength); // zeroed
 
                 return Delay;
             }
@@ -481,7 +473,7 @@ namespace OutOfPhase
                 /* build tap list */
                 DelayLineTapRec[] TapVector = Delay.TapVector;
                 UnifiedDelayCtrlRec[] CtrlVector = Delay.CtrlVector;
-                for (int i = 0; i < Delay.TapCount; i++)
+                for (int i = 0; i < TapVector.Length; i++)
                 {
                     TapVector[i] = new DelayLineTapRec();
                     CtrlVector[i].Track = new TrackDelayCtrlRec();
@@ -530,23 +522,23 @@ namespace OutOfPhase
                             break;
                         case TapAlgorithm.eTapLeftToLeft:
                         case TapAlgorithm.eTapLeftToLeftLPF:
-                            TapVector[i].SourceLine = Delay.LeftDelayLineArray;
-                            TapVector[i].TargetLine = Delay.LeftDelayLineArray;
+                            TapVector[i].SourceLine = 0;
+                            TapVector[i].TargetLine = 0;
                             break;
                         case TapAlgorithm.eTapLeftToRight:
                         case TapAlgorithm.eTapLeftToRightLPF:
-                            TapVector[i].SourceLine = Delay.LeftDelayLineArray;
-                            TapVector[i].TargetLine = Delay.RightDelayLineArray;
+                            TapVector[i].SourceLine = 0;
+                            TapVector[i].TargetLine = 1;
                             break;
                         case TapAlgorithm.eTapRightToLeft:
                         case TapAlgorithm.eTapRightToLeftLPF:
-                            TapVector[i].SourceLine = Delay.RightDelayLineArray;
-                            TapVector[i].TargetLine = Delay.LeftDelayLineArray;
+                            TapVector[i].SourceLine = 1;
+                            TapVector[i].TargetLine = 0;
                             break;
                         case TapAlgorithm.eTapRightToRight:
                         case TapAlgorithm.eTapRightToRightLPF:
-                            TapVector[i].SourceLine = Delay.RightDelayLineArray;
-                            TapVector[i].TargetLine = Delay.RightDelayLineArray;
+                            TapVector[i].SourceLine = 1;
+                            TapVector[i].TargetLine = 1;
                             break;
                     }
                 }
@@ -575,7 +567,7 @@ namespace OutOfPhase
                 int MaxPreOrigin = 0;
                 DelayLineTapRec[] TapVector = Delay.TapVector;
                 UnifiedDelayCtrlRec[] CtrlVector = Delay.CtrlVector;
-                for (int i = 0; i < Delay.TapCount; i++)
+                for (int i = 0; i < TapVector.Length; i++)
                 {
                     TapVector[i] = new DelayLineTapRec();
                     CtrlVector[i].Osc = new OscDelayCtrlRec();
@@ -744,23 +736,23 @@ namespace OutOfPhase
                             break;
                         case TapAlgorithm.eTapLeftToLeft:
                         case TapAlgorithm.eTapLeftToLeftLPF:
-                            TapVector[i].SourceLine = Delay.LeftDelayLineArray;
-                            TapVector[i].TargetLine = Delay.LeftDelayLineArray;
+                            TapVector[i].SourceLine = 0;
+                            TapVector[i].TargetLine = 0;
                             break;
                         case TapAlgorithm.eTapLeftToRight:
                         case TapAlgorithm.eTapLeftToRightLPF:
-                            TapVector[i].SourceLine = Delay.LeftDelayLineArray;
-                            TapVector[i].TargetLine = Delay.RightDelayLineArray;
+                            TapVector[i].SourceLine = 0;
+                            TapVector[i].TargetLine = 1;
                             break;
                         case TapAlgorithm.eTapRightToLeft:
                         case TapAlgorithm.eTapRightToLeftLPF:
-                            TapVector[i].SourceLine = Delay.RightDelayLineArray;
-                            TapVector[i].TargetLine = Delay.LeftDelayLineArray;
+                            TapVector[i].SourceLine = 1;
+                            TapVector[i].TargetLine = 0;
                             break;
                         case TapAlgorithm.eTapRightToRight:
                         case TapAlgorithm.eTapRightToRightLPF:
-                            TapVector[i].SourceLine = Delay.RightDelayLineArray;
-                            TapVector[i].TargetLine = Delay.RightDelayLineArray;
+                            TapVector[i].SourceLine = 1;
+                            TapVector[i].TargetLine = 1;
                             break;
                     }
                 }
@@ -784,7 +776,7 @@ namespace OutOfPhase
 #endif
 
                 UnifiedDelayCtrlRec[] CtrlVector = this.CtrlVector;
-                for (int Scan = 0; Scan < this.TapCount; Scan++)
+                for (int Scan = 0; Scan < CtrlVector.Length; Scan++)
                 {
                     EnvelopeStateFixUpInitialDelay(
                         CtrlVector[Scan].Osc.SourceEnvelope,
@@ -838,7 +830,8 @@ namespace OutOfPhase
                 /* update tap states */
                 DelayLineTapRec[] TapVector = this.TapVector;
                 UnifiedDelayCtrlRec[] CtrlVector = this.CtrlVector;
-                for (int Scan = 0; Scan < this.TapCount; Scan++)
+                Debug.Assert(TapVector.Length == CtrlVector.Length);
+                for (int Scan = 0; Scan < TapVector.Length; Scan++)
                 {
                     double Time;
                     double Temp;
@@ -938,7 +931,8 @@ namespace OutOfPhase
                 /* update tap states */
                 DelayLineTapRec[] TapVector = this.TapVector;
                 UnifiedDelayCtrlRec[] CtrlVector = this.CtrlVector;
-                for (int Scan = 0; Scan < this.TapCount; Scan++)
+                Debug.Assert(TapVector.Length == CtrlVector.Length);
+                for (int Scan = 0; Scan < TapVector.Length; Scan++)
                 {
                     double Time;
                     double Temp;
@@ -1053,7 +1047,7 @@ namespace OutOfPhase
 #endif
 
                 UnifiedDelayCtrlRec[] CtrlVector = this.CtrlVector;
-                for (int Scan = 0; Scan < this.TapCount; Scan++)
+                for (int Scan = 0; Scan < CtrlVector.Length; Scan++)
                 {
                     EnvelopeKeyUpSustain1(CtrlVector[Scan].Osc.SourceEnvelope);
                     EnvelopeKeyUpSustain1(CtrlVector[Scan].Osc.TargetEnvelope);
@@ -1084,7 +1078,7 @@ namespace OutOfPhase
 #endif
 
                 UnifiedDelayCtrlRec[] CtrlVector = this.CtrlVector;
-                for (int Scan = 0; Scan < this.TapCount; Scan++)
+                for (int Scan = 0; Scan < CtrlVector.Length; Scan++)
                 {
                     EnvelopeKeyUpSustain2(CtrlVector[Scan].Osc.SourceEnvelope);
                     EnvelopeKeyUpSustain2(CtrlVector[Scan].Osc.TargetEnvelope);
@@ -1115,7 +1109,7 @@ namespace OutOfPhase
 #endif
 
                 UnifiedDelayCtrlRec[] CtrlVector = this.CtrlVector;
-                for (int Scan = 0; Scan < this.TapCount; Scan++)
+                for (int Scan = 0; Scan < CtrlVector.Length; Scan++)
                 {
                     EnvelopeKeyUpSustain3(CtrlVector[Scan].Osc.SourceEnvelope);
                     EnvelopeKeyUpSustain3(CtrlVector[Scan].Osc.TargetEnvelope);
@@ -1152,7 +1146,7 @@ namespace OutOfPhase
 #endif
 
                 UnifiedDelayCtrlRec[] CtrlVector = this.CtrlVector;
-                for (int Scan = 0; Scan < this.TapCount; Scan++)
+                for (int Scan = 0; Scan < CtrlVector.Length; Scan++)
                 {
                     EnvelopeRetriggerFromOrigin(
                         CtrlVector[Scan].Osc.SourceEnvelope,
@@ -1245,7 +1239,6 @@ namespace OutOfPhase
                 float[] RightDelayLineArray = Delay.RightDelayLineArray;
                 int DelayLineLength = Delay.DelayLineLength;
                 DelayLineTapRec[] TapVector = Delay.TapVector;
-                int TapCount = Delay.TapCount;
 
                 for (int Scan = 0; Scan < nActualFrames; Scan++)
                 {
@@ -1256,7 +1249,7 @@ namespace OutOfPhase
                     RightDelayLineArray[VectorIndex] = RT;
 
                     /* iterate over taps */
-                    for (int TapScan = 0; TapScan < TapCount; TapScan++)
+                    for (int TapScan = 0; TapScan < TapVector.Length; TapScan++)
                     {
                         /* initialize base pointer */
                         DelayLineTapRec Tap = TapVector[TapScan];
@@ -1606,7 +1599,10 @@ namespace OutOfPhase
                 Delay.DelayLineIndex = VectorIndex;
             }
 
-            private static void StereoDelayLineProcessorSimple(
+            // The following loop showed a 7% improvement in the "unsafe" "fixed" form eliminating array bounds checks.
+            // (on Pentium N3520)
+
+            private unsafe static void StereoDelayLineProcessorSimple(
                 float[] workspace,
                 int lOffset,
                 int rOffset,
@@ -1618,67 +1614,75 @@ namespace OutOfPhase
                 float[] LeftDelayLineArray = Delay.LeftDelayLineArray;
                 float[] RightDelayLineArray = Delay.RightDelayLineArray;
                 DelayLineTapRec[] TapVector = Delay.TapVector;
-                int TapCount = Delay.TapCount;
 
-                for (int Scan = 0; Scan < nActualFrames; Scan++)
+                fixed (float* pLeftDelayLineArray = LeftDelayLineArray)
                 {
-                    /* initialize current point with dry data */
-                    LeftDelayLineArray[VectorIndex] = workspace[Scan + lOffset];
-                    RightDelayLineArray[VectorIndex] = workspace[Scan + rOffset];
-
-                    /* iterate over taps */
-                    for (int TapScan = 0; TapScan < TapCount; TapScan++)
+                    fixed (float* pRightDelayLineArray = RightDelayLineArray)
                     {
-                        /* initialize base pointer */
-                        DelayLineTapRec Tap = TapVector[TapScan];
+                        fixed (float* pWorkspace = workspace)
+                        {
+                            for (int frame = 0; frame < nActualFrames; frame++)
+                            {
+                                /* initialize current point with dry data */
+                                LeftDelayLineArray[VectorIndex] = pWorkspace[frame + lOffset];
+                                RightDelayLineArray[VectorIndex] = pWorkspace[frame + rOffset];
+
+                                /* iterate over taps */
+                                for (int TapScan = 0; TapScan < TapVector.Length; TapScan++)
+                                {
+                                    /* initialize base pointer */
+                                    DelayLineTapRec Tap = TapVector[TapScan];
 
 #if DEBUG
-                        if ((Tap.TapProcessAlgorithm != TapAlgorithm.eTapLeftToLeft)
-                            && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapLeftToRight)
-                            && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapRightToLeft)
-                            && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapRightToRight)
-                            && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapLeftToLeftLPF)
-                            && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapLeftToRightLPF)
-                            && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapRightToLeftLPF)
-                            && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapRightToRightLPF))
-                        {
-                            // complex opcode encountered
-                            Debug.Assert(false);
-                            throw new ArgumentException();
-                        }
+                                    if ((Tap.TapProcessAlgorithm != TapAlgorithm.eTapLeftToLeft)
+                                        && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapLeftToRight)
+                                        && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapRightToLeft)
+                                        && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapRightToRight)
+                                        && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapLeftToLeftLPF)
+                                        && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapLeftToRightLPF)
+                                        && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapRightToLeftLPF)
+                                        && (Tap.TapProcessAlgorithm != TapAlgorithm.eTapRightToRightLPF))
+                                    {
+                                        // complex opcode encountered
+                                        Debug.Assert(false);
+                                        throw new ArgumentException();
+                                    }
 #endif
 
-                        /* get line arrays */
-                        float[] SourceLine = Tap.SourceLine;
-                        float[] TargetLine = Tap.TargetLine;
+                                    /* get line arrays */
+                                    float* pSourceLine = Tap.SourceLine == 0 ? pLeftDelayLineArray : pRightDelayLineArray;
+                                    float* pTargetLine = Tap.TargetLine == 0 ? pLeftDelayLineArray : pRightDelayLineArray;
 
-                        /* precompute some stuff */
-                        int SourceIndex = VectorMask & (VectorIndex + Tap.SourceOffsetInteger);
-                        int TargetIndex = VectorMask & (VectorIndex + Tap.TargetOffsetInteger);
+                                    /* precompute some stuff */
+                                    int SourceIndex = VectorMask & (VectorIndex + Tap.SourceOffsetInteger);
+                                    int TargetIndex = VectorMask & (VectorIndex + Tap.TargetOffsetInteger);
 
-                        /* load source and target values */
-                        float S = SourceLine[SourceIndex];
-                        float T = TargetLine[TargetIndex];
+                                    /* load source and target values */
+                                    float S = pSourceLine[SourceIndex];
+                                    float T = pTargetLine[TargetIndex];
 
-                        /* compute */
-                        S = S * Tap.Scaling;
+                                    /* compute */
+                                    S = S * Tap.Scaling;
 
-                        /* apply filter if necessary */
-                        if (Tap.LowpassFilterEnabled)
-                        {
-                            S = FirstOrderLowpassRec.ApplyFirstOrderLowpass(Tap.LowpassFilter, S);
+                                    /* apply filter if necessary */
+                                    if (Tap.LowpassFilterEnabled)
+                                    {
+                                        S = FirstOrderLowpassRec.ApplyFirstOrderLowpass(Tap.LowpassFilter, S);
+                                    }
+
+                                    /* store result back */
+                                    pTargetLine[TargetIndex] = T + S;
+                                }
+
+                                /* perform data update */
+                                pWorkspace[frame + lOffset] = pLeftDelayLineArray[VectorIndex];
+                                pWorkspace[frame + rOffset] = pRightDelayLineArray[VectorIndex];
+
+                                /* increment index */
+                                VectorIndex = (VectorIndex - 1) & VectorMask;
+                            }
                         }
-
-                        /* store result back */
-                        TargetLine[TargetIndex] = T + S;
                     }
-
-                    /* perform data update */
-                    workspace[Scan + lOffset] = LeftDelayLineArray[VectorIndex];
-                    workspace[Scan + rOffset] = RightDelayLineArray[VectorIndex];
-
-                    /* increment index */
-                    VectorIndex = (VectorIndex - 1) & VectorMask;
                 }
 
                 /* write back index */
@@ -1719,6 +1723,51 @@ namespace OutOfPhase
                 SynthParamRec SynthParams,
                 bool writeOutputLogs)
             {
+                if (this.Type == DelayType.eTypeOscillatorDelay)
+                {
+                    UnifiedDelayCtrlRec[] CtrlVector = this.CtrlVector;
+                    for (int Scan = 0; Scan < CtrlVector.Length; Scan++)
+                    {
+                        FreeEnvelopeStateRecord(
+                            ref CtrlVector[Scan].Osc.SourceEnvelope,
+                            SynthParams);
+                        FreeLFOGenerator(
+                            ref CtrlVector[Scan].Osc.SourceLFO,
+                            SynthParams);
+
+                        FreeEnvelopeStateRecord(
+                            ref CtrlVector[Scan].Osc.TargetEnvelope,
+                            SynthParams);
+                        FreeLFOGenerator(
+                            ref CtrlVector[Scan].Osc.TargetLFO,
+                            SynthParams);
+
+                        FreeEnvelopeStateRecord(
+                            ref CtrlVector[Scan].Osc.ScaleEnvelope,
+                            SynthParams);
+                        FreeLFOGenerator(
+                            ref CtrlVector[Scan].Osc.ScaleLFO,
+                            SynthParams);
+
+                        Debug.Assert((CtrlVector[Scan].Osc.CutoffEnvelope != null)
+                            == (CtrlVector[Scan].Osc.CutoffLFO != null));
+                        if (CtrlVector[Scan].Osc.CutoffEnvelope != null)
+                        {
+                            FreeEnvelopeStateRecord(
+                                ref CtrlVector[Scan].Osc.CutoffEnvelope,
+                                SynthParams);
+                        }
+                        if (CtrlVector[Scan].Osc.CutoffLFO != null)
+                        {
+                            FreeLFOGenerator(
+                                ref CtrlVector[Scan].Osc.CutoffLFO,
+                                SynthParams);
+                        }
+                    }
+                }
+
+                Free(ref SynthParams.freelists.FloatBufferFreeList, ref this.LeftDelayLineArray);
+                Free(ref SynthParams.freelists.FloatBufferFreeList, ref this.RightDelayLineArray);
             }
         }
     }

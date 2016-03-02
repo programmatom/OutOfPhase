@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -45,6 +46,7 @@ namespace OutOfPhase
             eMultiInstrParseExpectedAs,
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct ZoneRec
         {
             /* name of the instrument for this zone */

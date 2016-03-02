@@ -26,7 +26,9 @@ using System.IO;
 #if VECTOR
 using System.Numerics;
 #endif
+using System.Reflection;
 using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -52,13 +54,13 @@ namespace OutOfPhase
 
         public class StopTask : IStopTask, IStoppedTask
         {
-            private volatile int stopped;
+            private int stopped;
 
-            public bool Stopped { get { return stopped != 0; } }
+            public bool Stopped { get { return Thread.VolatileRead(ref stopped) != 0; } }
 
             public void Stop()
             {
-                stopped = 1;
+                Thread.VolatileWrite(ref stopped, 1);
                 if (OnStop != null)
                 {
                     OnStop.Invoke(this, EventArgs.Empty);
@@ -255,28 +257,271 @@ namespace OutOfPhase
             // The system call is potentially expensive - wrap with a method so it shows up on the
             // profiles if it is costing too much.
             // NOTE: calls to this method need accuracy and fidelity to QueryPerformanceFrequency().
-            public static bool QueryPerformanceCounter(out long value)
+            [MethodImpl(MethodImplOptions.NoInlining)] // TODO: remove once profile is verified
+            public static long QueryPerformanceCounter()
             {
-                return _QueryPerformanceCounter(out value);
+                long value;
+                _QueryPerformanceCounter(out value);
+                return value;
             }
 
             // The system call is potentially expensive - wrap with a method so it shows up on the
             // profiles if it is costing too much.
             // NOTE: calls to this one must be very fast but may be inaccurate (fine-grained cost assessments).
             // This call is a candidate for replacement by the RDTSC instruction (requires native library).
-            public static bool QueryPerformanceCounterFast(out long value)
+            [MethodImpl(MethodImplOptions.NoInlining)] // TODO: remove once profile is verified
+            public static long QueryPerformanceCounterFast()
             {
-                return _QueryPerformanceCounter(out value);
+                long value;
+                _QueryPerformanceCounter(out value);
+                return value;
             }
         }
 
-        public class SynthControlRec
+        [StructLayout(LayoutKind.Auto)]
+        public struct SynthControlRec
         {
             public int nActualFrames;
             public int NumNoteDurationTicks;
             public bool UpdateEnvelopes;
             public bool AreWeStillFastForwarding;
             public bool fScheduledSkip;
+        }
+
+        // this goes in the shared SynthState object
+        [StructLayout(LayoutKind.Auto)]
+        public struct SharedFreeListsRec
+        {
+            // TODO: tune these
+            public const int SmallItemBlockSize = 32;
+            public const int LargeItemBlockSize = 1;
+            public const int SmallItemMaxBytes = 512;
+
+            public SharedBlockFreeList<object> emptyContainersSmallItemFreeList;
+            public SharedBlockFreeList<object> emptyContainersLargeItemFreeList;
+
+            public SharedBlockFreeList<FrozenNoteConsCell> frozenNoteConsCellFreeList;
+            public SharedBlockFreeList<EvalEnvelopeRec> envelopeStateFreeList;
+            public SharedBlockFreeList<LFOGenRec> lfoGenStateFreeList;
+            public SharedBlockArrayFreeList<OneEnvPhaseRec> envelopeOnePhaseFreeList;
+            public SharedBlockArrayFreeList<LFOOneStateRec> lfoGenOneFreeList;
+            public SharedBlockFreeList<OscBankConsCell> oscBankConsCellFreeList;
+            public SharedBlockFreeList<OscStateBankRec> oscStateBankFreeList;
+            public SharedBlockFreeList<OscStateRec> oscStateFreeList;
+            public SharedBlockFreeList<AlgorithmicStateRec> algorithmicStateFreeList;
+            public SharedBlockFreeList<SampleStateRec> sampleStateFreeList;
+            public SharedBlockFreeList<WaveTableStateRec> waveTableStateFreeList;
+            public SharedBlockFreeList<ResonantLowpass2Rec> resonantLowpass2FreeList;
+            public SharedBlockFreeList<ResonantLowpassRec> resonantLowpassFreeList;
+            public SharedBlockArrayFreeList<IIR2DirectIRec> iir2DirectIFreeList;
+            public SharedBlockArrayFreeList<FilterRec> filterRecFreeList;
+            public SharedBlockFreeList<FilterArrayRec> filterArrayRecFreeList;
+            public SharedBlockFreeList<OscFilterParamRec> OscFilterParamRecFreeList;
+            public SharedBlockArrayFreeList<Single> FloatBufferFreeList;
+            public SharedBlockFreeList<FOFStateRec> FOFStateRecFreeList;
+            public SharedBlockFreeList<FOFGrainRec> FOFGrainRecFreeList;
+            public SharedBlockFreeList<OscEffectGenRec> OscEffectGenRecFreeList;
+            public SharedBlockArrayFreeList<IOscillatorEffect> IOscillatorEffectFreeList;
+            public SharedBlockFreeList<ReleaseRec> ReleaseRecFreeList;
+
+            public SharedFreeListsRec(int unused)
+            {
+                this.emptyContainersSmallItemFreeList = new SharedBlockFreeList<object>(SmallItemBlockSize);
+                this.emptyContainersLargeItemFreeList = new SharedBlockFreeList<object>(LargeItemBlockSize);
+
+                this.frozenNoteConsCellFreeList = new SharedBlockFreeList<FrozenNoteConsCell>(SmallItemBlockSize);
+                this.envelopeStateFreeList = new SharedBlockFreeList<EvalEnvelopeRec>(SmallItemBlockSize);
+                this.lfoGenStateFreeList = new SharedBlockFreeList<LFOGenRec>(SmallItemBlockSize);
+                this.envelopeOnePhaseFreeList = new SharedBlockArrayFreeList<OneEnvPhaseRec>(SmallItemBlockSize, LargeItemBlockSize, SmallItemMaxBytes);
+                this.lfoGenOneFreeList = new SharedBlockArrayFreeList<LFOOneStateRec>(SmallItemBlockSize, LargeItemBlockSize, SmallItemMaxBytes);
+                this.oscBankConsCellFreeList = new SharedBlockFreeList<OscBankConsCell>(SmallItemBlockSize);
+                this.oscStateBankFreeList = new SharedBlockFreeList<OscStateBankRec>(SmallItemBlockSize);
+                this.oscStateFreeList = new SharedBlockFreeList<OscStateRec>(SmallItemBlockSize);
+                this.algorithmicStateFreeList = new SharedBlockFreeList<AlgorithmicStateRec>(SmallItemBlockSize);
+                this.sampleStateFreeList = new SharedBlockFreeList<SampleStateRec>(SmallItemBlockSize);
+                this.waveTableStateFreeList = new SharedBlockFreeList<WaveTableStateRec>(SmallItemBlockSize);
+                this.resonantLowpass2FreeList = new SharedBlockFreeList<ResonantLowpass2Rec>(SmallItemBlockSize);
+                this.resonantLowpassFreeList = new SharedBlockFreeList<ResonantLowpassRec>(SmallItemBlockSize);
+                this.iir2DirectIFreeList = new SharedBlockArrayFreeList<IIR2DirectIRec>(SmallItemBlockSize, LargeItemBlockSize, SmallItemMaxBytes);
+                this.filterRecFreeList = new SharedBlockArrayFreeList<FilterRec>(SmallItemBlockSize, LargeItemBlockSize, SmallItemMaxBytes);
+                this.filterArrayRecFreeList = new SharedBlockFreeList<FilterArrayRec>(SmallItemBlockSize);
+                this.OscFilterParamRecFreeList = new SharedBlockFreeList<OscFilterParamRec>(SmallItemBlockSize);
+                this.FloatBufferFreeList = new SharedBlockArrayFreeList<Single>(SmallItemBlockSize, LargeItemBlockSize, SmallItemMaxBytes);
+                this.FOFStateRecFreeList = new SharedBlockFreeList<FOFStateRec>(SmallItemBlockSize);
+                this.FOFGrainRecFreeList = new SharedBlockFreeList<FOFGrainRec>(SmallItemBlockSize);
+                this.OscEffectGenRecFreeList = new SharedBlockFreeList<OscEffectGenRec>(SmallItemBlockSize);
+                this.IOscillatorEffectFreeList = new SharedBlockArrayFreeList<IOscillatorEffect>(SmallItemBlockSize, LargeItemBlockSize, SmallItemMaxBytes);
+                this.ReleaseRecFreeList = new SharedBlockFreeList<ReleaseRec>(SmallItemBlockSize);
+            }
+
+#if DEBUG
+            public void SuppressFinalizers(SynthParamRec[] SynthParamsPerProc)
+            {
+                emptyContainersSmallItemFreeList.SuppressFinalizers();
+                emptyContainersLargeItemFreeList.SuppressFinalizers();
+
+                frozenNoteConsCellFreeList.SuppressFinalizers();
+                envelopeStateFreeList.SuppressFinalizers();
+                lfoGenStateFreeList.SuppressFinalizers();
+                oscBankConsCellFreeList.SuppressFinalizers();
+                oscStateBankFreeList.SuppressFinalizers();
+                oscStateFreeList.SuppressFinalizers();
+                algorithmicStateFreeList.SuppressFinalizers();
+                sampleStateFreeList.SuppressFinalizers();
+                waveTableStateFreeList.SuppressFinalizers();
+                resonantLowpass2FreeList.SuppressFinalizers();
+                resonantLowpassFreeList.SuppressFinalizers();
+                filterArrayRecFreeList.SuppressFinalizers();
+                OscFilterParamRecFreeList.SuppressFinalizers();
+                FOFStateRecFreeList.SuppressFinalizers();
+                FOFGrainRecFreeList.SuppressFinalizers();
+                OscEffectGenRecFreeList.SuppressFinalizers();
+                ReleaseRecFreeList.SuppressFinalizers();
+
+                for (int p = 0; p < SynthParamsPerProc.Length; p++)
+                {
+                    SynthParamsPerProc[p].freelists.frozenNoteConsCellFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.envelopeStateFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.lfoGenStateFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.oscBankConsCellFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.oscStateBankFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.oscStateFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.algorithmicStateFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.sampleStateFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.waveTableStateFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.resonantLowpass2FreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.resonantLowpassFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.filterArrayRecFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.OscFilterParamRecFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.FOFStateRecFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.FOFGrainRecFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.OscEffectGenRecFreeList.SuppressFinalizers();
+                    SynthParamsPerProc[p].freelists.ReleaseRecFreeList.SuppressFinalizers();
+                }
+            }
+#endif
+
+            public void WriteReport(TextWriter writer, string prefix, SynthParamRec[] SynthParamsPerProc)
+            {
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(EvalEnvelopeRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(OneEnvPhaseRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(LFOGenRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(LFOOneStateRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(FrozenNoteConsCell));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(OscBankConsCell));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(OscStateBankRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(OscStateRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(AlgorithmicStateRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(SampleStateRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(WaveTableStateRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(ResonantLowpass2Rec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(ResonantLowpassRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(IIR2DirectIRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(FilterRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(FilterArrayRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(OscFilterParamRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(Single));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(FOFStateRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(FOFGrainRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(OscEffectGenRec));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(IOscillatorEffect));
+                WriteReport1(writer, prefix, SynthParamsPerProc, typeof(ReleaseRec));
+            }
+
+            private void WriteReport1(TextWriter writer, string prefix, SynthParamRec[] SynthParamsPerProc, Type type)
+            {
+                bool isArray;
+                int countInUse = 0;
+                int countFree = 0;
+                for (int p = 0; p < SynthParamsPerProc.Length; p++)
+                {
+                    countInUse += InvokeProperty(type, SynthParamsPerProc[p].freelists, "get_CountInUse", out isArray);
+                    countFree += InvokeProperty(type, SynthParamsPerProc[p].freelists, "get_CountFree", out isArray);
+                }
+                countFree += InvokeProperty(type, this, "get_Count", out isArray);
+                writer.WriteLine(
+                    "{0}{1}{2}: free at end = {3}, {4} = {5}",
+                    prefix,
+                    type.Name,
+                    isArray ? "[]" : String.Empty,
+                    countFree,
+                    countInUse == 0 ? "leaked" : "LEAKED",
+                    countInUse);
+            }
+
+            private int InvokeProperty(Type type, object o, string name, out bool isArray)
+            {
+                isArray = false;
+                foreach (FieldInfo field in o.GetType().GetFields())
+                {
+                    Type[] genericArguments = field.FieldType.GetGenericArguments();
+                    if ((genericArguments.Length == 1) && type.Equals(genericArguments[0]))
+                    {
+                        MethodInfo methodInfo = field.FieldType.GetMethod(name);
+                        object result = methodInfo.Invoke(field.GetValue(o), null);
+                        isArray = field.FieldType.GetGenericTypeDefinition().Equals(typeof(SharedBlockArrayFreeList<>))
+                            || field.FieldType.GetGenericTypeDefinition().Equals(typeof(ArrayFreeList<>));
+                        return (int)result;
+                    }
+                }
+                throw new ArgumentException();
+            }
+        }
+
+        // these go one in each thread - SynthParams
+        [StructLayout(LayoutKind.Auto)]
+        public struct ThreadFreeListsRec
+        {
+            public SimpleFreeList<FrozenNoteConsCell> frozenNoteConsCellFreeList;
+            public SimpleFreeList<EvalEnvelopeRec> envelopeStateFreeList;
+            public SimpleFreeList<LFOGenRec> lfoGenStateFreeList;
+            public ArrayFreeList<OneEnvPhaseRec> envelopeOnePhaseFreeList;
+            public ArrayFreeList<LFOOneStateRec> lfoGenOneFreeList;
+            public SimpleFreeList<OscBankConsCell> oscBankConsCellFreeList;
+            public SimpleFreeList<OscStateBankRec> oscStateBankFreeList;
+            public SimpleFreeList<OscStateRec> oscStateFreeList;
+            public SimpleFreeList<AlgorithmicStateRec> algorithmicStateFreeList;
+            public SimpleFreeList<SampleStateRec> sampleStateFreeList;
+            public SimpleFreeList<WaveTableStateRec> waveTableStateFreeList;
+            public SimpleFreeList<ResonantLowpass2Rec> resonantLowpass2FreeList;
+            public SimpleFreeList<ResonantLowpassRec> resonantLowpassFreeList;
+            public ArrayFreeList<IIR2DirectIRec> iir2DirectIFreeList;
+            public ArrayFreeList<FilterRec> filterRecFreeList;
+            public SimpleFreeList<FilterArrayRec> filterArrayRecFreeList;
+            public SimpleFreeList<OscFilterParamRec> OscFilterParamRecFreeList;
+            public ArrayFreeList<Single> FloatBufferFreeList;
+            public SimpleFreeList<FOFStateRec> FOFStateRecFreeList;
+            public SimpleFreeList<FOFGrainRec> FOFGrainRecFreeList;
+            public SimpleFreeList<OscEffectGenRec> OscEffectGenRecFreeList;
+            public ArrayFreeList<IOscillatorEffect> IOscillatorEffectFreeList;
+            public SimpleFreeList<ReleaseRec> ReleaseRecFreeList;
+
+            public ThreadFreeListsRec(ref SharedFreeListsRec sharedFreeLists)
+            {
+                this.frozenNoteConsCellFreeList = new SimpleFreeList<FrozenNoteConsCell>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.frozenNoteConsCellFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.envelopeStateFreeList = new SimpleFreeList<EvalEnvelopeRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.envelopeStateFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.lfoGenStateFreeList = new SimpleFreeList<LFOGenRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.lfoGenStateFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.envelopeOnePhaseFreeList = new ArrayFreeList<OneEnvPhaseRec>(SharedFreeListsRec.SmallItemBlockSize, SharedFreeListsRec.LargeItemBlockSize, SharedFreeListsRec.SmallItemMaxBytes, sharedFreeLists.envelopeOnePhaseFreeList, sharedFreeLists.emptyContainersSmallItemFreeList, sharedFreeLists.emptyContainersLargeItemFreeList);
+                this.lfoGenOneFreeList = new ArrayFreeList<LFOOneStateRec>(SharedFreeListsRec.SmallItemBlockSize, SharedFreeListsRec.LargeItemBlockSize, SharedFreeListsRec.SmallItemMaxBytes, sharedFreeLists.lfoGenOneFreeList, sharedFreeLists.emptyContainersSmallItemFreeList, sharedFreeLists.emptyContainersLargeItemFreeList);
+                this.oscBankConsCellFreeList = new SimpleFreeList<OscBankConsCell>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.oscBankConsCellFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.oscStateBankFreeList = new SimpleFreeList<OscStateBankRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.oscStateBankFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.oscStateFreeList = new SimpleFreeList<OscStateRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.oscStateFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.algorithmicStateFreeList = new SimpleFreeList<AlgorithmicStateRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.algorithmicStateFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.sampleStateFreeList = new SimpleFreeList<SampleStateRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.sampleStateFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.waveTableStateFreeList = new SimpleFreeList<WaveTableStateRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.waveTableStateFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.resonantLowpass2FreeList = new SimpleFreeList<ResonantLowpass2Rec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.resonantLowpass2FreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.resonantLowpassFreeList = new SimpleFreeList<ResonantLowpassRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.resonantLowpassFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.iir2DirectIFreeList = new ArrayFreeList<IIR2DirectIRec>(SharedFreeListsRec.SmallItemBlockSize, SharedFreeListsRec.LargeItemBlockSize, SharedFreeListsRec.SmallItemMaxBytes, sharedFreeLists.iir2DirectIFreeList, sharedFreeLists.emptyContainersSmallItemFreeList, sharedFreeLists.emptyContainersLargeItemFreeList);
+                this.filterRecFreeList = new ArrayFreeList<FilterRec>(SharedFreeListsRec.SmallItemBlockSize, SharedFreeListsRec.LargeItemBlockSize, SharedFreeListsRec.SmallItemMaxBytes, sharedFreeLists.filterRecFreeList, sharedFreeLists.emptyContainersSmallItemFreeList, sharedFreeLists.emptyContainersLargeItemFreeList);
+                this.filterArrayRecFreeList = new SimpleFreeList<FilterArrayRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.filterArrayRecFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.OscFilterParamRecFreeList = new SimpleFreeList<OscFilterParamRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.OscFilterParamRecFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.FloatBufferFreeList = new ArrayFreeList<Single>(SharedFreeListsRec.SmallItemBlockSize, SharedFreeListsRec.LargeItemBlockSize, SharedFreeListsRec.SmallItemMaxBytes, sharedFreeLists.FloatBufferFreeList, sharedFreeLists.emptyContainersSmallItemFreeList, sharedFreeLists.emptyContainersLargeItemFreeList);
+                this.FOFStateRecFreeList = new SimpleFreeList<FOFStateRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.FOFStateRecFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.FOFGrainRecFreeList = new SimpleFreeList<FOFGrainRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.FOFGrainRecFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.OscEffectGenRecFreeList = new SimpleFreeList<OscEffectGenRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.OscEffectGenRecFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+                this.IOscillatorEffectFreeList = new ArrayFreeList<IOscillatorEffect>(SharedFreeListsRec.SmallItemBlockSize, SharedFreeListsRec.LargeItemBlockSize, SharedFreeListsRec.SmallItemMaxBytes, sharedFreeLists.IOscillatorEffectFreeList, sharedFreeLists.emptyContainersSmallItemFreeList, sharedFreeLists.emptyContainersLargeItemFreeList);
+                this.ReleaseRecFreeList = new SimpleFreeList<ReleaseRec>(SharedFreeListsRec.SmallItemBlockSize, sharedFreeLists.ReleaseRecFreeList, sharedFreeLists.emptyContainersSmallItemFreeList);
+            }
         }
 
         /* structure containing generally useful parameters for passing around in the */
@@ -402,10 +647,20 @@ namespace OutOfPhase
             // tracing support
             public AutomationSettings.TraceFlags level2TraceFlags;
 
+            // allocation suppression
+            public ThreadFreeListsRec freelists;
+
+
+            private SynthParamRec(
+                ref SharedFreeListsRec sharedFreeLists)
+            {
+                freelists = new ThreadFreeListsRec(ref sharedFreeLists);
+            }
 
             public SynthParamRec(
                 SynthParamRec template,
-                int threadIndex)
+                int threadIndex,
+                ref SharedFreeListsRec sharedFreeLists)
                 : this(
                     template.iEnvelopeRate,
                     template.iSamplingRate,
@@ -420,7 +675,8 @@ namespace OutOfPhase
                     template.SectionInputAccumulationWorkspaces.Length / 2,
                     template.AllScratchWorkspaces32.Length,
                     template.AllScratchWorkspaces64.Length,
-                    threadIndex)
+                    threadIndex,
+                    ref sharedFreeLists)
             {
                 this.dEnvelopeRate = template.dEnvelopeRate;
                 this.dSamplingRate = template.dSamplingRate;
@@ -429,7 +685,7 @@ namespace OutOfPhase
                 this.dCurrentBeatsPerMinute = template.dCurrentBeatsPerMinute;
             }
 
-            public SynthParamRec(
+            public unsafe SynthParamRec(
                 int iEnvelopeRate,
                 int iSamplingRate,
                 int iOversampling,
@@ -443,7 +699,9 @@ namespace OutOfPhase
                 int sectionCount,
                 int required32BitWorkspaceCount,
                 int required64BitWorkspaceCount,
-                int threadIndex)
+                int threadIndex,
+                ref SharedFreeListsRec sharedFreeLists)
+                : this(ref sharedFreeLists)
             {
                 this.dEnvelopeRate = this.iEnvelopeRate = iEnvelopeRate;
                 this.dSamplingRate = this.iSamplingRate = iSamplingRate;
@@ -474,78 +732,82 @@ namespace OutOfPhase
 
                     /* allocate the workspace */
                     /* allocate block containing all workspace areas */
-                    const int NumberOfWorkspacesBase = 8; // this count is of L&R pairs
-                    int NumberOfWorkspacesAdditional = Math.Max(0, required32BitWorkspaceCount - 6/*scratch {1, 2, 3} x {L, R}*/);
+                    const int NumberOfWorkspacesBase = 10; // this count is of L&R pairs: Score, Section, Track, Combined, Oscillator
+                    int NumberOfWorkspacesAdditional = Math.Max(0, required32BitWorkspaceCount - 6/*Scratch {1, 2, 4} x {L, R}*/);
                     this.workspace = new float[(oneLength + WORKSPACEALIGNBYTES / sizeof(float)) *
                         (2 * (NumberOfWorkspacesBase + sectionCount) + NumberOfWorkspacesAdditional)];
                     this.hWorkspace = GCHandle.Alloc(this.workspace, GCHandleType.Pinned);
-                    // assign workspace subsections
-                    int offset = 0;
-                    this.ScoreWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.ScoreWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.SectionWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.SectionWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.TrackWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.TrackWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.CombinedOscillatorWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.CombinedOscillatorWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.OscillatorWorkspaceLOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.OscillatorWorkspaceROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.ScratchWorkspace1LOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.ScratchWorkspace1ROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.ScratchWorkspace2LOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.ScratchWorkspace2ROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.ScratchWorkspace4LOffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    this.ScratchWorkspace4ROffset = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                    offset += oneLength;
-                    Debug.Assert(offset <= this.workspace.Length);
-
-                    this.SectionInputAccumulationWorkspaces = new int[2 * sectionCount];
-                    for (int i = 0; i < 2 * sectionCount; i++)
+                    fixed (float* pWorkspace0 = &(this.workspace[0]))
                     {
-                        this.SectionInputAccumulationWorkspaces[i] = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        IntPtr iWorkspace0 = new IntPtr(pWorkspace0);
+                        // assign workspace subsections
+                        int offset = 0;
+                        this.ScoreWorkspaceLOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
                         offset += oneLength;
-                    }
-                    Debug.Assert(offset <= this.workspace.Length);
-
-                    List<int> allScratch = new List<int>();
-                    allScratch.Add(this.ScratchWorkspace1LOffset);
-                    allScratch.Add(this.ScratchWorkspace1ROffset);
-                    allScratch.Add(this.ScratchWorkspace2LOffset);
-                    allScratch.Add(this.ScratchWorkspace2ROffset);
-                    allScratch.Add(this.ScratchWorkspace4LOffset);
-                    allScratch.Add(this.ScratchWorkspace4ROffset);
-                    for (int i = 0; i < NumberOfWorkspacesAdditional; i++)
-                    {
-                        int start = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(float));
-                        allScratch.Add(start);
+                        this.ScoreWorkspaceROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
                         offset += oneLength;
-                    }
-                    AllScratchWorkspaces32 = allScratch.ToArray();
-                    Debug.Assert(offset <= this.workspace.Length);
+                        this.SectionWorkspaceLOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.SectionWorkspaceROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.TrackWorkspaceLOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.TrackWorkspaceROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.CombinedOscillatorWorkspaceLOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.CombinedOscillatorWorkspaceROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.OscillatorWorkspaceLOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.OscillatorWorkspaceROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.ScratchWorkspace1LOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.ScratchWorkspace1ROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.ScratchWorkspace2LOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.ScratchWorkspace2ROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.ScratchWorkspace4LOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.ScratchWorkspace4ROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        Debug.Assert(offset <= this.workspace.Length);
 
-                    // TODO: move these into the main workspace array
+                        this.SectionInputAccumulationWorkspaces = new int[2 * sectionCount];
+                        for (int i = 0; i < 2 * sectionCount; i++)
+                        {
+                            this.SectionInputAccumulationWorkspaces[i] = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                            offset += oneLength;
+                        }
+                        Debug.Assert(offset <= this.workspace.Length);
+
+                        List<int> allScratch = new List<int>();
+                        allScratch.Add(this.ScratchWorkspace1LOffset);
+                        allScratch.Add(this.ScratchWorkspace1ROffset);
+                        allScratch.Add(this.ScratchWorkspace2LOffset);
+                        allScratch.Add(this.ScratchWorkspace2ROffset);
+                        allScratch.Add(this.ScratchWorkspace4LOffset);
+                        allScratch.Add(this.ScratchWorkspace4ROffset);
+                        for (int i = 0; i < NumberOfWorkspacesAdditional; i++)
+                        {
+                            int start = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                            allScratch.Add(start);
+                            offset += oneLength;
+                        }
+                        AllScratchWorkspaces32 = allScratch.ToArray();
+                        Debug.Assert(offset <= this.workspace.Length);
+
+                        // TODO: move these into the main workspace array
 #if VECTOR
-                    vectorWorkspace1 = new AlignedWorkspace(Vector<float>.Count);
-                    vectorWorkspace2 = new AlignedWorkspace(Vector<float>.Count);
+                        vectorWorkspace1 = new AlignedWorkspace(Vector<float>.Count);
+                        vectorWorkspace2 = new AlignedWorkspace(Vector<float>.Count);
 #endif
 
-                    this.SectionWorkspaceUsed = new bool[sectionCount];
+                        this.SectionWorkspaceUsed = new bool[sectionCount];
+                    }
                 }
 
                 // Fixed64[] workspaces
@@ -570,21 +832,25 @@ namespace OutOfPhase
                     int NumberOfWorkspaces = Math.Max(1, required64BitWorkspaceCount); // this count is of L&R pairs
                     this.ScratchWorkspace3 = new Fixed64[(oneLength + WORKSPACEALIGNBYTES / sizeof(double)) * NumberOfWorkspaces];
                     this.hScratchWorkspace3 = GCHandle.Alloc(this.ScratchWorkspace3, GCHandleType.Pinned);
-                    int offset = 0;
-                    this.ScratchWorkspace3Offset = Align(this.hScratchWorkspace3.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(double));
-                    offset += oneLength;
-                    Debug.Assert(offset <= this.ScratchWorkspace3.Length);
-
-                    List<int> allScratch = new List<int>();
-                    allScratch.Add(this.ScratchWorkspace3Offset);
-                    for (int i = 0; i < NumberOfWorkspaces; i++)
+                    fixed (Fixed64* pScratchWorkspace0 = &(this.ScratchWorkspace3[0]))
                     {
-                        int start = Align(this.hWorkspace.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(double));
-                        allScratch.Add(start);
+                        IntPtr iScratchWorkspace0 = new IntPtr(pScratchWorkspace0);
+                        int offset = 0;
+                        this.ScratchWorkspace3Offset = Align(this.hScratchWorkspace3.AddrOfPinnedObject(), ref offset, WORKSPACEALIGNBYTES, sizeof(double));
                         offset += oneLength;
+                        Debug.Assert(offset <= this.ScratchWorkspace3.Length);
+
+                        List<int> allScratch = new List<int>();
+                        allScratch.Add(this.ScratchWorkspace3Offset);
+                        for (int i = 0; i < NumberOfWorkspaces; i++)
+                        {
+                            int start = Align(iScratchWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(double));
+                            allScratch.Add(start);
+                            offset += oneLength;
+                        }
+                        AllScratchWorkspaces64 = allScratch.ToArray();
+                        Debug.Assert(offset <= this.workspace.Length);
                     }
-                    AllScratchWorkspaces64 = allScratch.ToArray();
-                    Debug.Assert(offset <= this.workspace.Length);
                 }
             }
 
@@ -751,6 +1017,7 @@ namespace OutOfPhase
             public int denormalCount; // iff level2TraceFlags & Denormals != 0
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct TraceInfoRec
         {
             public int id;
@@ -782,19 +1049,19 @@ namespace OutOfPhase
 
             public ManualResetEvent startBarrier;
             public ManualResetEvent endBarrier;
-            public volatile int startBarrierReleaseSpin;
+            public int startBarrierReleaseSpin;
 #if DEBUG
             public long epoch;
 #endif
 
-            public volatile int startingThreadCount;
-            public volatile int completionThreadCount;
+            public int startingThreadCount;
+            public int completionThreadCount;
 
             public SecEffRec[] SectionArrayAll; // includes DefaultSectionEffectSurrogate
             public SecEffRec[] SectionArrayExcludesDefault; // excludes DefaultSectionEffectSurrogate
 
             public Thread[] threads; // [0]=main thread, [1..c-1] for each aux processor
-            public volatile int exit; // non-zero causes exit
+            public int exit; // non-zero causes exit
 
 
             //
@@ -838,6 +1105,14 @@ namespace OutOfPhase
 
             public TextWriter traceScheduleWriter;
             public bool traceScheduleEnableLevel2;
+
+
+            // resource reduction
+
+            public SharedFreeListsRec freelists = new SharedFreeListsRec(0);
+
+
+            //
 
             public void Dispose()
             {
@@ -909,6 +1184,10 @@ namespace OutOfPhase
                 try
                 {
                     SynthErrorCodes Result;
+
+
+                    // globals
+                    Synthesizer.EnableFreeLists = Program.Config.EnableFreeLists;
 
 
                     /* check to see that there aren't objects with the same name */
@@ -1048,7 +1327,8 @@ namespace OutOfPhase
                         sectionCount,
                         scratch32Count,
                         scratch64Count,
-                        0);
+                        0,
+                        ref SynthState.freelists);
 
                     SynthState.ListOfTracks = ListOfTracks;
                     SynthState.KeyTrack = KeyTrack;
@@ -1268,7 +1548,10 @@ namespace OutOfPhase
                         SynthState.SynthParamsPerProc[0] = SynthParams;
                         for (int i = 1; i < SynthState.concurrency; i++)
                         {
-                            SynthState.SynthParamsPerProc[i] = new SynthParamRec(SynthParams, i);
+                            SynthState.SynthParamsPerProc[i] = new SynthParamRec(
+                                SynthParams,
+                                i,
+                                ref SynthState.freelists);
                         }
 
                         // create synchronization objects
@@ -1361,6 +1644,8 @@ namespace OutOfPhase
                     }
 
 
+                    // epilogue
+
                     SynthStateOut = SynthState;
 
                     return SynthErrorCodes.eSynthDone;
@@ -1372,6 +1657,12 @@ namespace OutOfPhase
                         SynthState.Dispose();
                     }
                 }
+            }
+
+            private static void RebalanceAndPruneFreeLists(
+                SynthStateRec SynthState)
+            {
+                // TODO: rebalance and prune
             }
 
             private static void ComputeWorkspaceRequirements1(
@@ -1730,7 +2021,7 @@ namespace OutOfPhase
                 // exit aux threads
                 if (SynthState.concurrency > 1)
                 {
-                    SynthState.exit = 1;
+                    Thread.VolatileWrite(ref SynthState.exit, 1);
                     SpinWaitOnThreadsStarting(SynthState);
 #if DEBUG
                     Interlocked.Increment(ref SynthState.epoch);
@@ -1803,7 +2094,7 @@ namespace OutOfPhase
             private static void SpinWaitOnThreadsStarting(
                 SynthStateRec SynthState)
             {
-                while (SynthState.startingThreadCount != SynthState.concurrency - 1)
+                while (Thread.VolatileRead(ref SynthState.startingThreadCount) != SynthState.concurrency - 1)
                 {
                 }
             }
@@ -1812,7 +2103,7 @@ namespace OutOfPhase
             private static void SpinWaitOnStartBarrierReleased(
                 SynthStateRec SynthState)
             {
-                while (SynthState.startBarrierReleaseSpin == 0)
+                while (Thread.VolatileRead(ref SynthState.startBarrierReleaseSpin) == 0)
                 {
                 }
             }
@@ -1822,7 +2113,7 @@ namespace OutOfPhase
             private static void SpinWaitOnThreadsCompletion(
                 SynthStateRec SynthState)
             {
-                while (SynthState.completionThreadCount != SynthState.concurrency - 1)
+                while (Thread.VolatileRead(ref SynthState.completionThreadCount) != SynthState.concurrency - 1)
                 {
                 }
             }
@@ -1834,8 +2125,7 @@ namespace OutOfPhase
                 SynthStateRec SynthState,
                 out int nActualFramesOut)
             {
-                long time0;
-                Timing.QueryPerformanceCounter(out time0);
+                long time0 = Timing.QueryPerformanceCounter();
                 if (SynthState.time3 != 0)
                 {
                     SynthState.phase3Time += time0 - SynthState.time3;
@@ -2039,9 +2329,8 @@ namespace OutOfPhase
                         SpinWaitOnThreadsStarting(SynthState);
 
                         SynthState.endBarrier.Reset();
-                        SynthState.startBarrierReleaseSpin = 0;
+                        Thread.VolatileWrite(ref SynthState.startBarrierReleaseSpin, 0);
                         SynthState.startBarrier.Set();
-                        //SynthState.startBarrierReleaseSpin = 1; -- final bit
                     }
 
                     /* initialize the array */
@@ -2102,8 +2391,7 @@ namespace OutOfPhase
 
                 // break "if (AnyTrackActive)" to log time, then reenter guarded region
 
-                long time1;
-                Timing.QueryPerformanceCounter(out time1);
+                long time1 = Timing.QueryPerformanceCounter();
                 SynthState.phase0Time += time1 - time0;
 
                 SynthState.randomSeedProvider.Freeze();
@@ -2115,8 +2403,8 @@ namespace OutOfPhase
 
                     if (effectiveCurrency > 1) // must not reset for scheduled skips since threads are not triggerd this cycle
                     {
-                        SynthState.startingThreadCount = 0;
-                        SynthState.completionThreadCount = 0;
+                        Thread.VolatileWrite(ref SynthState.startingThreadCount, 0);
+                        Thread.VolatileWrite(ref SynthState.completionThreadCount, 0);
                     }
 
                     SynthState.control.nActualFrames = nActualFrames;
@@ -2231,10 +2519,7 @@ namespace OutOfPhase
 #endif
                     if (effectiveCurrency > 1)
                     {
-                        //SynthState.endBarrier.Reset();
-                        //SynthState.startBarrierReleaseSpin = 0;
-                        //SynthState.startBarrier.Set();
-                        SynthState.startBarrierReleaseSpin = 1;
+                        Thread.VolatileWrite(ref SynthState.startBarrierReleaseSpin, 1);
                     }
 
                     // synthesis on all threads including main
@@ -2269,7 +2554,7 @@ namespace OutOfPhase
                         == SynthState.DefaultSectionEffectSurrogate.sectionInputTarget); // should be ready
 #endif
 
-                    Timing.QueryPerformanceCounter(out time2);
+                    time2 = Timing.QueryPerformanceCounter();
                     SynthState.phase1Time += time2 - time1;
                     SynthState.DefaultSectionEffectSurrogate.traceInfo.start = time2;
                     SynthState.DefaultSectionEffectSurrogate.traceInfo.processor = 0;
@@ -2521,7 +2806,13 @@ namespace OutOfPhase
 
                 SynthState.randomSeedProvider.Unfreeze();
 
-                Timing.QueryPerformanceCounter(out SynthState.time3);
+                // incremental rebalancing of free lists
+                if (SynthState.concurrency > 1)
+                {
+                    RebalanceAndPruneFreeLists(SynthState);
+                }
+
+                SynthState.time3 = Timing.QueryPerformanceCounter();
                 SynthState.phase2Time += SynthState.time3 - time2;
                 if (effectiveCurrency > 0)
                 {
@@ -2771,8 +3062,7 @@ namespace OutOfPhase
 
                 Interlocked.Increment(ref CurrentEffectHandle.sectionInputCounter);
 
-                long end;
-                Timing.QueryPerformanceCounterFast(out end);
+                long end = Timing.QueryPerformanceCounterFast();
                 Scan.traceInfo.end = end;
                 Scan.lastCost = end - start;
                 start = end;
@@ -2984,8 +3274,7 @@ namespace OutOfPhase
                 // barrier (and main thread to do score effect processing and output)
                 Interlocked.Increment(ref SynthState.DefaultSectionEffectSurrogate.sectionInputCounter);
 
-                long end;
-                Timing.QueryPerformanceCounterFast(out end);
+                long end = Timing.QueryPerformanceCounterFast();
                 CurrentEffectHandle.traceInfo.end = end;
                 CurrentEffectHandle.lastCost = end - start;
                 start = end;
@@ -3013,8 +3302,7 @@ namespace OutOfPhase
 
                 // process objects
 
-                long start;
-                Timing.QueryPerformanceCounterFast(out start);
+                long start = Timing.QueryPerformanceCounterFast();
                 for (int i = processor; i < SynthState.CombinedPlayArray.Length; i++)
                 {
                     object o = SynthState.CombinedPlayArray[i];
@@ -3090,9 +3378,7 @@ namespace OutOfPhase
 #endif
                 while (true)
                 {
-#pragma warning disable 420 // ref volatile int loses the volatile, but Interlocked.Increment does the right thing, so suppress warning
                     Interlocked.Increment(ref SynthState.startingThreadCount);
-#pragma warning restore 420
                     // loop required to allow thread.Suspend() to be used for killing run-away pcode evals
                     while (!SynthState.startBarrier.WaitOne(500))
                     {
@@ -3104,7 +3390,7 @@ namespace OutOfPhase
                     lastEpoch = epoch;
 #endif
 
-                    if (SynthState.exit != 0)
+                    if (Thread.VolatileRead(ref SynthState.exit) != 0)
                     {
                         break;
                     }
@@ -3133,9 +3419,7 @@ namespace OutOfPhase
 #if DEBUG
                         Debug.Assert(lastEpoch == Interlocked.Read(ref SynthState.epoch));
 #endif
-#pragma warning disable 420 // ref volatile int loses the volatile, but Interlocked.Increment does the right thing, so suppress warning
                         Interlocked.Increment(ref SynthState.completionThreadCount); // signal completion of cycle to main thread
-#pragma warning restore 420
                     }
 
                     // loop required to allow thread.Suspend() to be used for killing run-away pcode evals
@@ -3378,13 +3662,22 @@ namespace OutOfPhase
                                     priorityBoost.Revert(true/*mainThread*/);
                                 }
 
-                                if (Error != SynthErrorCodes.eSynthDone)
+                                try
                                 {
-                                    SynthStateRec.FinalizeSynthesizer(
-                                        SynthState,
-                                        false/*writeOutputLogs*/);
-                                    ErrorInfoOut = ErrorInfo;
-                                    return Error;
+                                    if (Error != SynthErrorCodes.eSynthDone)
+                                    {
+                                        SynthStateRec.FinalizeSynthesizer(
+                                            SynthState,
+                                            false/*writeOutputLogs*/);
+                                        ErrorInfoOut = ErrorInfo;
+                                        return Error;
+                                    }
+                                }
+                                finally
+                                {
+#if DEBUG
+                                    SynthState.freelists.SuppressFinalizers(SynthState.SynthParamsPerProc);
+#endif
                                 }
                             }
 
@@ -3443,6 +3736,11 @@ namespace OutOfPhase
                     summaryWriter.WriteLine("  opening performance counters failed:");
                     summaryWriter.WriteLine(perfCounterFail);
                 }
+
+#if DEBUG
+                summaryWriter.WriteLine("  object free list statistics:");
+                SynthState.freelists.WriteReport(summaryWriter, "    ", SynthState.SynthParamsPerProc);
+#endif
 
                 summaryWriter.WriteLine("  elapsed real time:      {0:0.00} sec", (EndTime - StartTime).TotalSeconds);
 
@@ -3512,6 +3810,7 @@ namespace OutOfPhase
 
         // Initial idea for this came from:
         // https://social.msdn.microsoft.com/Forums/vstudio/en-US/73860618-21cb-459f-af6d-6ecb77c9c5f1/latency-for-realtime-audio-in-clr?forum=clr
+        [StructLayout(LayoutKind.Auto)]
         private struct ThreadPriorityBoostEncapsulator
         {
             private int mode;
@@ -3661,6 +3960,7 @@ namespace OutOfPhase
             private static extern bool AvRevertMmThreadCharacteristics(IntPtr AvrtHandle);
         }
 
+        [StructLayout(LayoutKind.Auto)]
         private struct SERec
         {
             public SynthErrorSubCodes ErrorEx;

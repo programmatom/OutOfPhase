@@ -141,7 +141,24 @@ namespace OutOfPhase
 
                 StateOut = null;
 
-                SampleStateRec State = new SampleStateRec();
+                SampleStateRec State = New(ref SynthParams.freelists.sampleStateFreeList);
+
+                // all fields must be assigned: State
+
+                // conservative initializations
+                State.SamplePositionDifferential = new Fixed64(0);
+                State.PreStartCountdown = 0;
+                State.SampleGenSamples = null;
+                State.Loop1Exists = false;
+                State.Loop2Exists = false;
+                State.Loop3Exists = false;
+                State.LoopState = (LoopType)0;
+                State.CurrentLoopStart = 0;
+                State.CurrentLoopLength = 0;
+                State.CurrentLoopEnd = 0;
+                State.CurrentLoopBidirectionality = false;
+                State.LoopIsReversing = false;
+                State.EffectiveLoopState = (LoopType)0;
 
                 State.Template = Template;
 
@@ -395,11 +412,8 @@ namespace OutOfPhase
                 {
                     MaxPreOrigin = OnePreOrigin;
                 }
-                // initial value for envelope smoothing
-                State.Loudness = (float)LFOGenInitialValue(
-                    State.LoudnessLFOGenerator,
-                    EnvelopeInitialValue(
-                       State.SampleLoudnessEnvelope));
+                State.PreviousLoudness = 0;
+                State.Loudness = 0;
 
                 State.PitchLFO = NewLFOGenerator(
                     Template.PitchLFOTemplate,
@@ -419,11 +433,8 @@ namespace OutOfPhase
                 }
                 State.PitchLFOStartCountdown = PitchDisplacementStartPoint;
 
-                if (Template.OscEffectTemplate == null)
-                {
-                    State.OscEffectGenerator = null;
-                }
-                else
+                State.OscEffectGenerator = null;
+                if (Template.OscEffectTemplate != null)
                 {
                     SynthErrorCodes Result = NewOscEffectGenerator(
                         Template.OscEffectTemplate,
@@ -544,8 +555,6 @@ namespace OutOfPhase
                 SynthErrorCodes error;
                 SampleStateRec State = this;
 
-                double Differential;
-
                 if (State.PitchLFOStartCountdown > 0)
                 {
                     State.PitchLFOStartCountdown -= 1;
@@ -567,7 +576,7 @@ namespace OutOfPhase
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier
                     + State.Template.FrequencyAdder;
-                Differential = (NewFrequencyHertz / State.NaturalFrequency)
+                double Differential = (NewFrequencyHertz / State.NaturalFrequency)
                     / SynthParams.dSamplingRate
                     * State.NaturalSamplingRate;
                 if (Differential < 0)
@@ -638,6 +647,12 @@ namespace OutOfPhase
                 }
 
                 State.PreStartCountdown += ActualPreOrigin;
+
+                // initial value for envelope smoothing
+                State.Loudness = (float)(State.NoteLoudnessScaling * LFOGenInitialValue(
+                    State.LoudnessLFOGenerator,
+                    EnvelopeInitialValue(
+                       State.SampleLoudnessEnvelope)));
             }
 
             /* send a key-up signal to one of the oscillators */
@@ -1009,6 +1024,21 @@ namespace OutOfPhase
                         SynthParams,
                         writeOutputLogs);
                 }
+
+                FreeEnvelopeStateRecord(
+                    ref State.SampleLoudnessEnvelope,
+                    SynthParams);
+                FreeLFOGenerator(
+                    ref State.LoudnessLFOGenerator,
+                    SynthParams);
+
+                FreeLFOGenerator(
+                    ref State.PitchLFO,
+                    SynthParams);
+
+                Free(
+                    ref SynthParams.freelists.sampleStateFreeList,
+                    ref State);
             }
 
             /* fast playback routines */

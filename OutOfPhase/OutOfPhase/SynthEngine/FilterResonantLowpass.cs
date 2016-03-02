@@ -48,10 +48,15 @@ namespace OutOfPhase
 
             public FilterTypes FilterType { get { return FilterTypes.eFilterResonantLowpass; } }
 
-            public ResonantLowpassRec(
+            public void Init(
                 int LowpassOrder,
-                int BandpassOrder)
+                int BandpassOrder,
+                SynthParamRec SynthParams)
             {
+                this.OldCutoff = -1e300;
+                this.OldBandwidth = -1e300;
+                this.OldGain = -1e300;
+
 #if DEBUG
                 if ((LowpassOrder < 0) || (LowpassOrder % 2 != 0))
                 {
@@ -69,7 +74,13 @@ namespace OutOfPhase
                 this.NumBandpassSections = BandpassOrder / 2;
 
                 /* allocate iir workspace */
-                this.iir = new IIR2DirectIRec[this.NumLowpassSections + this.NumBandpassSections];
+                this.iir = New(ref SynthParams.freelists.iir2DirectIFreeList, this.NumLowpassSections + this.NumBandpassSections);
+            }
+
+            public void Dispose(
+                SynthParamRec SynthParams)
+            {
+                Free(ref SynthParams.freelists.iir2DirectIFreeList, ref this.iir);
             }
 
             public static void SetResonantLowpassCoefficients(

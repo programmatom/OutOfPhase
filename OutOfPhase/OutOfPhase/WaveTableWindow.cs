@@ -399,7 +399,9 @@ namespace OutOfPhase
 
                 ArrayHandleFloat dataHandle = new ArrayHandleFloat(vector);
 
-                ParamList.EmptyParamStackEnsureCapacity(1/*frames*/ + 1/*tables*/ + 1/*data*/ + 1/*retaddr*/);
+                int initialCapacity = 1/*frames*/ + 1/*tables*/ + 1/*data*/ + 1/*retaddr*/;
+                ParamList.EmptyParamStackEnsureCapacity(initialCapacity);
+
                 ParamList.AddIntegerToStack(numFrames);
                 ParamList.AddIntegerToStack(numTables);
                 ParamList.AddArrayToStack(dataHandle);
@@ -432,7 +434,11 @@ namespace OutOfPhase
                     MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
                     return;
                 }
-                Debug.Assert(ParamList.GetStackNumElements() == 1); // return value
+                Debug.Assert(ParamList.GetStackNumElements() == initialCapacity); // args - retaddr + return value
+#if DEBUG
+                ParamList.Elements[2].AssertFloatArray();
+#endif
+                dataHandle = ParamList.Elements[2].reference.arrayHandleFloat;
 
                 WaveTableStorageRec NewTable = new WaveTableStorageRec(numTables, numFrames, waveTableObject.WaveTableData.NumBits);
                 float[] NewData = dataHandle.floats;

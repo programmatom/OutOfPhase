@@ -23,6 +23,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 // TODO: port this non-delegate version back to other splay tree sources
@@ -84,6 +85,7 @@ namespace OutOfPhase
 
         private bool locked;
 
+        [StructLayout(LayoutKind.Auto)]
         private struct SplayNode
         {
             internal int left;

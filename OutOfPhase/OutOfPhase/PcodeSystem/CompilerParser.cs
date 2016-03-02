@@ -1010,7 +1010,7 @@ namespace OutOfPhase
                                     LoopVariable,
                                     InitialValue,
                                     WhileExpression,
-                                    IncrementExpression,
+                                    new ASTExpression(IncrementExpression, Context.Scanner.GetCurrentLineNumber()),
                                     Body,
                                     LineNumberForFirstToken);
 

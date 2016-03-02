@@ -53,11 +53,11 @@ namespace OutOfPhase
             this.buttonStop = new System.Windows.Forms.Button();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
             this.labelElapsedSongTime = new OutOfPhase.MyLabel();
-            this.textElapsedAudioSeconds = new OutOfPhase.MyLabel();
+            this.textElapsedAudioSeconds = new OutOfPhase.SimpleTextDisplayControl();
             this.labelTotalFrames = new OutOfPhase.MyLabel();
-            this.textTotalFrames = new OutOfPhase.MyLabel();
+            this.textTotalFrames = new OutOfPhase.SimpleTextDisplayControl();
             this.labelTotalClippedPoints = new OutOfPhase.MyLabel();
-            this.textTotalClippedPoints = new OutOfPhase.MyLabel();
+            this.textTotalClippedPoints = new OutOfPhase.SimpleTextDisplayControl();
             this.labelBufferLoading = new OutOfPhase.MyLabel();
             this.myProgressBarBufferLoading = new OutOfPhase.MyProgressBar();
             this.labelBufferSeconds = new OutOfPhase.MyLabel();
@@ -121,13 +121,14 @@ namespace OutOfPhase
             // 
             // textElapsedAudioSeconds
             // 
-            this.textElapsedAudioSeconds.AutoSize = true;
             this.tableLayoutPanel2.SetColumnSpan(this.textElapsedAudioSeconds, 2);
-            this.textElapsedAudioSeconds.Dock = System.Windows.Forms.DockStyle.Top;
+            this.textElapsedAudioSeconds.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textElapsedAudioSeconds.Location = new System.Drawing.Point(184, 5);
+            this.textElapsedAudioSeconds.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.textElapsedAudioSeconds.Name = "textElapsedAudioSeconds";
-            this.textElapsedAudioSeconds.Size = new System.Drawing.Size(194, 0);
+            this.textElapsedAudioSeconds.Size = new System.Drawing.Size(194, 13);
             this.textElapsedAudioSeconds.TabIndex = 1;
+            this.textElapsedAudioSeconds.Text = null;
             // 
             // labelTotalFrames
             // 
@@ -141,13 +142,14 @@ namespace OutOfPhase
             // 
             // textTotalFrames
             // 
-            this.textTotalFrames.AutoSize = true;
             this.tableLayoutPanel2.SetColumnSpan(this.textTotalFrames, 2);
-            this.textTotalFrames.Dock = System.Windows.Forms.DockStyle.Top;
+            this.textTotalFrames.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textTotalFrames.Location = new System.Drawing.Point(184, 18);
+            this.textTotalFrames.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.textTotalFrames.Name = "textTotalFrames";
-            this.textTotalFrames.Size = new System.Drawing.Size(194, 0);
+            this.textTotalFrames.Size = new System.Drawing.Size(194, 13);
             this.textTotalFrames.TabIndex = 3;
+            this.textTotalFrames.Text = null;
             // 
             // labelTotalClippedPoints
             // 
@@ -161,13 +163,14 @@ namespace OutOfPhase
             // 
             // textTotalClippedPoints
             // 
-            this.textTotalClippedPoints.AutoSize = true;
             this.tableLayoutPanel2.SetColumnSpan(this.textTotalClippedPoints, 2);
-            this.textTotalClippedPoints.Dock = System.Windows.Forms.DockStyle.Top;
+            this.textTotalClippedPoints.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textTotalClippedPoints.Location = new System.Drawing.Point(184, 31);
+            this.textTotalClippedPoints.Margin = new System.Windows.Forms.Padding(3, 0, 3, 0);
             this.textTotalClippedPoints.Name = "textTotalClippedPoints";
-            this.textTotalClippedPoints.Size = new System.Drawing.Size(194, 0);
+            this.textTotalClippedPoints.Size = new System.Drawing.Size(194, 13);
             this.textTotalClippedPoints.TabIndex = 5;
+            this.textTotalClippedPoints.Text = null;
             // 
             // labelBufferLoading
             // 
@@ -238,11 +241,11 @@ namespace OutOfPhase
         private System.Windows.Forms.Button buttonStop;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
         private MyLabel labelElapsedSongTime;
-        private MyLabel textElapsedAudioSeconds;
+        private SimpleTextDisplayControl textElapsedAudioSeconds;
         private MyLabel labelTotalFrames;
-        private MyLabel textTotalFrames;
+        private SimpleTextDisplayControl textTotalFrames;
         private MyLabel labelTotalClippedPoints;
-        private MyLabel textTotalClippedPoints;
+        private SimpleTextDisplayControl textTotalClippedPoints;
         private System.Windows.Forms.Timer timerUpdate;
         private MyLabel labelBufferLoading;
         private MyProgressBar myProgressBarBufferLoading;

@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -950,6 +951,7 @@ namespace OutOfPhase
 
         /* check convolver effect */
         private delegate string ConvolverSpecGetImpulseResponseForCheckUnrefMethod(ConvolverSpecRec Spec);
+        [StructLayout(LayoutKind.Auto)]
         private struct ConvolverCheckRec
         {
             public ConvolverSpecGetImpulseResponseForCheckUnrefMethod ConvolverSpecGetImpulseResponse;

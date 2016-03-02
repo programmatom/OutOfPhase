@@ -7,7 +7,7 @@
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
@@ -52,7 +52,7 @@
     <DebugType>pdbonly</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
@@ -64,6 +64,7 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <OutputPath>bin\x64\Release\</OutputPath>
@@ -74,6 +75,7 @@
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
@@ -86,6 +88,7 @@
     <PlatformTarget>x86</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
     <OutputPath>bin\x86\Release\</OutputPath>
@@ -95,8 +98,13 @@
     <PlatformTarget>x86</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="SharpDisasm, Version=1.1.5.0, Culture=neutral, PublicKeyToken=71afd155bcebae3e, processorArchitecture=MSIL">
+      <HintPath>..\packages\SharpDisasm.1.1.5\lib\net45\SharpDisasm.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
@@ -110,11 +118,11 @@
     <Reference Include="System.Xml" />
     <Reference Include="TextEditorDirectWrite, Version=1.0.5781.17299, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\TextEditor\TextEditorLib\bin\$(Platform)\$(ConfigurationName)\TextEditorDirectWrite.dll</HintPath>
+      <HintPath>..\..\..\TextEditor\TextEditor\TextEditorLib\bin\$(Platform)\$(ConfigurationName)\TextEditorDirectWrite.dll</HintPath>
     </Reference>
     <Reference Include="TextEditorLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\TextEditor\TextEditorLib\bin\$(Platform)\$(ConfigurationName)\TextEditorLib.dll</HintPath>
+      <HintPath>..\..\..\TextEditor\TextEditor\TextEditorLib\bin\$(Platform)\$(ConfigurationName)\TextEditorLib.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -333,12 +341,20 @@
     <Compile Include="SequencerConfigWindow.Designer.cs">
       <DependentUpon>SequencerConfigWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="SimpleTextDisplayControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="SimpleTextDisplayControl.Designer.cs">
+      <DependentUpon>SimpleTextDisplayControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="SynthBuild\PluggableSpec.cs" />
     <Compile Include="SynthEngine\AlignedWorkspace.cs" />
+    <Compile Include="SynthEngine\ArrayFreeList.cs" />
     <Compile Include="SynthEngine\IEffect.cs" />
     <Compile Include="SynthEngine\PluggableBase.cs" />
     <Compile Include="SynthEngine\PluggableOscSine.cs" />
     <Compile Include="SynthEngine\PluggableEffectUserEffect.cs" />
+    <Compile Include="SynthEngine\SimpleFreeList.cs" />
     <Compile Include="SynthEngine\SplayTree.cs" />
     <Compile Include="SynthEngine\SplayTreeArray.cs" />
     <Compile Include="SymbolicDuration.cs" />
@@ -748,9 +764,6 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\Bravura.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

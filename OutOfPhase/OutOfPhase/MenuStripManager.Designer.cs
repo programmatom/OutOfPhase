@@ -114,6 +114,7 @@ namespace OutOfPhase
             this.buildObjectToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.disassembleToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.evaluateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.envelopeSegmentCalculatorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem8 = new System.Windows.Forms.ToolStripSeparator();
             this.insertTableToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.deleteTableToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -151,7 +152,7 @@ namespace OutOfPhase
             this.globalSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem21 = new System.Windows.Forms.ToolStripSeparator();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.envelopeSegmentCalculatorToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.disassembleApplicationMethodToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -652,6 +653,12 @@ namespace OutOfPhase
             this.evaluateToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
             this.evaluateToolStripMenuItem.Text = "Evaluate";
             // 
+            // envelopeSegmentCalculatorToolStripMenuItem
+            // 
+            this.envelopeSegmentCalculatorToolStripMenuItem.Name = "envelopeSegmentCalculatorToolStripMenuItem";
+            this.envelopeSegmentCalculatorToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
+            this.envelopeSegmentCalculatorToolStripMenuItem.Text = "Envelope Segment Calculator";
+            // 
             // toolStripMenuItem8
             // 
             this.toolStripMenuItem8.Name = "toolStripMenuItem8";
@@ -849,6 +856,7 @@ namespace OutOfPhase
             this.toolStripMenuItem19,
             this.globalSettingsToolStripMenuItem,
             this.toolStripMenuItem21,
+            this.disassembleApplicationMethodToolStripMenuItem,
             this.aboutToolStripMenuItem});
             this.toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             this.toolsToolStripMenuItem.Size = new System.Drawing.Size(47, 24);
@@ -857,36 +865,36 @@ namespace OutOfPhase
             // tabSizeToolStripMenuItem
             // 
             this.tabSizeToolStripMenuItem.Name = "tabSizeToolStripMenuItem";
-            this.tabSizeToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
+            this.tabSizeToolStripMenuItem.Size = new System.Drawing.Size(257, 22);
             this.tabSizeToolStripMenuItem.Text = "Tab Size...";
             // 
             // toolStripMenuItem19
             // 
             this.toolStripMenuItem19.Name = "toolStripMenuItem19";
-            this.toolStripMenuItem19.Size = new System.Drawing.Size(159, 6);
+            this.toolStripMenuItem19.Size = new System.Drawing.Size(254, 6);
             // 
             // globalSettingsToolStripMenuItem
             // 
             this.globalSettingsToolStripMenuItem.Name = "globalSettingsToolStripMenuItem";
-            this.globalSettingsToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
+            this.globalSettingsToolStripMenuItem.Size = new System.Drawing.Size(257, 22);
             this.globalSettingsToolStripMenuItem.Text = "Global Settings...";
             // 
             // toolStripMenuItem21
             // 
             this.toolStripMenuItem21.Name = "toolStripMenuItem21";
-            this.toolStripMenuItem21.Size = new System.Drawing.Size(159, 6);
+            this.toolStripMenuItem21.Size = new System.Drawing.Size(254, 6);
             // 
             // aboutToolStripMenuItem
             // 
             this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(162, 22);
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(257, 22);
             this.aboutToolStripMenuItem.Text = "About";
             // 
-            // envelopeSegmentCalculatorToolStripMenuItem
+            // disassembleApplicationMethodToolStripMenuItem
             // 
-            this.envelopeSegmentCalculatorToolStripMenuItem.Name = "envelopeSegmentCalculatorToolStripMenuItem";
-            this.envelopeSegmentCalculatorToolStripMenuItem.Size = new System.Drawing.Size(229, 22);
-            this.envelopeSegmentCalculatorToolStripMenuItem.Text = "Envelope Segment Calculator";
+            this.disassembleApplicationMethodToolStripMenuItem.Name = "disassembleApplicationMethodToolStripMenuItem";
+            this.disassembleApplicationMethodToolStripMenuItem.Size = new System.Drawing.Size(257, 22);
+            this.disassembleApplicationMethodToolStripMenuItem.Text = "Disassemble Application Method...";
             // 
             // MenuStripManager
             // 
@@ -1007,5 +1015,6 @@ namespace OutOfPhase
         public System.Windows.Forms.ToolStripMenuItem findEverywhereToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem enterSelectionToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem envelopeSegmentCalculatorToolStripMenuItem;
+        public System.Windows.Forms.ToolStripMenuItem disassembleApplicationMethodToolStripMenuItem;
     }
 }

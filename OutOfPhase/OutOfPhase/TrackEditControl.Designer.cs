@@ -51,6 +51,7 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.trackViewControl = new OutOfPhase.TrackViewControl();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.toolStrip = new System.Windows.Forms.ToolStrip();
             this.toolStripButtonArrow = new System.Windows.Forms.ToolStripButton();
@@ -81,7 +82,6 @@ namespace OutOfPhase
             this.toolStripButtonDiv3 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonDiv5 = new System.Windows.Forms.ToolStripButton();
             this.toolStripButtonDiv7 = new System.Windows.Forms.ToolStripButton();
-            this.trackViewControl = new OutOfPhase.TrackViewControl();
             this.noteViewControl = new OutOfPhase.NoteViewControl();
             this.noteParamStrip = new OutOfPhase.NoteParamStrip();
             this.trackObjectRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
@@ -111,6 +111,17 @@ namespace OutOfPhase
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(918, 373);
             this.tableLayoutPanel1.TabIndex = 0;
+            // 
+            // trackViewControl
+            // 
+            this.trackViewControl.AutoScroll = true;
+            this.trackViewControl.BackColor = System.Drawing.SystemColors.Window;
+            this.trackViewControl.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.trackViewControl.Location = new System.Drawing.Point(0, 53);
+            this.trackViewControl.Margin = new System.Windows.Forms.Padding(0);
+            this.trackViewControl.Name = "trackViewControl";
+            this.trackViewControl.Size = new System.Drawing.Size(918, 320);
+            this.trackViewControl.TabIndex = 6;
             // 
             // flowLayoutPanel1
             // 
@@ -432,17 +443,6 @@ namespace OutOfPhase
             this.toolStripButtonDiv7.Name = "toolStripButtonDiv7";
             this.toolStripButtonDiv7.Size = new System.Drawing.Size(24, 24);
             this.toolStripButtonDiv7.TextImageRelation = System.Windows.Forms.TextImageRelation.Overlay;
-            // 
-            // trackViewControl
-            // 
-            this.trackViewControl.AutoScroll = true;
-            this.trackViewControl.BackColor = System.Drawing.SystemColors.Window;
-            this.trackViewControl.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.trackViewControl.Location = new System.Drawing.Point(0, 53);
-            this.trackViewControl.Margin = new System.Windows.Forms.Padding(0);
-            this.trackViewControl.Name = "trackViewControl";
-            this.trackViewControl.Size = new System.Drawing.Size(918, 320);
-            this.trackViewControl.TabIndex = 6;
             // 
             // noteViewControl
             // 

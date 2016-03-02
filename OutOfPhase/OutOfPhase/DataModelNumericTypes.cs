@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -115,6 +116,7 @@ namespace OutOfPhase
     /* small BCD format is 4 digits of bcd: [+-]xX.XXX, represented as an integer value */
     /* that is 1000 (one thousand) times the decimal value (milli-unit precision). */
     /* It's range is -29.999 to 29.999 */
+    [StructLayout(LayoutKind.Auto)]
     public struct SmallBCDType : IEquatable<SmallBCDType>
     {
         public short rawInt16;
@@ -169,6 +171,7 @@ namespace OutOfPhase
     /* large BCD format is 9 digits of bcd: [+-]xXXX.XXXXXX, represented as an integer */
     /* value that is 1 000 000 (one million) times the decimal value (micro-unit precision) */
     /* It's range is -1999.999999 to 1999.999999 */
+    [StructLayout(LayoutKind.Auto)]
     public struct LargeBCDType : IEquatable<LargeBCDType>
     {
         public int rawInt32;
@@ -228,6 +231,7 @@ namespace OutOfPhase
     /* small extended BCD format is 8 digits: [+-]xXXXXXX.XXX, represented as an integer */
     /* value that is 1000 (one thousand) times the decimal value. */
     /* It's range is -1999999.999 to 1999999.999 */
+    [StructLayout(LayoutKind.Auto)]
     public struct SmallExtBCDType : IEquatable<SmallExtBCDType>
     {
         public int rawInt32;
@@ -281,6 +285,7 @@ namespace OutOfPhase
 
     /* note: this module does NOT deal with negative numbers!!! */
 
+    [StructLayout(LayoutKind.Auto)]
     public struct FractionRec
     {
         public uint Integer;

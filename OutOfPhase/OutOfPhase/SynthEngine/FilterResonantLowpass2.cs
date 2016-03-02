@@ -622,10 +622,13 @@ namespace OutOfPhase
                 new double[3] { .5176387, 1.414214, 1.931852 },
             };
 
-            public ResonantLowpass2Rec(
+            public void Init(
                 int Order,
                 bool broken)
             {
+                this.OldCutoff = -1e300;
+                this.OldQ = -1e300;
+
                 int Order2 = Order / 2;
 #if DEBUG
                 if ((Order2 < 1) || (Order2 > RLP2_MAXDEGREE) || (Order % 2 != 0))

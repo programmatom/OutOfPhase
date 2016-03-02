@@ -57,6 +57,7 @@ namespace OutOfPhase
             // 
             // textEditControl
             // 
+            this.textEditControl.AcceptsTab = false;
             this.textEditControl.AutoScroll = true;
             this.textEditControl.AutoScrollMinSize = new System.Drawing.Size(1, 13);
             this.textEditControl.AutoSize = true;

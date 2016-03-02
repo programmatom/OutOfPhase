@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -53,6 +54,8 @@ namespace OutOfPhase
     [StructLayout(LayoutKind.Explicit)]
     public abstract class ArrayHandle
     {
+        public abstract ArrayHandle Duplicate(); // covariant
+        public abstract void Resize(int newLength);
     }
 
     [StructLayout(LayoutKind.Explicit)]
@@ -96,6 +99,18 @@ namespace OutOfPhase
                 return Encoding.UTF8.GetChars(bytes);
             }
         }
+
+        public override ArrayHandle Duplicate() // covariant
+        {
+            return new ArrayHandleByte((byte[])this.bytes.Clone());
+        }
+
+        public override void Resize(int newLength)
+        {
+            Array.Resize(ref bytes, newLength);
+        }
+
+        public int Length { get { return bytes.Length; } }
     }
 
     [StructLayout(LayoutKind.Explicit)]
@@ -108,6 +123,18 @@ namespace OutOfPhase
         {
             this.ints = a;
         }
+
+        public override ArrayHandle Duplicate() // covariant
+        {
+            return new ArrayHandleInt32((int[])this.ints.Clone());
+        }
+
+        public override void Resize(int newLength)
+        {
+            Array.Resize(ref ints, newLength);
+        }
+
+        public int Length { get { return ints.Length; } }
     }
 
     [StructLayout(LayoutKind.Explicit)]
@@ -120,6 +147,18 @@ namespace OutOfPhase
         {
             this.floats = a;
         }
+
+        public override ArrayHandle Duplicate() // covariant
+        {
+            return new ArrayHandleFloat((float[])this.floats.Clone());
+        }
+
+        public override void Resize(int newLength)
+        {
+            Array.Resize(ref floats, newLength);
+        }
+
+        public int Length { get { return floats.Length; } }
     }
 
     [StructLayout(LayoutKind.Explicit)]
@@ -132,6 +171,18 @@ namespace OutOfPhase
         {
             this.doubles = a;
         }
+
+        public override ArrayHandle Duplicate() // covariant
+        {
+            return new ArrayHandleDouble((double[])this.doubles.Clone());
+        }
+
+        public override void Resize(int newLength)
+        {
+            Array.Resize(ref doubles, newLength);
+        }
+
+        public int Length { get { return doubles.Length; } }
     }
 
     [StructLayout(LayoutKind.Explicit)]
@@ -171,6 +222,7 @@ namespace OutOfPhase
         public double Double;
     }
 
+    [StructLayout(LayoutKind.Auto)]
     public struct StackElement
     {
         // In managed code, pointer and value types can't overlay (because the garbage collector
@@ -179,6 +231,11 @@ namespace OutOfPhase
         public ScalarOverlayType Data;
         public ReferenceOverlayType reference;
 
+
+        public static int SizeOf()
+        {
+            return 16;
+        }
 
 #if DEBUG
         public void AssertClear()
@@ -497,21 +554,22 @@ namespace OutOfPhase
                 throw new ArgumentException();
             }
 #endif
-            if (ElementArray[Index].reference.generic is ArrayHandleByte)
-            {
-                return ElementArray[Index].reference.arrayHandleByte.bytes;
-            }
-            else if (ElementArray[Index].reference.generic is ArrayHandleInt32)
-            {
-                return ElementArray[Index].reference.arrayHandleInt32.ints;
-            }
-            else if (ElementArray[Index].reference.generic is ArrayHandleFloat)
+            // for perf, these are ordered most likely to least likely
+            if (ElementArray[Index].reference.generic is ArrayHandleFloat)
             {
                 return ElementArray[Index].reference.arrayHandleFloat.floats;
             }
             else if (ElementArray[Index].reference.generic is ArrayHandleDouble)
             {
                 return ElementArray[Index].reference.arrayHandleDouble.doubles;
+            }
+            else if (ElementArray[Index].reference.generic is ArrayHandleInt32)
+            {
+                return ElementArray[Index].reference.arrayHandleInt32.ints;
+            }
+            else if (ElementArray[Index].reference.generic is ArrayHandleByte)
+            {
+                return ElementArray[Index].reference.arrayHandleByte.bytes;
             }
             else
             {
@@ -538,5 +596,7 @@ namespace OutOfPhase
             this.ElementArray = ElementArray;
             this.NumElements = NumElements;
         }
+
+        public StackElement[] Elements { get { return this.ElementArray; } }
     }
 }

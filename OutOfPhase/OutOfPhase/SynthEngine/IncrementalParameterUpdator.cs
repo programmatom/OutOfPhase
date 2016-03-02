@@ -22,12 +22,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
 {
     public static partial class Synthesizer
     {
+        [StructLayout(LayoutKind.Auto)]
         public struct IncrParamOneNDRec
         {
             public double Current;
@@ -35,6 +37,7 @@ namespace OutOfPhase
             public int ChangeCountdown;
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct IncrParamOneRec
         {
             public IncrParamOneNDRec nd;
@@ -607,8 +610,7 @@ namespace OutOfPhase
                     return SynthErrorCodes.eSynthErrorEx;
                 }
 
-                SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
-                    1/*retval*/);
+                SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(1/*retval*/);
 
                 StackElement[] Stack;
                 int StackNumElements;
@@ -624,7 +626,7 @@ namespace OutOfPhase
                     userFunction.GetFunctionPcode(),
                     SynthParams.CodeCenter,
                     out ErrorInfo,
-                    null/*EvaluateContext*/,
+                    PcodeExternsNull.Default,
                     ref SynthParams.pcodeThreadContext);
                 if (Error != EvalErrors.eEvalNoError)
                 {
@@ -633,7 +635,7 @@ namespace OutOfPhase
                     SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                     return SynthErrorCodes.eSynthErrorEx;
                 }
-                Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
+                Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // - retaddr + return value
 
                 table = (double[])SynthParams.FormulaEvalContext.GetStackArray(0);
                 if (table == null)

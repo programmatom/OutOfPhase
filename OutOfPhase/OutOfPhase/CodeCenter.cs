@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -31,6 +32,7 @@ namespace OutOfPhase
     public class CodeCenterRec
     {
         private readonly List<CodeEntryRec> CodeList = new List<CodeEntryRec>();
+        [StructLayout(LayoutKind.Auto)]
         private struct CodeEntryRec
         {
             public object Signature;

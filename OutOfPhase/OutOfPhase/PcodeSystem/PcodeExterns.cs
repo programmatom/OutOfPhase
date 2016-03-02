@@ -29,6 +29,17 @@ using System.Windows.Forms;
 
 namespace OutOfPhase
 {
+    public class PcodeExternsNull : PcodeSystem.IEvaluationContext
+    {
+        public static readonly PcodeExternsNull Default = new PcodeExternsNull();
+
+        public EvalErrors Invoke(string name, object[] args, out object returnValue)
+        {
+            returnValue = null;
+            return EvalErrors.eEvalUndefinedFunction;
+        }
+    }
+
     public class PcodeExterns : PcodeSystem.IEvaluationContext
     {
         private readonly MainWindow mainWindow;

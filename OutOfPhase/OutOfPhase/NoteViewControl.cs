@@ -48,6 +48,8 @@ namespace OutOfPhase
 
             InitializeComponent();
 
+            textEditControl.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
+
             textEditControl.TextChanged += TextEditControl_TextChanged;
             textEditControl.LostFocus += TextEditControl_LostFocus;
             textEditControl.BackColor = highlightBackColor;
@@ -58,18 +60,7 @@ namespace OutOfPhase
 
         private void NoteViewControl_Disposed(object sender, EventArgs e)
         {
-            if (boldFont != null)
-            {
-                boldFont.Dispose();
-            }
-            if (backBrush != null)
-            {
-                backBrush.Dispose();
-            }
-            if (forePen != null)
-            {
-                forePen.Dispose();
-            }
+            ClearGraphicsObjects();
         }
 
         protected override Size DefaultMinimumSize
@@ -80,19 +71,58 @@ namespace OutOfPhase
             }
         }
 
+        private void ClearGraphicsObjects()
+        {
+            if (boldFont != null)
+            {
+                boldFont.Dispose();
+                boldFont = null;
+            }
+            if (backBrush != null)
+            {
+                backBrush.Dispose();
+                backBrush = null;
+            }
+            if (forePen != null)
+            {
+                forePen.Dispose();
+                forePen = null;
+            }
+        }
+
+        private void EnsureGraphicsObjects()
+        {
+            if (boldFont == null)
+            {
+                boldFont = new Font(Font, FontStyle.Bold);
+            }
+            if (backBrush == null)
+            {
+                backBrush = new SolidBrush(BackColor);
+            }
+            if (forePen == null)
+            {
+                forePen = new Pen(ForeColor);
+            }
+        }
+
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
 
-            boldFont = new Font(Font, FontStyle.Bold);
-            backBrush = new SolidBrush(BackColor);
-            forePen = new Pen(ForeColor);
+            EnsureGraphicsObjects();
+            textEditControl.Font = boldFont;
         }
 
         protected override void OnFontChanged(EventArgs e)
         {
             base.OnFontChanged(e);
+
             MinimumSize = DefaultMinimumSize; // prevent height glitch on high dpi systems
+
+            ClearGraphicsObjects();
+            EnsureGraphicsObjects();
+            textEditControl.Font = boldFont;
         }
 
 
@@ -106,6 +136,9 @@ namespace OutOfPhase
 
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public UndoHelper UndoHelper { get { return undoHelper; } set { undoHelper = value; } }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public TextEditor.TextEditControl FloatingTextEdit { get { return textEditControl; } }
 
 
         //
@@ -472,6 +505,18 @@ namespace OutOfPhase
                 {
                     focusReturnsTo.Focus();
                 }
+            }
+            else if ((keyData & ~Keys.Modifiers) == Keys.Tab)
+            {
+                int index = Array.IndexOf(ValueInfo.Values, currentFieldValueInfo);
+                Debug.Assert(index >= 0);
+                CommitFieldEdit(currentFieldValueInfo);
+                do
+                {
+                    int increment = (keyData & Keys.Shift) == 0 ? 1 : ValueInfo.Values.Length - 1;
+                    index = (index + increment) % ValueInfo.Values.Length;
+                } while (ValueInfo.Values[index] == null);
+                BeginFieldEdit(ValueInfo.Values[index], -1, ValueInfo.Values[index].GetValue(Note));
             }
             // editing shortcut keys
             else if (keyData == (Keys.A | Keys.Control))

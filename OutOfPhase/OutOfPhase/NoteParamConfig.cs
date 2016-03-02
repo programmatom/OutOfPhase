@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
@@ -69,6 +70,7 @@ namespace OutOfPhase
 
         public delegate T _GetValue<T>(NoteNoteObjectRec note);
         public delegate void _SetValue<T>(NoteNoteObjectRec note, T value);
+        [StructLayout(LayoutKind.Auto)]
         public struct VT<T>
         {
             public readonly T value;
@@ -184,8 +186,7 @@ namespace OutOfPhase
                         return;
                     }
                 }
-                Debug.Assert(false);
-                throw new ArgumentException();
+                // if new value is invalid then ignore - this can happen under certain user editing scenarios
             }
 
             public override void DoClick(NoteNoteObjectRec note, int noteIndex, IValueInfoOwner owner)

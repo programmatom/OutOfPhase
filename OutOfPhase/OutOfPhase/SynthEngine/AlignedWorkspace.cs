@@ -38,14 +38,18 @@ namespace OutOfPhase
 
             private const int SizeOfFloat = 4;
 
-            public AlignedWorkspace(int count)
+            public unsafe AlignedWorkspace(int count)
             {
                 this.length = count;
                 this.workspace = new float[count + SynthParamRec.WORKSPACEALIGNBYTES];
                 this.hWorkspace = GCHandle.Alloc(this.workspace, GCHandleType.Pinned);
-                this.offset = 0;
-                SynthParamRec.Align(this.hWorkspace.AddrOfPinnedObject(), ref this.offset, SynthParamRec.WORKSPACEALIGNBYTES, SizeOfFloat);
-                Debug.Assert(this.offset + count <= this.workspace.Length);
+                fixed (float* pWorkspace0 = &(this.workspace[0]))
+                {
+                    IntPtr iWorkspace0 = new IntPtr(pWorkspace0);
+                    this.offset = 0;
+                    SynthParamRec.Align(iWorkspace0, ref this.offset, SynthParamRec.WORKSPACEALIGNBYTES, SizeOfFloat);
+                    Debug.Assert(this.offset + count <= this.workspace.Length);
+                }
             }
 
             public IntPtr BasePtr { get { return hWorkspace.AddrOfPinnedObject(); } }

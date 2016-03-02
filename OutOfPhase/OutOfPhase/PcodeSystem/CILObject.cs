@@ -24,6 +24,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -137,7 +138,8 @@ namespace OutOfPhase
             string[] argsNames,
             DataTypes returnType,
             Compiler.ASTExpression ast,
-            CILAssembly cilAssembly)
+            CILAssembly cilAssembly,
+            bool argsByRef)
         {
             this.argsTypes = argsTypes;
             this.returnType = returnType;
@@ -151,29 +153,120 @@ namespace OutOfPhase
                 out managedReturnType);
             int methodSequenceNumber = methodNameSequencer++;
             methodName = String.Format("m{0}", methodSequenceNumber);
-            MethodBuilder methodBuilder = cilAssembly.typeBuilder.DefineMethod(
-                methodName,
-                MethodAttributes.Public | MethodAttributes.Static,
-                managedReturnType,
-                managedArgsTypes);
+            MethodBuilder methodBuilder;
+            if (!argsByRef)
+            {
+                methodBuilder = cilAssembly.typeBuilder.DefineMethod(
+                    methodName,
+                    MethodAttributes.Public | MethodAttributes.Static,
+                    managedReturnType,
+                    managedArgsTypes);
+            }
+            else
+            {
+                Type[] managedArgsTypesByRef = new Type[managedArgsTypes.Length];
+                for (int i = 0; i < managedArgsTypesByRef.Length; i++)
+                {
+                    managedArgsTypesByRef[i] = managedArgsTypes[i].MakeByRefType();
+                }
+                methodBuilder = cilAssembly.typeBuilder.DefineMethod(
+                    methodName,
+                    MethodAttributes.Public | MethodAttributes.Static,
+                    managedReturnType,
+                    managedArgsTypesByRef);
+            }
 
+            ILGenerator ilGenerator = methodBuilder.GetILGenerator();
 
             Dictionary<SymbolRec, LocalBuilder> variableTable = new Dictionary<SymbolRec, LocalBuilder>();
 
             Dictionary<string, int> argumentTable = new Dictionary<string, int>();
-            for (int i = 0; i < argsNames.Length; i++)
+            Dictionary<string, LocalBuilder> localArgMap = new Dictionary<string, LocalBuilder>();
+            List<LocalBuilder> localArgs = new List<LocalBuilder>();
+            if (!argsByRef)
             {
-                argumentTable.Add(argsNames[i], i);
+                for (int i = 0; i < argsNames.Length; i++)
+                {
+                    argumentTable.Add(argsNames[i], i);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < argsNames.Length; i++)
+                {
+                    LocalBuilder localForArg = ilGenerator.DeclareLocal(managedArgsTypes[i]);
+                    localArgs.Add(localForArg);
+                    localArgMap.Add(argsNames[i], localForArg);
+                    ilGenerator.Emit(OpCodes.Ldarg, i);
+                    switch (argsTypes[i])
+                    {
+                        default:
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        case DataTypes.eBoolean:
+                        case DataTypes.eInteger:
+                            ilGenerator.Emit(OpCodes.Ldind_I4);
+                            break;
+                        case DataTypes.eFloat:
+                            ilGenerator.Emit(OpCodes.Ldind_R4);
+                            break;
+                        case DataTypes.eDouble:
+                            ilGenerator.Emit(OpCodes.Ldind_R8);
+                            break;
+                        case DataTypes.eArrayOfBoolean:
+                        case DataTypes.eArrayOfByte:
+                        case DataTypes.eArrayOfInteger:
+                        case DataTypes.eArrayOfFloat:
+                        case DataTypes.eArrayOfDouble:
+                            ilGenerator.Emit(OpCodes.Ldind_Ref);
+                            break;
+                    }
+                    ilGenerator.Emit(OpCodes.Stloc, localForArg);
+                }
             }
 
-            ILGenerator ilGenerator = methodBuilder.GetILGenerator();
             ast.ILGen(
                 this,
                 new Compiler.ILGenContext(
                     ilGenerator,
                     argumentTable,
                     variableTable,
-                    managedFunctionLinker));
+                    managedFunctionLinker,
+                    argsByRef,
+                    localArgMap));
+
+            if (argsByRef)
+            {
+                for (int i = 0; i < argsNames.Length; i++)
+                {
+                    ilGenerator.Emit(OpCodes.Ldarg, i);
+                    ilGenerator.Emit(OpCodes.Ldloc, localArgs[i]);
+                    switch (argsTypes[i])
+                    {
+                        default:
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        case DataTypes.eBoolean:
+                        case DataTypes.eInteger:
+                            ilGenerator.Emit(OpCodes.Stind_I4);
+                            break;
+                        case DataTypes.eFloat:
+                            ilGenerator.Emit(OpCodes.Stind_R4);
+                            break;
+                        case DataTypes.eDouble:
+                            ilGenerator.Emit(OpCodes.Stind_R8);
+                            break;
+                        case DataTypes.eArrayOfBoolean:
+                        case DataTypes.eArrayOfByte:
+                        case DataTypes.eArrayOfInteger:
+                        case DataTypes.eArrayOfFloat:
+                        case DataTypes.eArrayOfDouble:
+                            ilGenerator.Emit(OpCodes.Stind_Ref);
+                            break;
+                    }
+                }
+            }
+
             ilGenerator.Emit(OpCodes.Ret);
 
 
@@ -189,14 +282,37 @@ namespace OutOfPhase
             ilGeneratorShim.Emit(OpCodes.Call, typeof(CILThreadLocalStorage).GetMethod("get_CurrentShimArg", BindingFlags.Public | BindingFlags.Static));
             LocalBuilder localShimArg = ilGeneratorShim.DeclareLocal(typeof(StackElement[]));
             ilGeneratorShim.Emit(OpCodes.Stloc, localShimArg);
+            // Compute pointer to last valid stack element (retval slot). In the process, provide a null check
+            // and a covering array bounds check. (Subsequent references are done by pointer arithmetic to avoid
+            // redundant bounds checks.)
+            LocalBuilder ptrToRetVal = null;
+            if (Environment.Is64BitProcess)
+            {
+                ptrToRetVal = ilGeneratorShim.DeclareLocal(typeof(StackElement).MakeByRefType());
+                ilGeneratorShim.Emit(OpCodes.Ldloc, localShimArg);
+                ilGeneratorShim.Emit(OpCodes.Ldc_I4, (int)argsTypes.Length); // retaddr/retval slot
+                ilGeneratorShim.Emit(OpCodes.Ldelema, typeof(StackElement));
+                ilGeneratorShim.Emit(OpCodes.Stloc, ptrToRetVal);
+            }
             for (int i = 0; i < argsTypes.Length; i++)
             {
-                ilGeneratorShim.Emit(OpCodes.Ldloc, localShimArg);
-                ilGeneratorShim.Emit(OpCodes.Ldc_I4, (int)i);
-                ilGeneratorShim.Emit(OpCodes.Ldelema, typeof(StackElement));
-                LocalBuilder locElemAddr = ilGeneratorShim.DeclareLocal(typeof(object));
-                ilGeneratorShim.Emit(OpCodes.Dup);
+                if (Environment.Is64BitProcess)
+                {
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, ptrToRetVal);
+                    ilGeneratorShim.Emit(OpCodes.Ldc_I4, (int)((i - argsTypes.Length) * StackElement.SizeOf()));
+                    ilGeneratorShim.Emit(OpCodes.Add);
+                }
+                else
+                {
+                    // pointer arithmetic only works on 64-bit -- suspect bug in 32-bit JIT; generated code is very strange
+                    // so fall back to regular array refs
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, localShimArg);
+                    ilGeneratorShim.Emit(OpCodes.Ldc_I4, (int)i);
+                    ilGeneratorShim.Emit(OpCodes.Ldelema, typeof(StackElement));
+                }
+                LocalBuilder locElemAddr = ilGeneratorShim.DeclareLocal(typeof(StackElement).MakeByRefType());
                 ilGeneratorShim.Emit(OpCodes.Stloc, locElemAddr);
+                ilGeneratorShim.Emit(OpCodes.Ldloc, locElemAddr);
                 bool arrayType;
                 switch (argsTypes[i])
                 {
@@ -206,49 +322,52 @@ namespace OutOfPhase
                     case DataTypes.eBoolean:
                     case DataTypes.eInteger:
                         ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("Data"));
-                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ScalarOverlayType).GetField("Integer"));
+                        ilGeneratorShim.Emit(!argsByRef ? OpCodes.Ldfld : OpCodes.Ldflda, typeof(ScalarOverlayType).GetField("Integer"));
                         arrayType = false;
                         break;
                     case DataTypes.eFloat:
                         ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("Data"));
-                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ScalarOverlayType).GetField("Float"));
+                        ilGeneratorShim.Emit(!argsByRef ? OpCodes.Ldfld : OpCodes.Ldflda, typeof(ScalarOverlayType).GetField("Float"));
                         arrayType = false;
                         break;
                     case DataTypes.eDouble:
                         ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("Data"));
-                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ScalarOverlayType).GetField("Double"));
+                        ilGeneratorShim.Emit(!argsByRef ? OpCodes.Ldfld : OpCodes.Ldflda, typeof(ScalarOverlayType).GetField("Double"));
                         arrayType = false;
                         break;
                     case DataTypes.eArrayOfBoolean:
                     case DataTypes.eArrayOfByte:
                         ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
-                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ReferenceOverlayType).GetField("arrayHandleByte"));
+                        ilGeneratorShim.Emit(!argsByRef ? OpCodes.Ldfld : OpCodes.Ldflda, typeof(ReferenceOverlayType).GetField("arrayHandleByte"));
                         arrayType = true;
                         break;
                     case DataTypes.eArrayOfInteger:
                         ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
-                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ReferenceOverlayType).GetField("arrayHandleInt32"));
+                        ilGeneratorShim.Emit(!argsByRef ? OpCodes.Ldfld : OpCodes.Ldflda, typeof(ReferenceOverlayType).GetField("arrayHandleInt32"));
                         arrayType = true;
                         break;
                     case DataTypes.eArrayOfFloat:
                         ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
-                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ReferenceOverlayType).GetField("arrayHandleFloat"));
+                        ilGeneratorShim.Emit(!argsByRef ? OpCodes.Ldfld : OpCodes.Ldflda, typeof(ReferenceOverlayType).GetField("arrayHandleFloat"));
                         arrayType = true;
                         break;
                     case DataTypes.eArrayOfDouble:
                         ilGeneratorShim.Emit(OpCodes.Ldflda, typeof(StackElement).GetField("reference"));
-                        ilGeneratorShim.Emit(OpCodes.Ldfld, typeof(ReferenceOverlayType).GetField("arrayHandleDouble"));
+                        ilGeneratorShim.Emit(!argsByRef ? OpCodes.Ldfld : OpCodes.Ldflda, typeof(ReferenceOverlayType).GetField("arrayHandleDouble"));
                         arrayType = true;
                         break;
                 }
-                ilGeneratorShim.Emit(OpCodes.Ldloc, locElemAddr);
-                if (arrayType)
+                if (!argsByRef)
                 {
-                    ilGeneratorShim.Emit(OpCodes.Call, typeof(StackElement).GetMethod("ClearArray"));
-                }
-                else
-                {
-                    ilGeneratorShim.Emit(OpCodes.Call, typeof(StackElement).GetMethod("ClearScalar"));
+                    ilGeneratorShim.Emit(OpCodes.Ldloc, locElemAddr);
+                    if (arrayType)
+                    {
+                        ilGeneratorShim.Emit(OpCodes.Call, typeof(StackElement).GetMethod("ClearArray"));
+                    }
+                    else
+                    {
+                        ilGeneratorShim.Emit(OpCodes.Call, typeof(StackElement).GetMethod("ClearScalar"));
+                    }
                 }
             }
             ilGeneratorShim.Emit(OpCodes.Call, methodBuilder);
@@ -256,9 +375,20 @@ namespace OutOfPhase
             LocalBuilder retVal = ilGeneratorShim.DeclareLocal(managedReturnType);
             ilGeneratorShim.Emit(OpCodes.Stloc, retVal);
 
-            ilGeneratorShim.Emit(OpCodes.Ldloc, localShimArg);
-            ilGeneratorShim.Emit(OpCodes.Ldc_I4_0);
-            ilGeneratorShim.Emit(OpCodes.Ldelema, typeof(StackElement));
+            if (Environment.Is64BitProcess)
+            {
+                ilGeneratorShim.Emit(OpCodes.Ldloc, ptrToRetVal);
+                ilGeneratorShim.Emit(OpCodes.Ldc_I4, (int)((!argsByRef ? 0 : argsTypes.Length) - argsTypes.Length) * StackElement.SizeOf());
+                ilGeneratorShim.Emit(OpCodes.Add);
+            }
+            else
+            {
+                // pointer arithmetic only works on 64-bit -- suspect bug in 32-bit JIT; generated code is very strange
+                // so fall back to regular array refs
+                ilGeneratorShim.Emit(OpCodes.Ldloc, localShimArg);
+                ilGeneratorShim.Emit(OpCodes.Ldc_I4, (int)(!argsByRef ? 0 : argsTypes.Length));
+                ilGeneratorShim.Emit(OpCodes.Ldelema, typeof(StackElement));
+            }
             switch (returnType)
             {
                 default:
@@ -301,6 +431,12 @@ namespace OutOfPhase
                     ilGeneratorShim.Emit(OpCodes.Ldloc, retVal);
                     ilGeneratorShim.Emit(OpCodes.Stfld, typeof(ReferenceOverlayType).GetField("arrayHandleDouble"));
                     break;
+            }
+
+            if (!argsByRef)
+            {
+                ilGeneratorShim.Emit(OpCodes.Ldc_I4_0);
+                ilGeneratorShim.Emit(OpCodes.Call, typeof(CILThreadLocalStorage).GetMethod("set_CurrentShimStackPtr", BindingFlags.Public | BindingFlags.Static));
             }
 
             ilGeneratorShim.Emit(OpCodes.Ret);
@@ -409,12 +545,21 @@ namespace OutOfPhase
         {
             try
             {
+#if DEBUG
                 Debug.Assert(StackPtr == argsTypes.Length);
+                if ((Stack == null) || !unchecked((uint)Stack.Length >= (uint)StackPtr))
+                {
+                    Debug.Assert(false);
+                    throw new ArgumentException();
+                }
+#endif
                 CILThreadLocalStorage.CurrentShimArg = Stack;
+                CILThreadLocalStorage.CurrentShimStackPtr = StackPtr;
                 MethodInfoShim.Invoke(null, null);
                 CILThreadLocalStorage.CurrentShimArg = null;
-                StackPtr -= argsTypes.Length;
-                //StackPtr = StackPtr - 1/*retaddr*/ + 1/*retval*/; - no-op
+                StackPtr = CILThreadLocalStorage.CurrentShimStackPtr;
+                //StackPtr -= argsTypes.Length; -- done by shim, but not for special functions (args by ref)
+                //StackPtr = StackPtr - 1/*retaddr*/ + 1/*retval*/; -- no-op
             }
             catch (TargetInvocationException exception)
             {
@@ -509,6 +654,239 @@ namespace OutOfPhase
             }
             managedReturnType = GetManagedType(returnType);
         }
+
+        public string GetDisassembly()
+        {
+            StringBuilder result = new StringBuilder();
+
+            DisassembleMethod(MethodInfo, result, true/*tryToEnsureJIT*/);
+
+            result.AppendLine("shim:");
+            DisassembleMethod(MethodInfoShim, result, true/*tryToEnsureJIT*/);
+
+            return result.ToString();
+        }
+
+        public static string GetDisassembly(string name)
+        {
+            int separator = name.LastIndexOf('.');
+            if (separator < 0)
+            {
+                return "Invalid method name";
+            }
+            string typeName = name.Substring(0, separator);
+            Type type = Type.GetType(typeName, false/*throw*/);
+            if (type == null)
+            {
+                return "Type does not exist";
+            }
+            MethodInfo[] methodInfos = type.GetMethods();
+            StringBuilder sb = new StringBuilder();
+            foreach (MethodInfo methodInfo in methodInfos)
+            {
+                if (String.Equals(methodInfo.Name, name.Substring(separator + 1)))
+                {
+                    sb.AppendLine(methodInfo.Name);
+                    DisassembleMethod(methodInfo, sb, false/*tryToEnsureJIT*/);
+                    sb.AppendLine();
+                }
+            }
+            if (sb.Length == 0)
+            {
+                return "Type does not implement a method by that name";
+            }
+            return sb.ToString();
+        }
+
+        private static void DisassembleMethod(
+            MethodInfo methodInfo,
+            StringBuilder result,
+            bool tryToEnsureJIT)
+        {
+#if true    // TODO: this is a total HACK! To do it right requires creating a separate process that activates the CLR debugger
+            // interfaces, attaches to this process, enumerates the active state to find the native code segments corresponding
+            // to cachedMethodInfo, and then return those to us so we can invoke the disassembler. That's way too much work
+            // for the time being.
+
+            // this code could well crash, so make sure autosave has happened.
+            MainWindow.DoAutosaveGlobally();
+
+#if true // additional HACK to try to ensure JIT has happened by invoking method with bogus arguments.
+            if (tryToEnsureJIT)
+            {
+                object[] args = new object[methodInfo.GetParameters().Length];
+                try
+                {
+                    object o = methodInfo.Invoke(null, args);
+                }
+                catch
+                {
+                }
+            }
+#endif
+
+            IntPtr codeBaseAddress = methodInfo.MethodHandle.GetFunctionPointer();
+        TryAgain:
+            int length = 0;
+
+            SharpDisasm.Disassembler.Translator.IncludeAddress = false;
+            SharpDisasm.Disassembler.Translator.IncludeBinary = false;
+
+            // HACK to guess the code length:
+            // seek to first RET instruction, unless there are branches to the instruction immedately
+            // after that RET, in which case, ignore it and keep going.
+            List<ulong> addresses = new List<ulong>();
+            bool firstReturnSeen = false;
+            while (true)
+            {
+                IntPtr currentAddress = new IntPtr(codeBaseAddress.ToInt64() + length);
+
+                // detect RET or INT3
+                bool stop = (Marshal.ReadByte(currentAddress) == 0xC3) || (Marshal.ReadByte(currentAddress) == 0xCC);
+                firstReturnSeen = firstReturnSeen || stop;
+
+                SharpDisasm.Disassembler disassembler2 = new SharpDisasm.Disassembler(
+                    currentAddress,
+                    17,
+                    Environment.Is64BitProcess ? SharpDisasm.ArchitectureMode.x86_64 : SharpDisasm.ArchitectureMode.x86_32,
+                    (ulong)currentAddress.ToInt64(),
+                    true,
+                    SharpDisasm.Vendor.Any);
+
+                foreach (SharpDisasm.Instruction instruction in disassembler2.Disassemble())
+                {
+                    length += instruction.Bytes.Length;
+
+                    string mnemonic = instruction.ToString().Trim();
+                    string name = mnemonic;
+                    int space = mnemonic.IndexOf(' ');
+                    if (space >= 0)
+                    {
+                        name = name.Substring(0, space);
+                    }
+                    switch (name)
+                    {
+                        case "call":
+                        case "ja":
+                        case "jae":
+                        case "jb":
+                        case "jbe":
+                        case "jc":
+                        case "jcxz":
+                        case "je":
+                        case "jg":
+                        case "jge":
+                        case "jl":
+                        case "jle":
+                        case "jmp":
+                        case "jna":
+                        case "jnae":
+                        case "jnb":
+                        case "jnbe":
+                        case "jnc":
+                        case "jne":
+                        case "jng":
+                        case "jnge":
+                        case "jnl":
+                        case "jnle":
+                        case "jno":
+                        case "jnp":
+                        case "jns":
+                        case "jnz":
+                        case "jo":
+                        case "jp":
+                        case "jpe":
+                        case "jpo":
+                        case "js":
+                        case "jz":
+                            string address = mnemonic.Substring(mnemonic.IndexOf(' ')).Trim();
+                            if (address.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                            {
+                                // Disassembler doesn't expose absolute target address as property, but it knows it, since it
+                                // generates text output. Reverse the text to get the address.                          
+                                address = address.Substring(2);
+                                ulong target = UInt64.Parse(address, System.Globalization.NumberStyles.HexNumber);
+                                if (Environment.Is64BitProcess && (address.Length <= 8))
+                                {
+                                    target += instruction.Offset & 0xffffffff00000000;
+                                }
+                                addresses.Add(target);
+
+                                if (String.Equals(name, "jmp") && unchecked(instruction.Offset == (ulong)codeBaseAddress.ToInt64()))
+                                {
+                                    // if JMP is the first instruction, assume we've hit a trampoline and restart at target
+                                    codeBaseAddress = new IntPtr(unchecked((long)target));
+                                    goto TryAgain;
+                                }
+                            }
+                            // else could be register indirect addressing mode, etc.
+
+                            if (String.Equals("invalid", name))
+                            {
+                                length -= instruction.Bytes.Length;
+                                stop = true;
+                                goto ReallyStop;
+                            }
+
+                            // Aux code often terminates with JMP back to main body
+                            if (String.Equals("jmp", name))
+                            {
+                                if (firstReturnSeen) // do not test stop after jmp in main body of code
+                                {
+                                    stop = true;
+                                }
+                            }
+
+                            // Aux code also may terminate with CALL to thunk (which pops context and returns to it's caller)
+                            // No way to distinguish between that case and normal function calls that may resume execution
+                            // at next instruction - so we'll include garbage after in that case. Main risk is of access
+                            // violation if at end of mapped region.
+
+                            break;
+                    }
+                    break;
+                }
+
+                IntPtr nextAddress = new IntPtr(codeBaseAddress.ToInt64() + length);
+
+                if (stop)
+                {
+                    addresses.Sort();
+                    int i = 0;
+                    while ((i < addresses.Count) && (addresses[i] < (ulong)nextAddress.ToInt64()))
+                    {
+                        i++;
+                    }
+                    addresses.RemoveRange(0, i);
+                    if ((addresses.Count != 0) && (addresses[0] == (ulong)nextAddress.ToInt64()))
+                    {
+                        stop = false;
+                    }
+                }
+            ReallyStop:
+                if (stop)
+                {
+                    break;
+                }
+            }
+
+            SharpDisasm.Disassembler.Translator.IncludeAddress = true;
+            SharpDisasm.Disassembler.Translator.IncludeBinary = true;
+
+            SharpDisasm.Disassembler disassembler = new SharpDisasm.Disassembler(
+                codeBaseAddress,
+                length,
+                Environment.Is64BitProcess ? SharpDisasm.ArchitectureMode.x86_64 : SharpDisasm.ArchitectureMode.x86_32,
+                (ulong)codeBaseAddress.ToInt64(),
+                SharpDisasm.Disassembler.Translator.IncludeBinary,
+                SharpDisasm.Vendor.Any);
+            foreach (SharpDisasm.Instruction instruction in disassembler.Disassemble())
+            {
+                result.AppendLine(instruction.ToString());
+            }
+            result.AppendLine();
+#endif
+        }
     }
 
     public class CILThreadLocalStorage
@@ -523,6 +901,7 @@ namespace OutOfPhase
         private int[] FunctionSignatures;
 
         private StackElement[] ShimArg;
+        private int ShimStackPtr;
 
         private CILThreadLocalStorage previous;
 
@@ -548,6 +927,7 @@ namespace OutOfPhase
         public static int[] CurrentFunctionSignatures { get { return threadLocal.FunctionSignatures; } }
 
         public static StackElement[] CurrentShimArg { get { return threadLocal.ShimArg; } set { threadLocal.ShimArg = value; } }
+        public static int CurrentShimStackPtr { get { return threadLocal.ShimStackPtr; } set { threadLocal.ShimStackPtr = value; } }
 
         public static void Push(
             PcodeSystem.IEvaluationContext EvaluationContext,

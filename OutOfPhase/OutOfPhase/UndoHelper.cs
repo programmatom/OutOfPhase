@@ -116,12 +116,20 @@ namespace OutOfPhase
             }
         }
 
+        public event EventHandler OnBeforeUndoRedo;
+        public event EventHandler OnAfterUndoRedo;
+
         public void Undo()
         {
             if (disposed)
             {
                 Debug.Assert(false);
                 throw new InvalidOperationException();
+            }
+
+            if (OnBeforeUndoRedo != null)
+            {
+                OnBeforeUndoRedo.Invoke(this, EventArgs.Empty);
             }
 
             UndoUnit info = undo.Pop();
@@ -137,6 +145,11 @@ namespace OutOfPhase
                 {
                     dispInfoInner.Dispose();
                 }
+
+                if (OnAfterUndoRedo != null)
+                {
+                    OnAfterUndoRedo.Invoke(this, EventArgs.Empty);
+                }
             }
         }
 
@@ -146,6 +159,11 @@ namespace OutOfPhase
             {
                 Debug.Assert(false);
                 throw new InvalidOperationException();
+            }
+
+            if (OnBeforeUndoRedo != null)
+            {
+                OnBeforeUndoRedo.Invoke(this, EventArgs.Empty);
             }
 
             UndoUnit info = redo.Pop();
@@ -160,6 +178,11 @@ namespace OutOfPhase
                 if (dispInfoInner != null)
                 {
                     dispInfoInner.Dispose();
+                }
+
+                if (OnAfterUndoRedo != null)
+                {
+                    OnAfterUndoRedo.Invoke(this, EventArgs.Empty);
                 }
             }
         }

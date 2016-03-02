@@ -143,7 +143,7 @@ namespace OutOfPhase
                 return;
             }
 
-            string DisassemblyText = Compiler.DisassemblePcode(FuncCode, Environment.NewLine);
+            string DisassemblyText = Compiler.DisassemblePcode(FuncCode);
             new DisassemblyWindow(DisassemblyText, mainWindow, "Calculator").Show();
         }
 

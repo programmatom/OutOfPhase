@@ -22,13 +22,15 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
 {
     public static partial class Synthesizer
     {
-        public class FrozenNoteRec
+        [StructLayout(LayoutKind.Auto)]
+        public struct FrozenNoteRec
         {
             /* reference to the note that defines this note.  this is used for determining */
             /* the following things: */
@@ -85,82 +87,82 @@ namespace OutOfPhase
         /* indicates how many ticks before (negative) or after (positive) now that */
         /* the key-down should occur.  this is added to the scanning gap size and envelope */
         /* origins to figure out how to schedule the note */
-        public static FrozenNoteRec FixNoteParameters(
+        public static void FixNoteParameters(
             IncrParamUpdateRec GlobalParamSource,
             NoteNoteObjectRec Note,
             out int StartAdjustOut,
             double EnvelopeTicksPerDurationTick,
             short PitchIndexAdjust,
+            ref FrozenNoteRec FrozenNote,
             SynthParamRec SynthParams)
         {
-            FrozenNoteRec FrozenNote;
-            double DoubleTemp;
-            double DoubleOtherTemp;
-            int IntTemp;
-
-            FrozenNote = new FrozenNoteRec();
+            // must assign all fields
 
             /* reference to the note that defines this note. */
             FrozenNote.OriginalNote = Note;
 
             /* frequency determined by pitch index + detuning, in Hertz */
-            IntTemp = Note._Pitch
-                + GlobalParamSource.TransposeHalfsteps
-                + PitchIndexAdjust;
-            if (IntTemp < 0)
+            double NominalFrequency;
             {
-                IntTemp = 0;
-            }
-            else if (IntTemp > Constants.NUMNOTES - 1)
-            {
-                IntTemp = Constants.NUMNOTES - 1;
-            }
-            /* compute frequency from index */
+                int i = Note._Pitch
+                    + GlobalParamSource.TransposeHalfsteps
+                    + PitchIndexAdjust;
+                if (i < 0)
+                {
+                    i = 0;
+                }
+                else if (i > Constants.NUMNOTES - 1)
+                {
+                    i = Constants.NUMNOTES - 1;
+                }
+                /* compute frequency from index */
 #if DEBUG
-            if ((Constants.CENTERNOTE % 12) != 0)
-            {
-                // CENTERNOTE multiple of 12
-                Debug.Assert(false);
-                throw new ArgumentException();
-            }
-#endif
-            DoubleTemp = GlobalParamSource.FrequencyTable[IntTemp % 12].nd.Current;
-            IntTemp = (IntTemp / 12) - (Constants.CENTERNOTE / 12);
-            DoubleTemp = DoubleTemp * Math.Exp(IntTemp * Constants.LOG2) * Constants.MIDDLEC;
-            /* apply detuning */
-            switch (Note.Flags & NoteFlags.eDetuningModeMask)
-            {
-                default:
+                if ((Constants.CENTERNOTE % 12) != 0)
+                {
+                    // CENTERNOTE multiple of 12
                     Debug.Assert(false);
                     throw new ArgumentException();
-                case NoteFlags.eDetuningModeDefault:
-                    DoubleOtherTemp = (double)Note._Detuning * GlobalParamSource.Detune.nd.Current;
-                    if (GlobalParamSource.DetuneHertz)
-                    {
-                        goto DetuneHertzPoint;
-                    }
-                    else
-                    {
-                        goto DetuneHalfStepsPoint;
-                    }
-                    break;
-                case NoteFlags.eDetuningModeHalfSteps:
-                    DoubleOtherTemp = (double)(Note._Detuning) + GlobalParamSource.Detune.nd.Current;
-                DetuneHalfStepsPoint:
-                    FrozenNote.NominalFrequency = DoubleTemp * Math.Exp((DoubleOtherTemp / 12) * Constants.LOG2);
-                    break;
-                case NoteFlags.eDetuningModeHertz:
-                    DoubleOtherTemp = (double)Note._Detuning + GlobalParamSource.Detune.nd.Current;
-                DetuneHertzPoint:
-                    FrozenNote.NominalFrequency = DoubleTemp + DoubleOtherTemp;
-                    break;
+                }
+#endif
+                double d = GlobalParamSource.FrequencyTable[i % 12].nd.Current;
+                i = (i / 12) - (Constants.CENTERNOTE / 12);
+                d = d * Math.Exp(i * Constants.LOG2) * Constants.MIDDLEC;
+                /* apply detuning */
+                double e;
+                switch (Note.Flags & NoteFlags.eDetuningModeMask)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case NoteFlags.eDetuningModeDefault:
+                        e = (double)Note._Detuning * GlobalParamSource.Detune.nd.Current;
+                        if (GlobalParamSource.DetuneHertz)
+                        {
+                            goto DetuneHertzPoint;
+                        }
+                        else
+                        {
+                            goto DetuneHalfStepsPoint;
+                        }
+                    case NoteFlags.eDetuningModeHalfSteps:
+                        e = (double)(Note._Detuning) + GlobalParamSource.Detune.nd.Current;
+                    DetuneHalfStepsPoint:
+                        NominalFrequency = d * Math.Exp((e / 12) * Constants.LOG2);
+                        break;
+                    case NoteFlags.eDetuningModeHertz:
+                        e = (double)Note._Detuning + GlobalParamSource.Detune.nd.Current;
+                    DetuneHertzPoint:
+                        NominalFrequency = d + e;
+                        break;
+                }
             }
+            FrozenNote.NominalFrequency = NominalFrequency;
 
             /* frequency used for doing multisampling, in Hertz */
             if (Note._MultisamplePitchAsIf != -1)
             {
                 /* compute frequency from index */
-                IntTemp = Note._MultisamplePitchAsIf;
+                int i = Note._MultisamplePitchAsIf;
 #if DEBUG
                 if ((Constants.CENTERNOTE % 12) != 0)
                 {
@@ -168,113 +170,116 @@ namespace OutOfPhase
                     throw new ArgumentException();
                 }
 #endif
-                DoubleTemp = GlobalParamSource.FrequencyTable[IntTemp % 12].nd.Current;
-                IntTemp = (IntTemp / 12) - (Constants.CENTERNOTE / 12);
-                DoubleTemp = DoubleTemp * Math.Exp(IntTemp * Constants.LOG2) * Constants.MIDDLEC;
+                double d = GlobalParamSource.FrequencyTable[i % 12].nd.Current;
+                i = (i / 12) - (Constants.CENTERNOTE / 12);
+                d = d * Math.Exp(i * Constants.LOG2) * Constants.MIDDLEC;
+                FrozenNote.MultisampleFrequency = d;
             }
             else
             {
-                FrozenNote.MultisampleFrequency = FrozenNote.NominalFrequency;
+                FrozenNote.MultisampleFrequency = NominalFrequency;
             }
 
             /* acceleration of envelopes */
-            FrozenNote.HurryUpFactor = (double)Note._HurryUpFactor
-                * GlobalParamSource.HurryUp.nd.Current;
+            FrozenNote.HurryUpFactor = (double)Note._HurryUpFactor * GlobalParamSource.HurryUp.nd.Current;
 
             /* duration, in envelope ticks */
-            switch (Note.Flags & NoteFlags.eDurationMask)
+            int Duration;
             {
-                default:
-                    Debug.Assert(false);
-                    throw new ArgumentException();
-                case NoteFlags.e64thNote:
-                    IntTemp = DURATIONUPDATECLOCKRESOLUTION / 64;
-                    break;
-                case NoteFlags.e32ndNote:
-                    IntTemp = DURATIONUPDATECLOCKRESOLUTION / 32;
-                    break;
-                case NoteFlags.e16thNote:
-                    IntTemp = DURATIONUPDATECLOCKRESOLUTION / 16;
-                    break;
-                case NoteFlags.e8thNote:
-                    IntTemp = DURATIONUPDATECLOCKRESOLUTION / 8;
-                    break;
-                case NoteFlags.e4thNote:
-                    IntTemp = DURATIONUPDATECLOCKRESOLUTION / 4;
-                    break;
-                case NoteFlags.e2ndNote:
-                    IntTemp = DURATIONUPDATECLOCKRESOLUTION / 2;
-                    break;
-                case NoteFlags.eWholeNote:
-                    IntTemp = DURATIONUPDATECLOCKRESOLUTION;
-                    break;
-                case NoteFlags.eDoubleNote:
-                    IntTemp = DURATIONUPDATECLOCKRESOLUTION * 2;
-                    break;
-                case NoteFlags.eQuadNote:
-                    IntTemp = DURATIONUPDATECLOCKRESOLUTION * 4;
-                    break;
+                int i;
+                switch (Note.Flags & NoteFlags.eDurationMask)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case NoteFlags.e64thNote:
+                        i = DURATIONUPDATECLOCKRESOLUTION / 64;
+                        break;
+                    case NoteFlags.e32ndNote:
+                        i = DURATIONUPDATECLOCKRESOLUTION / 32;
+                        break;
+                    case NoteFlags.e16thNote:
+                        i = DURATIONUPDATECLOCKRESOLUTION / 16;
+                        break;
+                    case NoteFlags.e8thNote:
+                        i = DURATIONUPDATECLOCKRESOLUTION / 8;
+                        break;
+                    case NoteFlags.e4thNote:
+                        i = DURATIONUPDATECLOCKRESOLUTION / 4;
+                        break;
+                    case NoteFlags.e2ndNote:
+                        i = DURATIONUPDATECLOCKRESOLUTION / 2;
+                        break;
+                    case NoteFlags.eWholeNote:
+                        i = DURATIONUPDATECLOCKRESOLUTION;
+                        break;
+                    case NoteFlags.eDoubleNote:
+                        i = DURATIONUPDATECLOCKRESOLUTION * 2;
+                        break;
+                    case NoteFlags.eQuadNote:
+                        i = DURATIONUPDATECLOCKRESOLUTION * 4;
+                        break;
+                }
+                switch (Note.Flags & NoteFlags.eDivisionMask)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case NoteFlags.eDiv1Modifier:
+                        break;
+                    case NoteFlags.eDiv3Modifier:
+                        i = i / 3;
+                        break;
+                    case NoteFlags.eDiv5Modifier:
+                        i = i / 5;
+                        break;
+                    case NoteFlags.eDiv7Modifier:
+                        i = i / 7;
+                        break;
+                }
+                if ((Note.Flags & NoteFlags.eDotModifier) != 0)
+                {
+                    i = (i * 3) / 2;
+                }
+                double d = i;
+                switch (Note.Flags & NoteFlags.eDurationAdjustMask)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case NoteFlags.eDurationAdjustDefault:
+                        if (GlobalParamSource.DurationAdjustAdditive)
+                        {
+                            goto DurationAdjustAddPoint;
+                        }
+                        else
+                        {
+                            goto DurationAdjustMultPoint;
+                        }
+                    case NoteFlags.eDurationAdjustAdditive:
+                    DurationAdjustAddPoint:
+                        d = d + (double)Note._DurationAdjust * (DURATIONUPDATECLOCKRESOLUTION / 4);
+                        break;
+                    case NoteFlags.eDurationAdjustMultiplicative:
+                    DurationAdjustMultPoint:
+                        d = d * (double)Note._DurationAdjust;
+                        break;
+                }
+                if (GlobalParamSource.DurationAdjustAdditive)
+                {
+                    d = d + GlobalParamSource.DurationAdjust.nd.Current * (DURATIONUPDATECLOCKRESOLUTION / 4);
+                }
+                else
+                {
+                    d = d * GlobalParamSource.DurationAdjust.nd.Current;
+                }
+                /* this line is what converts from duration update ticks to envelope ticks */
+                Duration = (int)(d * EnvelopeTicksPerDurationTick);
             }
-            switch (Note.Flags & NoteFlags.eDivisionMask)
-            {
-                default:
-                    Debug.Assert(false);
-                    throw new ArgumentException();
-                case NoteFlags.eDiv1Modifier:
-                    break;
-                case NoteFlags.eDiv3Modifier:
-                    IntTemp = IntTemp / 3;
-                    break;
-                case NoteFlags.eDiv5Modifier:
-                    IntTemp = IntTemp / 5;
-                    break;
-                case NoteFlags.eDiv7Modifier:
-                    IntTemp = IntTemp / 7;
-                    break;
-            }
-            if ((Note.Flags & NoteFlags.eDotModifier) != 0)
-            {
-                IntTemp = (IntTemp * 3) / 2;
-            }
-            DoubleTemp = IntTemp;
-            switch (Note.Flags & NoteFlags.eDurationAdjustMask)
-            {
-                default:
-                    Debug.Assert(false);
-                    throw new ArgumentException();
-                case NoteFlags.eDurationAdjustDefault:
-                    if (GlobalParamSource.DurationAdjustAdditive)
-                    {
-                        goto DurationAdjustAddPoint;
-                    }
-                    else
-                    {
-                        goto DurationAdjustMultPoint;
-                    }
-                    break;
-                case NoteFlags.eDurationAdjustAdditive:
-                DurationAdjustAddPoint:
-                    DoubleTemp = DoubleTemp + (double)Note._DurationAdjust * (DURATIONUPDATECLOCKRESOLUTION / 4);
-                    break;
-                case NoteFlags.eDurationAdjustMultiplicative:
-                DurationAdjustMultPoint:
-                    DoubleTemp = DoubleTemp * (double)Note._DurationAdjust;
-                    break;
-            }
-            if (GlobalParamSource.DurationAdjustAdditive)
-            {
-                DoubleTemp = DoubleTemp + GlobalParamSource.DurationAdjust.nd.Current * (DURATIONUPDATECLOCKRESOLUTION / 4);
-            }
-            else
-            {
-                DoubleTemp = DoubleTemp * GlobalParamSource.DurationAdjust.nd.Current;
-            }
-            /* this line is what converts from duration update ticks to envelope ticks */
-            FrozenNote.Duration = (int)(DoubleTemp * EnvelopeTicksPerDurationTick);
+            FrozenNote.Duration = Duration;
 
             /* portamento duration, in envelope ticks */
-            FrozenNote.PortamentoDuration = (int)(((double)Note._PortamentoDuration
-                + GlobalParamSource.Portamento.nd.Current)
+            FrozenNote.PortamentoDuration = (int)(((double)Note._PortamentoDuration + GlobalParamSource.Portamento.nd.Current)
                 * (DURATIONUPDATECLOCKRESOLUTION / 4) * EnvelopeTicksPerDurationTick);
 
             /* see if portamento occurs before note retrigger */
@@ -287,11 +292,11 @@ namespace OutOfPhase
                     Debug.Assert(false);
                     throw new ArgumentException();
                 case NoteFlags.eRelease1FromStart:
-                    FrozenNote.ReleasePoint1 = (int)((double)Note._ReleasePoint1 * FrozenNote.Duration);
+                    FrozenNote.ReleasePoint1 = (int)((double)Note._ReleasePoint1 * Duration);
                     FrozenNote.Release1FromStart = true;
                     break;
                 case NoteFlags.eRelease1FromEnd:
-                    FrozenNote.ReleasePoint1 = (int)((1 - (double)Note._ReleasePoint1) * FrozenNote.Duration);
+                    FrozenNote.ReleasePoint1 = (int)((1 - (double)Note._ReleasePoint1) * Duration);
                     FrozenNote.Release1FromStart = false;
                     break;
                 case NoteFlags.eRelease1FromDefault:
@@ -299,13 +304,14 @@ namespace OutOfPhase
                     {
                         FrozenNote.ReleasePoint1 = (int)(((double)Note._ReleasePoint1
                             + GlobalParamSource.ReleasePoint1.nd.Current)
-                            * FrozenNote.Duration);
+                            * Duration);
                         FrozenNote.Release1FromStart = true;
                     }
                     else
                     {
                         FrozenNote.ReleasePoint1 = (int)((1 - ((double)Note._ReleasePoint1
-                            + GlobalParamSource.ReleasePoint1.nd.Current)) * FrozenNote.Duration);
+                            + GlobalParamSource.ReleasePoint1.nd.Current))
+                            * Duration);
                         FrozenNote.Release1FromStart = false;
                     }
                     break;
@@ -318,11 +324,11 @@ namespace OutOfPhase
                     Debug.Assert(false);
                     throw new ArgumentException();
                 case NoteFlags.eRelease2FromStart:
-                    FrozenNote.ReleasePoint2 = (int)((double)Note._ReleasePoint2 * FrozenNote.Duration);
+                    FrozenNote.ReleasePoint2 = (int)((double)Note._ReleasePoint2 * Duration);
                     FrozenNote.Release2FromStart = true;
                     break;
                 case NoteFlags.eRelease2FromEnd:
-                    FrozenNote.ReleasePoint2 = (int)((1 - (double)Note._ReleasePoint2) * FrozenNote.Duration);
+                    FrozenNote.ReleasePoint2 = (int)((1 - (double)Note._ReleasePoint2) * Duration);
                     FrozenNote.Release2FromStart = false;
                     break;
                 case NoteFlags.eRelease2FromDefault:
@@ -330,13 +336,14 @@ namespace OutOfPhase
                     {
                         FrozenNote.ReleasePoint2 = (int)(((double)Note._ReleasePoint2
                             + GlobalParamSource.ReleasePoint2.nd.Current)
-                            * FrozenNote.Duration);
+                            * Duration);
                         FrozenNote.Release2FromStart = true;
                     }
                     else
                     {
                         FrozenNote.ReleasePoint2 = (int)((1 - ((double)Note._ReleasePoint2
-                            + GlobalParamSource.ReleasePoint2.nd.Current)) * FrozenNote.Duration);
+                            + GlobalParamSource.ReleasePoint2.nd.Current))
+                            * Duration);
                         FrozenNote.Release2FromStart = false;
                     }
                     break;
@@ -350,7 +357,7 @@ namespace OutOfPhase
             }
             else
             {
-                FrozenNote.ReleasePoint3 = FrozenNote.Duration;
+                FrozenNote.ReleasePoint3 = Duration;
                 FrozenNote.Release3FromStart = false;
             }
 
@@ -358,16 +365,18 @@ namespace OutOfPhase
             FrozenNote.LoudnessAdjust = (double)Note._OverallLoudnessAdjustment * GlobalParamSource.Volume.nd.Current;
 
             /* stereo positioning for note */
-            DoubleTemp = (double)Note._StereoPositionAdjustment + GlobalParamSource.StereoPosition.nd.Current;
-            if (DoubleTemp < -1)
             {
-                DoubleTemp = -1;
+                double d = (double)Note._StereoPositionAdjustment + GlobalParamSource.StereoPosition.nd.Current;
+                if (d < -1)
+                {
+                    d = -1;
+                }
+                else if (d > 1)
+                {
+                    d = 1;
+                }
+                FrozenNote.StereoPosition = d;
             }
-            else if (DoubleTemp > 1)
-            {
-                DoubleTemp = 1;
-            }
-            FrozenNote.StereoPosition = DoubleTemp;
 
             /* accent values for controlling envelopes */
             InitializeAccent(
@@ -396,23 +405,23 @@ namespace OutOfPhase
                     Debug.Assert(false);
                     throw new ArgumentException();
                 case NoteFlags.ePitchDisplacementStartFromStart:
-                    FrozenNote.PitchDisplacementStartPoint = (int)(FrozenNote.Duration
+                    FrozenNote.PitchDisplacementStartPoint = (int)(Duration
                         * (double)Note._PitchDisplacementStartPoint);
                     break;
                 case NoteFlags.ePitchDisplacementStartFromEnd:
-                    FrozenNote.PitchDisplacementStartPoint = (int)(FrozenNote.Duration
+                    FrozenNote.PitchDisplacementStartPoint = (int)(Duration
                         * (1 - (double)Note._PitchDisplacementStartPoint));
                     break;
                 case NoteFlags.ePitchDisplacementStartFromDefault:
                     if (GlobalParamSource.PitchDisplacementStartPointFromStart)
                     {
-                        FrozenNote.PitchDisplacementStartPoint = (int)(FrozenNote.Duration
+                        FrozenNote.PitchDisplacementStartPoint = (int)(Duration
                             * ((double)Note._PitchDisplacementStartPoint
                             + GlobalParamSource.PitchDisplacementStartPoint.nd.Current));
                     }
                     else
                     {
-                        FrozenNote.PitchDisplacementStartPoint = (int)(FrozenNote.Duration
+                        FrozenNote.PitchDisplacementStartPoint = (int)(Duration
                             * (1 - ((double)Note._PitchDisplacementStartPoint
                             + GlobalParamSource.PitchDisplacementStartPoint.nd.Current)));
                     }
@@ -420,9 +429,7 @@ namespace OutOfPhase
             }
 
             StartAdjustOut = (int)(((double)Note._EarlyLateAdjust
-                + GlobalParamSource.EarlyLateAdjust.nd.Current) * FrozenNote.Duration);
-
-            return FrozenNote;
+                + GlobalParamSource.EarlyLateAdjust.nd.Current) * Duration);
         }
     }
 }

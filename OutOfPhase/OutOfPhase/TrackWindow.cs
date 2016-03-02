@@ -49,7 +49,7 @@ namespace OutOfPhase
 
             // By default make new tracks take up most of the horizontal screen width.
             SetDesktopBounds(DesktopBounds.X, DesktopBounds.Y, Screen.PrimaryScreen.Bounds.Width - DesktopBounds.X - 100, DesktopBounds.Height);
-            
+
             menuStripManager.SetGlobalHandler(mainWindow);
 
             GlobalNameChanged();
@@ -65,7 +65,9 @@ namespace OutOfPhase
 
             trackObject.PropertyChanged += TrackObject_PropertyChanged;
 
-            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+            // Change font if preferences have scale factor. Use 'force' to ensure note view and parma strip always compute the
+            // correct height even if font hasn't changed to prevent layout glitch.
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom, true/*force*/);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)

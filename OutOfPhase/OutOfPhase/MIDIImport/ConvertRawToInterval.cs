@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
@@ -33,6 +34,7 @@ namespace OutOfPhase
         private const int SYSEXBYTESPERLINE = 8;
 
         /* record for note event correlation */
+        [StructLayout(LayoutKind.Auto)]
         public struct PitchEventRec
         {
             /* flag indicating whether note is on or off */

@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -45,6 +46,7 @@ namespace OutOfPhase
                 SynthParamRec SynthParams);
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct FilterParams
         {
             public readonly double SamplingRate;
@@ -72,6 +74,7 @@ namespace OutOfPhase
             Gain,
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct FilterInfo
         {
             public readonly FilterTypes FilterType;
@@ -148,7 +151,8 @@ namespace OutOfPhase
         }
 
         /* combined single filter state record */
-        public class FilterRec
+        [StructLayout(LayoutKind.Auto)]
+        public struct FilterRec
         {
             /* common state info */
             public float CurrentMultiplier; // aka outputscaling
@@ -159,7 +163,7 @@ namespace OutOfPhase
             public IFilter Right;
 
             /* variant state info */
-            // was a tagged union in C, but given the total size, saving a pointer just doesn't matter
+            // was a tagged union in C, but given the total size, saving a pointer just doesn't matter enough for C# heroics
             // exactly one is non-null - indicating which class it is
             public OscFilterParamRec OscFilter;
             public TrackFilterParamRec TrackFilter;
@@ -168,6 +172,8 @@ namespace OutOfPhase
         /* structure for the whole overall filter */
         public class FilterArrayRec : ITrackEffect, IOscillatorEffect
         {
+            public int count;
+
             public FilterRec[] FilterVector;
 
 
@@ -209,20 +215,21 @@ namespace OutOfPhase
 
                 if (LeftChannel)
                 {
-                    Left = CreateFilter(Template, FilterIndex);
+                    Left = CreateFilter(Template, FilterIndex, SynthParams);
                     Debug.Assert(Left.FilterType == GetFilterType(Template, FilterIndex));
                 }
 
                 if (RightChannel)
                 {
-                    Right = CreateFilter(Template, FilterIndex);
+                    Right = CreateFilter(Template, FilterIndex, SynthParams);
                     Debug.Assert(Right.FilterType == GetFilterType(Template, FilterIndex));
                 }
             }
 
             private static IFilter CreateFilter(
                 FilterSpecRec Template,
-                int FilterIndex)
+                int FilterIndex,
+                SynthParamRec SynthParams)
             {
                 FilterTypes Type = GetFilterType(Template, FilterIndex);
                 IFilter filter;
@@ -270,14 +277,24 @@ namespace OutOfPhase
                         filter = new HighShelfEqualizerRec();
                         break;
                     case FilterTypes.eFilterResonantLowpass:
-                        filter = new ResonantLowpassRec(
-                            GetFilterLowpassOrder(Template, FilterIndex),
-                            GetFilterBandpassOrder(Template, FilterIndex));
+                        {
+                            ResonantLowpassRec filterSpecialized;
+                            filter = filterSpecialized = New(ref SynthParams.freelists.resonantLowpassFreeList);
+                            filterSpecialized.Init(
+                                GetFilterLowpassOrder(Template, FilterIndex),
+                                GetFilterBandpassOrder(Template, FilterIndex),
+                                SynthParams);
+                        }
                         break;
                     case FilterTypes.eFilterResonantLowpass2:
-                        filter = new ResonantLowpass2Rec(
-                            GetFilterLowpassOrder(Template, FilterIndex),
-                            GetFilterBroken(Template, FilterIndex));
+                        {
+                            ResonantLowpass2Rec filterSpecialized;
+                            filter = filterSpecialized = New(
+                                ref SynthParams.freelists.resonantLowpass2FreeList);
+                            filterSpecialized.Init(
+                                GetFilterLowpassOrder(Template, FilterIndex),
+                                GetFilterBroken(Template, FilterIndex));
+                        }
                         break;
                     case FilterTypes.eFilterNull:
                         filter = new FilterNullRec();
@@ -285,6 +302,59 @@ namespace OutOfPhase
                 }
                 Debug.Assert(filter.FilterType == Type);
                 return filter;
+            }
+
+            private static void FreeFilter(
+                ref IFilter filter,
+                SynthParamRec SynthParams)
+            {
+                switch (filter.FilterType)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case FilterTypes.eFilterFirstOrderLowpass:
+                        break;
+                    case FilterTypes.eFilterFirstOrderHighpass:
+                        break;
+                    case FilterTypes.eFilterSecondOrderResonant:
+                        break;
+                    case FilterTypes.eFilterSecondOrderZero:
+                        break;
+                    case FilterTypes.eFilterButterworthLowpass:
+                        break;
+                    case FilterTypes.eFilterButterworthHighpass:
+                        break;
+                    case FilterTypes.eFilterButterworthBandpass:
+                        break;
+                    case FilterTypes.eFilterButterworthBandreject:
+                        break;
+                    case FilterTypes.eFilterParametricEQ:
+                        break;
+                    case FilterTypes.eFilterParametricEQ2:
+                        break;
+                    case FilterTypes.eFilterLowShelfEQ:
+                        break;
+                    case FilterTypes.eFilterHighShelfEQ:
+                        break;
+                    case FilterTypes.eFilterResonantLowpass:
+                        {
+                            ResonantLowpassRec filterSpecialized = (ResonantLowpassRec)filter;
+                            filterSpecialized.Dispose(SynthParams); // free contained objects
+                            Free(ref SynthParams.freelists.resonantLowpassFreeList, ref filterSpecialized);
+                        }
+                        break;
+                    case FilterTypes.eFilterResonantLowpass2:
+                        {
+                            ResonantLowpass2Rec filterSpecialized = (ResonantLowpass2Rec)filter;
+                            Free(ref SynthParams.freelists.resonantLowpass2FreeList, ref filterSpecialized);
+                        }
+                        break;
+                    case FilterTypes.eFilterNull:
+                        break;
+                }
+
+                filter = null;
             }
 
             /* create a new parallel filter processor for oscillator effects chain (enveloped) */
@@ -300,10 +370,16 @@ namespace OutOfPhase
             {
                 int OnePreOrigin;
 
-                int count = GetNumFiltersInSpec(Template);
+                FilterArrayRec Array = New(ref SynthParams.freelists.filterArrayRecFreeList);
+                int count = Array.count = GetNumFiltersInSpec(Template);
+                FilterRec[] FilterVector = Array.FilterVector = New(ref SynthParams.freelists.filterRecFreeList, count); // zeroed
+                if (unchecked((uint)count > (uint)FilterVector.Length))
+                {
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
 
-                FilterArrayRec Array = new FilterArrayRec();
-                Array.FilterVector = new FilterRec[count];
+                // must assign all fields: Array, Array.FilterVector[i].OscFilter
 
                 /* remembers maximum amount of pre-origin time required */
                 int MaxPreOrigin = 0;
@@ -311,16 +387,15 @@ namespace OutOfPhase
                 /* build filter table */
                 for (int i = 0; i < count; i++)
                 {
-                    FilterRec Filter = Array.FilterVector[i] = new FilterRec();
-                    Filter.OscFilter = new OscFilterParamRec();
+                    FilterVector[i].OscFilter = New(ref SynthParams.freelists.OscFilterParamRecFreeList);
 
                     /* what kind of filter is this */
-                    Filter.FilterType = GetFilterType(Template, i);
-                    Filter.FilterParamMask = FilterInfos[(int)Filter.FilterType].ParamsMask;
+                    FilterVector[i].FilterType = GetFilterType(Template, i);
+                    FilterVector[i].FilterParamMask = FilterInfos[(int)FilterVector[i].FilterType].ParamsMask;
 
                     /* envelopes and LFOs */
 
-                    Filter.OscFilter.OutputMultiplierEnvelope = NewEnvelopeStateRecord(
+                    FilterVector[i].OscFilter.OutputMultiplierEnvelope = NewEnvelopeStateRecord(
                         GetFilterOutputEnvelope(Template, i),
                         ref Accents,
                         InitialFrequency,
@@ -335,7 +410,7 @@ namespace OutOfPhase
                         MaxPreOrigin = OnePreOrigin;
                     }
 
-                    Filter.OscFilter.OutputMultiplierLFO = NewLFOGenerator(
+                    FilterVector[i].OscFilter.OutputMultiplierLFO = NewLFOGenerator(
                         GetFilterOutputLFO(Template, i),
                         out OnePreOrigin,
                         ref Accents,
@@ -352,15 +427,9 @@ namespace OutOfPhase
                         MaxPreOrigin = OnePreOrigin;
                     }
 
-                    // initial value for envelope smoothing
-                    Filter.CurrentMultiplier = (float)LFOGenInitialValue(
-                        Filter.OscFilter.OutputMultiplierLFO,
-                        EnvelopeInitialValue(
-                           Filter.OscFilter.OutputMultiplierEnvelope));
-
-                    Debug.Assert((Filter.FilterParamMask & (1 << (int)FilterParam.Cutoff)) != 0);
+                    Debug.Assert((FilterVector[i].FilterParamMask & (1 << (int)FilterParam.Cutoff)) != 0);
                     {
-                        Filter.OscFilter.CutoffEnvelope = NewEnvelopeStateRecord(
+                        FilterVector[i].OscFilter.CutoffEnvelope = NewEnvelopeStateRecord(
                             GetFilterCutoffEnvelope(Template, i),
                             ref Accents,
                             InitialFrequency,
@@ -374,7 +443,7 @@ namespace OutOfPhase
                         {
                             MaxPreOrigin = OnePreOrigin;
                         }
-                        Filter.OscFilter.CutoffLFO = NewLFOGenerator(
+                        FilterVector[i].OscFilter.CutoffLFO = NewLFOGenerator(
                             GetFilterCutoffLFO(Template, i),
                             out OnePreOrigin,
                             ref Accents,
@@ -392,9 +461,9 @@ namespace OutOfPhase
                         }
                     }
 
-                    if ((Filter.FilterParamMask & (1 << (int)FilterParam.BandwidthOrSlope)) != 0)
+                    if ((FilterVector[i].FilterParamMask & (1 << (int)FilterParam.BandwidthOrSlope)) != 0)
                     {
-                        Filter.OscFilter.BandwidthOrSlopeEnvelope = NewEnvelopeStateRecord(
+                        FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope = NewEnvelopeStateRecord(
                             GetFilterBandwidthOrSlopeEnvelope(Template, i),
                             ref Accents,
                             InitialFrequency,
@@ -408,7 +477,7 @@ namespace OutOfPhase
                         {
                             MaxPreOrigin = OnePreOrigin;
                         }
-                        Filter.OscFilter.BandwidthOrSlopeLFO = NewLFOGenerator(
+                        FilterVector[i].OscFilter.BandwidthOrSlopeLFO = NewLFOGenerator(
                             GetFilterBandwidthOrSlopeLFO(Template, i),
                             out OnePreOrigin,
                             ref Accents,
@@ -426,9 +495,9 @@ namespace OutOfPhase
                         }
                     }
 
-                    if ((Filter.FilterParamMask & (1 << (int)FilterParam.Gain)) != 0)
+                    if ((FilterVector[i].FilterParamMask & (1 << (int)FilterParam.Gain)) != 0)
                     {
-                        Filter.OscFilter.GainEnvelope = NewEnvelopeStateRecord(
+                        FilterVector[i].OscFilter.GainEnvelope = NewEnvelopeStateRecord(
                             GetFilterGainEnvelope(Template, i),
                             ref Accents,
                             InitialFrequency,
@@ -442,7 +511,7 @@ namespace OutOfPhase
                         {
                             MaxPreOrigin = OnePreOrigin;
                         }
-                        Filter.OscFilter.GainLFO = NewLFOGenerator(
+                        FilterVector[i].OscFilter.GainLFO = NewLFOGenerator(
                             GetFilterGainLFO(Template, i),
                             out OnePreOrigin,
                             ref Accents,
@@ -461,8 +530,8 @@ namespace OutOfPhase
                     }
 
                     CreateFilters(
-                        out Filter.Left,
-                        out Filter.Right,
+                        out FilterVector[i].Left,
+                        out FilterVector[i].Right,
                         i,
                         Template,
                         SynthParams);
@@ -478,51 +547,54 @@ namespace OutOfPhase
                 FilterSpecRec Template,
                 SynthParamRec SynthParams)
             {
-                int count = GetNumFiltersInSpec(Template);
-
-                FilterArrayRec Array = new FilterArrayRec();
-                Array.FilterVector = new FilterRec[count];
+                FilterArrayRec Array = New(ref SynthParams.freelists.filterArrayRecFreeList);
+                int count = Array.count = GetNumFiltersInSpec(Template);
+                FilterRec[] FilterVector = Array.FilterVector = New(ref SynthParams.freelists.filterRecFreeList, count); // zeroed
+                if (unchecked((uint)count > (uint)FilterVector.Length))
+                {
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
 
                 /* create each filter */
                 for (int i = 0; i < count; i++)
                 {
-                    FilterRec Filter = Array.FilterVector[i] = new FilterRec();
-                    Filter.TrackFilter = new TrackFilterParamRec();
+                    FilterVector[i].TrackFilter = new TrackFilterParamRec();
 
                     /* load type parameters */
-                    Filter.FilterType = GetFilterType(Template, i);
-                    Filter.FilterParamMask = FilterInfos[(int)Filter.FilterType].ParamsMask;
+                    FilterVector[i].FilterType = GetFilterType(Template, i);
+                    FilterVector[i].FilterParamMask = FilterInfos[(int)FilterVector[i].FilterType].ParamsMask;
 
                     /* load control parameters */
-                    Debug.Assert((Filter.FilterParamMask & (1 << (int)FilterParam.Cutoff)) != 0);
+                    Debug.Assert((FilterVector[i].FilterParamMask & (1 << (int)FilterParam.Cutoff)) != 0);
                     {
                         GetFilterCutoffAgg(
                             Template,
                             i,
-                            out Filter.TrackFilter.Cutoff);
+                            out FilterVector[i].TrackFilter.Cutoff);
                     }
-                    if ((Filter.FilterParamMask & (1 << (int)FilterParam.BandwidthOrSlope)) != 0)
+                    if ((FilterVector[i].FilterParamMask & (1 << (int)FilterParam.BandwidthOrSlope)) != 0)
                     {
                         GetFilterBandwidthOrSlopeAgg(
                             Template,
                             i,
-                            out Filter.TrackFilter.BandwidthOrSlope);
+                            out FilterVector[i].TrackFilter.BandwidthOrSlope);
                     }
-                    if ((Filter.FilterParamMask & (1 << (int)FilterParam.Gain)) != 0)
+                    if ((FilterVector[i].FilterParamMask & (1 << (int)FilterParam.Gain)) != 0)
                     {
                         GetFilterGainAgg(
                             Template,
                             i,
-                            out Filter.TrackFilter.Gain);
+                            out FilterVector[i].TrackFilter.Gain);
                     }
                     GetFilterOutputMultiplierAgg(
                         Template,
                         i,
-                        out Filter.TrackFilter.OutputMultiplier);
+                        out FilterVector[i].TrackFilter.OutputMultiplier);
 
                     CreateFilters(
-                        out Filter.Left,
-                        out Filter.Right,
+                        out FilterVector[i].Left,
+                        out FilterVector[i].Right,
                         i,
                         Template,
                         SynthParams);
@@ -535,54 +607,64 @@ namespace OutOfPhase
             public void OscFixEnvelopeOrigins(
                 int ActualPreOriginTime)
             {
-                for (int i = 0; i < FilterVector.Length; i++)
+                int count = this.count;
+                FilterRec[] FilterVector = this.FilterVector;
+                if (unchecked((uint)count > (uint)FilterVector.Length))
                 {
-                    FilterRec Scan = FilterVector[i];
-
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
+                for (int i = 0; i < count; i++)
+                {
                     EnvelopeStateFixUpInitialDelay(
-                        Scan.OscFilter.OutputMultiplierEnvelope,
+                        FilterVector[i].OscFilter.OutputMultiplierEnvelope,
                         ActualPreOriginTime);
-                    if (Scan.OscFilter.CutoffEnvelope != null)
+                    if (FilterVector[i].OscFilter.CutoffEnvelope != null)
                     {
                         EnvelopeStateFixUpInitialDelay(
-                            Scan.OscFilter.CutoffEnvelope,
+                            FilterVector[i].OscFilter.CutoffEnvelope,
                             ActualPreOriginTime);
                     }
-                    if (Scan.OscFilter.BandwidthOrSlopeEnvelope != null)
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope != null)
                     {
                         EnvelopeStateFixUpInitialDelay(
-                            Scan.OscFilter.BandwidthOrSlopeEnvelope,
+                            FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope,
                             ActualPreOriginTime);
                     }
-                    if (Scan.OscFilter.GainEnvelope != null)
+                    if (FilterVector[i].OscFilter.GainEnvelope != null)
                     {
                         EnvelopeStateFixUpInitialDelay(
-                            Scan.OscFilter.GainEnvelope,
+                            FilterVector[i].OscFilter.GainEnvelope,
                             ActualPreOriginTime);
                     }
 
                     LFOGeneratorFixEnvelopeOrigins(
-                        Scan.OscFilter.OutputMultiplierLFO,
+                        FilterVector[i].OscFilter.OutputMultiplierLFO,
                         ActualPreOriginTime);
-                    if (Scan.OscFilter.CutoffLFO != null)
+                    if (FilterVector[i].OscFilter.CutoffLFO != null)
                     {
                         LFOGeneratorFixEnvelopeOrigins(
-                            Scan.OscFilter.CutoffLFO,
+                            FilterVector[i].OscFilter.CutoffLFO,
                             ActualPreOriginTime);
                     }
-                    if (Scan.OscFilter.BandwidthOrSlopeLFO != null)
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeLFO != null)
                     {
                         LFOGeneratorFixEnvelopeOrigins(
-                            Scan.OscFilter.BandwidthOrSlopeLFO,
+                            FilterVector[i].OscFilter.BandwidthOrSlopeLFO,
                             ActualPreOriginTime);
                     }
-                    if (Scan.OscFilter.GainLFO != null)
+                    if (FilterVector[i].OscFilter.GainLFO != null)
                     {
                         LFOGeneratorFixEnvelopeOrigins(
-                            Scan.OscFilter.GainLFO,
+                            FilterVector[i].OscFilter.GainLFO,
                             ActualPreOriginTime);
                     }
 
+                    // initial value for envelope smoothing
+                    FilterVector[i].CurrentMultiplier = (float)LFOGenInitialValue(
+                        FilterVector[i].OscFilter.OutputMultiplierLFO,
+                        EnvelopeInitialValue(
+                           FilterVector[i].OscFilter.OutputMultiplierEnvelope));
                 }
             }
 
@@ -591,7 +673,14 @@ namespace OutOfPhase
                 double OscillatorFrequency,
                 SynthParamRec SynthParams)
             {
-                for (int i = 0; i < FilterVector.Length; i++)
+                int count = this.count;
+                FilterRec[] FilterVector = this.FilterVector;
+                if (unchecked((uint)count > (uint)FilterVector.Length))
+                {
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
+                for (int i = 0; i < count; i++)
                 {
                     SynthErrorCodes error;
 
@@ -599,14 +688,12 @@ namespace OutOfPhase
                     double BandwidthOrSlope = Double.NaN;
                     double Gain = Double.NaN;
 
-                    FilterRec Scan = FilterVector[i];
-
                     error = SynthErrorCodes.eSynthDone;
-                    Scan.PreviousMultiplier = Scan.CurrentMultiplier;
-                    Scan.CurrentMultiplier = (float)LFOGenUpdateCycle(
-                        Scan.OscFilter.OutputMultiplierLFO,
+                    FilterVector[i].PreviousMultiplier = FilterVector[i].CurrentMultiplier;
+                    FilterVector[i].CurrentMultiplier = (float)LFOGenUpdateCycle(
+                        FilterVector[i].OscFilter.OutputMultiplierLFO,
                         EnvelopeUpdate(
-                            Scan.OscFilter.OutputMultiplierEnvelope,
+                            FilterVector[i].OscFilter.OutputMultiplierEnvelope,
                             OscillatorFrequency,
                             SynthParams,
                             ref error),
@@ -618,13 +705,13 @@ namespace OutOfPhase
                         return error;
                     }
 
-                    if (Scan.OscFilter.CutoffEnvelope != null)
+                    if (FilterVector[i].OscFilter.CutoffEnvelope != null)
                     {
                         error = SynthErrorCodes.eSynthDone;
                         Cutoff = LFOGenUpdateCycle(
-                            Scan.OscFilter.CutoffLFO,
+                            FilterVector[i].OscFilter.CutoffLFO,
                             EnvelopeUpdate(
-                                Scan.OscFilter.CutoffEnvelope,
+                                FilterVector[i].OscFilter.CutoffEnvelope,
                                 OscillatorFrequency,
                                 SynthParams,
                                 ref error),
@@ -637,13 +724,13 @@ namespace OutOfPhase
                         }
                     }
 
-                    if (Scan.OscFilter.BandwidthOrSlopeEnvelope != null)
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope != null)
                     {
                         error = SynthErrorCodes.eSynthDone;
                         BandwidthOrSlope = LFOGenUpdateCycle(
-                            Scan.OscFilter.BandwidthOrSlopeLFO,
+                            FilterVector[i].OscFilter.BandwidthOrSlopeLFO,
                             EnvelopeUpdate(
-                                Scan.OscFilter.BandwidthOrSlopeEnvelope,
+                                FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope,
                                 OscillatorFrequency,
                                 SynthParams,
                                 ref error),
@@ -656,13 +743,13 @@ namespace OutOfPhase
                         }
                     }
 
-                    if (Scan.OscFilter.GainEnvelope != null)
+                    if (FilterVector[i].OscFilter.GainEnvelope != null)
                     {
                         error = SynthErrorCodes.eSynthDone;
                         Gain = LFOGenUpdateCycle(
-                            Scan.OscFilter.GainLFO,
+                            FilterVector[i].OscFilter.GainLFO,
                             EnvelopeUpdate(
-                                Scan.OscFilter.GainEnvelope,
+                                FilterVector[i].OscFilter.GainEnvelope,
                                 OscillatorFrequency,
                                 SynthParams,
                                 ref error),
@@ -680,13 +767,13 @@ namespace OutOfPhase
                         Cutoff,
                         BandwidthOrSlope,
                         Gain);
-                    if (Scan.Left != null)
+                    if (FilterVector[i].Left != null)
                     {
-                        Scan.Left.UpdateParams(ref Params);
+                        FilterVector[i].Left.UpdateParams(ref Params);
                     }
-                    if (Scan.Right != null)
+                    if (FilterVector[i].Right != null)
                     {
-                        Scan.Right.UpdateParams(ref Params);
+                        FilterVector[i].Right.UpdateParams(ref Params);
                     }
                 }
 
@@ -695,108 +782,123 @@ namespace OutOfPhase
 
             public void OscKeyUpSustain1()
             {
-                for (int i = 0; i < FilterVector.Length; i++)
+                int count = this.count;
+                FilterRec[] FilterVector = this.FilterVector;
+                if (unchecked((uint)count > (uint)FilterVector.Length))
                 {
-                    FilterRec Scan = FilterVector[i];
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    EnvelopeKeyUpSustain1(FilterVector[i].OscFilter.OutputMultiplierEnvelope);
+                    if (FilterVector[i].OscFilter.CutoffEnvelope != null)
+                    {
+                        EnvelopeKeyUpSustain1(FilterVector[i].OscFilter.CutoffEnvelope);
+                    }
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope != null)
+                    {
+                        EnvelopeKeyUpSustain1(FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope);
+                    }
+                    if (FilterVector[i].OscFilter.GainEnvelope != null)
+                    {
+                        EnvelopeKeyUpSustain1(FilterVector[i].OscFilter.GainEnvelope);
+                    }
 
-                    EnvelopeKeyUpSustain1(Scan.OscFilter.OutputMultiplierEnvelope);
-                    if (Scan.OscFilter.CutoffEnvelope != null)
+                    LFOGeneratorKeyUpSustain1(FilterVector[i].OscFilter.OutputMultiplierLFO);
+                    if (FilterVector[i].OscFilter.CutoffLFO != null)
                     {
-                        EnvelopeKeyUpSustain1(Scan.OscFilter.CutoffEnvelope);
+                        LFOGeneratorKeyUpSustain1(FilterVector[i].OscFilter.CutoffLFO);
                     }
-                    if (Scan.OscFilter.BandwidthOrSlopeEnvelope != null)
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeLFO != null)
                     {
-                        EnvelopeKeyUpSustain1(Scan.OscFilter.BandwidthOrSlopeEnvelope);
+                        LFOGeneratorKeyUpSustain1(FilterVector[i].OscFilter.BandwidthOrSlopeLFO);
                     }
-                    if (Scan.OscFilter.GainEnvelope != null)
+                    if (FilterVector[i].OscFilter.GainLFO != null)
                     {
-                        EnvelopeKeyUpSustain1(Scan.OscFilter.GainEnvelope);
-                    }
-
-                    LFOGeneratorKeyUpSustain1(Scan.OscFilter.OutputMultiplierLFO);
-                    if (Scan.OscFilter.CutoffLFO != null)
-                    {
-                        LFOGeneratorKeyUpSustain1(Scan.OscFilter.CutoffLFO);
-                    }
-                    if (Scan.OscFilter.BandwidthOrSlopeLFO != null)
-                    {
-                        LFOGeneratorKeyUpSustain1(Scan.OscFilter.BandwidthOrSlopeLFO);
-                    }
-                    if (Scan.OscFilter.GainLFO != null)
-                    {
-                        LFOGeneratorKeyUpSustain1(Scan.OscFilter.GainLFO);
+                        LFOGeneratorKeyUpSustain1(FilterVector[i].OscFilter.GainLFO);
                     }
                 }
             }
 
             public void OscKeyUpSustain2()
             {
-                for (int i = 0; i < FilterVector.Length; i++)
+                int count = this.count;
+                FilterRec[] FilterVector = this.FilterVector;
+                if (unchecked((uint)count > (uint)FilterVector.Length))
                 {
-                    FilterRec Scan = FilterVector[i];
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    EnvelopeKeyUpSustain2(FilterVector[i].OscFilter.OutputMultiplierEnvelope);
+                    if (FilterVector[i].OscFilter.CutoffEnvelope != null)
+                    {
+                        EnvelopeKeyUpSustain2(FilterVector[i].OscFilter.CutoffEnvelope);
+                    }
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope != null)
+                    {
+                        EnvelopeKeyUpSustain2(FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope);
+                    }
+                    if (FilterVector[i].OscFilter.GainEnvelope != null)
+                    {
+                        EnvelopeKeyUpSustain2(FilterVector[i].OscFilter.GainEnvelope);
+                    }
 
-                    EnvelopeKeyUpSustain2(Scan.OscFilter.OutputMultiplierEnvelope);
-                    if (Scan.OscFilter.CutoffEnvelope != null)
+                    LFOGeneratorKeyUpSustain2(FilterVector[i].OscFilter.OutputMultiplierLFO);
+                    if (FilterVector[i].OscFilter.CutoffLFO != null)
                     {
-                        EnvelopeKeyUpSustain2(Scan.OscFilter.CutoffEnvelope);
+                        LFOGeneratorKeyUpSustain2(FilterVector[i].OscFilter.CutoffLFO);
                     }
-                    if (Scan.OscFilter.BandwidthOrSlopeEnvelope != null)
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeLFO != null)
                     {
-                        EnvelopeKeyUpSustain2(Scan.OscFilter.BandwidthOrSlopeEnvelope);
+                        LFOGeneratorKeyUpSustain2(FilterVector[i].OscFilter.BandwidthOrSlopeLFO);
                     }
-                    if (Scan.OscFilter.GainEnvelope != null)
+                    if (FilterVector[i].OscFilter.GainLFO != null)
                     {
-                        EnvelopeKeyUpSustain2(Scan.OscFilter.GainEnvelope);
-                    }
-
-                    LFOGeneratorKeyUpSustain2(Scan.OscFilter.OutputMultiplierLFO);
-                    if (Scan.OscFilter.CutoffLFO != null)
-                    {
-                        LFOGeneratorKeyUpSustain2(Scan.OscFilter.CutoffLFO);
-                    }
-                    if (Scan.OscFilter.BandwidthOrSlopeLFO != null)
-                    {
-                        LFOGeneratorKeyUpSustain2(Scan.OscFilter.BandwidthOrSlopeLFO);
-                    }
-                    if (Scan.OscFilter.GainLFO != null)
-                    {
-                        LFOGeneratorKeyUpSustain2(Scan.OscFilter.GainLFO);
+                        LFOGeneratorKeyUpSustain2(FilterVector[i].OscFilter.GainLFO);
                     }
                 }
             }
 
             public void OscKeyUpSustain3()
             {
-                for (int i = 0; i < FilterVector.Length; i++)
+                int count = this.count;
+                FilterRec[] FilterVector = this.FilterVector;
+                if (unchecked((uint)count > (uint)FilterVector.Length))
                 {
-                    FilterRec Scan = FilterVector[i];
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    EnvelopeKeyUpSustain3(FilterVector[i].OscFilter.OutputMultiplierEnvelope);
+                    if (FilterVector[i].OscFilter.CutoffEnvelope != null)
+                    {
+                        EnvelopeKeyUpSustain3(FilterVector[i].OscFilter.CutoffEnvelope);
+                    }
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope != null)
+                    {
+                        EnvelopeKeyUpSustain3(FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope);
+                    }
+                    if (FilterVector[i].OscFilter.GainEnvelope != null)
+                    {
+                        EnvelopeKeyUpSustain3(FilterVector[i].OscFilter.GainEnvelope);
+                    }
 
-                    EnvelopeKeyUpSustain3(Scan.OscFilter.OutputMultiplierEnvelope);
-                    if (Scan.OscFilter.CutoffEnvelope != null)
+                    LFOGeneratorKeyUpSustain3(FilterVector[i].OscFilter.OutputMultiplierLFO);
+                    if (FilterVector[i].OscFilter.CutoffLFO != null)
                     {
-                        EnvelopeKeyUpSustain3(Scan.OscFilter.CutoffEnvelope);
+                        LFOGeneratorKeyUpSustain3(FilterVector[i].OscFilter.CutoffLFO);
                     }
-                    if (Scan.OscFilter.BandwidthOrSlopeEnvelope != null)
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeLFO != null)
                     {
-                        EnvelopeKeyUpSustain3(Scan.OscFilter.BandwidthOrSlopeEnvelope);
+                        LFOGeneratorKeyUpSustain3(FilterVector[i].OscFilter.BandwidthOrSlopeLFO);
                     }
-                    if (Scan.OscFilter.GainEnvelope != null)
+                    if (FilterVector[i].OscFilter.GainLFO != null)
                     {
-                        EnvelopeKeyUpSustain3(Scan.OscFilter.GainEnvelope);
-                    }
-
-                    LFOGeneratorKeyUpSustain3(Scan.OscFilter.OutputMultiplierLFO);
-                    if (Scan.OscFilter.CutoffLFO != null)
-                    {
-                        LFOGeneratorKeyUpSustain3(Scan.OscFilter.CutoffLFO);
-                    }
-                    if (Scan.OscFilter.BandwidthOrSlopeLFO != null)
-                    {
-                        LFOGeneratorKeyUpSustain3(Scan.OscFilter.BandwidthOrSlopeLFO);
-                    }
-                    if (Scan.OscFilter.GainLFO != null)
-                    {
-                        LFOGeneratorKeyUpSustain3(Scan.OscFilter.GainLFO);
+                        LFOGeneratorKeyUpSustain3(FilterVector[i].OscFilter.GainLFO);
                     }
                 }
             }
@@ -809,22 +911,27 @@ namespace OutOfPhase
                 bool ActuallyRetrigger,
                 SynthParamRec SynthParams)
             {
-                for (int i = 0; i < FilterVector.Length; i++)
+                int count = this.count;
+                FilterRec[] FilterVector = this.FilterVector;
+                if (unchecked((uint)count > (uint)FilterVector.Length))
                 {
-                    FilterRec Scan = FilterVector[i];
-
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
+                for (int i = 0; i < count; i++)
+                {
                     EnvelopeRetriggerFromOrigin(
-                        Scan.OscFilter.OutputMultiplierEnvelope,
+                        FilterVector[i].OscFilter.OutputMultiplierEnvelope,
                         ref NewAccents,
                         NewInitialFrequency,
                         1,
                         NewHurryUp,
                         ActuallyRetrigger,
                         SynthParams);
-                    if (Scan.OscFilter.CutoffEnvelope != null)
+                    if (FilterVector[i].OscFilter.CutoffEnvelope != null)
                     {
                         EnvelopeRetriggerFromOrigin(
-                            Scan.OscFilter.CutoffEnvelope,
+                            FilterVector[i].OscFilter.CutoffEnvelope,
                             ref NewAccents,
                             NewInitialFrequency,
                             1,
@@ -832,10 +939,10 @@ namespace OutOfPhase
                             ActuallyRetrigger,
                             SynthParams);
                     }
-                    if (Scan.OscFilter.BandwidthOrSlopeEnvelope != null)
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope != null)
                     {
                         EnvelopeRetriggerFromOrigin(
-                            Scan.OscFilter.BandwidthOrSlopeEnvelope,
+                            FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope,
                             ref NewAccents,
                             NewInitialFrequency,
                             1,
@@ -843,10 +950,10 @@ namespace OutOfPhase
                             ActuallyRetrigger,
                             SynthParams);
                     }
-                    if (Scan.OscFilter.GainEnvelope != null)
+                    if (FilterVector[i].OscFilter.GainEnvelope != null)
                     {
                         EnvelopeRetriggerFromOrigin(
-                            Scan.OscFilter.GainEnvelope,
+                            FilterVector[i].OscFilter.GainEnvelope,
                             ref NewAccents,
                             NewInitialFrequency,
                             1,
@@ -856,7 +963,7 @@ namespace OutOfPhase
                     }
 
                     LFOGeneratorRetriggerFromOrigin(
-                        Scan.OscFilter.OutputMultiplierLFO,
+                        FilterVector[i].OscFilter.OutputMultiplierLFO,
                         ref NewAccents,
                         NewInitialFrequency,
                         NewHurryUp,
@@ -864,10 +971,10 @@ namespace OutOfPhase
                         1,
                         ActuallyRetrigger,
                         SynthParams);
-                    if (Scan.OscFilter.CutoffLFO != null)
+                    if (FilterVector[i].OscFilter.CutoffLFO != null)
                     {
                         LFOGeneratorRetriggerFromOrigin(
-                            Scan.OscFilter.CutoffLFO,
+                            FilterVector[i].OscFilter.CutoffLFO,
                             ref NewAccents,
                             NewInitialFrequency,
                             NewHurryUp,
@@ -876,10 +983,10 @@ namespace OutOfPhase
                             ActuallyRetrigger,
                             SynthParams);
                     }
-                    if (Scan.OscFilter.BandwidthOrSlopeLFO != null)
+                    if (FilterVector[i].OscFilter.BandwidthOrSlopeLFO != null)
                     {
                         LFOGeneratorRetriggerFromOrigin(
-                            Scan.OscFilter.BandwidthOrSlopeLFO,
+                            FilterVector[i].OscFilter.BandwidthOrSlopeLFO,
                             ref NewAccents,
                             NewInitialFrequency,
                             NewHurryUp,
@@ -888,10 +995,10 @@ namespace OutOfPhase
                             ActuallyRetrigger,
                             SynthParams);
                     }
-                    if (Scan.OscFilter.GainLFO != null)
+                    if (FilterVector[i].OscFilter.GainLFO != null)
                     {
                         LFOGeneratorRetriggerFromOrigin(
-                            Scan.OscFilter.GainLFO,
+                            FilterVector[i].OscFilter.GainLFO,
                             ref NewAccents,
                             NewInitialFrequency,
                             NewHurryUp,
@@ -908,7 +1015,14 @@ namespace OutOfPhase
                 ref AccentRec Accents,
                 SynthParamRec SynthParams)
             {
-                for (int i = 0; i < FilterVector.Length; i++)
+                int count = this.count;
+                FilterRec[] FilterVector = this.FilterVector;
+                if (unchecked((uint)count > (uint)FilterVector.Length))
+                {
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
+                for (int i = 0; i < count; i++)
                 {
                     SynthErrorCodes error;
 
@@ -916,11 +1030,9 @@ namespace OutOfPhase
                     double BandwidthOrSlope = Double.NaN;
                     double Gain = Double.NaN;
 
-                    FilterRec Scan = FilterVector[i];
-
                     double OutputMultiplier;
                     error = ScalarParamEval(
-                        Scan.TrackFilter.OutputMultiplier,
+                        FilterVector[i].TrackFilter.OutputMultiplier,
                         ref Accents,
                         SynthParams,
                         out OutputMultiplier);
@@ -928,13 +1040,13 @@ namespace OutOfPhase
                     {
                         return error;
                     }
-                    Scan.PreviousMultiplier = Scan.CurrentMultiplier;
-                    Scan.CurrentMultiplier = (float)OutputMultiplier;
+                    FilterVector[i].PreviousMultiplier = FilterVector[i].CurrentMultiplier;
+                    FilterVector[i].CurrentMultiplier = (float)OutputMultiplier;
 
-                    Debug.Assert((Scan.FilterParamMask & (1 << (int)FilterParam.Cutoff)) != 0);
+                    Debug.Assert((FilterVector[i].FilterParamMask & (1 << (int)FilterParam.Cutoff)) != 0);
                     {
                         error = ScalarParamEval(
-                            Scan.TrackFilter.Cutoff,
+                            FilterVector[i].TrackFilter.Cutoff,
                             ref Accents,
                             SynthParams,
                             out Cutoff);
@@ -944,10 +1056,10 @@ namespace OutOfPhase
                         }
                     }
 
-                    if ((Scan.FilterParamMask & (1 << (int)FilterParam.BandwidthOrSlope)) != 0)
+                    if ((FilterVector[i].FilterParamMask & (1 << (int)FilterParam.BandwidthOrSlope)) != 0)
                     {
                         error = ScalarParamEval(
-                            Scan.TrackFilter.BandwidthOrSlope,
+                            FilterVector[i].TrackFilter.BandwidthOrSlope,
                             ref Accents,
                             SynthParams,
                             out BandwidthOrSlope);
@@ -957,10 +1069,10 @@ namespace OutOfPhase
                         }
                     }
 
-                    if ((Scan.FilterParamMask & (1 << (int)FilterParam.Gain)) != 0)
+                    if ((FilterVector[i].FilterParamMask & (1 << (int)FilterParam.Gain)) != 0)
                     {
                         error = ScalarParamEval(
-                            Scan.TrackFilter.Gain,
+                            FilterVector[i].TrackFilter.Gain,
                             ref Accents,
                             SynthParams,
                             out Gain);
@@ -975,13 +1087,13 @@ namespace OutOfPhase
                         Cutoff,
                         BandwidthOrSlope,
                         Gain);
-                    if (Scan.Left != null)
+                    if (FilterVector[i].Left != null)
                     {
-                        Scan.Left.UpdateParams(ref Params);
+                        FilterVector[i].Left.UpdateParams(ref Params);
                     }
-                    if (Scan.Right != null)
+                    if (FilterVector[i].Right != null)
                     {
-                        Scan.Right.UpdateParams(ref Params);
+                        FilterVector[i].Right.UpdateParams(ref Params);
                     }
                 }
 
@@ -1035,32 +1147,37 @@ namespace OutOfPhase
                     nActualFrames);
 
                 /* iterate over parallel filter array, accumulating into output */
-                for (int i = 0; i < FilterVector.Length; i++)
+                int count = this.count;
+                FilterRec[] FilterVector = this.FilterVector;
+                if (unchecked((uint)count > (uint)FilterVector.Length))
                 {
-                    FilterRec Scan = FilterVector[i];
-
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
+                for (int i = 0; i < count; i++)
+                {
                     if (Program.Config.EnableEnvelopeSmoothing
                         // case of no motion in smoothed axis can use fast code path
-                        && (Scan.CurrentMultiplier != Scan.PreviousMultiplier))
+                        && (FilterVector[i].CurrentMultiplier != FilterVector[i].PreviousMultiplier))
                     {
                         // envelope smoothing
 
-                        float LocalPreviousMultiplier = Scan.PreviousMultiplier;
+                        float LocalPreviousMultiplier = FilterVector[i].PreviousMultiplier;
 
                         // intentional discretization by means of sample-and-hold lfo should not be smoothed.
-                        if ((Scan.OscFilter != null) && IsLFOSampleAndHold(Scan.OscFilter.OutputMultiplierLFO))
+                        if ((FilterVector[i].OscFilter != null) && IsLFOSampleAndHold(FilterVector[i].OscFilter.OutputMultiplierLFO))
                         {
-                            LocalPreviousMultiplier = Scan.CurrentMultiplier;
+                            LocalPreviousMultiplier = FilterVector[i].CurrentMultiplier;
                         }
 
-                        if ((Scan.OscFilter == null)
-                            || !EnvelopeCurrentSegmentExponential(Scan.OscFilter.OutputMultiplierEnvelope))
+                        if ((FilterVector[i].OscFilter == null)
+                            || !EnvelopeCurrentSegmentExponential(FilterVector[i].OscFilter.OutputMultiplierEnvelope))
                         {
                             FloatVectorAdditiveRecurrence(
                                 workspace,
                                 LoudnessWorkspaceOffset,
                                 LocalPreviousMultiplier,
-                                Scan.CurrentMultiplier,
+                                FilterVector[i].CurrentMultiplier,
                                 nActualFrames);
                         }
                         else
@@ -1069,17 +1186,17 @@ namespace OutOfPhase
                                 workspace,
                                 LoudnessWorkspaceOffset,
                                 LocalPreviousMultiplier,
-                                Scan.CurrentMultiplier,
+                                FilterVector[i].CurrentMultiplier,
                                 nActualFrames);
                         }
 
-                        if (Scan.Left != null)
+                        if (FilterVector[i].Left != null)
                         {
                             FloatVectorZero(
                                 workspace,
                                 TemporaryOutputWorkspaceOffset,
                                 nActualFrames);
-                            Scan.Left.Apply(
+                            FilterVector[i].Left.Apply(
                                 workspace,
                                 LeftCopyOffset,
                                 workspace,
@@ -1096,13 +1213,13 @@ namespace OutOfPhase
                                 lOffset,
                                 nActualFrames);
                         }
-                        if (Scan.Right != null)
+                        if (FilterVector[i].Right != null)
                         {
                             FloatVectorZero(
                                 workspace,
                                 TemporaryOutputWorkspaceOffset,
                                 nActualFrames);
-                            Scan.Right.Apply(
+                            FilterVector[i].Right.Apply(
                                 workspace,
                                 RightCopyOffset,
                                 workspace,
@@ -1122,26 +1239,26 @@ namespace OutOfPhase
                     }
                     else
                     {
-                        if (Scan.Left != null)
+                        if (FilterVector[i].Left != null)
                         {
-                            Scan.Left.Apply(
+                            FilterVector[i].Left.Apply(
                                 workspace,
                                 LeftCopyOffset,
                                 workspace,
                                 lOffset,
                                 nActualFrames,
-                                Scan.CurrentMultiplier,
+                                FilterVector[i].CurrentMultiplier,
                                 synthParams);
                         }
-                        if (Scan.Right != null)
+                        if (FilterVector[i].Right != null)
                         {
-                            Scan.Right.Apply(
+                            FilterVector[i].Right.Apply(
                                 workspace,
                                 RightCopyOffset,
                                 workspace,
                                 rOffset,
                                 nActualFrames,
-                                Scan.CurrentMultiplier,
+                                FilterVector[i].CurrentMultiplier,
                                 synthParams);
                         }
                     }
@@ -1162,6 +1279,80 @@ namespace OutOfPhase
                 SynthParamRec SynthParams,
                 bool writeOutputLogs)
             {
+                int count = this.count;
+                FilterRec[] FilterVector = this.FilterVector;
+                if (unchecked((uint)count > (uint)FilterVector.Length))
+                {
+                    Debug.Assert(false);
+                    throw new IndexOutOfRangeException();
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    if (FilterVector[i].OscFilter != null)
+                    {
+                        FreeEnvelopeStateRecord(
+                            ref FilterVector[i].OscFilter.OutputMultiplierEnvelope,
+                            SynthParams);
+                        FreeLFOGenerator(
+                            ref FilterVector[i].OscFilter.OutputMultiplierLFO,
+                            SynthParams);
+
+                        Debug.Assert((FilterVector[i].OscFilter.CutoffEnvelope != null)
+                            == (FilterVector[i].OscFilter.CutoffLFO != null));
+                        if (FilterVector[i].OscFilter.CutoffEnvelope != null)
+                        {
+                            FreeEnvelopeStateRecord(
+                                ref FilterVector[i].OscFilter.CutoffEnvelope,
+                                SynthParams);
+                            FreeLFOGenerator(
+                                ref FilterVector[i].OscFilter.CutoffLFO,
+                                SynthParams);
+                        }
+
+                        Debug.Assert((FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope != null)
+                            == (FilterVector[i].OscFilter.BandwidthOrSlopeLFO != null));
+                        if (FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope != null)
+                        {
+                            FreeEnvelopeStateRecord(
+                                ref FilterVector[i].OscFilter.BandwidthOrSlopeEnvelope,
+                                SynthParams);
+                            FreeLFOGenerator(
+                                ref FilterVector[i].OscFilter.BandwidthOrSlopeLFO,
+                                SynthParams);
+                        }
+
+                        Debug.Assert((FilterVector[i].OscFilter.GainEnvelope != null)
+                            == (FilterVector[i].OscFilter.GainLFO != null));
+                        if (FilterVector[i].OscFilter.GainEnvelope != null)
+                        {
+                            FreeEnvelopeStateRecord(
+                                ref FilterVector[i].OscFilter.GainEnvelope,
+                                SynthParams);
+                            FreeLFOGenerator(
+                                ref FilterVector[i].OscFilter.GainLFO,
+                                SynthParams);
+                        }
+
+                        Free(ref SynthParams.freelists.OscFilterParamRecFreeList, ref FilterVector[i].OscFilter);
+                    }
+                    // else: FilterVector[i].TrackFilter is not freelisted because there tends to be only one that lives for most of the score duration
+                    FilterVector[i].TrackFilter = null;
+
+                    if (FilterVector[i].Left != null)
+                    {
+                        FreeFilter(ref FilterVector[i].Left, SynthParams);
+                    }
+
+                    if (FilterVector[i].Right != null)
+                    {
+                        FreeFilter(ref FilterVector[i].Right, SynthParams);
+                    }
+                }
+
+                Free(ref SynthParams.freelists.filterRecFreeList, ref this.FilterVector);
+
+                FilterArrayRec State = this;
+                Free(ref SynthParams.freelists.filterArrayRecFreeList, ref State);
             }
         }
     }

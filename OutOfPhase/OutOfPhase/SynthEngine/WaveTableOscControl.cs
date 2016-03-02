@@ -135,7 +135,12 @@ namespace OutOfPhase
                 PreOriginTimeOut = 0;
                 StateOut = null;
 
-                WaveTableStateRec State = new WaveTableStateRec();
+                WaveTableStateRec State = New(ref SynthParams.freelists.waveTableStateFreeList);
+
+                // all fields must be assigned: State
+
+                // conservative zero-initialization
+                State.WaveTableSamplePositionDifferential = new Fixed64(0);
 
                 State.Template = Template;
 
@@ -207,11 +212,8 @@ namespace OutOfPhase
                 {
                     MaxPreOrigin = OnePreOrigin;
                 }
-                // initial value for envelope smoothing
-                State.WaveTableIndex = LFOGenInitialValue(
-                    State.IndexLFOGenerator,
-                    EnvelopeInitialValue(
-                       State.WaveTableIndexEnvelope));
+                State.PreviousWaveTableIndex = 0;
+                State.WaveTableIndex = 0;
 
                 /* State.MonoLoudness, State.LeftLoudness, State.RightLoudness */
                 /* are determined by the envelope update */
@@ -255,11 +257,8 @@ namespace OutOfPhase
                 {
                     MaxPreOrigin = OnePreOrigin;
                 }
-                // initial value for envelope smoothing
-                State.Loudness = (float)LFOGenInitialValue(
-                    State.LoudnessLFOGenerator,
-                    EnvelopeInitialValue(
-                       State.WaveTableLoudnessEnvelope));
+                State.PreviousLoudness = 0;
+                State.Loudness = 0;
 
                 State.PitchLFO = NewLFOGenerator(
                     Template.PitchLFOTemplate,
@@ -278,11 +277,9 @@ namespace OutOfPhase
                     MaxPreOrigin = OnePreOrigin;
                 }
                 State.PitchLFOStartCountdown = PitchDisplacementStartPoint;
-                if (Template.OscEffectTemplate == null)
-                {
-                    State.OscEffectGenerator = null;
-                }
-                else
+
+                State.OscEffectGenerator = null;
+                if (Template.OscEffectTemplate != null)
                 {
                     SynthErrorCodes Result = NewOscEffectGenerator(
                        Template.OscEffectTemplate,
@@ -386,9 +383,6 @@ namespace OutOfPhase
                 SynthErrorCodes error;
                 WaveTableStateRec State = this;
 
-                double DoubleTemp;
-                double Differential;
-
                 if (State.PitchLFOStartCountdown > 0)
                 {
                     State.PitchLFOStartCountdown -= 1;
@@ -409,7 +403,7 @@ namespace OutOfPhase
                     }
                 }
                 NewFrequencyHertz = NewFrequencyHertz * State.Template.FrequencyMultiplier + State.Template.FrequencyAdder;
-                Differential = NewFrequencyHertz * State.FramesPerTableOverFinalOutputSamplingRate;
+                double Differential = NewFrequencyHertz * State.FramesPerTableOverFinalOutputSamplingRate;
                 State.WaveTableSamplePositionDifferential = new Fixed64(Differential);
 
                 /* this is for the benefit of resampling only -- envelope generators do their */
@@ -420,7 +414,7 @@ namespace OutOfPhase
                 }
 
                 error = SynthErrorCodes.eSynthDone;
-                DoubleTemp = State.NumberOfTablesMinus1 *
+                double waveTableIndex = State.NumberOfTablesMinus1 *
                     LFOGenUpdateCycle(
                         State.IndexLFOGenerator,
                         EnvelopeUpdate(
@@ -435,16 +429,16 @@ namespace OutOfPhase
                 {
                     return error;
                 }
-                if (DoubleTemp < 0)
+                if (waveTableIndex < 0)
                 {
-                    DoubleTemp = 0;
+                    waveTableIndex = 0;
                 }
-                else if (DoubleTemp > State.NumberOfTablesMinus1)
+                else if (waveTableIndex > State.NumberOfTablesMinus1)
                 {
-                    DoubleTemp = State.NumberOfTablesMinus1;
+                    waveTableIndex = State.NumberOfTablesMinus1;
                 }
                 State.PreviousWaveTableIndex = State.WaveTableIndex;
-                State.WaveTableIndex = DoubleTemp;
+                State.WaveTableIndex = waveTableIndex;
 
                 error = SynthErrorCodes.eSynthDone;
                 State.PreviousLoudness = State.Loudness;
@@ -508,6 +502,27 @@ namespace OutOfPhase
                 }
 
                 State.PreStartCountdown += ActualPreOrigin;
+
+                // initial value for envelope smoothing
+                State.Loudness = (float)(State.NoteLoudnessScaling * LFOGenInitialValue(
+                    State.LoudnessLFOGenerator,
+                    EnvelopeInitialValue(
+                       State.WaveTableLoudnessEnvelope)));
+
+                // initial value for envelope smoothing
+                double waveTableIndex = State.NumberOfTablesMinus1 * LFOGenInitialValue(
+                    State.IndexLFOGenerator,
+                    EnvelopeInitialValue(
+                       State.WaveTableIndexEnvelope));
+                if (waveTableIndex < 0)
+                {
+                    waveTableIndex = 0;
+                }
+                else if (waveTableIndex > State.NumberOfTablesMinus1)
+                {
+                    waveTableIndex = State.NumberOfTablesMinus1;
+                }
+                State.WaveTableIndex = waveTableIndex;
             }
 
             /* send a key-up signal to one of the oscillators */
@@ -1049,6 +1064,28 @@ namespace OutOfPhase
                         SynthParams,
                         writeOutputLogs);
                 }
+
+                FreeEnvelopeStateRecord(
+                    ref State.WaveTableLoudnessEnvelope,
+                    SynthParams);
+                FreeLFOGenerator(
+                    ref State.LoudnessLFOGenerator,
+                    SynthParams);
+
+                FreeEnvelopeStateRecord(
+                    ref State.WaveTableIndexEnvelope,
+                    SynthParams);
+                FreeLFOGenerator(
+                    ref State.IndexLFOGenerator,
+                    SynthParams);
+
+                FreeLFOGenerator(
+                    ref State.PitchLFO,
+                    SynthParams);
+
+                Free(
+                    ref SynthParams.freelists.waveTableStateFreeList,
+                    ref State);
             }
         }
     }

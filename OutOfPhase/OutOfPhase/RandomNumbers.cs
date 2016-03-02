@@ -22,10 +22,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
 {
+    [StructLayout(LayoutKind.Auto)]
     public struct ParkAndMiller
     {
         public const int Minimum = 1;
@@ -182,6 +184,7 @@ namespace OutOfPhase
     }
 
 
+    [StructLayout(LayoutKind.Auto)]
     public struct LEcuyer
     {
         public const int LECUYERMINIMUM = 1;

@@ -42,10 +42,6 @@ namespace OutOfPhase
             InitializeComponent();
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
-            // By default make disassembly window tkae up most of the vertical screen height.
-            const int Margin = 20;
-            Size = new Size(Size.Width, Screen.PrimaryScreen.WorkingArea.Height - Margin);
-
             menuStripManager.SetGlobalHandler(mainWindow);
             menuStripManager.HookUpTextEditorWindowHelper(this.textEditorWindowHelper);
 
@@ -55,7 +51,11 @@ namespace OutOfPhase
             textBoxDisassembly.Text = text;
             textBoxDisassembly.SetInsertionPoint(0, 0);
 
-            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom, delegate () { return new Control[] { textBoxDisassembly }; });
+
+            // By default make disassembly window tkae up most of the vertical screen height.
+            const int Margin = 20;
+            Size = new Size(Size.Width, Screen.PrimaryScreen.WorkingArea.Height - Margin);
 
             GlobalNameChanged();
         }
@@ -88,7 +88,7 @@ namespace OutOfPhase
 
         protected override void WndProc(ref Message m)
         {
-            dpiChangeHelper.WndProcDelegate(ref m);
+            dpiChangeHelper.WndProcDelegate(ref m, delegate () { return new Control[] { textBoxDisassembly }; });
             base.WndProc(ref m);
         }
 

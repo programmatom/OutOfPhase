@@ -150,6 +150,12 @@ namespace OutOfPhase
             set { FindSimpleProperty<bool>("EnableTrackViewOffscreenCompositing").Value = value; Notify("EnableTrackViewOffscreenCompositing"); }
         }
 
+        public bool EnableFreeLists
+        {
+            get { return FindSimpleProperty<bool>("EnableFreeLists").Value; }
+            set { FindSimpleProperty<bool>("EnableFreeLists").Value = value; Notify("EnableFreeLists"); }
+        }
+
 
         //
 
@@ -214,6 +220,7 @@ namespace OutOfPhase
                 new GlobalPrefsSimpleItem<int>("MaximumSmoothedParameterCount",
                     Synthesizer.PluggableEffectUserEffectFactory.DefaultMaximumSmoothedParameterCount),
                 new GlobalPrefsSimpleItem<bool>("EnableTrackViewOffscreenCompositing", true),
+                new GlobalPrefsSimpleItem<bool>("EnableFreeLists", true),
 
                 // for readability these are stashed at the end
                 new GlobalPrefsComputerNameKeyedItem<string>("FFTWWisdom32f", String.Empty),
@@ -221,6 +228,7 @@ namespace OutOfPhase
             };
         }
 
+        #region implementation
         public GlobalPrefs(string path)
             : this()
         {
@@ -568,5 +576,6 @@ namespace OutOfPhase
             Debug.Assert(item is GlobalPrefsSimpleItem<T>);
             return (GlobalPrefsSimpleItem<T>)item;
         }
+        #endregion
     }
 }

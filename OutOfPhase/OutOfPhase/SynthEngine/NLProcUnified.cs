@@ -607,6 +607,29 @@ namespace OutOfPhase
                 SynthParamRec SynthParams,
                 bool writeOutputLogs)
             {
+                if (Oscillator != null)
+                {
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.InputScalingEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.InputScalingLFO,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.OutputScalingEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.OutputScalingLFO,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.WaveTableIndexEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.WaveTableIndexLFO,
+                        SynthParams);
+                }
             }
         }
     }

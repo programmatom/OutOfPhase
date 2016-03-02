@@ -22,17 +22,20 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
 {
     public static partial class Synthesizer
     {
+        [StructLayout(LayoutKind.Auto)]
         public struct UserEffectParamRec_Track
         {
             public ScalarParamEvalRec Eval;
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct UserEffectParamRec_Osc
         {
             public EvalEnvelopeRec Envelope;
@@ -76,6 +79,7 @@ namespace OutOfPhase
             // smoothing workspaces
             public SmoothingEntry[] smoothingBuffers;
 
+            [StructLayout(LayoutKind.Auto)]
             public struct SmoothingEntry
             {
                 public ArrayHandleFloat arrayHandle;
@@ -239,7 +243,7 @@ namespace OutOfPhase
                         Proc.InitFunc,
                         SynthParams.CodeCenter,
                         out ErrorInfo,
-                        null/*EvaluateContext*/,
+                        PcodeExternsNull.Default,
                         ref SynthParams.pcodeThreadContext);
                     if (Error != EvalErrors.eEvalNoError)
                     {
@@ -691,7 +695,7 @@ namespace OutOfPhase
                     this.DataFunc,
                     SynthParams.CodeCenter,
                     out ErrorInfo,
-                    null/*EvaluateContext*/,
+                    PcodeExternsNull.Default,
                     ref SynthParams.pcodeThreadContext);
                 if (Error != EvalErrors.eEvalNoError)
                 {
@@ -765,6 +769,18 @@ namespace OutOfPhase
                 SynthParamRec SynthParams,
                 bool writeOutputLogs)
             {
+                if (params_Osc != null)
+                {
+                    for (int i = 0; i < paramCount; i += 1)
+                    {
+                        FreeEnvelopeStateRecord(
+                            ref params_Osc[i].Envelope,
+                            SynthParams);
+                        FreeLFOGenerator(
+                            ref params_Osc[i].LFO,
+                            SynthParams);
+                    }
+                }
             }
         }
     }

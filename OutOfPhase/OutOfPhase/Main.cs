@@ -1605,6 +1605,8 @@ namespace OutOfPhase
 
             Application.Idle += new EventHandler(Application_Idle);
             Application.Run();
+
+            MyTextRenderer.FinalizeBeforeShutdown();
         }
 
         private static void Application_Idle(object sender, EventArgs e)

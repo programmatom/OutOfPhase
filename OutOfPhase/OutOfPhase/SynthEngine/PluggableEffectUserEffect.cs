@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -613,7 +614,7 @@ namespace OutOfPhase
                         initFunc,
                         synthParams.CodeCenter,
                         out ErrorInfo,
-                        null/*EvaluateContext*/,
+                        PcodeExternsNull.Default,
                         ref synthParams.pcodeThreadContext);
                     if (Error != EvalErrors.eEvalNoError)
                     {
@@ -753,6 +754,7 @@ namespace OutOfPhase
 
             private readonly double[] dynamicParams;
 
+            [StructLayout(LayoutKind.Auto)]
             public struct SmoothingEntry
             {
                 public ArrayHandleFloat arrayHandle;
@@ -958,7 +960,7 @@ namespace OutOfPhase
                     dataFunc,
                     SynthParams.CodeCenter,
                     out ErrorInfo,
-                    null/*EvaluateContext*/,
+                    PcodeExternsNull.Default,
                     ref SynthParams.pcodeThreadContext);
                 if (Error != EvalErrors.eEvalNoError)
                 {

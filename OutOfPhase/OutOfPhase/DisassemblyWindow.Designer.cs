@@ -73,7 +73,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1.RowCount = 2;
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(515, 525);
+            this.tableLayoutPanel1.Size = new System.Drawing.Size(578, 525);
             this.tableLayoutPanel1.TabIndex = 0;
             // 
             // menuStripManager
@@ -82,7 +82,7 @@ namespace OutOfPhase
             this.menuStripManager.Location = new System.Drawing.Point(0, 0);
             this.menuStripManager.Margin = new System.Windows.Forms.Padding(0);
             this.menuStripManager.Name = "menuStripManager";
-            this.menuStripManager.Size = new System.Drawing.Size(515, 24);
+            this.menuStripManager.Size = new System.Drawing.Size(578, 24);
             this.menuStripManager.TabIndex = 2;
             // 
             // panel1
@@ -92,7 +92,7 @@ namespace OutOfPhase
             this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panel1.Location = new System.Drawing.Point(3, 27);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(509, 495);
+            this.panel1.Size = new System.Drawing.Size(572, 495);
             this.panel1.TabIndex = 4;
             // 
             // textBoxDisassembly
@@ -101,12 +101,12 @@ namespace OutOfPhase
             this.textBoxDisassembly.AutoScrollMinSize = new System.Drawing.Size(509, 13);
             this.textBoxDisassembly.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxDisassembly.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.textBoxDisassembly.Font = new System.Drawing.Font("Lucida Console", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.textBoxDisassembly.Font = new System.Drawing.Font("Lucida Console", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.textBoxDisassembly.Location = new System.Drawing.Point(0, 0);
             this.textBoxDisassembly.Name = "textBoxDisassembly";
             this.textBoxDisassembly.ReadOnly = true;
             this.textBoxDisassembly.SimpleNavigation = true;
-            this.textBoxDisassembly.Size = new System.Drawing.Size(507, 493);
+            this.textBoxDisassembly.Size = new System.Drawing.Size(570, 493);
             this.textBoxDisassembly.TabIndex = 3;
             this.textBoxDisassembly.TextService = TextEditor.TextService.Simple;
             this.textBoxDisassembly.TextStorageFactory = this.stringStorageFactory;
@@ -141,7 +141,7 @@ namespace OutOfPhase
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(515, 525);
+            this.ClientSize = new System.Drawing.Size(578, 525);
             this.Controls.Add(this.tableLayoutPanel1);
             this.Name = "DisassemblyWindow";
             this.tableLayoutPanel1.ResumeLayout(false);

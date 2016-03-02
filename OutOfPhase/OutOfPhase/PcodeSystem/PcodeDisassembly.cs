@@ -28,705 +28,706 @@ namespace OutOfPhase
 {
     public partial class Compiler
     {
-        /* disassemble pcode and return a string block containing all the data */
-        public static string DisassemblePcode(
-            PcodeRec Pcode,
-            string CarriageReturn)
+        public static string DisassemblePcode(PcodeRec pcode)
         {
-            StringBuilder String = new StringBuilder();
-            OpcodeRec[] OpcodeArray;
+            StringBuilder result = new StringBuilder();
 
-            OpcodeArray = Pcode.GetOpcodeFromPcode();
-            int c = Pcode.GetNumberOfValidCellsInPcode();
+            if (pcode.cilObject != null)
+            {
+                result.Append(pcode.cilObject.GetDisassembly());
+            }
+
+            OpcodeRec[] OpcodeArray = pcode.GetOpcodeFromPcode();
+            int c = pcode.GetNumberOfValidCellsInPcode();
             int i = 0;
             while (i < c)
             {
                 /* generate instruction index string */
-                String.AppendFormat("{0,8}", i);
+                result.AppendFormat("{0,8}", i);
 
                 /* generate line number */
-                String.AppendFormat("{0,8} ", Pcode.GetLineNumberForInstruction(i));
+                result.AppendFormat("{0,8} ", pcode.GetLineNumberForInstruction(i));
 
                 /* generate opcode string */
                 switch (OpcodeArray[i].Opcode)
                 {
                     case Pcodes.epFuncCallUnresolved: /* <opcode> ^"<functionname>" ^[paramlist] <returntype> <reserved> <reserved> */
-                        String.Append("call_unlinked ");
-                        String.Append(Pcode.strings[OpcodeArray[i + 1].ImmediateString_Ref]);
+                        result.Append("call_unlinked ");
+                        result.Append(pcode.strings[OpcodeArray[i + 1].ImmediateString_Ref]);
                         i += 6;
                         break;
                     case Pcodes.epFuncCallResolved: /* <opcode> ^"<functionname>" ^[paramlist] <returntype> ^<OpcodeRec> <maxstack> */
-                        String.Append("call_linked ");
-                        String.Append(Pcode.strings[OpcodeArray[i + 1].ImmediateString_Ref]);
+                        result.Append("call_linked ");
+                        result.Append(pcode.strings[OpcodeArray[i + 1].ImmediateString_Ref]);
                         i += 6;
                         break;
                     case Pcodes.epFuncCallExternal: /* <opcode> ^"<methodname>" ^[paramlist] <returntype> */
-                        String.Append("callextern ");
-                        String.Append(Pcode.strings[OpcodeArray[i + 1].ImmediateString_Ref]);
+                        result.Append("callextern ");
+                        result.Append(pcode.strings[OpcodeArray[i + 1].ImmediateString_Ref]);
                         i += 4;
                         break;
 
                     case Pcodes.epOperationBooleanEqual: /* <opcode> */
-                        String.Append("eq.b");
+                        result.Append("eq.b");
                         i++;
                         break;
                     case Pcodes.epOperationBooleanNotEqual:
-                        String.Append("neq.b");
+                        result.Append("neq.b");
                         i++;
                         break;
                     case Pcodes.epOperationBooleanAnd:
-                        String.Append("and.b");
+                        result.Append("and.b");
                         i++;
                         break;
                     case Pcodes.epOperationBooleanOr:
-                        String.Append("or.b");
+                        result.Append("or.b");
                         i++;
                         break;
                     case Pcodes.epOperationBooleanNot:
-                        String.Append("not.b");
+                        result.Append("not.b");
                         i++;
                         break;
                     case Pcodes.epOperationBooleanToInteger:
-                        String.Append("booltoint");
+                        result.Append("booltoint");
                         i++;
                         break;
                     case Pcodes.epOperationBooleanToFloat:
-                        String.Append("booltofloat");
+                        result.Append("booltofloat");
                         i++;
                         break;
                     case Pcodes.epOperationBooleanToDouble:
-                        String.Append("booltodouble");
+                        result.Append("booltodouble");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerAdd:
-                        String.Append("add.i");
+                        result.Append("add.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerSubtract:
-                        String.Append("sub.i");
+                        result.Append("sub.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerNegation:
-                        String.Append("neg.i");
+                        result.Append("neg.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerMultiply:
-                        String.Append("mult.i");
+                        result.Append("mult.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerDivide:
-                        String.Append("div.i");
+                        result.Append("div.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerModulo:
-                        String.Append("mod.i");
+                        result.Append("mod.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerShiftLeft:
-                        String.Append("asl.i");
+                        result.Append("asl.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerShiftRight:
-                        String.Append("asr.i");
+                        result.Append("asr.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerGreaterThan:
-                        String.Append("gr.i");
+                        result.Append("gr.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerLessThan:
-                        String.Append("ls.i");
+                        result.Append("ls.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerGreaterThanOrEqual:
-                        String.Append("greq.i");
+                        result.Append("greq.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerLessThanOrEqual:
-                        String.Append("lseq.i");
+                        result.Append("lseq.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerEqual:
-                        String.Append("eq.i");
+                        result.Append("eq.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerNotEqual:
-                        String.Append("neq.i");
+                        result.Append("neq.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerAbs:
-                        String.Append("abs.i");
+                        result.Append("abs.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerToBoolean:
-                        String.Append("inttobool");
+                        result.Append("inttobool");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerToFloat:
-                        String.Append("inttofloat");
+                        result.Append("inttofloat");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerToDouble:
-                        String.Append("inttodouble");
+                        result.Append("inttodouble");
                         i++;
                         break;
                     case Pcodes.epOperationFloatAdd:
-                        String.Append("add.s");
+                        result.Append("add.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatSubtract:
-                        String.Append("sub.s");
+                        result.Append("sub.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatNegation:
-                        String.Append("neg.s");
+                        result.Append("neg.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatMultiply:
-                        String.Append("mult.s");
+                        result.Append("mult.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatDivide:
-                        String.Append("div.s");
+                        result.Append("div.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatGreaterThan:
-                        String.Append("gr.s");
+                        result.Append("gr.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatLessThan:
-                        String.Append("ls.s");
+                        result.Append("ls.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatGreaterThanOrEqual:
-                        String.Append("greq.s");
+                        result.Append("greq.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatLessThanOrEqual:
-                        String.Append("lseq.s");
+                        result.Append("lseq.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatEqual:
-                        String.Append("eq.s");
+                        result.Append("eq.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatNotEqual:
-                        String.Append("neq.s");
+                        result.Append("neq.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatAbs:
-                        String.Append("abs.s");
+                        result.Append("abs.s");
                         i++;
                         break;
                     case Pcodes.epOperationFloatToBoolean:
-                        String.Append("floattobool");
+                        result.Append("floattobool");
                         i++;
                         break;
                     case Pcodes.epOperationFloatToInteger:
-                        String.Append("floattoint");
+                        result.Append("floattoint");
                         i++;
                         break;
                     case Pcodes.epOperationFloatToDouble:
-                        String.Append("floattodouble");
+                        result.Append("floattodouble");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleAdd:
-                        String.Append("add.d");
+                        result.Append("add.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleSubtract:
-                        String.Append("sub.d");
+                        result.Append("sub.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleNegation:
-                        String.Append("neg.d");
+                        result.Append("neg.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleMultiply:
-                        String.Append("mult.d");
+                        result.Append("mult.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleDivide:
-                        String.Append("div.d");
+                        result.Append("div.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleGreaterThan:
-                        String.Append("gr.d");
+                        result.Append("gr.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleLessThan:
-                        String.Append("ls.d");
+                        result.Append("ls.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleGreaterThanOrEqual:
-                        String.Append("greq.d");
+                        result.Append("greq.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleLessThanOrEqual:
-                        String.Append("lseq.d");
+                        result.Append("lseq.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleEqual:
-                        String.Append("eq.d");
+                        result.Append("eq.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleNotEqual:
-                        String.Append("neq.d");
+                        result.Append("neq.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleAbs:
-                        String.Append("abs.d");
+                        result.Append("abs.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleToBoolean:
-                        String.Append("doubletobool");
+                        result.Append("doubletobool");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleToInteger:
-                        String.Append("doubletoint");
+                        result.Append("doubletoint");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleToFloat:
-                        String.Append("doubletofloat");
+                        result.Append("doubletofloat");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleSinF:
-                        String.Append("sin.s");
+                        result.Append("sin.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleSinD:
-                        String.Append("sin.d");
+                        result.Append("sin.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleCosF:
-                        String.Append("cos.s");
+                        result.Append("cos.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleCosD:
-                        String.Append("cos.d");
+                        result.Append("cos.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleTanF:
-                        String.Append("tan.s");
+                        result.Append("tan.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleTanD:
-                        String.Append("tan.d");
+                        result.Append("tan.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleAtanF:
-                        String.Append("atan.s");
+                        result.Append("atan.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleAtanD:
-                        String.Append("atan.d");
+                        result.Append("atan.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleLnF:
-                        String.Append("ln.s");
+                        result.Append("ln.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleLnD:
-                        String.Append("ln.d");
+                        result.Append("ln.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleExpF:
-                        String.Append("exp.s");
+                        result.Append("exp.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleExpD:
-                        String.Append("exp.d");
+                        result.Append("exp.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleSqrtF:
-                        String.Append("sqrt.s");
+                        result.Append("sqrt.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleSqrtD:
-                        String.Append("sqrt.d");
+                        result.Append("sqrt.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleFloorF:
-                        String.Append("floor.d");
+                        result.Append("floor.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleFloorD:
-                        String.Append("floor.d");
+                        result.Append("floor.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleCeilF:
-                        String.Append("ceil.d");
+                        result.Append("ceil.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleCeilD:
-                        String.Append("ceil.d");
+                        result.Append("ceil.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleRoundF:
-                        String.Append("round.d");
+                        result.Append("round.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleRoundD:
-                        String.Append("round.d");
+                        result.Append("round.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleCoshF:
-                        String.Append("cosh.d");
+                        result.Append("cosh.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleCoshD:
-                        String.Append("cosh.d");
+                        result.Append("cosh.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleSinhF:
-                        String.Append("sinh.d");
+                        result.Append("sinh.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleSinhD:
-                        String.Append("sinh.d");
+                        result.Append("sinh.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleTanhF:
-                        String.Append("tanh.d");
+                        result.Append("tanh.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleTanhD:
-                        String.Append("tanh.d");
+                        result.Append("tanh.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoublePowerF:
-                        String.Append("pow.s");
+                        result.Append("pow.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoublePowerD:
-                        String.Append("pow.d");
+                        result.Append("pow.d");
                         i++;
                         break;
                     case Pcodes.epGetByteArraySize: /* <opcode> */
-                        String.Append("arraysize.b");
+                        result.Append("arraysize.b");
                         i++;
                         break;
                     case Pcodes.epGetIntegerArraySize:
-                        String.Append("arraysize.i");
+                        result.Append("arraysize.i");
                         i++;
                         break;
                     case Pcodes.epGetFloatArraySize:
-                        String.Append("arraysize.s");
+                        result.Append("arraysize.s");
                         i++;
                         break;
                     case Pcodes.epGetDoubleArraySize:
-                        String.Append("arraysize.d");
+                        result.Append("arraysize.d");
                         i++;
                         break;
                     case Pcodes.epReturnFromSubroutine: /* <opcode> <argcount> */
-                        String.Append("return ");
-                        String.Append(OpcodeArray[i + 1].ImmediateInteger);
+                        result.Append("return ");
+                        result.Append(OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epLoadImmediateNILArray: /* <opcode> */
-                        String.Append("loadnull");
+                        result.Append("loadnull");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerAnd:
-                        String.Append("and.i");
+                        result.Append("and.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerOr:
-                        String.Append("or.i");
+                        result.Append("or.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerXor:
-                        String.Append("xor.i");
+                        result.Append("xor.i");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerNot:
-                        String.Append("not.i");
+                        result.Append("not.i");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleAsinF:
-                        String.Append("asin.s");
+                        result.Append("asin.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleAsinD:
-                        String.Append("asin.d");
+                        result.Append("asin.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleAcosF:
-                        String.Append("acos.s");
+                        result.Append("acos.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleAcosD:
-                        String.Append("acos.d");
+                        result.Append("acos.d");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleSqrF:
-                        String.Append("sqr.s");
+                        result.Append("sqr.s");
                         i++;
                         break;
                     case Pcodes.epOperationDoubleSqrD:
-                        String.Append("sqr.d");
+                        result.Append("sqr.d");
                         i++;
                         break;
                     case Pcodes.epOperationTestIntegerNegative:
-                        String.Append("isneg.i");
+                        result.Append("isneg.i");
                         i++;
                         break;
                     case Pcodes.epOperationTestFloatNegative:
-                        String.Append("isneg.s");
+                        result.Append("isneg.s");
                         i++;
                         break;
                     case Pcodes.epOperationTestDoubleNegative:
-                        String.Append("isneg.d");
+                        result.Append("isneg.d");
                         i++;
                         break;
                     case Pcodes.epOperationGetSignInteger:
-                        String.Append("sign.i");
+                        result.Append("sign.i");
                         i++;
                         break;
                     case Pcodes.epOperationGetSignFloat:
-                        String.Append("sign.s");
+                        result.Append("sign.s");
                         i++;
                         break;
                     case Pcodes.epOperationGetSignDouble:
-                        String.Append("sign.d");
+                        result.Append("sign.d");
                         i++;
                         break;
                     case Pcodes.epCopyArrayByte:
-                        String.Append("copyarray.b");
+                        result.Append("copyarray.b");
                         i++;
                         break;
                     case Pcodes.epCopyArrayInteger:
-                        String.Append("copyarray.i");
+                        result.Append("copyarray.i");
                         i++;
                         break;
                     case Pcodes.epCopyArrayFloat:
-                        String.Append("copyarray.s");
+                        result.Append("copyarray.s");
                         i++;
                         break;
                     case Pcodes.epCopyArrayDouble:
-                        String.Append("copyarray.d");
+                        result.Append("copyarray.d");
                         i++;
                         break;
 
                     case Pcodes.epStackPop: /* <opcode> */
-                        String.Append("pop");
+                        result.Append("pop");
                         i++;
                         break;
                     case Pcodes.epStackDeallocateUnder: /* <opcode> <numwords> */
-                        String.Append("popmultipleunder ");
-                        String.Append(OpcodeArray[i + 1].ImmediateInteger);
+                        result.Append("popmultipleunder ");
+                        result.Append(OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epDuplicate: /* <opcode> */
-                        String.Append("dup");
+                        result.Append("dup");
                         i++;
                         break;
                     case Pcodes.epStackPopMultiple: /* <opcode> <numwords> */
-                        String.Append("popmultiple ");
-                        String.Append(OpcodeArray[i + 1].ImmediateInteger);
+                        result.Append("popmultiple ");
+                        result.Append(OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
 
                     case Pcodes.epNop: /* <opcode> */
-                        String.Append("nop");
+                        result.Append("nop");
                         i++;
                         break;
 
                     case Pcodes.epBranchUnconditional: /* <opcode> <branchoffset> */
-                        String.Append("bra ");
-                        String.Append(OpcodeArray[i + 1].ImmediateInteger);
+                        result.Append("bra ");
+                        result.Append(OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epBranchIfZero:
-                        String.Append("brz ");
-                        String.Append(OpcodeArray[i + 1].ImmediateInteger);
+                        result.Append("brz ");
+                        result.Append(OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epBranchIfNotZero:
-                        String.Append("brnz ");
-                        String.Append(OpcodeArray[i + 1].ImmediateInteger);
+                        result.Append("brnz ");
+                        result.Append(OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
 
                     case Pcodes.epResizeByteArray2: /* <opcode> */
-                        String.Append("resize.b");
+                        result.Append("resize.b");
                         i++;
                         break;
                     case Pcodes.epResizeIntegerArray2:
-                        String.Append("resize.i");
+                        result.Append("resize.i");
                         i++;
                         break;
                     case Pcodes.epResizeFloatArray2:
-                        String.Append("resize.s");
+                        result.Append("resize.s");
                         i++;
                         break;
                     case Pcodes.epResizeDoubleArray2:
-                        String.Append("resize.d");
+                        result.Append("resize.d");
                         i++;
                         break;
 
                     case Pcodes.epStoreIntegerOnStack: /* <opcode> <stackindex> */
-                        AppendStack(String, "store.i", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "store.i", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epStoreFloatOnStack:
-                        AppendStack(String, "store.s", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "store.s", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epStoreDoubleOnStack:
-                        AppendStack(String, "store.d", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "store.d", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epStoreArrayOfByteOnStack:
-                        AppendStack(String, "storea.b", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "storea.b", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epStoreArrayOfInt32OnStack:
-                        AppendStack(String, "storea.i", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "storea.i", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epStoreArrayOfFloatOnStack:
-                        AppendStack(String, "storea.f", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "storea.f", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epStoreArrayOfDoubleOnStack:
-                        AppendStack(String, "storea.d", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "storea.d", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epLoadIntegerFromStack:
-                        AppendStack(String, "load.i", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "load.i", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epLoadFloatFromStack:
-                        AppendStack(String, "load.s", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "load.s", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epLoadDoubleFromStack:
-                        AppendStack(String, "load.d", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "load.d", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epLoadArrayFromStack:
-                        AppendStack(String, "load.a", OpcodeArray[i + 1].ImmediateInteger);
+                        AppendStack(result, "load.a", OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
 
                     case Pcodes.epMakeByteArray: /* <opcode> */
-                        String.Append("newarray.b");
+                        result.Append("newarray.b");
                         i++;
                         break;
                     case Pcodes.epMakeIntegerArray:
-                        String.Append("newarray.i");
+                        result.Append("newarray.i");
                         i++;
                         break;
                     case Pcodes.epMakeFloatArray:
-                        String.Append("newarray.s");
+                        result.Append("newarray.s");
                         i++;
                         break;
                     case Pcodes.epMakeDoubleArray:
-                        String.Append("newarray.d");
+                        result.Append("newarray.d");
                         i++;
                         break;
 
                     case Pcodes.epStoreByteIntoArray2: /* <opcode> */
-                        String.Append("store.b Array[]");
+                        result.Append("store.b Array[]");
                         i++;
                         break;
                     case Pcodes.epStoreIntegerIntoArray2:
-                        String.Append("store.i Array[]");
+                        result.Append("store.i Array[]");
                         i++;
                         break;
                     case Pcodes.epStoreFloatIntoArray2:
-                        String.Append("store.s Array[]");
+                        result.Append("store.s Array[]");
                         i++;
                         break;
                     case Pcodes.epStoreDoubleIntoArray2:
-                        String.Append("store.d Array[]");
+                        result.Append("store.d Array[]");
                         i++;
                         break;
                     case Pcodes.epLoadByteFromArray2: /* <opcode> */
-                        String.Append("load.b Array[]");
+                        result.Append("load.b Array[]");
                         i++;
                         break;
                     case Pcodes.epLoadIntegerFromArray2:
-                        String.Append("load.i Array[]");
+                        result.Append("load.i Array[]");
                         i++;
                         break;
                     case Pcodes.epLoadFloatFromArray2:
-                        String.Append("load.s Array[]");
+                        result.Append("load.s Array[]");
                         i++;
                         break;
                     case Pcodes.epLoadDoubleFromArray2:
-                        String.Append("load.d Array[]");
+                        result.Append("load.d Array[]");
                         i++;
                         break;
 
                     case Pcodes.epLoadImmediateInteger: /* <opcode> <integer>; also used for boolean & fixed */
-                        String.Append("load.i #");
-                        String.Append(OpcodeArray[i + 1].ImmediateInteger);
+                        result.Append("load.i #");
+                        result.Append(OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
                     case Pcodes.epLoadImmediateFloat: /* <opcode> ^<float> */
-                        String.Append("load.s #");
-                        String.Append(OpcodeArray[i + 1].ImmediateFloat);
+                        result.Append("load.s #");
+                        result.Append(OpcodeArray[i + 1].ImmediateFloat);
                         i += 2;
                         break;
 
                     case Pcodes.epLoadImmediateDouble: /* <opcode> ^<double> */
-                        String.Append("load.d #");
-                        String.Append(Pcode.doubles[OpcodeArray[i + 1].ImmediateDouble_Ref]);
+                        result.Append("load.d #");
+                        result.Append(pcode.doubles[OpcodeArray[i + 1].ImmediateDouble_Ref]);
                         i += 2;
                         break;
 
                     case Pcodes.epMakeByteArrayFromString: /* <opcode> ^"<data>" */
-                        String.Append("newarraydata.b ");
-                        String.Append("\x22");
-                        String.Append(Pcode.strings[OpcodeArray[i + 1].ImmediateString_Ref]);
-                        String.Append("\x22");
+                        result.Append("newarraydata.b ");
+                        result.Append("\x22");
+                        result.Append(pcode.strings[OpcodeArray[i + 1].ImmediateString_Ref]);
+                        result.Append("\x22");
                         i += 2;
                         break;
 
                     case Pcodes.epMinInt:
-                        String.Append("min.i");
+                        result.Append("min.i");
                         i++;
                         break;
                     case Pcodes.epMinFloat:
-                        String.Append("min.s");
+                        result.Append("min.s");
                         i++;
                         break;
                     case Pcodes.epMinDouble:
-                        String.Append("min.d");
+                        result.Append("min.d");
                         i++;
                         break;
                     case Pcodes.epMaxInt:
-                        String.Append("max.i");
+                        result.Append("max.i");
                         i++;
                         break;
                     case Pcodes.epMaxFloat:
-                        String.Append("max.s");
+                        result.Append("max.s");
                         i++;
                         break;
                     case Pcodes.epMaxDouble:
-                        String.Append("max.d");
+                        result.Append("max.d");
                         i++;
                         break;
                     case Pcodes.epMinMaxInt:
-                        String.Append("minmax.i");
+                        result.Append("minmax.i");
                         i++;
                         break;
                     case Pcodes.epMinMaxFloat:
-                        String.Append("minmax.s");
+                        result.Append("minmax.s");
                         i++;
                         break;
                     case Pcodes.epMinMaxDouble:
-                        String.Append("minmax.d");
+                        result.Append("minmax.d");
                         i++;
                         break;
                     case Pcodes.epAtan2Float:
-                        String.Append("atan2.s");
+                        result.Append("atan2.s");
                         i++;
                         break;
                     case Pcodes.epAtan2Double:
-                        String.Append("atan2.d");
+                        result.Append("atan2.d");
                         i++;
                         break;
 
@@ -734,12 +735,10 @@ namespace OutOfPhase
                         Debug.Assert(false);
                         throw new InvalidOperationException();
                 }
-
-                /* end of line */
-                String.Append(CarriageReturn);
+                result.AppendLine();
             }
 
-            return String.ToString();
+            return result.ToString();
         }
 
         private static void AppendStack(StringBuilder sb, string s, int immediate)

@@ -44,7 +44,7 @@ namespace OutOfPhase
 
             this.textBox.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
 
-            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
+            DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom, delegate () { return new Control[] { textBox }; });
 
             // Place interaction window across bottom of screen.
             const int Margin = 50;
@@ -83,7 +83,7 @@ namespace OutOfPhase
 
         protected override void WndProc(ref Message m)
         {
-            dpiChangeHelper.WndProcDelegate(ref m);
+            dpiChangeHelper.WndProcDelegate(ref m, delegate () { return new Control[] { textBox }; });
             base.WndProc(ref m);
         }
 

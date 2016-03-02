@@ -173,8 +173,8 @@ namespace OutOfPhase
         {
             ResultOut = 0;
 
-            SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
-                1/*retval*/ + 8 + 1/*t*/ + 1/*x*/ + 1/*bpm*/);
+            int initialCapacity = 1/*retval*/ + 8 + 1/*t*/ + 1/*x*/ + 1/*bpm*/;
+            SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(initialCapacity);
 
             StackElement[] Stack;
             int StackNumElements;
@@ -205,7 +205,7 @@ namespace OutOfPhase
                 SpecifiedFormula,
                 SynthParams.CodeCenter,
                 out ErrorInfo,
-                null/*EvaluateContext*/,
+                PcodeExternsNull.Default,
                 ref SynthParams.pcodeThreadContext);
             if (Error != EvalErrors.eEvalNoError)
             {
@@ -214,9 +214,9 @@ namespace OutOfPhase
                 SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                 return SynthErrorCodes.eSynthErrorEx;
             }
-            Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
+            Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == initialCapacity); // args - retaddr + return value
 
-            ResultOut = SynthParams.FormulaEvalContext.GetStackDouble(0);
+            ResultOut = SynthParams.FormulaEvalContext.GetStackDouble(initialCapacity - 1);
 
             return SynthErrorCodes.eSynthDone;
         }
@@ -232,8 +232,8 @@ namespace OutOfPhase
         {
             ResultOut = 0;
 
-            SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
-                1/*retval*/ + 8 + 8 + 1/*t*/ + 1/*x*/ + 1/*bpm*/);
+            int initialCapacity = 1/*retval*/ + 8 + 8 + 1/*t*/ + 1/*x*/ + 1/*bpm*/;
+            SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(initialCapacity);
 
             StackElement[] Stack;
             int StackNumElements;
@@ -273,7 +273,7 @@ namespace OutOfPhase
                 Formula,
                 SynthParams.CodeCenter,
                 out ErrorInfo,
-                null/*EvaluateContext*/,
+                PcodeExternsNull.Default,
                 ref SynthParams.pcodeThreadContext);
             if (Error != EvalErrors.eEvalNoError)
             {
@@ -282,10 +282,10 @@ namespace OutOfPhase
                 SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                 return SynthErrorCodes.eSynthErrorEx;
             }
-            Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
+            Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == initialCapacity); // args - retaddr + return value
 
             /* get result */
-            ResultOut = SynthParams.FormulaEvalContext.GetStackDouble(0);
+            ResultOut = SynthParams.FormulaEvalContext.GetStackDouble(initialCapacity - 1);
 
             return SynthErrorCodes.eSynthDone;
         }
@@ -300,8 +300,8 @@ namespace OutOfPhase
         {
             ResultOut = 0;
 
-            SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(
-                1/*retval*/ + 8 + 8 + 1/*t*/ + 1/*bpm*/);
+            int initialCapacity = 1/*retval*/ + 8 + 8 + 1/*t*/ + 1/*bpm*/;
+            SynthParams.FormulaEvalContext.EmptyParamStackEnsureCapacity(initialCapacity);
 
             StackElement[] Stack;
             int StackNumElements;
@@ -339,7 +339,7 @@ namespace OutOfPhase
                 Formula,
                 SynthParams.CodeCenter,
                 out ErrorInfo,
-                null/*EvaluateContext*/,
+                PcodeExternsNull.Default,
                 ref SynthParams.pcodeThreadContext);
             if (Error != EvalErrors.eEvalNoError)
             {
@@ -348,10 +348,10 @@ namespace OutOfPhase
                 SynthParams.ErrorInfo.UserEvalErrorInfo = ErrorInfo;
                 return SynthErrorCodes.eSynthErrorEx;
             }
-            Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == 1); // return value
+            Debug.Assert(SynthParams.FormulaEvalContext.GetStackNumElements() == initialCapacity); // args - retaddr + return value
 
             /* get result */
-            ResultOut = SynthParams.FormulaEvalContext.GetStackDouble(0);
+            ResultOut = SynthParams.FormulaEvalContext.GetStackDouble(initialCapacity - 1);
 
             return SynthErrorCodes.eSynthDone;
         }

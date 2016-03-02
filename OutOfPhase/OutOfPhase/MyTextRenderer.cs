@@ -20,11 +20,9 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Reflection;
-using System.Text;
 using System.Windows.Forms;
 
 using TextEditor;
@@ -35,9 +33,10 @@ namespace OutOfPhase
     {
         public static void DrawText(Graphics graphics, string text, Font font, Point pt, Color foreColor)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     TextRenderer.DrawText(graphics, text, font, pt, foreColor);
                 }
@@ -48,6 +47,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -55,9 +58,10 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Rectangle bounds, Color foreColor)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     TextRenderer.DrawText(graphics, text, font, bounds, foreColor);
                 }
@@ -68,6 +72,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -75,9 +83,10 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Point pt, Color foreColor, Color backColor)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     TextRenderer.DrawText(graphics, text, font, pt, foreColor, backColor);
                 }
@@ -88,6 +97,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -95,9 +108,10 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Point pt, Color foreColor, TextFormatFlags flags)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     TextRenderer.DrawText(graphics, text, font, pt, foreColor, flags);
                 }
@@ -108,6 +122,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -115,9 +133,10 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Rectangle bounds, Color foreColor, Color backColor)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     TextRenderer.DrawText(graphics, text, font, bounds, foreColor, backColor);
                 }
@@ -128,6 +147,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -135,9 +158,10 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Rectangle bounds, Color foreColor, TextFormatFlags flags)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     TextRenderer.DrawText(graphics, text, font, bounds, foreColor, flags);
                 }
@@ -148,6 +172,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -155,9 +183,10 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Point pt, Color foreColor, Color backColor, TextFormatFlags flags)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     TextRenderer.DrawText(graphics, text, font, pt, foreColor, backColor, flags);
                 }
@@ -168,6 +197,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -175,9 +208,10 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Rectangle bounds, Color foreColor, Color backColor, TextFormatFlags flags)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     TextRenderer.DrawText(graphics, text, font, bounds, foreColor, backColor, flags);
                 }
@@ -188,6 +222,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -196,9 +234,10 @@ namespace OutOfPhase
 #if false // not supporting non-dc versions
         public static Size MeasureText(string text, Font font)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     return TextRenderer.MeasureText(text, font);
                 }
@@ -209,6 +248,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -217,9 +260,10 @@ namespace OutOfPhase
 
         public static Size MeasureText(Graphics graphics, string text, Font font)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     return TextRenderer.MeasureText(graphics, text, font);
                 }
@@ -230,6 +274,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -238,9 +286,10 @@ namespace OutOfPhase
 #if false // not supporting non-dc versions
         public static Size MeasureText(string text, Font font, Size proposedSize)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     return TextRenderer.MeasureText(text, font, proposedSize);
                 }
@@ -251,6 +300,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -259,9 +312,10 @@ namespace OutOfPhase
 
         public static Size MeasureText(Graphics graphics, string text, Font font, Size proposedSize)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     return TextRenderer.MeasureText(graphics, text, font, proposedSize);
                 }
@@ -272,6 +326,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -280,9 +338,10 @@ namespace OutOfPhase
 #if false // not supporting non-dc versions
         public static Size MeasureText(string text, Font font, Size proposedSize, TextFormatFlags flags)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     return TextRenderer.MeasureText(text, font, proposedSize, flags);
                 }
@@ -293,6 +352,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -301,9 +364,10 @@ namespace OutOfPhase
 
         public static Size MeasureText(Graphics graphics, string text, Font font, Size proposedSize, TextFormatFlags flags)
         {
+        Retry:
             try
             {
-                if (!Program.Config.EnableDirectWrite)
+                if (!Program.Config.EnableDirectWrite || fallback)
                 {
                     return TextRenderer.MeasureText(graphics, text, font, proposedSize, flags);
                 }
@@ -314,6 +378,10 @@ namespace OutOfPhase
             }
             catch (FileNotFoundException exception)
             {
+                if (Fallback())
+                {
+                    goto Retry;
+                }
                 ShowError(exception);
                 throw;
             }
@@ -334,6 +402,26 @@ namespace OutOfPhase
                     break;
             }
             MessageBox.Show(String.Format("Unable to load program component. To solve this problem, make sure the Visual Studio 2015 Redistributable{1} is installed on the computer. (Internal exception: {0})", exception.Message, platform));
+        }
+
+        private static bool fallback = false;
+        private static bool Fallback()
+        {
+            // HACK to fall back to GDI at design time if the TextEditorDirectWrite dll fails to load, since keeping the dlls
+            // design-happy seems to be so fragile
+            if (System.Diagnostics.Process.GetCurrentProcess().ProcessName == "devenv")
+            {
+                fallback = true;
+            }
+            return fallback;
+        }
+
+        public static void FinalizeBeforeShutdown()
+        {
+            if (!(!Program.Config.EnableDirectWrite || fallback))
+            {
+                DirectWriteTextRenderer.FinalizeBeforeShutdown();
+            }
         }
     }
 }

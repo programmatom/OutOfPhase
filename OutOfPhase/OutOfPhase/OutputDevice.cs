@@ -299,7 +299,7 @@ namespace OutOfPhase
 
         private readonly int maxBufferedFrames; // frames
         private readonly int criticalBufferedFrames;
-        private volatile int lastBufferedFrames;
+        private int lastBufferedFrames;
 
         // these arrange to start playback only after a full buffer is available to prevent initial glitching
         private readonly int startThreshholdFrames;
@@ -323,7 +323,7 @@ namespace OutOfPhase
                     started = false;
                 }
 
-                lastBufferedFrames = padding; // update current status; consumed by progress UI
+                Thread.VolatileWrite(ref lastBufferedFrames, padding); // update current status; consumed by progress UI
 
                 int framesToWrite = points / pointsPerFrame;
                 int framesAvailable = maxBufferedFrames - padding;
@@ -412,7 +412,7 @@ namespace OutOfPhase
         {
             get
             {
-                return (float)lastBufferedFrames / samplingRate;
+                return (float)Thread.VolatileRead(ref lastBufferedFrames) / samplingRate;
             }
         }
 
@@ -1075,10 +1075,10 @@ namespace OutOfPhase
 
         private readonly int bufferCount;
         private readonly int pointsPerBuffer;
-        private volatile int bufferedPoints;
-        private volatile Buffer freeList;
-        private volatile Buffer current;
-        private volatile int enqueuedBuffers;
+        private int bufferedPoints;
+        private Buffer freeList;
+        private Buffer current;
+        private int enqueuedBuffers;
         private readonly ManualResetEvent avail;
         private readonly Buffer[] bufferMap;
 
@@ -1220,7 +1220,7 @@ namespace OutOfPhase
                     Flush();
                 }
 
-                while (bufferedPoints != 0) // TODO: cancel? review for correctness and hackiness
+                while (Thread.VolatileRead(ref bufferedPoints) != 0) // TODO: cancel? review for correctness and hackiness
                 {
                     Thread.Sleep(50);
                 }
@@ -1272,7 +1272,7 @@ namespace OutOfPhase
 
         // IBufferLoading
         public bool Available { get { return true; } }
-        public float Level { get { return (float)(bufferedPoints / pointsPerFrame) / samplingRate; } } // seconds
+        public float Level { get { return (float)(Thread.VolatileRead(ref bufferedPoints) / pointsPerFrame) / samplingRate; } } // seconds
         public float Maximum { get { return (float)((bufferCount * pointsPerBuffer) / pointsPerFrame) / samplingRate; } } // seconds
         public float Critical { get { return .5f; } }
 
@@ -1306,7 +1306,7 @@ namespace OutOfPhase
                     Flush();
                 }
 
-                if (!paused && (enqueuedBuffers == 0))
+                if (!paused && (Thread.VolatileRead(ref enqueuedBuffers) == 0))
                 {
                     int error = WaveOut.waveOutPause(
                         hWaveOut);
@@ -1377,7 +1377,7 @@ namespace OutOfPhase
             }
             Interlocked.Increment(ref enqueuedBuffers);
 
-            if (paused && (enqueuedBuffers >= bufferCount / 2))
+            if (paused && (Thread.VolatileRead(ref enqueuedBuffers) >= bufferCount / 2))
             {
                 error = WaveOut.waveOutRestart(
                     hWaveOut);

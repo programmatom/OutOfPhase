@@ -487,12 +487,13 @@ namespace OutOfPhase
                 ArrayHandleFloat dataHandleLeft = new ArrayHandleFloat(new float[0]);
                 ArrayHandleFloat dataHandleRight = new ArrayHandleFloat(new float[0]);
 
-                ParamList.EmptyParamStackEnsureCapacity(
+                int initialCapacity =
                     1/*loopstart1*/ + 1/*loopstart2*/ + 1/*loopstart3*/ +
                     1/*loopend1*/ + 1/*loopend2*/ + 1/*loopend3*/ +
                     1/*origin*/ + 1/*samplingrate*/ + 1/*naturalfrequency*/ +
                     (NumChannels == NumChannelsType.eSampleStereo ? 2 : 1)/*data or leftdata/rightdata */ +
-                    1/*retaddr*/);
+                    1/*retaddr*/;
+                ParamList.EmptyParamStackEnsureCapacity(initialCapacity);
 
                 ParamList.AddIntegerToStack(LoopStart1);
                 ParamList.AddIntegerToStack(LoopStart2);
@@ -533,7 +534,18 @@ namespace OutOfPhase
                             CodeCenter));
                     return false;
                 }
-                Debug.Assert(ParamList.GetStackNumElements() == 1); // return value
+                Debug.Assert(ParamList.GetStackNumElements() == initialCapacity); // args - retaddr + return value
+#if DEBUG
+                ParamList.Elements[9].AssertFloatArray();
+#endif
+                dataHandleLeft = ParamList.Elements[9].reference.arrayHandleFloat;
+                if (NumChannels == NumChannelsType.eSampleStereo)
+                {
+#if DEBUG
+                    ParamList.Elements[10].AssertFloatArray();
+#endif
+                    dataHandleRight = ParamList.Elements[10].reference.arrayHandleFloat;
+                }
 
                 if (NumChannels == NumChannelsType.eSampleStereo)
                 {
@@ -636,7 +648,9 @@ namespace OutOfPhase
             {
                 ArrayHandleFloat dataHandle = new ArrayHandleFloat(new float[NumFrames * NumTables]);
 
-                ParamList.EmptyParamStackEnsureCapacity(1/*frames*/ + 1/*tables*/ + 1/*data*/ + 1/*retaddr*/);
+                int initialCapacity = 1/*frames*/ + 1/*tables*/ + 1/*data*/ + 1/*retaddr*/;
+                ParamList.EmptyParamStackEnsureCapacity(initialCapacity);
+
                 ParamList.AddIntegerToStack(NumFrames);
                 ParamList.AddIntegerToStack(NumTables);
                 ParamList.AddArrayToStack(dataHandle);
@@ -661,7 +675,11 @@ namespace OutOfPhase
                             CodeCenter));
                     return false;
                 }
-                Debug.Assert(ParamList.GetStackNumElements() == 1); // return value
+                Debug.Assert(ParamList.GetStackNumElements() == initialCapacity); // args - retaddr + return value
+#if DEBUG
+                ParamList.Elements[2].AssertFloatArray();
+#endif
+                dataHandle = ParamList.Elements[2].reference.arrayHandleFloat;
 
                 WaveTableData = new WaveTableStorageRec(NumTables, NumFrames, NumBitsType.eSample24bit);
                 float[] NewData = dataHandle.floats;

@@ -32,12 +32,29 @@ namespace OutOfPhase
 {
     public static partial class Synthesizer
     {
+        // perf work in this file is awaiting features from .NET:
+        // https://github.com/dotnet/corefx/issues/5474 Provide a generic API to read from and write to a pointer
+        // https://github.com/dotnet/corefx/issues/5106 Add overload for Vector.CopyTo() that supports pointers
+        // https://github.com/dotnet/corefx/issues/3741 Change System.Numerics.Vector<T>'s unsafe constructors' access level to public
+        // https://github.com/dotnet/corefx/issues/5106 Add overload for Vector.CopyTo() that supports pointers
+        //
+        // https://github.com/dotnet/coreclr/issues/3210 Looking for a way to elide bounds checks
+        //
+        // from there, the plan is to use fixed() to get pointers instead of arrays (to suppress bounds check emission)
+        // and use the above features to get Vector<T> to be able to access them.
+
 #if VECTOR
         public const bool EnableVector = true; // enable use of .NET SIMD "Vector" class - also must #define VECTOR
 #endif
 
 
+        // Most loops in this file were tested by rewriting as pointer arithmetic using "unsafe" and "fixed" to avoid
+        // array bounds checking. Measurements on a Pentium N3520 and AMD A10-8700P showed no measureable difference
+        // in program performance. The checked versions were retained for maintainability and robustness.
+
+
         /* 2nd order IIR in direct I form coefficients and state */
+        [StructLayout(LayoutKind.Auto)]
         public struct IIR2DirectIRec
         {
             /* filter state.  client should initialize these to zero at beginning of run */
@@ -56,6 +73,7 @@ namespace OutOfPhase
         }
 
         /* 2nd order IIR in direct II form coefficients and state */
+        [StructLayout(LayoutKind.Auto)]
         public struct IIR2DirectIIRec
         {
             /* filter state.  client should initialize these to zero at beginning of run */
@@ -72,6 +90,7 @@ namespace OutOfPhase
         }
 
         /* 1st order IIR all-pole coefficients and state */
+        [StructLayout(LayoutKind.Auto)]
         public struct IIR1AllPoleRec
         {
             /* filter state.  client should initialize these to zero at beginning of run */
@@ -85,62 +104,50 @@ namespace OutOfPhase
 
 
 #if DEBUG
-        public static void AssertVectorAligned(
+        public unsafe static void AssertVectorAligned(
             float[] vector,
             int offset)
         {
 #if VECTOR
-            GCHandle hVector = GCHandle.Alloc(vector, GCHandleType.Pinned);
-            try
+            fixed (float* pVector0 = &(vector[0]))
             {
+                IntPtr iVector0 = new IntPtr(pVector0);
                 int vectorLength = Vector<float>.Count;
-                Debug.Assert((hVector.AddrOfPinnedObject().ToInt64() + offset * sizeof(float)) % (vectorLength * sizeof(float)) == 0);
-            }
-            finally
-            {
-                hVector.Free();
+                Debug.Assert((iVector0.ToInt64() + offset * sizeof(float)) % (vectorLength * sizeof(float)) == 0);
             }
 #endif
         }
 
-        public static void AssertVectorAligned(
+        public unsafe static void AssertVectorAligned(
             Fixed64[] vector,
             int offset)
         {
 #if VECTOR
             if (Environment.Is64BitProcess)
             {
-                GCHandle hVector = GCHandle.Alloc(vector, GCHandleType.Pinned);
-                try
+                fixed (Fixed64* pVector0 = &(vector[0]))
                 {
+                    IntPtr iVector0 = new IntPtr(pVector0);
                     int vectorLength = Vector<long>.Count;
-                    Debug.Assert((hVector.AddrOfPinnedObject().ToInt64() + offset * sizeof(long)) % (vectorLength * sizeof(long)) == 0);
-                }
-                finally
-                {
-                    hVector.Free();
+                    Debug.Assert((iVector0.ToInt64() + offset * sizeof(long)) % (vectorLength * sizeof(long)) == 0);
                 }
             }
             // else: compensating for unaligned allocation isn't feasible for 64-bit types in 32-bit mode - see SynthParamRec for explanation
 #endif
         }
 
-        public static void AssertVectorAligned(
+        public unsafe static void AssertVectorAligned(
             double[] vector,
             int offset)
         {
 #if VECTOR
             if (Environment.Is64BitProcess)
             {
-                GCHandle hVector = GCHandle.Alloc(vector, GCHandleType.Pinned);
-                try
+                fixed (double* pVector0 = &(vector[0]))
                 {
+                    IntPtr iVector0 = new IntPtr(pVector0);
                     int vectorLength = Vector<double>.Count;
-                    Debug.Assert((hVector.AddrOfPinnedObject().ToInt64() + offset * sizeof(double)) % (vectorLength * sizeof(double)) == 0);
-                }
-                finally
-                {
-                    hVector.Free();
+                    Debug.Assert((iVector0.ToInt64() + offset * sizeof(double)) % (vectorLength * sizeof(double)) == 0);
                 }
             }
             // else: compensating for unaligned allocation isn't feasible for 64-bit types in 32-bit mode - see SynthParamRec for explanation
@@ -155,6 +162,14 @@ namespace OutOfPhase
             int count,
             float value)
         {
+#if false // TODO: enable if this helps avoid bounds checks -- see https://github.com/dotnet/coreclr/issues/3210
+            if ((count < 0) || unchecked((uint)(offset + count) > (uint)target.Length))
+            {
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
+#endif
+
             int i = 0;
 
 #if DEBUG
@@ -166,7 +181,7 @@ namespace OutOfPhase
                 Vector<float> vectorValue = new Vector<float>(value);
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    vectorValue.CopyTo(target, i + offset);
+                    vectorValue.CopyTo(target, offset + i);
                 }
             }
             else
@@ -174,16 +189,16 @@ namespace OutOfPhase
             {
                 for (; i <= count - 4; i += 4)
                 {
-                    target[i + offset + 0] = value;
-                    target[i + offset + 1] = value;
-                    target[i + offset + 2] = value;
-                    target[i + offset + 3] = value;
+                    target[offset + i + 0] = value;
+                    target[offset + i + 1] = value;
+                    target[offset + i + 2] = value;
+                    target[offset + i + 3] = value;
                 }
             }
 
             for (; i < count; i++)
             {
-                target[i + offset] = value;
+                target[offset + i] = value;
             }
         }
 
@@ -217,9 +232,9 @@ namespace OutOfPhase
                 Vector<float> vectorSourceScale = new Vector<float>(sourceScale);
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = new Vector<float>(source, i + sourceOffset) * vectorSourceScale
-                        + new Vector<float>(target, i + targetOffset);
-                    s.CopyTo(target, i + targetOffset);
+                    Vector<float> s = new Vector<float>(source, sourceOffset + i) * vectorSourceScale
+                        + new Vector<float>(target, targetOffset + i);
+                    s.CopyTo(target, targetOffset + i);
                 }
             }
             else
@@ -227,24 +242,24 @@ namespace OutOfPhase
             {
                 for (; i <= count - 4; i += 4)
                 {
-                    float Source0 = source[i + sourceOffset + 0];
-                    float Source1 = source[i + sourceOffset + 1];
-                    float Source2 = source[i + sourceOffset + 2];
-                    float Source3 = source[i + sourceOffset + 3];
-                    float Target0 = target[i + targetOffset + 0];
-                    float Target1 = target[i + targetOffset + 1];
-                    float Target2 = target[i + targetOffset + 2];
-                    float Target3 = target[i + targetOffset + 3];
-                    target[i + targetOffset + 0] = Target0 + sourceScale * Source0;
-                    target[i + targetOffset + 1] = Target1 + sourceScale * Source1;
-                    target[i + targetOffset + 2] = Target2 + sourceScale * Source2;
-                    target[i + targetOffset + 3] = Target3 + sourceScale * Source3;
+                    float Source0 = source[sourceOffset + i + 0];
+                    float Source1 = source[sourceOffset + i + 1];
+                    float Source2 = source[sourceOffset + i + 2];
+                    float Source3 = source[sourceOffset + i + 3];
+                    float Target0 = target[targetOffset + i + 0];
+                    float Target1 = target[targetOffset + i + 1];
+                    float Target2 = target[targetOffset + i + 2];
+                    float Target3 = target[targetOffset + i + 3];
+                    target[targetOffset + i + 0] = Target0 + sourceScale * Source0;
+                    target[targetOffset + i + 1] = Target1 + sourceScale * Source1;
+                    target[targetOffset + i + 2] = Target2 + sourceScale * Source2;
+                    target[targetOffset + i + 3] = Target3 + sourceScale * Source3;
                 }
             }
 
             for (; i < count; i++)
             {
-                target[i + targetOffset] = target[i + targetOffset] + sourceScale * source[i + sourceOffset];
+                target[targetOffset + i] = target[targetOffset + i] + sourceScale * source[sourceOffset + i];
             }
         }
 
@@ -280,8 +295,8 @@ namespace OutOfPhase
                 Vector<float> vectorFactor = new Vector<float>(factor);
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = new Vector<float>(source, i + sourceOffset) * vectorFactor;
-                    s.CopyTo(target, i + targetOffset);
+                    Vector<float> s = new Vector<float>(source, sourceOffset + i) * vectorFactor;
+                    s.CopyTo(target, targetOffset + i);
                 }
             }
             else
@@ -289,20 +304,20 @@ namespace OutOfPhase
             {
                 for (; i <= count - 4; i += 4)
                 {
-                    float Source0 = source[i + sourceOffset + 0];
-                    float Source1 = source[i + sourceOffset + 1];
-                    float Source2 = source[i + sourceOffset + 2];
-                    float Source3 = source[i + sourceOffset + 3];
-                    target[i + targetOffset + 0] = factor * Source0;
-                    target[i + targetOffset + 1] = factor * Source1;
-                    target[i + targetOffset + 2] = factor * Source2;
-                    target[i + targetOffset + 3] = factor * Source3;
+                    float Source0 = source[sourceOffset + i + 0];
+                    float Source1 = source[sourceOffset + i + 1];
+                    float Source2 = source[sourceOffset + i + 2];
+                    float Source3 = source[sourceOffset + i + 3];
+                    target[targetOffset + i + 0] = factor * Source0;
+                    target[targetOffset + i + 1] = factor * Source1;
+                    target[targetOffset + i + 2] = factor * Source2;
+                    target[targetOffset + i + 3] = factor * Source3;
                 }
             }
 
             for (; i < count; i++)
             {
-                target[i + targetOffset] = factor * source[i + sourceOffset];
+                target[targetOffset + i] = factor * source[sourceOffset + i];
             }
         }
 
@@ -325,8 +340,8 @@ namespace OutOfPhase
             {
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = new Vector<float>(source, i + sourceOffset);
-                    s.CopyTo(target, i + targetOffset);
+                    Vector<float> s = new Vector<float>(source, sourceOffset + i);
+                    s.CopyTo(target, targetOffset + i);
                 }
             }
             else
@@ -334,20 +349,20 @@ namespace OutOfPhase
             {
                 for (; i <= count - 4; i += 4)
                 {
-                    float Source0 = source[i + 0 + sourceOffset];
-                    float Source1 = source[i + 1 + sourceOffset];
-                    float Source2 = source[i + 2 + sourceOffset];
-                    float Source3 = source[i + 3 + sourceOffset];
-                    target[i + 0 + targetOffset] = Source0;
-                    target[i + 1 + targetOffset] = Source1;
-                    target[i + 2 + targetOffset] = Source2;
-                    target[i + 3 + targetOffset] = Source3;
+                    float Source0 = source[sourceOffset + i + 0];
+                    float Source1 = source[sourceOffset + i + 1];
+                    float Source2 = source[sourceOffset + i + 2];
+                    float Source3 = source[sourceOffset + i + 3];
+                    target[targetOffset + i + 0] = Source0;
+                    target[targetOffset + i + 1] = Source1;
+                    target[targetOffset + i + 2] = Source2;
+                    target[targetOffset + i + 3] = Source3;
                 }
             }
 
             for (; i < count; i++)
             {
-                target[i + targetOffset] = source[i + sourceOffset];
+                target[targetOffset + i] = source[sourceOffset + i];
             }
         }
 
@@ -366,8 +381,8 @@ namespace OutOfPhase
                 // .NET uses movups instruction, so vector has some perf gain even when unaligned
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = new Vector<float>(source, i + sourceOffset);
-                    s.CopyTo(target, i + targetOffset);
+                    Vector<float> s = new Vector<float>(source, sourceOffset + i);
+                    s.CopyTo(target, targetOffset + i);
                 }
             }
             else
@@ -375,20 +390,20 @@ namespace OutOfPhase
             {
                 for (; i <= count - 4; i += 4)
                 {
-                    float Source0 = source[i + 0 + sourceOffset];
-                    float Source1 = source[i + 1 + sourceOffset];
-                    float Source2 = source[i + 2 + sourceOffset];
-                    float Source3 = source[i + 3 + sourceOffset];
-                    target[i + 0 + targetOffset] = Source0;
-                    target[i + 1 + targetOffset] = Source1;
-                    target[i + 2 + targetOffset] = Source2;
-                    target[i + 3 + targetOffset] = Source3;
+                    float Source0 = source[sourceOffset + i + 0];
+                    float Source1 = source[sourceOffset + i + 1];
+                    float Source2 = source[sourceOffset + i + 2];
+                    float Source3 = source[sourceOffset + i + 3];
+                    target[targetOffset + i + 0] = Source0;
+                    target[targetOffset + i + 1] = Source1;
+                    target[targetOffset + i + 2] = Source2;
+                    target[targetOffset + i + 3] = Source3;
                 }
             }
 
             for (; i < count; i++)
             {
-                target[i + targetOffset] = source[i + sourceOffset];
+                target[targetOffset + i] = source[sourceOffset + i];
             }
         }
 
@@ -414,10 +429,10 @@ namespace OutOfPhase
             {
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = new Vector<float>(source1, i + source1Offset)
-                        * new Vector<float>(source2, i + source2Offset)
-                        + new Vector<float>(target, i + targetOffset);
-                    s.CopyTo(target, i + targetOffset);
+                    Vector<float> s = new Vector<float>(source1, source1Offset + i)
+                        * new Vector<float>(source2, source2Offset + i)
+                        + new Vector<float>(target, targetOffset + i);
+                    s.CopyTo(target, targetOffset + i);
                 }
             }
             else
@@ -425,28 +440,28 @@ namespace OutOfPhase
             {
                 for (; i <= count - 4; i += 4)
                 {
-                    float Source10 = source1[i + source1Offset + 0];
-                    float Source11 = source1[i + source1Offset + 1];
-                    float Source12 = source1[i + source1Offset + 2];
-                    float Source13 = source1[i + source1Offset + 3];
-                    float Source20 = source2[i + source2Offset + 0];
-                    float Source21 = source2[i + source2Offset + 1];
-                    float Source22 = source2[i + source2Offset + 2];
-                    float Source23 = source2[i + source2Offset + 3];
-                    float Target0 = target[i + targetOffset + 0];
-                    float Target1 = target[i + targetOffset + 1];
-                    float Target2 = target[i + targetOffset + 2];
-                    float Target3 = target[i + targetOffset + 3];
-                    target[i + targetOffset + 0] = Target0 + Source10 * Source20;
-                    target[i + targetOffset + 1] = Target1 + Source11 * Source21;
-                    target[i + targetOffset + 2] = Target2 + Source12 * Source22;
-                    target[i + targetOffset + 3] = Target3 + Source13 * Source23;
+                    float Source10 = source1[source1Offset + i + 0];
+                    float Source11 = source1[source1Offset + i + 1];
+                    float Source12 = source1[source1Offset + i + 2];
+                    float Source13 = source1[source1Offset + i + 3];
+                    float Source20 = source2[source2Offset + i + 0];
+                    float Source21 = source2[source2Offset + i + 1];
+                    float Source22 = source2[source2Offset + i + 2];
+                    float Source23 = source2[source2Offset + i + 3];
+                    float Target0 = target[targetOffset + i + 0];
+                    float Target1 = target[targetOffset + i + 1];
+                    float Target2 = target[targetOffset + i + 2];
+                    float Target3 = target[targetOffset + i + 3];
+                    target[targetOffset + i + 0] = Target0 + Source10 * Source20;
+                    target[targetOffset + i + 1] = Target1 + Source11 * Source21;
+                    target[targetOffset + i + 2] = Target2 + Source12 * Source22;
+                    target[targetOffset + i + 3] = Target3 + Source13 * Source23;
                 }
             }
 
             for (; i < count; i++)
             {
-                target[i + targetOffset] = target[i + targetOffset] + source1[i + source1Offset] * source2[i + source2Offset];
+                target[targetOffset + i] = target[targetOffset + i] + source1[source1Offset + i] * source2[source2Offset + i];
             }
         }
 
@@ -467,8 +482,8 @@ namespace OutOfPhase
 #endif
             for (int i = 0; i < frameCount; i++)
             {
-                interleavedTarget[2 * i + 0 + interleavedTargetOffset] = leftSource[i + leftSourceOffset];
-                interleavedTarget[2 * i + 1 + interleavedTargetOffset] = rightSource[i + rightSourceOffset];
+                interleavedTarget[interleavedTargetOffset + 2 * i + 0] = leftSource[leftSourceOffset + i];
+                interleavedTarget[interleavedTargetOffset + 2 * i + 1] = rightSource[rightSourceOffset + i];
             }
         }
 
@@ -489,8 +504,8 @@ namespace OutOfPhase
 #endif
             for (int i = 0; i < frameCount; i++)
             {
-                leftTarget[i + leftTargetOffset] = interleavedSource[2 * i + 0 + interleavedSourceOffset];
-                rightTarget[i + rightTargetOffset] = interleavedSource[2 * i + 1 + interleavedSourceOffset];
+                leftTarget[leftTargetOffset + i] = interleavedSource[interleavedSourceOffset + 2 * i + 0];
+                rightTarget[rightTargetOffset + i] = interleavedSource[interleavedSourceOffset + 2 * i + 1];
             }
         }
 
@@ -513,15 +528,15 @@ namespace OutOfPhase
             {
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = Vector.Abs(new Vector<float>(source, i + sourceOffset));
-                    s.CopyTo(target, i + targetOffset);
+                    Vector<float> s = Vector.Abs(new Vector<float>(source, sourceOffset + i));
+                    s.CopyTo(target, targetOffset + i);
                 }
             }
 #endif
 
             for (; i < count; i++)
             {
-                target[i + targetOffset] = Math.Abs(source[i + sourceOffset]);
+                target[targetOffset + i] = Math.Abs(source[sourceOffset + i]);
             }
         }
 
@@ -543,17 +558,17 @@ namespace OutOfPhase
             {
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = Vector.Abs(new Vector<float>(source, i + sourceOffset));
+                    Vector<float> s = Vector.Abs(new Vector<float>(source, sourceOffset + i));
                     s = s * s;
-                    s.CopyTo(target, i + targetOffset);
+                    s.CopyTo(target, targetOffset + i);
                 }
             }
 #endif
 
             for (; i < count; i++)
             {
-                float t = source[i + sourceOffset];
-                target[i + targetOffset] = t * t;
+                float t = source[sourceOffset + i];
+                target[targetOffset + i] = t * t;
             }
         }
 
@@ -572,16 +587,16 @@ namespace OutOfPhase
             {
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = Vector.SquareRoot(new Vector<float>(vector, i + offset));
-                    s.CopyTo(vector, i + offset);
+                    Vector<float> s = Vector.SquareRoot(new Vector<float>(vector, offset + i));
+                    s.CopyTo(vector, offset + i);
                 }
             }
 #endif
 
             for (; i < count; i++)
             {
-                float t = vector[i + offset];
-                vector[i + offset] = (float)Math.Sqrt(t);
+                float t = vector[offset + i];
+                vector[offset + i] = (float)Math.Sqrt(t);
             }
         }
 
@@ -608,18 +623,18 @@ namespace OutOfPhase
                 Vector<float> vectorHalf = new Vector<float>(.5f);
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = vectorHalf * (new Vector<float>(sourceA, i + sourceAOffset)
-                        + new Vector<float>(sourceB, i + sourceBOffset));
-                    s.CopyTo(target, i + targetOffset);
+                    Vector<float> s = vectorHalf * (new Vector<float>(sourceA, sourceAOffset + i)
+                        + new Vector<float>(sourceB, sourceBOffset + i));
+                    s.CopyTo(target, targetOffset + i);
                 }
             }
 #endif
 
             for (; i < count; i++)
             {
-                float A = sourceA[i + sourceAOffset];
-                float B = sourceB[i + sourceBOffset];
-                target[i + targetOffset] = .5f * (A + B);
+                float A = sourceA[sourceAOffset + i];
+                float B = sourceB[sourceBOffset + i];
+                target[targetOffset + i] = .5f * (A + B);
             }
         }
 
@@ -645,22 +660,22 @@ namespace OutOfPhase
             {
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = Vector.Max(new Vector<float>(sourceA, i + sourceAOffset),
-                        new Vector<float>(sourceB, i + sourceBOffset));
-                    s.CopyTo(target, i + targetOffset);
+                    Vector<float> s = Vector.Max(new Vector<float>(sourceA, sourceAOffset + i),
+                        new Vector<float>(sourceB, sourceBOffset + i));
+                    s.CopyTo(target, targetOffset + i);
                 }
             }
 #endif
 
             for (; i < count; i++)
             {
-                float A = sourceA[i + sourceAOffset];
-                float B = sourceB[i + sourceBOffset];
+                float A = sourceA[sourceAOffset + i];
+                float B = sourceB[sourceBOffset + i];
                 if (A < B)
                 {
                     A = B;
                 }
-                target[i + targetOffset] = A;
+                target[targetOffset + i] = A;
             }
         }
 
@@ -689,8 +704,8 @@ namespace OutOfPhase
                     Vector<float> vectorMax = new Vector<float>(max);
                     for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                     {
-                        vectorMin = Vector.Min(vectorMin, new Vector<float>(source, i + sourceOffset));
-                        vectorMax = Vector.Max(vectorMin, new Vector<float>(source, i + sourceOffset));
+                        vectorMin = Vector.Min(vectorMin, new Vector<float>(source, sourceOffset + i));
+                        vectorMax = Vector.Max(vectorMin, new Vector<float>(source, sourceOffset + i));
                     }
                     for (int j = 0; j < Vector<float>.Count; j++)
                     {
@@ -703,7 +718,7 @@ namespace OutOfPhase
 
             for (; i < count; i++)
             {
-                float t = source[i + sourceOffset];
+                float t = source[sourceOffset + i];
                 if (max < t)
                 {
                     max = t;
@@ -740,7 +755,7 @@ namespace OutOfPhase
                     Vector<float> vectorMaxMag = new Vector<float>(maxMag);
                     for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                     {
-                        vectorMaxMag = Vector.Max(vectorMaxMag, Vector.Abs(new Vector<float>(source, i + sourceOffset)));
+                        vectorMaxMag = Vector.Max(vectorMaxMag, Vector.Abs(new Vector<float>(source, sourceOffset + i)));
                     }
                     for (int j = 0; j < Vector<float>.Count; j++)
                     {
@@ -752,7 +767,7 @@ namespace OutOfPhase
 
             for (; i < count; i++)
             {
-                float t = source[i + sourceOffset];
+                float t = source[sourceOffset + i];
                 t = Math.Abs(t);
                 if (maxMag < t)
                 {
@@ -780,7 +795,7 @@ namespace OutOfPhase
                 Vector<float> vectorMaxMag = new Vector<float>(maxMag);
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    if (Vector.LessThanAny(vectorMaxMag, Vector.Abs(new Vector<float>(source, i + sourceOffset))))
+                    if (Vector.LessThanAny(vectorMaxMag, Vector.Abs(new Vector<float>(source, sourceOffset + i))))
                     {
                         return true;
                     }
@@ -790,7 +805,7 @@ namespace OutOfPhase
 
             for (; i < count; i++)
             {
-                float t = source[i + sourceOffset];
+                float t = source[sourceOffset + i];
                 t = Math.Abs(t);
                 if (maxMag < t)
                 {
@@ -888,8 +903,8 @@ namespace OutOfPhase
                 Vector<float> vectorINeg = VectorINeg;
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> s = vectorINeg * new Vector<float>(vector, i + offset);
-                    s.CopyTo(vector, i + offset);
+                    Vector<float> s = vectorINeg * new Vector<float>(vector, offset + i);
+                    s.CopyTo(vector, offset + i);
                 }
             }
 #endif
@@ -936,26 +951,26 @@ namespace OutOfPhase
                 Vector<int> mask = new Vector<int>(0x7f800000); // nan/inf
                 for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                 {
-                    Vector<float> input = new Vector<float>(source, i + sourceOffset);
+                    Vector<float> input = new Vector<float>(source, sourceOffset + i);
                     Vector<int> b = Vector.AsVectorInt32(input);
                     b = b & mask;
                     Vector<int> selector = Vector.Equals(mask, b);
                     Vector<float> s = Vector.ConditionalSelect(selector, Vector<float>.Zero, input);
-                    s.CopyTo(destination, i + destinationOffset);
+                    s.CopyTo(destination, destinationOffset + i);
                 }
             }
 #endif
 
             for (; i < count; i++)
             {
-                float v = source[i + sourceOffset];
+                float v = source[sourceOffset + i];
 
                 if (Single.IsNaN(v) || Single.IsInfinity(v))
                 {
                     v = 0;
                 }
 
-                destination[i + destinationOffset] = v;
+                destination[destinationOffset + i] = v;
             }
         }
 
@@ -982,7 +997,7 @@ namespace OutOfPhase
                     Vector<int> mask = new Vector<int>(0x7f800000);
                     for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
                     {
-                        Vector<float> v = new Vector<float>(source, i + sourceOffset);
+                        Vector<float> v = new Vector<float>(source, sourceOffset + i);
                         Vector<int> vui = Vector.BitwiseAnd(Vector.AsVectorInt32(v), unsign);
                         partialSum += Vector.AndNot(
                             Vector.Equals(Vector.BitwiseAnd(vui, mask), Vector<int>.Zero),
@@ -999,7 +1014,7 @@ namespace OutOfPhase
             int[] sourceAsInt = UnsafeArrayCast.AsInts(source);
             for (; i < count; i++)
             {
-                int ui = sourceAsInt[i + sourceOffset] & 0x7fffffff;
+                int ui = sourceAsInt[sourceOffset + i] & 0x7fffffff;
                 if ((ui != 0) && ((ui & 0x7f800000) == 0))
                 {
                     denormalCount++;
@@ -1175,10 +1190,10 @@ namespace OutOfPhase
 
                 for (; i <= count - 4; i += 4)
                 {
-                    float X0 = xinVector[i + 0 + xinVectorOffset];
-                    float X1 = xinVector[i + 1 + xinVectorOffset];
-                    float X2 = xinVector[i + 2 + xinVectorOffset];
-                    float X3 = xinVector[i + 3 + xinVectorOffset];
+                    float X0 = xinVector[xinVectorOffset + i + 0];
+                    float X1 = xinVector[xinVectorOffset + i + 1];
+                    float X2 = xinVector[xinVectorOffset + i + 2];
+                    float X3 = xinVector[xinVectorOffset + i + 3];
                     Vector4 Y = cX8 * new Vector4(X8) + cX9 * new Vector4(X9) + cX0 * new Vector4(X0) + cX1 * new Vector4(X1)
                         //+ cX2 * new Vector4(X2) + cX3 * new Vector4(X3)
                         + cY8 * new Vector4(Y8) + cY9 * new Vector4(Y9);
@@ -1186,10 +1201,10 @@ namespace OutOfPhase
                     float Y1 = Y.Y;
                     float Y2 = Y.Z + A0 * X2;
                     float Y3 = Y.W + A1minusB1A0 * X2 + A0 * X3;
-                    youtVector[i + 0 + youtVectorOffset] += Y0 * outputScaling;
-                    youtVector[i + 1 + youtVectorOffset] += Y1 * outputScaling;
-                    youtVector[i + 2 + youtVectorOffset] += Y2 * outputScaling;
-                    youtVector[i + 3 + youtVectorOffset] += Y3 * outputScaling;
+                    youtVector[youtVectorOffset + i + 0] += Y0 * outputScaling;
+                    youtVector[youtVectorOffset + i + 1] += Y1 * outputScaling;
+                    youtVector[youtVectorOffset + i + 2] += Y2 * outputScaling;
+                    youtVector[youtVectorOffset + i + 3] += Y3 * outputScaling;
                     X8 = X2;
                     X9 = X3;
                     Y8 = Y2;
@@ -1213,10 +1228,10 @@ namespace OutOfPhase
                     X8 = X9;
                     if (count > 1)
                     {
-                        X8 = xinVector[count - 2 + xinVectorOffset];
+                        X8 = xinVector[xinVectorOffset + count - 2];
                     }
 
-                    X9 = xinVector[count - 1 + xinVectorOffset];
+                    X9 = xinVector[xinVectorOffset + count - 1];
                 }
             }
             else
@@ -1237,35 +1252,35 @@ namespace OutOfPhase
                     X8 = X9;
                     if (count > 1)
                     {
-                        X8 = xinVector[count - 2 + xinVectorOffset];
+                        X8 = xinVector[xinVectorOffset + count - 2];
                     }
 
-                    X9 = xinVector[count - 1 + xinVectorOffset];
+                    X9 = xinVector[xinVectorOffset + count - 1];
                 }
 
                 /* unrolled to 4 */
-                for (; i < count - 3; i += 4)
+                for (; i <= count - 4; i += 4)
                 {
-                    float X0 = xinVector[i + 0 + xinVectorOffset];
-                    float Z0 = youtVector[i + 0 + youtVectorOffset];
+                    float X0 = xinVector[xinVectorOffset + i + 0];
+                    float Z0 = youtVector[youtVectorOffset + i + 0];
                     float Y0 = Beta0 + A0 * X0;
                     float Alpha2 = A2 * X0 - B2 * Y0;
                     float Beta1 = Alpha1 + A1 * X0 - B1 * Y0;
 
-                    float X1 = xinVector[i + 1 + xinVectorOffset];
-                    float Z1 = youtVector[i + 1 + youtVectorOffset];
+                    float X1 = xinVector[xinVectorOffset + i + 1];
+                    float Z1 = youtVector[youtVectorOffset + i + 1];
                     float Y1 = Beta1 + A0 * X1;
                     float Alpha3 = A2 * X1 - B2 * Y1;
                     float Beta2 = Alpha2 + A1 * X1 - B1 * Y1;
 
-                    float X2 = xinVector[i + 2 + xinVectorOffset];
-                    float Z2 = youtVector[i + 2 + youtVectorOffset];
+                    float X2 = xinVector[xinVectorOffset + i + 2];
+                    float Z2 = youtVector[youtVectorOffset + i + 2];
                     float Y2 = Beta2 + A0 * X2;
                     float Alpha4 = A2 * X2 - B2 * Y2;
                     float Beta3 = Alpha3 + A1 * X2 - B1 * Y2;
 
-                    float X3 = xinVector[i + 3 + xinVectorOffset];
-                    float Z3 = youtVector[i + 3 + youtVectorOffset];
+                    float X3 = xinVector[xinVectorOffset + i + 3];
+                    float Z3 = youtVector[youtVectorOffset + i + 3];
                     float Y3 = Beta3 + A0 * X3;
                     float Alpha5 = A2 * X3 - B2 * Y3;
                     float Beta4 = Alpha4 + A1 * X3 - B1 * Y3;
@@ -1275,18 +1290,18 @@ namespace OutOfPhase
                     Alpha1 = Alpha5;
                     Beta0 = Beta4;
 
-                    youtVector[i + 0 + youtVectorOffset] = Z0 + Y0 * outputScaling;
-                    youtVector[i + 1 + youtVectorOffset] = Z1 + Y1 * outputScaling;
-                    youtVector[i + 2 + youtVectorOffset] = Z2 + Y2 * outputScaling;
-                    youtVector[i + 3 + youtVectorOffset] = Z3 + Y3 * outputScaling;
+                    youtVector[youtVectorOffset + i + 0] = Z0 + Y0 * outputScaling;
+                    youtVector[youtVectorOffset + i + 1] = Z1 + Y1 * outputScaling;
+                    youtVector[youtVectorOffset + i + 2] = Z2 + Y2 * outputScaling;
+                    youtVector[youtVectorOffset + i + 3] = Z3 + Y3 * outputScaling;
                 }
             }
 
             /* cleanup loop */
             for (; i < count; i++)
             {
-                float X0 = xinVector[i + xinVectorOffset];
-                float Z0 = youtVector[i + youtVectorOffset];
+                float X0 = xinVector[xinVectorOffset + i];
+                float Z0 = youtVector[youtVectorOffset + i];
                 float Y0 = Beta0 + A0 * X0;
                 float Alpha2 = A2 * X0 - B2 * Y0;
                 float Beta1 = Alpha1 + A1 * X0 - B1 * Y0;
@@ -1296,7 +1311,7 @@ namespace OutOfPhase
                 Alpha1 = Alpha2;
                 Beta0 = Beta1;
 
-                youtVector[i + youtVectorOffset] = Z0 + Y0 * outputScaling;
+                youtVector[youtVectorOffset + i] = Z0 + Y0 * outputScaling;
             }
 
             /* save state back */
@@ -1385,10 +1400,10 @@ namespace OutOfPhase
 
                 for (; i <= count - 4; i += 4)
                 {
-                    float X0 = xinVector[i + 0 + xinVectorOffset];
-                    float X1 = xinVector[i + 1 + xinVectorOffset];
-                    float X2 = xinVector[i + 2 + xinVectorOffset];
-                    float X3 = xinVector[i + 3 + xinVectorOffset];
+                    float X0 = xinVector[xinVectorOffset + i + 0];
+                    float X1 = xinVector[xinVectorOffset + i + 1];
+                    float X2 = xinVector[xinVectorOffset + i + 2];
+                    float X3 = xinVector[xinVectorOffset + i + 3];
                     Vector4 Y = cX8 * new Vector4(X8) + cX9 * new Vector4(X9) + cX0 * new Vector4(X0) + cX1 * new Vector4(X1)
                         //+ cX2 * new Vector4(X2) + cX3 * new Vector4(X3)
                         + cY8 * new Vector4(Y8) + cY9 * new Vector4(Y9);
@@ -1396,10 +1411,10 @@ namespace OutOfPhase
                     float Y1 = Y.Y;
                     float Y2 = Y.Z + A0 * X2;
                     float Y3 = Y.W + A1minusB1A0 * X2 + A0 * X3;
-                    youtVector[i + 0 + youtVectorOffset] = Y0;
-                    youtVector[i + 1 + youtVectorOffset] = Y1;
-                    youtVector[i + 2 + youtVectorOffset] = Y2;
-                    youtVector[i + 3 + youtVectorOffset] = Y3;
+                    youtVector[youtVectorOffset + i + 0] = Y0;
+                    youtVector[youtVectorOffset + i + 1] = Y1;
+                    youtVector[youtVectorOffset + i + 2] = Y2;
+                    youtVector[youtVectorOffset + i + 3] = Y3;
                     X8 = X2;
                     X9 = X3;
                     Y8 = Y2;
@@ -1423,10 +1438,10 @@ namespace OutOfPhase
                     X8 = X9;
                     if (count > 1)
                     {
-                        X8 = xinVector[count - 2 + xinVectorOffset];
+                        X8 = xinVector[xinVectorOffset + count - 2];
                     }
 
-                    X9 = xinVector[count - 1 + xinVectorOffset];
+                    X9 = xinVector[xinVectorOffset + count - 1];
                 }
             }
             else
@@ -1454,7 +1469,7 @@ namespace OutOfPhase
                 }
 
                 /* unrolled to 4 */
-                for (; i < count - 3; i += 4)
+                for (; i <= count - 4; i += 4)
                 {
                     float X0 = xinVector[xinVectorOffset + i + 0];
                     float Y0 = Beta0 + A0 * X0;
@@ -1511,6 +1526,320 @@ namespace OutOfPhase
             filter.X8 = X8;
         }
 
+        /* apply 2nd order IIR filter in direct I form to an array of values, adding */
+        /* result to output array */
+        public static void IIR2DirectIMAcc_Parallel4(
+            ref IIR2DirectIRec filter1,
+            ref IIR2DirectIRec filter2,
+            ref IIR2DirectIRec filter3,
+            ref IIR2DirectIRec filter4,
+            float[] xinVector,
+            int xinVectorOffset1,
+            int xinVectorOffset2,
+            int xinVectorOffset3,
+            int xinVectorOffset4,
+            float[] youtVector,
+            int youtVectorOffset,
+            int count,
+            float outputScaling1,
+            float outputScaling2,
+            float outputScaling3,
+            float outputScaling4)
+        {
+            Vector4 Y9 = new Vector4(filter1.Y9, filter2.Y9, filter3.Y9, filter4.Y9);
+            Vector4 Y8 = new Vector4(filter1.Y8, filter2.Y8, filter3.Y8, filter4.Y8);
+            Vector4 X9 = new Vector4(filter1.X9, filter2.X9, filter3.X9, filter4.X9);
+            Vector4 X8 = new Vector4(filter1.X8, filter2.X8, filter3.X8, filter4.X8);
+            Vector4 A0 = new Vector4(filter1.A0, filter2.A0, filter3.A0, filter4.A0);
+            Vector4 A1 = new Vector4(filter1.A1, filter2.A1, filter3.A1, filter4.A1);
+            Vector4 A2 = new Vector4(filter1.A2, filter2.A2, filter3.A2, filter4.A2);
+            Vector4 B1 = new Vector4(filter1.B1, filter2.B1, filter3.B1, filter4.B1);
+            Vector4 B2 = new Vector4(filter1.B2, filter2.B2, filter3.B2, filter4.B2);
+
+            int i = 0;
+
+            Vector4 Alpha1;
+            Vector4 Alpha0;
+            Vector4 Beta0;
+
+#if DEBUG
+            AssertVectorAligned(xinVector, xinVectorOffset1);
+            AssertVectorAligned(xinVector, xinVectorOffset2);
+            AssertVectorAligned(xinVector, xinVectorOffset3);
+            AssertVectorAligned(xinVector, xinVectorOffset4);
+            AssertVectorAligned(youtVector, youtVectorOffset);
+#endif
+
+            /* note: this code originally used the recurrence: */
+            /* Y0 = A0 * X0 + A1 * X9 + A2 * X8 - B1 * Y9 - B2 * Y8; */
+            /* unrolled to 4, but the pipelined form below exposes */
+            /* more parallelism to the scheduler. */
+
+            Alpha1 = A2 * X9 - B2 * Y9;
+            Alpha0 = A2 * X8 - B2 * Y8;
+            Beta0 = Alpha0 + A1 * X9 - B1 * Y9;
+
+            /* compute input history */
+            if (count > 0)
+            {
+                X8 = X9;
+                if (count > 1)
+                {
+                    X8 = new Vector4(
+                        xinVector[xinVectorOffset1 + count - 2],
+                        xinVector[xinVectorOffset2 + count - 2],
+                        xinVector[xinVectorOffset3 + count - 2],
+                        xinVector[xinVectorOffset4 + count - 2]);
+                }
+
+                X9 = new Vector4(
+                    xinVector[xinVectorOffset1 + count - 1],
+                    xinVector[xinVectorOffset2 + count - 1],
+                    xinVector[xinVectorOffset3 + count - 1],
+                    xinVector[xinVectorOffset4 + count - 1]);
+            }
+
+            Vector4 outputScalingVector = new Vector4(
+                outputScaling1,
+                outputScaling2,
+                outputScaling3,
+                outputScaling4);
+
+#if false // TODO: register pressure is pretty high - would unrolling still help?
+            /* unrolled to 4 */
+            for (; i <= count - 4; i += 4)
+            {
+                float X0 = xinVector[xinVectorOffset+i + 0];
+                float Z0 = youtVector[youtVectorOffset+i + 0 ];
+                float Y0 = Beta0 + A0 * X0;
+                float Alpha2 = A2 * X0 - B2 * Y0;
+                float Beta1 = Alpha1 + A1 * X0 - B1 * Y0;
+
+                float X1 = xinVector[xinVectorOffset+i + 1 ];
+                float Z1 = youtVector[youtVectorOffset+i + 1 ];
+                float Y1 = Beta1 + A0 * X1;
+                float Alpha3 = A2 * X1 - B2 * Y1;
+                float Beta2 = Alpha2 + A1 * X1 - B1 * Y1;
+
+                float X2 = xinVector[xinVectorOffset+i + 2 ];
+                float Z2 = youtVector[youtVectorOffset+i + 2 ];
+                float Y2 = Beta2 + A0 * X2;
+                float Alpha4 = A2 * X2 - B2 * Y2;
+                float Beta3 = Alpha3 + A1 * X2 - B1 * Y2;
+
+                float X3 = xinVector[xinVectorOffset+i + 3 ];
+                float Z3 = youtVector[youtVectorOffset+i + 3 ];
+                float Y3 = Beta3 + A0 * X3;
+                float Alpha5 = A2 * X3 - B2 * Y3;
+                float Beta4 = Alpha4 + A1 * X3 - B1 * Y3;
+
+                Y8 = Y2;
+                Y9 = Y3;
+                Alpha1 = Alpha5;
+                Beta0 = Beta4;
+
+                youtVector[youtVectorOffset+i + 0 ] = Z0 + Y0 * outputScaling;
+                youtVector[youtVectorOffset+i + 1 ] = Z1 + Y1 * outputScaling;
+                youtVector[youtVectorOffset+i + 2 ] = Z2 + Y2 * outputScaling;
+                youtVector[youtVectorOffset+i + 3 ] = Z3 + Y3 * outputScaling;
+            }
+#endif
+
+            /* cleanup loop */
+            for (; i < count; i++)
+            {
+                Vector4 X0 = new Vector4(
+                    xinVector[xinVectorOffset1 + i],
+                    xinVector[xinVectorOffset2 + i],
+                    xinVector[xinVectorOffset3 + i],
+                    xinVector[xinVectorOffset4 + i]);
+                float Z0 = youtVector[youtVectorOffset + i];
+                Vector4 Y0 = Beta0 + A0 * X0;
+                Vector4 Alpha2 = A2 * X0 - B2 * Y0;
+                Vector4 Beta1 = Alpha1 + A1 * X0 - B1 * Y0;
+
+                Y8 = Y9;
+                Y9 = Y0;
+                Alpha1 = Alpha2;
+                Beta0 = Beta1;
+
+                Vector4 Y0s = Y0 * outputScalingVector;
+                float Y0t = Y0s.X + Y0s.Y + Y0s.Z + Y0s.W;
+                youtVector[youtVectorOffset + i] = Z0 + Y0t;
+            }
+
+            /* save state back */
+            filter1.Y9 = Y9.X;
+            filter2.Y9 = Y9.Y;
+            filter3.Y9 = Y9.Z;
+            filter4.Y9 = Y9.W;
+            filter1.Y8 = Y8.X;
+            filter2.Y8 = Y8.Y;
+            filter3.Y8 = Y8.Z;
+            filter4.Y8 = Y8.W;
+            filter1.X9 = X9.X;
+            filter2.X9 = X9.Y;
+            filter3.X9 = X9.Z;
+            filter4.X9 = X9.W;
+            filter1.X8 = X8.X;
+            filter2.X8 = X8.Y;
+            filter3.X8 = X8.Z;
+            filter4.X8 = X8.W;
+        }
+
+        /* apply 2nd order IIR filter in direct I form to an array of values, overwriting */
+        /* the output array */
+        public static void IIR2DirectI_Parallel4(
+            ref IIR2DirectIRec filter1,
+            ref IIR2DirectIRec filter2,
+            ref IIR2DirectIRec filter3,
+            ref IIR2DirectIRec filter4,
+            float[] xinVector,
+            int xinVectorOffset1,
+            int xinVectorOffset2,
+            int xinVectorOffset3,
+            int xinVectorOffset4,
+            float[] youtVector,
+            int youtVectorOffset1,
+            int youtVectorOffset2,
+            int youtVectorOffset3,
+            int youtVectorOffset4,
+            int count)
+        {
+            Vector4 Y9 = new Vector4(filter1.Y9, filter2.Y9, filter3.Y9, filter4.Y9);
+            Vector4 Y8 = new Vector4(filter1.Y8, filter2.Y8, filter3.Y8, filter4.Y8);
+            Vector4 X9 = new Vector4(filter1.X9, filter2.X9, filter3.X9, filter4.X9);
+            Vector4 X8 = new Vector4(filter1.X8, filter2.X8, filter3.X8, filter4.X8);
+            Vector4 A0 = new Vector4(filter1.A0, filter2.A0, filter3.A0, filter4.A0);
+            Vector4 A1 = new Vector4(filter1.A1, filter2.A1, filter3.A1, filter4.A1);
+            Vector4 A2 = new Vector4(filter1.A2, filter2.A2, filter3.A2, filter4.A2);
+            Vector4 B1 = new Vector4(filter1.B1, filter2.B1, filter3.B1, filter4.B1);
+            Vector4 B2 = new Vector4(filter1.B2, filter2.B2, filter3.B2, filter4.B2);
+
+            int i = 0;
+
+            Vector4 Alpha1;
+            Vector4 Alpha0;
+            Vector4 Beta0;
+
+#if DEBUG
+            AssertVectorAligned(xinVector, xinVectorOffset1);
+            AssertVectorAligned(xinVector, xinVectorOffset2);
+            AssertVectorAligned(xinVector, xinVectorOffset3);
+            AssertVectorAligned(xinVector, xinVectorOffset4);
+            AssertVectorAligned(youtVector, youtVectorOffset1);
+            AssertVectorAligned(youtVector, youtVectorOffset2);
+            AssertVectorAligned(youtVector, youtVectorOffset3);
+            AssertVectorAligned(youtVector, youtVectorOffset4);
+#endif
+
+            /* note: this code originally used the recurrence: */
+            /* Y0 = A0 * X0 + A1 * X9 + A2 * X8 - B1 * Y9 - B2 * Y8; */
+            /* unrolled to 4, but the pipelined form below exposes */
+            /* more parallelism to the scheduler. */
+
+            Alpha1 = A2 * X9 - B2 * Y9;
+            Alpha0 = A2 * X8 - B2 * Y8;
+            Beta0 = Alpha0 + A1 * X9 - B1 * Y9;
+
+            /* compute input history */
+            if (count > 0)
+            {
+                X8 = X9;
+                if (count > 1)
+                {
+                    X8 = new Vector4(
+                        xinVector[xinVectorOffset1 + count - 2],
+                        xinVector[xinVectorOffset2 + count - 2],
+                        xinVector[xinVectorOffset3 + count - 2],
+                        xinVector[xinVectorOffset4 + count - 2]);
+                }
+
+                X9 = new Vector4(
+                    xinVector[xinVectorOffset1 + count - 1],
+                    xinVector[xinVectorOffset2 + count - 1],
+                    xinVector[xinVectorOffset3 + count - 1],
+                    xinVector[xinVectorOffset4 + count - 1]);
+            }
+
+#if false // TODO: register pressure is pretty high - would unrolling still help?
+            /* unrolled to 4 */
+            for (; i <= count - 4; i += 4)
+            {
+                float X0 = xinVector[xinVectorOffset + i + 0];
+                float Y0 = Beta0 + A0 * X0;
+                float Alpha2 = A2 * X0 - B2 * Y0;
+                float Beta1 = Alpha1 + A1 * X0 - B1 * Y0;
+
+                float X1 = xinVector[xinVectorOffset + i + 1];
+                float Y1 = Beta1 + A0 * X1;
+                float Alpha3 = A2 * X1 - B2 * Y1;
+                float Beta2 = Alpha2 + A1 * X1 - B1 * Y1;
+
+                float X2 = xinVector[xinVectorOffset + i + 2];
+                float Y2 = Beta2 + A0 * X2;
+                float Alpha4 = A2 * X2 - B2 * Y2;
+                float Beta3 = Alpha3 + A1 * X2 - B1 * Y2;
+
+                float X3 = xinVector[xinVectorOffset + i + 3];
+                float Y3 = Beta3 + A0 * X3;
+                float Alpha5 = A2 * X3 - B2 * Y3;
+                float Beta4 = Alpha4 + A1 * X3 - B1 * Y3;
+
+                Y8 = Y2;
+                Y9 = Y3;
+                Alpha1 = Alpha5;
+                Beta0 = Beta4;
+
+                youtVector[youtVectorOffset + i + 0] = Y0;
+                youtVector[youtVectorOffset + i + 1] = Y1;
+                youtVector[youtVectorOffset + i + 2] = Y2;
+                youtVector[youtVectorOffset + i + 3] = Y3;
+            }
+#endif
+
+            /* cleanup loop */
+            for (; i < count; i++)
+            {
+                Vector4 X0 = new Vector4(
+                    xinVector[xinVectorOffset1 + i],
+                    xinVector[xinVectorOffset2 + i],
+                    xinVector[xinVectorOffset3 + i],
+                    xinVector[xinVectorOffset4 + i]);
+                Vector4 Y0 = Beta0 + A0 * X0;
+                Vector4 Alpha2 = A2 * X0 - B2 * Y0;
+                Vector4 Beta1 = Alpha1 + A1 * X0 - B1 * Y0;
+
+                Y8 = Y9;
+                Y9 = Y0;
+                Alpha1 = Alpha2;
+                Beta0 = Beta1;
+
+                youtVector[youtVectorOffset1 + i] = Y0.X;
+                youtVector[youtVectorOffset2 + i] = Y0.Y;
+                youtVector[youtVectorOffset3 + i] = Y0.Z;
+                youtVector[youtVectorOffset4 + i] = Y0.W;
+            }
+
+            /* save state back */
+            filter1.Y9 = Y9.X;
+            filter2.Y9 = Y9.Y;
+            filter3.Y9 = Y9.Z;
+            filter4.Y9 = Y9.W;
+            filter1.Y8 = Y8.X;
+            filter2.Y8 = Y8.Y;
+            filter3.Y8 = Y8.Z;
+            filter4.Y8 = Y8.W;
+            filter1.X9 = X9.X;
+            filter2.X9 = X9.Y;
+            filter3.X9 = X9.Z;
+            filter4.X9 = X9.W;
+            filter1.X8 = X8.X;
+            filter2.X8 = X8.Y;
+            filter3.X8 = X8.Z;
+            filter4.X8 = X8.W;
+        }
+
         /* apply 2nd order IIR filter in direct II form to an array of values, adding */
         /* result to output array */
         public static void IIR2DirectIIMAcc(
@@ -1538,50 +1867,50 @@ namespace OutOfPhase
 #endif
 
             /* unrolled to 4 */
-            for (; i < count - 3; i += 4)
+            for (; i <= count - 4; i += 4)
             {
-                float X0 = xinVector[i + xinVectorOffset + 0];
-                float Z0 = youtVector[i + youtVectorOffset + 0];
+                float X0 = xinVector[xinVectorOffset + i + 0];
+                float Z0 = youtVector[youtVectorOffset + i + 0];
                 float Y0i = A0 * X0 - B2 * Y8i - B1 * Y9i;
                 float Y0 = Y0i + A2 * Y8i + A1 * Y9i;
 
-                float X1 = xinVector[i + xinVectorOffset + 1];
-                float Z1 = youtVector[i + youtVectorOffset + 1];
+                float X1 = xinVector[xinVectorOffset + i + 1];
+                float Z1 = youtVector[youtVectorOffset + i + 1];
                 float Y1i = A0 * X1 - B2 * Y9i - B1 * Y0i;
                 float Y1 = Y1i + A2 * Y9i + A1 * Y0i;
 
-                float X2 = xinVector[i + xinVectorOffset + 2];
-                float Z2 = youtVector[i + youtVectorOffset + 2];
+                float X2 = xinVector[xinVectorOffset + i + 2];
+                float Z2 = youtVector[youtVectorOffset + i + 2];
                 float Y2i = A0 * X2 - B2 * Y0i - B1 * Y1i;
                 float Y2 = Y2i + A2 * Y0i + A1 * Y1i;
 
-                float X3 = xinVector[i + xinVectorOffset + 3];
-                float Z3 = youtVector[i + youtVectorOffset + 3];
+                float X3 = xinVector[xinVectorOffset + i + 3];
+                float Z3 = youtVector[youtVectorOffset + i + 3];
                 float Y3i = A0 * X3 - B2 * Y1i - B1 * Y2i;
                 float Y3 = Y3i + A2 * Y1i + A1 * Y2i;
 
                 Y8i = Y2i;
                 Y9i = Y3i;
 
-                youtVector[i + youtVectorOffset + 0] = Z0 + Y0 * outputScaling;
-                youtVector[i + youtVectorOffset + 1] = Z1 + Y1 * outputScaling;
-                youtVector[i + youtVectorOffset + 2] = Z2 + Y2 * outputScaling;
-                youtVector[i + youtVectorOffset + 3] = Z3 + Y3 * outputScaling;
+                youtVector[youtVectorOffset + i + 0] = Z0 + Y0 * outputScaling;
+                youtVector[youtVectorOffset + i + 1] = Z1 + Y1 * outputScaling;
+                youtVector[youtVectorOffset + i + 2] = Z2 + Y2 * outputScaling;
+                youtVector[youtVectorOffset + i + 3] = Z3 + Y3 * outputScaling;
             }
 
         /* cleanup loop */
         Cleanup:
             for (; i < count; i++)
             {
-                float X0 = xinVector[i + xinVectorOffset];
-                float Z0 = youtVector[i + youtVectorOffset];
+                float X0 = xinVector[xinVectorOffset + i];
+                float Z0 = youtVector[youtVectorOffset + i];
                 float Y0i = A0 * X0 - B1 * Y9i - B2 * Y8i;
                 float Y0 = Y0i + A1 * Y9i + A2 * Y8i;
 
                 Y8i = Y9i;
                 Y9i = Y0i;
 
-                youtVector[i + youtVectorOffset] = Z0 + Y0 * outputScaling;
+                youtVector[youtVectorOffset + i] = Z0 + Y0 * outputScaling;
             }
 
             /* save state back */
@@ -1615,7 +1944,7 @@ namespace OutOfPhase
 #endif
 
             /* unrolled to 4 */
-            for (; i < count - 3; i += 4)
+            for (; i <= count - 4; i += 4)
             {
                 float X0 = xinVector[xinVectorOffset + i + 0];
                 float Y0i = A0 * X0 - B2 * Y8i - B1 * Y9i;
@@ -1685,12 +2014,12 @@ namespace OutOfPhase
             for (i = 0; i < count; i++)
             {
                 float X0 = xinVector[xinVectorOffset + i];
-                float Z0 = youtVector[i + youtVectorOffset];
+                float Z0 = youtVector[youtVectorOffset + i];
                 float Y0 = A * X0 - B * Y9;
 
                 Y9 = Y0;
 
-                youtVector[i + youtVectorOffset] = Z0 + Y0 * outputScaling;
+                youtVector[youtVectorOffset + i] = Z0 + Y0 * outputScaling;
             }
 
             /* save state */
@@ -1747,8 +2076,8 @@ namespace OutOfPhase
 #endif
             for (int i = 0; i < len; i++)
             {
-                float f = floatIn[i + floatInOffset] * Factor + Addend;
-                fixed64Out[i + fixed64OutOffset] = new Fixed64(f);
+                float f = floatIn[floatInOffset + i] * Factor + Addend;
+                fixed64Out[fixed64OutOffset + i] = new Fixed64(f);
             }
         }
 
@@ -1784,7 +2113,7 @@ namespace OutOfPhase
 
                 for (int i = 0; i < Count; i++)
                 {
-                    Fixed64 Int64Phase = FrameIndexBufferBase[i + FrameIndexBufferOffset];
+                    Fixed64 Int64Phase = FrameIndexBufferBase[FrameIndexBufferOffset + i];
                     float RightWeight = Int64Phase.FracF;
                     int ArraySubscript = Int64Phase.Int & FramesMask;
 
@@ -1793,7 +2122,7 @@ namespace OutOfPhase
                     float RightValue = WaveData0[ArraySubscript + 1];
                     float Result = LeftValue + (RightWeight * (RightValue - LeftValue));
 
-                    Data[i + Offset] = Result * OutputScaling;
+                    Data[Offset + i] = Result * OutputScaling;
                 }
             }
             else
@@ -1807,7 +2136,7 @@ namespace OutOfPhase
                 {
                     float Wave1Weight = (float)(CurrentWaveTableIndex - (int)CurrentWaveTableIndex);
 
-                    Fixed64 Int64Phase = FrameIndexBufferBase[i + FrameIndexBufferOffset];
+                    Fixed64 Int64Phase = FrameIndexBufferBase[FrameIndexBufferOffset + i];
                     float RightWeight = Int64Phase.FracF;
                     int ArraySubscript = Int64Phase.Int & FramesMask;
 
@@ -1821,7 +2150,7 @@ namespace OutOfPhase
                     float Result = Wave0Temp + (Wave1Weight * (Left1Value + (RightWeight
                         * (Right1Value - Left1Value)) - Wave0Temp));
 
-                    Data[i + Offset] = Result * OutputScaling;
+                    Data[Offset + i] = Result * OutputScaling;
                 }
             }
         }
@@ -1965,7 +2294,7 @@ namespace OutOfPhase
 
             for (; i < count; i++)
             {
-                vector[i + offset] = Math.Min(Math.Max(vector[i + offset], min), max);
+                vector[offset + i] = Math.Min(Math.Max(vector[offset + i], min), max);
             }
         }
     }

@@ -42,6 +42,8 @@ namespace OutOfPhase
         private int cursor = -1;
         private bool showBlankItemsDifferently;
 
+        private int fontHeight;
+
         private Brush backBrush;
         private Brush foreBrush;
         private Brush selectBackBrush;
@@ -59,6 +61,8 @@ namespace OutOfPhase
         public MyListBox()
         {
             InitializeComponent();
+
+            fontHeight = Font.Height;
 
             Disposed += new EventHandler(MyListBox_Disposed);
         }
@@ -99,7 +103,7 @@ namespace OutOfPhase
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
-            VerticalScroll.SmallChange = FontHeight;
+            VerticalScroll.SmallChange = fontHeight;
         }
 
         [Category("Behavior"), DefaultValue(false)]
@@ -144,7 +148,14 @@ namespace OutOfPhase
             base.OnFontChanged(e);
             ClearDrawingResources(); // recreate offscreen strip
             Invalidate();
-            VerticalScroll.SmallChange = FontHeight;
+
+            fontHeight = FontHeight;
+            if (!Program.Config.EnableDirectWrite)
+            {
+                fontHeight = TextEditor.FontHeightHack.GetActualFontHeight(Font, fontHeight);
+            }
+
+            VerticalScroll.SmallChange = fontHeight;
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)
@@ -271,14 +282,14 @@ namespace OutOfPhase
             }
             if (offscreenStrip == null)
             {
-                offscreenStrip = new Bitmap(Width, FontHeight, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                offscreenStrip = new Bitmap(Width, fontHeight, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
             }
         }
 
         private void DrawOnePrimitive(Graphics graphics, int i)
         {
             object item = i < underlying.Count ? underlying[i] : null;
-            Rectangle rect = new Rectangle(0, i * FontHeight, Width, FontHeight);
+            Rectangle rect = new Rectangle(0, i * fontHeight, Width, fontHeight);
             if (graphics.IsVisible(rect))
             {
                 Brush foreground, background;
@@ -348,8 +359,8 @@ namespace OutOfPhase
         {
             graphics.TranslateTransform(AutoScrollPosition.X, AutoScrollPosition.Y);
 
-            int firstVisible = -AutoScrollPosition.Y / FontHeight;
-            int lastVisible = (-AutoScrollPosition.Y + Height + FontHeight - 1) / FontHeight;
+            int firstVisible = -AutoScrollPosition.Y / fontHeight;
+            int lastVisible = (-AutoScrollPosition.Y + Height + fontHeight - 1) / fontHeight;
             for (int i = firstVisible; i < lastVisible; i++)
             {
                 DrawOnePrimitive(graphics, i);
@@ -422,7 +433,7 @@ namespace OutOfPhase
 
         public void Rebuild()
         {
-            AutoScrollMinSize = new Size(0, (underlying != null ? underlying.Count : 0) * FontHeight);
+            AutoScrollMinSize = new Size(0, (underlying != null ? underlying.Count : 0) * fontHeight);
 
             foreach (object obj in new List<object>(selected.Keys))
             {
@@ -494,7 +505,7 @@ namespace OutOfPhase
             base.OnMouseDown(e);
 
             int y = e.Y - AutoScrollPosition.Y;
-            int index = y / FontHeight;
+            int index = y / fontHeight;
             if ((index < 0) || (index >= underlying.Count))
             {
                 if (!multiselect)
@@ -578,12 +589,12 @@ namespace OutOfPhase
                     e.Handled = true;
                     break;
                 case Keys.PageUp:
-                    MoveCursorTo(cursor - (Height / FontHeight - 2));
+                    MoveCursorTo(cursor - (Height / fontHeight - 2));
                     checkChange = true;
                     e.Handled = true;
                     break;
                 case Keys.PageDown:
-                    MoveCursorTo(cursor + (Height / FontHeight - 2));
+                    MoveCursorTo(cursor + (Height / fontHeight - 2));
                     checkChange = true;
                     e.Handled = true;
                     break;
@@ -675,14 +686,14 @@ namespace OutOfPhase
         {
             if (cursor >= 0)
             {
-                int y = cursor * FontHeight;
+                int y = cursor * fontHeight;
                 if (y < -AutoScrollPosition.Y)
                 {
                     AutoScrollPosition = new Point(0, y);
                 }
-                else if (y - (Height / FontHeight - 2) * FontHeight > -AutoScrollPosition.Y)
+                else if (y - (Height / fontHeight - 2) * fontHeight > -AutoScrollPosition.Y)
                 {
-                    AutoScrollPosition = new Point(0, y - (Height / FontHeight - 2) * FontHeight);
+                    AutoScrollPosition = new Point(0, y - (Height / fontHeight - 2) * fontHeight);
                 }
             }
         }

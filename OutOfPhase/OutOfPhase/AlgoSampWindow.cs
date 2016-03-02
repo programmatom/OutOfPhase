@@ -177,7 +177,7 @@ namespace OutOfPhase
             {
                 return false;
             }
-            string DisassemblyText = Compiler.DisassemblePcode(FuncCode, Environment.NewLine);
+            string DisassemblyText = Compiler.DisassemblePcode(FuncCode);
             new DisassemblyWindow(DisassemblyText, mainWindow, String.Format("{0} - Disassembly", algoSampObject.Name)).Show();
 
             return true;

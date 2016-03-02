@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
@@ -35,6 +36,7 @@ namespace OutOfPhase
         private const int MIDIC = 60;
 
         /* structure for building list of opcode and duration values */
+        [StructLayout(LayoutKind.Auto)]
         public struct OpDurRec
         {
             /* opcode for the note */

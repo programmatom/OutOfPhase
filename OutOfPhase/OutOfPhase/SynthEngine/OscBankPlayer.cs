@@ -207,10 +207,10 @@ namespace OutOfPhase
             Template.TemplateArray = new OscBankVectorRec[Template.NumOscillatorsInBank];
 
             /* build entry for each oscillator */
-            for (int Scan = 0; Scan < Template.NumOscillatorsInBank; Scan += 1)
+            for (int i = 0; i < Template.NumOscillatorsInBank; i++)
             {
-                OscillatorRec Osc = GetOscillatorFromList(OscillatorListObject, Scan);
-                OscBankVectorRec Osc1 = Template.TemplateArray[Scan] = new OscBankVectorRec();
+                OscillatorRec Osc = GetOscillatorFromList(OscillatorListObject, i);
+                OscBankVectorRec Osc1 = Template.TemplateArray[i] = new OscBankVectorRec();
 
                 switch (OscillatorGetWhatKindItIs(Osc))
                 {
@@ -267,27 +267,34 @@ namespace OutOfPhase
             SynthParamRec SynthParams,
             out OscStateBankRec StateOut)
         {
-            FrozenNoteRec FrozenNote = null;
             int ThisPreOriginTime;
             int StartPointAdjust;
-            OscStateRec StateScan;
 
             WhenToStartPlayingOut = 0;
             StateOut = null;
 
             int MaxOscillatorPreOriginTime = 0;
 
-            OscStateBankRec State = new OscStateBankRec();
+            OscStateBankRec State = New(ref SynthParams.freelists.oscStateBankFreeList);
+
+            // all fields must be assigned: State
+
+            State.PortamentoHertz = false;
+            State.TotalPortamentoTicks = 0;
+            State.InitialFrequency = 0;
+            State.FinalFrequency = 0;
 
             State.BankTemplate = Template;
 
             /* freeze the parameters */
-            FrozenNote = FixNoteParameters(
+            FrozenNoteRec FrozenNote = new FrozenNoteRec();
+            FixNoteParameters(
                 Template.ParamUpdator,
                 Note,
                 out StartPointAdjust,
                 EnvelopeTicksPerDurationTick,
                 PitchIndexAdjust,
+                ref FrozenNote,
                 SynthParams);
 
 
@@ -310,16 +317,19 @@ namespace OutOfPhase
             }
 
             /* list of oscillators that this oscillator bank is comprised of */
-            for (int Scan = 0; Scan < Template.NumOscillatorsInBank; Scan += 1)
+            State.OscillatorList = null;
+            for (int i = 0; i < Template.NumOscillatorsInBank; i++)
             {
-                OscStateRec OneState = new OscStateRec();
+                OscStateRec OneState = New(ref SynthParams.freelists.oscStateFreeList);
+
+                // all fields must be assigned: OneState
 
                 /* link it in */
                 OneState.Next = State.OscillatorList;
                 State.OscillatorList = OneState;
 
                 /* copy over the function vectors */
-                OneState.Template = Template.TemplateArray[Scan];
+                OneState.Template = Template.TemplateArray[i];
 
                 /* create the oscillator */
                 SynthErrorCodes Result = OneState.Template.TemplateReference.NewState(
@@ -346,7 +356,8 @@ namespace OutOfPhase
                 }
             }
 
-            if ((Template.CombinedOscillatorEffects != null) && (GetEffectSpecListLength(Template.CombinedOscillatorEffects)>0))
+            State.CombinedOscEffectGenerator = null;
+            if ((Template.CombinedOscillatorEffects != null) && (GetEffectSpecListLength(Template.CombinedOscillatorEffects) > 0))
             {
                 SynthErrorCodes Result = NewOscEffectGenerator(
                    Template.CombinedOscillatorEffects,
@@ -380,7 +391,7 @@ namespace OutOfPhase
 
 
             /* fix up pre-origin times */
-            StateScan = State.OscillatorList;
+            OscStateRec StateScan = State.OscillatorList;
             while (StateScan != null)
             {
                 StateScan.StateReference.FixUpPreOrigin(
@@ -443,20 +454,35 @@ namespace OutOfPhase
             return SynthErrorCodes.eSynthDone;
         }
 
+        public static void FreeOscStateBank(
+            OscStateBankRec State,
+            SynthParamRec SynthParams)
+        {
+            OscStateRec StateScan = State.OscillatorList;
+            while (StateScan != null)
+            {
+                OscStateRec one = StateScan;
+                StateScan = StateScan.Next;
+
+                Free(ref SynthParams.freelists.oscStateFreeList, ref one);
+            }
+
+            FreeLFOGenerator(ref State.PitchLFO, SynthParams);
+
+            Free(ref SynthParams.freelists.oscStateBankFreeList, ref State);
+        }
+
         /* this is used for resetting a note for a tie */
         /* the FrozenNote object is NOT disposed */
         public static void ResetOscBankState(
             OscStateBankRec State,
-            FrozenNoteRec FrozenNote,
+            ref FrozenNoteRec FrozenNote,
             SynthParamRec SynthParams)
         {
-            OscStateRec OneState;
-            bool RetriggerEnvelopes;
-
-            RetriggerEnvelopes = ((FrozenNote.OriginalNote.Flags & NoteFlags.eRetriggerEnvelopesOnTieFlag) != 0);
+            bool RetriggerEnvelopes = ((FrozenNote.OriginalNote.Flags & NoteFlags.eRetriggerEnvelopesOnTieFlag) != 0);
 
             /* go through the oscillators and retrigger them */
-            OneState = State.OscillatorList;
+            OscStateRec OneState = State.OscillatorList;
             while (OneState != null)
             {
                 OneState.StateReference.Restart(
@@ -502,7 +528,7 @@ namespace OutOfPhase
             {
                 /* if PortamentoBeforeNote is not set, then we have to restart the portamento */
                 /* with the current note, otherwise it has already been restarted earlier */
-                RestartOscBankStatePortamento(State, FrozenNote);
+                RestartOscBankStatePortamento(State, ref FrozenNote);
             }
 
             /* various counters (in terms of envelope ticks) */
@@ -549,7 +575,7 @@ namespace OutOfPhase
         /* only the portamento stuff from FrozenNote is used */
         public static void RestartOscBankStatePortamento(
             OscStateBankRec State,
-            FrozenNoteRec FrozenNote)
+            ref FrozenNoteRec FrozenNote)
         {
             if (FrozenNote.PortamentoDuration > 0)
             {
@@ -567,7 +593,8 @@ namespace OutOfPhase
         }
 
         /* get the reference to the note that this bank ties to.  null if it doesn't */
-        public static NoteNoteObjectRec GetOscStateTieTarget(OscStateBankRec State)
+        public static NoteNoteObjectRec GetOscStateTieTarget(
+            OscStateBankRec State)
         {
             return State.TieToNote;
         }
@@ -860,9 +887,7 @@ namespace OutOfPhase
             SynthParamRec SynthParams,
             bool writeOutputLogs)
         {
-            OscStateRec OneStateScan;
-
-            OneStateScan = State.OscillatorList;
+            OscStateRec OneStateScan = State.OscillatorList;
             while (OneStateScan != null)
             {
                 OneStateScan.StateReference.Finalize(

@@ -48,6 +48,8 @@ namespace OutOfPhase
         {
             InitializeComponent();
 
+            textEditControl.TextService = Program.Config.EnableDirectWrite ? TextEditor.TextService.DirectWrite : TextEditor.TextService.Uniscribe;
+
             textEditControl.TextChanged += TextEditControl_TextChanged;
             textEditControl.LostFocus += TextEditControl_LostFocus;
             textEditControl.BackColor = highlightBackColor;
@@ -94,7 +96,7 @@ namespace OutOfPhase
 
         [Category("Misc")]
         public TrackViewControl TrackView { get { return trackView; } set { trackView = value; } }
-        
+
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public UndoHelper UndoHelper { get { return undoHelper; } set { undoHelper = value; } }
 

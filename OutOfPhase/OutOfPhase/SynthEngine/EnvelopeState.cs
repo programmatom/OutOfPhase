@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -31,7 +32,8 @@ namespace OutOfPhase
         public const double DECIBELEXPANDER = 32768d;
         public const double DECIBELTHRESHHOLD = 1d / DECIBELEXPANDER;
 
-        public class OneEnvPhaseRec
+        [StructLayout(LayoutKind.Auto)]
+        public struct OneEnvPhaseRec
         {
             /* what amplitude are we trying to attain */
             public double FinalAmplitude;
@@ -111,6 +113,22 @@ namespace OutOfPhase
 
             /* phase vector follows last field of struct */
             public OneEnvPhaseRec[] PhaseVector;
+
+#if DEBUG
+            public EvalEnvelopeRec()
+            {
+                if (!EnableFreeLists)
+                {
+                    GC.SuppressFinalize(this);
+                }
+            }
+
+            ~EvalEnvelopeRec()
+            {
+                Debug.Assert(false, GetType().Name + " finalizer invoked - have you forgotten to .Dispose()? " + allocatedFrom.ToString());
+            }
+            private readonly StackTrace allocatedFrom = new StackTrace(true);
+#endif
         }
 
         /* create a new envelope state record.  Accent factors have no effect with a value */
@@ -126,9 +144,12 @@ namespace OutOfPhase
             object ParamGetterContext,
             SynthParamRec SynthParams)
         {
-            EvalEnvelopeRec State = new EvalEnvelopeRec();
+            EvalEnvelopeRec State = New(ref SynthParams.freelists.envelopeStateFreeList);
 
-            State.PhaseVector = new OneEnvPhaseRec[Template.NumPhases];
+            // must assign all fields: State, State.PhaseVector
+
+            State.NumPhases = Template.NumPhases;
+            State.PhaseVector = New(ref SynthParams.freelists.envelopeOnePhaseFreeList, Template.NumPhases); // cleared
 
 #if DEBUG
             if ((Template.NumPhases != 0) && Template.ConstantShortcut)
@@ -139,8 +160,9 @@ namespace OutOfPhase
             }
 #endif
 
-            /* fill in the fields */
-            State.NumPhases = Template.NumPhases;
+            State.Template = Template;
+
+            State.CurrentPhase = -1;
             State.SustainPhase1 = Template.SustainPhase1;
             State.OriginalSustainPhase1 = Template.SustainPhase1;
             State.SustainPhase1Type = Template.SustainPhase1Type;
@@ -150,10 +172,12 @@ namespace OutOfPhase
             State.SustainPhase3 = Template.SustainPhase3;
             State.OriginalSustainPhase3 = Template.SustainPhase3;
             State.SustainPhase3Type = Template.SustainPhase3Type;
-            State.CurrentPhase = -1;
             State.Origin = Template.Origin;
             State.ParamGetter = ParamGetter;
             State.ParamGetterContext = ParamGetterContext;
+            State.LastOutputtedValue = 0;
+            State.PreOriginTime = 0;
+            State.FrozenNoteAccentDifferential = new AccentRec();
 
             /* build initial delay transition */
             ResetLinearTransition(
@@ -161,12 +185,12 @@ namespace OutOfPhase
                 0,
                 0,
                 1);
+            State.LinearTransitionCounter = 0;
+            State.LinearTransitionTotalDuration = 0;
             State.EnvelopeUpdate = _EnvUpdateLinearAbsolute;
             State.EnvelopeHasFinished = false;
 
             State.PerformGlobalPitchScaling = (0 != Template.GlobalPitchRateRolloff);
-
-            State.Template = Template;
 
             // A note about accents to follow:
             // - The "Accents" parameter to this function comes from the FrozenNote - so they are the accent values in effect
@@ -209,14 +233,25 @@ namespace OutOfPhase
             }
             else
             {
+                State.LastOutputtedValue = 0;
+
                 double accumulatedError = 0;
+                OneEnvPhaseRec[] PhaseVector = State.PhaseVector;
+                if (unchecked((uint)State.NumPhases > (uint)PhaseVector.Length))
+                {
+                    throw new IndexOutOfRangeException();
+                }
+                EnvStepRec[] TemplatePhaseArray = Template.PhaseArray;
+                if (unchecked((uint)State.NumPhases > (uint)TemplatePhaseArray.Length))
+                {
+                    throw new IndexOutOfRangeException();
+                }
                 for (int i = 0; i < State.NumPhases; i++)
                 {
-                    EnvStepRec PhaseTemplate = Template.PhaseArray[i];
-                    OneEnvPhaseRec Phase = State.PhaseVector[i] = new OneEnvPhaseRec();
+                    Debug.Assert(PhaseVector[i].Equals(new OneEnvPhaseRec())); // verify cleared
 
-                    Phase.TransitionType = PhaseTemplate.TransitionType;
-                    Phase.TargetType = PhaseTemplate.TargetType;
+                    PhaseVector[i].TransitionType = TemplatePhaseArray[i].TransitionType;
+                    PhaseVector[i].TargetType = TemplatePhaseArray[i].TargetType;
                     /* calculate the total duration.  the effect of accents is this: */
                     /*  - the accent is the base-2 log of a multiplier for the rate.  a value of 0 */
                     /*    does not change the rate.  -1 halves the rate, and 1 doubles the rate. */
@@ -228,9 +263,9 @@ namespace OutOfPhase
                     /*    removes effect, 1 halfs signal with each octave.  normalization point */
                     /*    determines what pitch will be the invariant point. */
                     double Temp;
-                    if (PhaseTemplate.DurationFunction == null)
+                    if (TemplatePhaseArray[i].DurationFunction == null)
                     {
-                        Temp = PhaseTemplate.Duration;
+                        Temp = TemplatePhaseArray[i].Duration;
                     }
                     else
                     {
@@ -238,7 +273,7 @@ namespace OutOfPhase
                         Debug.Assert(liveAccentInit);
 #endif
                         SynthErrorCodes error = EnvelopeInitParamEval(
-                            PhaseTemplate.DurationFunction,
+                            TemplatePhaseArray[i].DurationFunction,
                             ref Accents,
                             ref LiveTrackAccents,
                             SynthParams,
@@ -251,18 +286,18 @@ namespace OutOfPhase
                     double preciseDuration = SynthParams.dEnvelopeRate
                         * HurryUp
                         * Temp
-                        * Math.Pow(2, -(AccentProduct(ref Accents, ref PhaseTemplate.AccentRate)
+                        * Math.Pow(2, -(AccentProduct(ref Accents, ref TemplatePhaseArray[i].AccentRate)
                             + (Math.Log(FrequencyHertz
-                                / PhaseTemplate.FrequencyRateNormalization)
-                            * Constants.INVLOG2) * PhaseTemplate.FrequencyRateRolloff))
+                                / TemplatePhaseArray[i].FrequencyRateNormalization)
+                            * Constants.INVLOG2) * TemplatePhaseArray[i].FrequencyRateRolloff))
                         + accumulatedError;
-                    Phase.Duration = (int)Math.Round(preciseDuration);
-                    accumulatedError = preciseDuration - Phase.Duration;
+                    PhaseVector[i].Duration = (int)Math.Round(preciseDuration);
+                    accumulatedError = preciseDuration - PhaseVector[i].Duration;
                     /* the final amplitude scaling values are computed similarly to the rate */
                     /* scaling values. */
-                    if (PhaseTemplate.EndPointFunction == null)
+                    if (TemplatePhaseArray[i].EndPointFunction == null)
                     {
-                        Temp = PhaseTemplate.EndPoint;
+                        Temp = TemplatePhaseArray[i].EndPoint;
                     }
                     else
                     {
@@ -270,7 +305,7 @@ namespace OutOfPhase
                         Debug.Assert(liveAccentInit);
 #endif
                         SynthErrorCodes error = EnvelopeInitParamEval(
-                            PhaseTemplate.EndPointFunction,
+                            TemplatePhaseArray[i].EndPointFunction,
                             ref Accents,
                             ref LiveTrackAccents,
                             SynthParams,
@@ -280,18 +315,18 @@ namespace OutOfPhase
                             // TODO:
                         }
                     }
-                    Phase.FinalAmplitude = Temp
+                    PhaseVector[i].FinalAmplitude = Temp
                         * Template.OverallScalingFactor * Loudness
-                        * Math.Pow(2, -(AccentProduct(ref Accents, ref PhaseTemplate.AccentAmp)
+                        * Math.Pow(2, -(AccentProduct(ref Accents, ref TemplatePhaseArray[i].AccentAmp)
                             + (Math.Log(FrequencyHertz
-                                / PhaseTemplate.FrequencyAmpNormalization)
-                            * Constants.INVLOG2) * PhaseTemplate.FrequencyAmpRolloff));
+                                / TemplatePhaseArray[i].FrequencyAmpNormalization)
+                            * Constants.INVLOG2) * TemplatePhaseArray[i].FrequencyAmpRolloff));
 
                     /* adjust initial countdown */
                     if (i < Template.Origin)
                     {
                         /* this occurs before the origin, so add it in */
-                        State.PreOriginTime += Phase.Duration;
+                        State.PreOriginTime += PhaseVector[i].Duration;
                     }
                 }
             }
@@ -313,6 +348,14 @@ namespace OutOfPhase
             }
 
             return State;
+        }
+
+        public static void FreeEnvelopeStateRecord(
+            ref EvalEnvelopeRec State,
+            SynthParamRec SynthParams)
+        {
+            Free(ref SynthParams.freelists.envelopeOnePhaseFreeList, ref State.PhaseVector);
+            Free(ref SynthParams.freelists.envelopeStateFreeList, ref State);
         }
 
         /* when all envelopes have been computed, then the total (i.e. largest) pre-origin */
@@ -569,16 +612,31 @@ namespace OutOfPhase
         private static double EnvelopeInitialValue(EvalEnvelopeRec State)
         {
             double v = State.LastOutputtedValue; // covers default/zero and ConstantShortcut cases
-            for (int i = 0; i < State.PhaseVector.Length; i++)
+            if (State.LinearTransitionCounter <= 0)
             {
-                // TODO: If envelope rate is low, this could be zero when it was really a small number that rounded to
-                // zero. In that case, we ought to treat it as non-zero and smooth the transition, since that is probably
-                // what was intended.
-                if (State.PhaseVector[i].Duration != 0)
+                // if envelope start is not deferred, iterate through segments until non-zero delay is encountered
+                for (int i = 0; i < State.PhaseVector.Length; i++)
                 {
-                    break;
+                    // TODO: If envelope rate is low, this could be zero when it was really a small number that rounded to
+                    // zero. In that case, we ought to treat it as non-zero and smooth the transition, since that is probably
+                    // what was intended.
+                    if (State.PhaseVector[i].Duration != 0)
+                    {
+                        break;
+                    }
+                    switch (State.PhaseVector[i].TargetType)
+                    {
+                        default:
+                            Debug.Assert(false);
+                            throw new InvalidOperationException();
+                        case EnvTargetTypes.eEnvelopeTargetAbsolute:
+                            v = State.PhaseVector[i].FinalAmplitude;
+                            break;
+                        case EnvTargetTypes.eEnvelopeTargetScaling:
+                            v *= State.PhaseVector[i].FinalAmplitude;
+                            break;
+                    }
                 }
-                v = State.PhaseVector[i].FinalAmplitude;
             }
             return v;
         }
@@ -615,15 +673,20 @@ namespace OutOfPhase
             }
             else
             {
-                OneEnvPhaseRec CurrentPhase = State.PhaseVector[State.CurrentPhase];
+                OneEnvPhaseRec[] PhaseVector = State.PhaseVector;
+                int CurrentPhase = State.CurrentPhase;
+                if (unchecked((uint)CurrentPhase >= (uint)PhaseVector.Length))
+                {
+                    throw new IndexOutOfRangeException();
+                }
 
-                if (CurrentPhase.Duration > 0)
+                if (PhaseVector[CurrentPhase].Duration > 0)
                 {
                     /* if duration is greater than 0, then we go normally */
-                    State.LinearTransitionTotalDuration = CurrentPhase.Duration;
-                    State.LinearTransitionCounter = CurrentPhase.Duration;
+                    State.LinearTransitionTotalDuration = PhaseVector[CurrentPhase].Duration;
+                    State.LinearTransitionCounter = PhaseVector[CurrentPhase].Duration;
                     /* figure out what routine to use */
-                    switch (CurrentPhase.TransitionType)
+                    switch (PhaseVector[CurrentPhase].TransitionType)
                     {
                         default:
                             Debug.Assert(false);
@@ -631,7 +694,7 @@ namespace OutOfPhase
 
                         case EnvTransTypes.eEnvelopeLinearInAmplitude:
                             State.EnvelopeUpdate = _EnvUpdateLinearAbsolute;
-                            switch (CurrentPhase.TargetType)
+                            switch (PhaseVector[CurrentPhase].TargetType)
                             {
                                 default:
                                     Debug.Assert(false);
@@ -641,14 +704,14 @@ namespace OutOfPhase
                                     ResetLinearTransition(
                                         ref State.LinearTransition,
                                         State.LastOutputtedValue,
-                                        CurrentPhase.FinalAmplitude,
+                                        PhaseVector[CurrentPhase].FinalAmplitude,
                                         State.LinearTransitionTotalDuration);
                                     break;
                                 case EnvTargetTypes.eEnvelopeTargetScaling:
                                     ResetLinearTransition(
                                         ref State.LinearTransition,
                                         State.LastOutputtedValue,
-                                        State.LastOutputtedValue * CurrentPhase.FinalAmplitude,
+                                        State.LastOutputtedValue * PhaseVector[CurrentPhase].FinalAmplitude,
                                         State.LinearTransitionTotalDuration);
                                     break;
                             }
@@ -669,16 +732,16 @@ namespace OutOfPhase
                                 double InitialDecibels = ExpSegEndpointToLog(State.LastOutputtedValue);
 
                                 double FinalDecibels;
-                                switch (CurrentPhase.TargetType)
+                                switch (PhaseVector[CurrentPhase].TargetType)
                                 {
                                     default:
                                         Debug.Assert(false);
                                         throw new InvalidOperationException();
                                     case EnvTargetTypes.eEnvelopeTargetAbsolute:
-                                        FinalDecibels = ExpSegEndpointToLog(CurrentPhase.FinalAmplitude);
+                                        FinalDecibels = ExpSegEndpointToLog(PhaseVector[CurrentPhase].FinalAmplitude);
                                         break;
                                     case EnvTargetTypes.eEnvelopeTargetScaling:
-                                        FinalDecibels = ExpSegEndpointToLog(CurrentPhase.FinalAmplitude * State.LastOutputtedValue);
+                                        FinalDecibels = ExpSegEndpointToLog(PhaseVector[CurrentPhase].FinalAmplitude * State.LastOutputtedValue);
                                         break;
                                 }
 
@@ -694,16 +757,16 @@ namespace OutOfPhase
                 else
                 {
                     /* they want the transition immediately */
-                    switch (CurrentPhase.TargetType)
+                    switch (PhaseVector[CurrentPhase].TargetType)
                     {
                         default:
                             Debug.Assert(false);
                             throw new InvalidOperationException();
                         case EnvTargetTypes.eEnvelopeTargetAbsolute:
-                            State.LastOutputtedValue = CurrentPhase.FinalAmplitude;
+                            State.LastOutputtedValue = PhaseVector[CurrentPhase].FinalAmplitude;
                             break;
                         case EnvTargetTypes.eEnvelopeTargetScaling:
-                            State.LastOutputtedValue = CurrentPhase.FinalAmplitude * State.LastOutputtedValue;
+                            State.LastOutputtedValue = PhaseVector[CurrentPhase].FinalAmplitude * State.LastOutputtedValue;
                             break;
                     }
                     /* do it again.  this will handle ties nicely too */
@@ -817,13 +880,21 @@ namespace OutOfPhase
                 LiveTrackAccents = new AccentRec();
             }
 
+            OneEnvPhaseRec[] PhaseVector = State.PhaseVector;
+            if (unchecked((uint)State.NumPhases > (uint)PhaseVector.Length))
+            {
+                throw new IndexOutOfRangeException();
+            }
+            EnvStepRec[] TemplatePhaseArray = State.Template.PhaseArray;
+            if (unchecked((uint)State.NumPhases > (uint)TemplatePhaseArray.Length))
+            {
+                throw new IndexOutOfRangeException();
+            }
+
             /* no matter what, refill the parameters */
             double accumulatedError = 0;
             for (int i = 0; i < State.NumPhases; i++)
             {
-                EnvStepRec PhaseTemplate = State.Template.PhaseArray[i];
-                OneEnvPhaseRec Phase = State.PhaseVector[i];
-
                 /* calculate the total duration.  the effect of accents is this: */
                 /*  - the accent is the base-2 log of a multiplier for the rate.  a value of 0 */
                 /*    does not change the rate.  -1 halves the rate, and 1 doubles the rate. */
@@ -835,9 +906,9 @@ namespace OutOfPhase
                 /*    removes effect, 1 halfs signal with each octave.  normalization point */
                 /*    determines what pitch will be the invariant point. */
                 double Temp;
-                if (PhaseTemplate.DurationFunction == null)
+                if (TemplatePhaseArray[i].DurationFunction == null)
                 {
-                    Temp = PhaseTemplate.Duration;
+                    Temp = TemplatePhaseArray[i].Duration;
                 }
                 else
                 {
@@ -845,7 +916,7 @@ namespace OutOfPhase
                     Debug.Assert(liveAccentInit);
 #endif
                     SynthErrorCodes error = EnvelopeInitParamEval(
-                        PhaseTemplate.DurationFunction,
+                        TemplatePhaseArray[i].DurationFunction,
                         ref Accents,
                         ref LiveTrackAccents,
                         SynthParams,
@@ -858,18 +929,18 @@ namespace OutOfPhase
                 double preciseDuration = SynthParams.dEnvelopeRate
                     * HurryUp
                     * Temp
-                    * Math.Pow(2, -(AccentProduct(ref Accents, ref PhaseTemplate.AccentRate)
+                    * Math.Pow(2, -(AccentProduct(ref Accents, ref TemplatePhaseArray[i].AccentRate)
                         + (Math.Log(FrequencyHertz
-                            / PhaseTemplate.FrequencyRateNormalization)
-                        * Constants.INVLOG2) * PhaseTemplate.FrequencyRateRolloff))
+                            / TemplatePhaseArray[i].FrequencyRateNormalization)
+                        * Constants.INVLOG2) * TemplatePhaseArray[i].FrequencyRateRolloff))
                     + accumulatedError;
-                Phase.Duration = (int)Math.Round(preciseDuration);
-                accumulatedError = preciseDuration - Phase.Duration;
+                PhaseVector[i].Duration = (int)Math.Round(preciseDuration);
+                accumulatedError = preciseDuration - PhaseVector[i].Duration;
                 /* the final amplitude scaling values are computed similarly to the rate */
                 /* scaling values. */
-                if (PhaseTemplate.EndPointFunction == null)
+                if (TemplatePhaseArray[i].EndPointFunction == null)
                 {
-                    Temp = PhaseTemplate.EndPoint;
+                    Temp = TemplatePhaseArray[i].EndPoint;
                 }
                 else
                 {
@@ -877,7 +948,7 @@ namespace OutOfPhase
                     Debug.Assert(liveAccentInit);
 #endif
                     SynthErrorCodes error = EnvelopeInitParamEval(
-                        PhaseTemplate.EndPointFunction,
+                        TemplatePhaseArray[i].EndPointFunction,
                         ref Accents,
                         ref LiveTrackAccents,
                         SynthParams,
@@ -887,12 +958,12 @@ namespace OutOfPhase
                         // TODO:
                     }
                 }
-                Phase.FinalAmplitude = Temp
+                PhaseVector[i].FinalAmplitude = Temp
                     * State.Template.OverallScalingFactor * Loudness
-                    * Math.Pow(2, -(AccentProduct(ref Accents, ref PhaseTemplate.AccentAmp)
+                    * Math.Pow(2, -(AccentProduct(ref Accents, ref TemplatePhaseArray[i].AccentAmp)
                         + (Math.Log(FrequencyHertz
-                            / PhaseTemplate.FrequencyAmpNormalization)
-                        * Constants.INVLOG2) * PhaseTemplate.FrequencyAmpRolloff));
+                            / TemplatePhaseArray[i].FrequencyAmpNormalization)
+                        * Constants.INVLOG2) * TemplatePhaseArray[i].FrequencyAmpRolloff));
             }
 
             /* recompute accent differentials incorporating new note's info */

@@ -22,12 +22,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
 {
     public static partial class Synthesizer
     {
+        [StructLayout(LayoutKind.Sequential)]
         public struct Fixed64
         {
             public const long FIXED64_WHOLE = 0x0000000100000000;

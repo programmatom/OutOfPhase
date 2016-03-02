@@ -144,7 +144,16 @@ namespace OutOfPhase
                 PreOriginTimeOut = 0;
                 StateOut = null;
 
-                FOFStateRec State = new FOFStateRec();
+                FOFStateRec State = New(ref SynthParams.freelists.FOFStateRecFreeList);
+
+                // must initilize all fields: State
+
+                State.WaveTableSamplePosition = new Fixed64(0);
+                State.WaveTableSamplePositionDifferential = new Fixed64(0);
+                State.WaveTableIndex = 0;
+                State.LeftLoudness = 0;
+                State.RightLoudness = 0;
+                State.FOFSamplingRateContour = 0;
 
                 State.Template = Template;
 
@@ -321,11 +330,8 @@ namespace OutOfPhase
                     MaxPreOrigin = OnePreOrigin;
                 }
 
-                if (Template.OscEffectTemplate == null)
-                {
-                    State.OscEffectGenerator = null;
-                }
-                else
+                State.OscEffectGenerator = null;
+                if (Template.OscEffectTemplate != null)
                 {
                     SynthErrorCodes Result = NewOscEffectGenerator(
                         Template.OscEffectTemplate,
@@ -353,6 +359,29 @@ namespace OutOfPhase
             }
 
             public OscillatorTypes Type { get { return OscillatorTypes.eOscillatorFOF; } }
+        }
+
+        /* single FOF oscillator record */
+        public class FOFGrainRec
+        {
+            /* current sample position into the wave table */
+            public Fixed64 FOFSamplePosition; /* 32-bit fixed point */
+
+            /* left hand side wave */
+            public float[] WaveData0;
+            /* right hand side wave -- will be null if wavetable index = 1 */
+            public float[] WaveData1;
+            /* left hand wave weight for interpolation (wave interpolation mode only) */
+            public float Wave1Weight;
+            /* volume controls */
+            public float LeftLoudness; /* for stereo */
+            public float RightLoudness; /* for stereo */
+
+            /* increment for playing back individual grains */
+            public Fixed64 FOFSamplePositionDifferential; /* 32-bit fixed point */
+
+            /* list link */
+            public FOFGrainRec Next;
         }
 
         /* FOF oscillator state record */
@@ -849,29 +878,6 @@ namespace OutOfPhase
                 return SynthErrorCodes.eSynthDone;
             }
 
-            /* single FOF oscillator record */
-            public class FOFGrainRec
-            {
-                /* current sample position into the wave table */
-                public Fixed64 FOFSamplePosition; /* 32-bit fixed point */
-
-                /* left hand side wave */
-                public float[] WaveData0;
-                /* right hand side wave -- will be null if wavetable index = 1 */
-                public float[] WaveData1;
-                /* left hand wave weight for interpolation (wave interpolation mode only) */
-                public float Wave1Weight;
-                /* volume controls */
-                public float LeftLoudness; /* for stereo */
-                public float RightLoudness; /* for stereo */
-
-                /* increment for playing back individual grains */
-                public Fixed64 FOFSamplePositionDifferential; /* 32-bit fixed point */
-
-                /* list link */
-                public FOFGrainRec Next;
-            }
-
             /* fof pitch start pulse: */
             /* |              |              |              |              |              |    */
             /* 0.0 1.1 2.1 3.2 0.3 1.4 2.4 3.5 0.6 1.6 2.7 3.7 0.8 1.9 2.9 0.0 1.1 2.1 3.2 0.3 */
@@ -883,7 +889,6 @@ namespace OutOfPhase
             /* 0.0 1.0 2.0     0.3 1.3 2.3     0.5 1.5 2.5     0.7 1.7 2.7 0.0 1.0 2.0     0.3 */
             /* pitch start pulse and grain sampling pulse have same units to allow */
             /* start pulse fraction to be used for initial grain fraction. */
-
 
             /* check to see if we should launch a new grain */
             private static void GrainLaunchCheck(
@@ -898,8 +903,6 @@ namespace OutOfPhase
                 /* if this overflows, then truncate it and launch a new grain */
                 if (State.WaveTableSamplePosition.Int >= State.FramesPerTable)
                 {
-                    FOFGrainRec NewGrain;
-
                     /* time to launch a new grain */
 
                     /* truncate grain pitch index to keep wave table index inside */
@@ -909,55 +912,63 @@ namespace OutOfPhase
                     if (State.Template.FOFCompression == OscFOFCompressType.eOscFOFDiscard)
                     {
                         /* if we are in discard mode, then dump any active grains */
+                        FOFGrainRec Scan = State.ActiveGrainList;
+                        while (Scan != null)
+                        {
+                            FOFGrainRec one = Scan;
+                            Scan = Scan.Next;
+                            Free(ref SynthParams.freelists.FOFGrainRecFreeList, ref one);
+                        }
                         State.ActiveGrainList = null;
                     }
 
                     /* creating new grain, but only if the envelope generator hasn't terminated */
                     if (!EnvelopeFinished)
                     {
-                        NewGrain = new FOFGrainRec();
-
-                        /* set up grain's phase index */
-                        NewGrain.FOFSamplePosition = State.WaveTableSamplePosition;
-
-                        /* set up wave data pointers using current wave table index */
-#if DEBUG
-                        if ((State.WaveTableIndex < 0) || (State.WaveTableIndex > State.NumberOfTablesMinus1))
-                        {
-                            // table index out of range
-                            Debug.Assert(false);
-                            throw new InvalidOperationException();
-                        }
-#endif
-                        NewGrain.WaveData0 = State.WaveTableMatrix[(int)(State.WaveTableIndex)];
-                        if ((int)(State.WaveTableIndex) < State.NumberOfTablesMinus1)
-                        {
-                            NewGrain.WaveData1 = State.WaveTableMatrix[(int)(State.WaveTableIndex) + 1];
-                            NewGrain.Wave1Weight = (float)(State.WaveTableIndex - (int)(State.WaveTableIndex));
-                        }
-                        else
-                        {
-                            NewGrain.WaveData1 = null;
-                        }
-
-                        /* set up amplitudes */
-                        NewGrain.LeftLoudness = State.LeftLoudness;
-                        NewGrain.RightLoudness = State.RightLoudness;
-
                         /* initialize grain differential to the sampling rate */
                         /* note that grain differential is independent of the */
                         /* number of frames in the table. */
-                        NewGrain.FOFSamplePositionDifferential = new Fixed64(
+                        Fixed64 FOFSamplePositionDifferential = new Fixed64(
                             State.FOFSamplingRateContour * State.Template.FOFSamplingRate
                                 / SynthParams.dSamplingRate);
 
-                        /* establish link, only if differential isn't really close to zero */
-                        if ((NewGrain.FOFSamplePositionDifferential.FracI < 0x00010000)
-                            && (NewGrain.FOFSamplePositionDifferential.Int == 0))
+                        // create new grain, but only if differential isn't really close to zero
+                        if (!((FOFSamplePositionDifferential.FracI < 0x00010000)
+                            && (FOFSamplePositionDifferential.Int == 0)))
                         {
-                        }
-                        else
-                        {
+                            FOFGrainRec NewGrain = New(ref SynthParams.freelists.FOFGrainRecFreeList);
+
+                            // must initialize all fields: NewGrain
+
+                            /* set up grain's phase index */
+                            NewGrain.FOFSamplePosition = State.WaveTableSamplePosition;
+
+                            /* set up wave data pointers using current wave table index */
+#if DEBUG
+                            if ((State.WaveTableIndex < 0) || (State.WaveTableIndex > State.NumberOfTablesMinus1))
+                            {
+                                // table index out of range
+                                Debug.Assert(false);
+                                throw new InvalidOperationException();
+                            }
+#endif
+                            NewGrain.WaveData0 = State.WaveTableMatrix[(int)(State.WaveTableIndex)];
+                            NewGrain.WaveData1 = null;
+                            NewGrain.Wave1Weight = 0;
+                            if ((int)(State.WaveTableIndex) < State.NumberOfTablesMinus1)
+                            {
+                                NewGrain.WaveData1 = State.WaveTableMatrix[(int)(State.WaveTableIndex) + 1];
+                                NewGrain.Wave1Weight = (float)(State.WaveTableIndex - (int)(State.WaveTableIndex));
+                            }
+
+                            /* set up amplitudes */
+                            NewGrain.LeftLoudness = State.LeftLoudness;
+                            NewGrain.RightLoudness = State.RightLoudness;
+
+                            NewGrain.FOFSamplePositionDifferential = FOFSamplePositionDifferential;
+
+                            NewGrain.Next = null;
+
                             /* inserted at front of list (important later) */
                             NewGrain.Next = State.ActiveGrainList;
                             State.ActiveGrainList = NewGrain;
@@ -988,11 +999,6 @@ namespace OutOfPhase
                 /* iterate over samples */
                 for (int Scan = 0; Scan < nActualFrames; Scan++)
                 {
-                    FOFGrainRec GrainScan;
-                    FOFGrainRec GrainLag;
-                    float CurrentLeft;
-                    float CurrentRight;
-
                     /* check for launching */
                     GrainLaunchCheck(
                         State,
@@ -1000,12 +1006,12 @@ namespace OutOfPhase
                         SynthParams);
 
                     /* prepare point */
-                    CurrentLeft = workspace[Scan + lOffset];
-                    CurrentRight = workspace[Scan + rOffset];
+                    float CurrentLeft = workspace[Scan + lOffset];
+                    float CurrentRight = workspace[Scan + rOffset];
 
                     /* generate sounds for all registered grains */
-                    GrainScan = State.ActiveGrainList;
-                    GrainLag = null;
+                    FOFGrainRec GrainScan = State.ActiveGrainList;
+                    FOFGrainRec GrainLag = null;
                     while (GrainScan != null)
                     {
                         /* wave generation */
@@ -1045,6 +1051,7 @@ namespace OutOfPhase
                                 /* silence fill. */
                                 /* for silence fill, we now terminate this oscillator. */
                                 Advance = false;
+                                FOFGrainRec Temp = GrainScan;
                                 GrainScan = GrainScan.Next;
                                 if (GrainLag != null)
                                 {
@@ -1054,6 +1061,7 @@ namespace OutOfPhase
                                 {
                                     State.ActiveGrainList = GrainScan;
                                 }
+                                Free(ref SynthParams.freelists.FOFGrainRecFreeList, ref Temp);
                             }
                             else
                             {
@@ -1064,8 +1072,10 @@ namespace OutOfPhase
                                 {
                                     /* not the first one */
                                     Advance = false;
+                                    FOFGrainRec Temp = GrainScan;
                                     GrainScan = GrainScan.Next;
                                     GrainLag.Next = GrainScan;
+                                    Free(ref SynthParams.freelists.FOFGrainRecFreeList, ref Temp);
                                 }
                             }
                         }
@@ -1116,6 +1126,35 @@ namespace OutOfPhase
                         SynthParams,
                         writeOutputLogs);
                 }
+
+                FreeEnvelopeStateRecord(
+                    ref State.WaveTableIndexEnvelope,
+                    SynthParams);
+                FreeLFOGenerator(
+                    ref State.IndexLFOGenerator,
+                    SynthParams);
+
+                FreeEnvelopeStateRecord(
+                    ref State.WaveTableLoudnessEnvelope,
+                    SynthParams);
+                FreeLFOGenerator(
+                    ref State.LoudnessLFOGenerator,
+                    SynthParams);
+
+                FreeLFOGenerator(
+                    ref State.PitchLFO,
+                    SynthParams);
+
+                FreeEnvelopeStateRecord(
+                    ref State.FOFSamplingRateEnvelope,
+                    SynthParams);
+                FreeLFOGenerator(
+                    ref State.FOFSamplingRateLFOGenerator,
+                    SynthParams);
+
+                Free(
+                    ref SynthParams.freelists.FOFStateRecFreeList,
+                    ref State);
             }
         }
     }

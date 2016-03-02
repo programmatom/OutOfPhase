@@ -26,6 +26,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
@@ -84,7 +85,9 @@ namespace OutOfPhase
 
         // these values are cached to improve performance
         private readonly Dictionary<CachedTextWidthKey, int> cachedTextWidths = new Dictionary<CachedTextWidthKey, int>();
-        private readonly Dictionary<StrikeTextMaskRecord, Bitmap> strikeTextMaskCache = new Dictionary<StrikeTextMaskRecord, Bitmap>();
+        // strikeTextMaskCache is static - so the cached bitmaps are shared across windows. It may be cleared when windows are
+        // opened or closed, which is safe to do and shouldn't pose a real perf problem.
+        private static readonly Dictionary<StrikeTextMaskRecord, Bitmap> strikeTextMaskCache = new Dictionary<StrikeTextMaskRecord, Bitmap>();
         private int fontHeight = -1;
         private LayoutMetrics layoutMetrics;
         private IBitmapsScore bitmaps;
@@ -107,6 +110,8 @@ namespace OutOfPhase
             baselineFontSize = Font.Size;
 
             undoHelper = new UndoHelper(this);
+            undoHelper.OnBeforeUndoRedo += OnBeginBatchOperation;
+            undoHelper.OnAfterUndoRedo += OnEndBatchOperation;
 
             Schedule = new TrackDispScheduleRec(this, this);
             Schedule.TrackExtentsChanged += new EventHandler(Schedule_TrackExtentsChanged);
@@ -177,6 +182,7 @@ namespace OutOfPhase
             SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
 
             ClearGraphicsObjects();
+            ClearStrikeTextMaskCache();
         }
 
 #if false // TODO: what problem was this trying to solve?
@@ -186,6 +192,15 @@ namespace OutOfPhase
         }
 #endif
 
+        private static void ClearStrikeTextMaskCache()
+        {
+            foreach (Bitmap bitmap in strikeTextMaskCache.Values)
+            {
+                bitmap.Dispose();
+            }
+            strikeTextMaskCache.Clear();
+        }
+
         protected override void OnFontChanged(EventArgs e)
         {
             base.OnFontChanged(e);
@@ -193,7 +208,7 @@ namespace OutOfPhase
             currentScaleFactor = Font.Size / baselineFontSize; // reverse WinForms scale indication
 
             cachedTextWidths.Clear();
-            strikeTextMaskCache.Clear();
+            ClearStrikeTextMaskCache();
             fontHeight = -1;
             layoutMetrics = null;
             bitmaps = null;
@@ -225,8 +240,8 @@ namespace OutOfPhase
         {
             TrackObjectAltered(trackObject, 0);
 
-            // TODO: this occurs for every note in the track when undo/redo is invoked
-            if (trackObject.InlineParamVis != InlineParamVis.None)
+            // this occurs for every note in the track when undo/redo is invoked
+            if ((trackObject.InlineParamVis != InlineParamVis.None) && (batchOperationInProgressCount == 0))
             {
                 RebuildInlineStrip();
             }
@@ -238,7 +253,7 @@ namespace OutOfPhase
             {
                 noteView.Invalidate();
             }
-            if (trackObject.InlineParamVis != InlineParamVis.None)
+            if ((trackObject.InlineParamVis != InlineParamVis.None) && (batchOperationInProgressCount == 0))
             {
                 RebuildInlineStrip();
             }
@@ -247,6 +262,25 @@ namespace OutOfPhase
             if (TrackViewIsASingleCommandSelected() || TrackViewIsASingleNoteSelected())
             {
                 TrackViewInvalidateNote(SelectedNote);
+            }
+        }
+
+        private int batchOperationInProgressCount;
+
+        private void OnBeginBatchOperation(object sender, EventArgs e)
+        {
+            batchOperationInProgressCount++;
+        }
+
+        private void OnEndBatchOperation(object sender, EventArgs e)
+        {
+            batchOperationInProgressCount--;
+            if (batchOperationInProgressCount == 0)
+            {
+                if (trackObject.InlineParamVis != InlineParamVis.None)
+                {
+                    RebuildInlineStrip();
+                }
             }
         }
 
@@ -1658,17 +1692,25 @@ namespace OutOfPhase
         /* returns False if it fails.  undo information is automatically maintained */
         public void TrackViewDeleteRangeSelection()
         {
-            Debug.Assert(SelectionMode == SelectionModes.eTrackViewRangeSelection);
+            OnBeginBatchOperation(this, EventArgs.Empty);
+            try
+            {
+                Debug.Assert(SelectionMode == SelectionModes.eTrackViewRangeSelection);
 
-            undoHelper.SaveUndoInfo(false/*forRedo*/, "Delete Range");
+                undoHelper.SaveUndoInfo(false/*forRedo*/, "Delete Range");
 
-            /* delete the stuff */
-            trackObject.TrackObjectDeleteFrameRun(
-                RangeSelectStart,
-                RangeSelectEnd - RangeSelectStart);
-            SelectionMode = SelectionModes.eTrackViewNoSelection;
-            InsertionPointIndex = RangeSelectStart;
-            Debug.Assert(InsertionPointIndex <= trackObject.FrameArray.Count);
+                /* delete the stuff */
+                trackObject.TrackObjectDeleteFrameRun(
+                    RangeSelectStart,
+                    RangeSelectEnd - RangeSelectStart);
+                SelectionMode = SelectionModes.eTrackViewNoSelection;
+                InsertionPointIndex = RangeSelectStart;
+                Debug.Assert(InsertionPointIndex <= trackObject.FrameArray.Count);
+            }
+            finally
+            {
+                OnEndBatchOperation(this, EventArgs.Empty);
+            }
 
             /* redraw with changes */
             TrackViewRedrawAll();
@@ -2141,128 +2183,136 @@ namespace OutOfPhase
         {
             using (GraphicsContext gc = new GraphicsContext(this))
             {
-                undoHelper.SaveUndoInfo(false/*forRedo*/, "Transpose");
+                OnBeginBatchOperation(this, EventArgs.Empty);
+                try
+                {
+                    undoHelper.SaveUndoInfo(false/*forRedo*/, "Transpose");
 
-                if (TrackViewIsASingleNoteSelected())
-                {
-                    int NewPitch = ((NoteNoteObjectRec)SelectedNote).GetNotePitch() + AddHalfSteps;
-                    if (NewPitch < 0)
+                    if (TrackViewIsASingleNoteSelected())
                     {
-                        NewPitch = 0;
-                    }
-                    else if (NewPitch > Constants.NUMNOTES - 1)
-                    {
-                        NewPitch = Constants.NUMNOTES - 1;
-                    }
-                    ((NoteNoteObjectRec)SelectedNote).PutNotePitch((short)NewPitch);
-                    switch (NewPitch % 12)
-                    {
-                        case 0: /* C */
-                        case 2: /* D */
-                        case 4: /* E */
-                        case 5: /* F */
-                        case 7: /* G */
-                        case 9: /* A */
-                        case 11: /* B */
-                            ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(0);
-                            break;
-                        case 1: /* C# / Db */
-                        case 3: /* D# / Eb */
-                        case 6: /* F# / Gb */
-                        case 8: /* G# / Ab */
-                        case 10: /* A# / Bb */
-                            if (AddHalfSteps >= 0)
-                            {
-                                if (((NoteNoteObjectRec)SelectedNote).GetNoteFlatOrSharpStatus() == NoteFlags.eFlatModifier)
-                                {
-                                    ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(NoteFlags.eFlatModifier);
-                                }
-                                else
-                                {
-                                    ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(NoteFlags.eSharpModifier);
-                                }
-                            }
-                            else
-                            {
-                                if (((NoteNoteObjectRec)SelectedNote).GetNoteFlatOrSharpStatus() == NoteFlags.eSharpModifier)
-                                {
-                                    ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(NoteFlags.eSharpModifier);
-                                }
-                                else
-                                {
-                                    ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(NoteFlags.eFlatModifier);
-                                }
-                            }
-                            break;
-                    }
-                }
-                else if (TrackViewIsARangeSelected())
-                {
-                    for (int FrameScan = RangeSelectStart; FrameScan < RangeSelectEnd; FrameScan += 1)
-                    {
-                        FrameObjectRec Frame = trackObject.FrameArray[FrameScan];
-                        if (!Frame.IsThisACommandFrame)
+                        int NewPitch = ((NoteNoteObjectRec)SelectedNote).GetNotePitch() + AddHalfSteps;
+                        if (NewPitch < 0)
                         {
-                            for (int NoteScan = 0; NoteScan < Frame.Count; NoteScan += 1)
+                            NewPitch = 0;
+                        }
+                        else if (NewPitch > Constants.NUMNOTES - 1)
+                        {
+                            NewPitch = Constants.NUMNOTES - 1;
+                        }
+                        ((NoteNoteObjectRec)SelectedNote).PutNotePitch((short)NewPitch);
+                        switch (NewPitch % 12)
+                        {
+                            case 0: /* C */
+                            case 2: /* D */
+                            case 4: /* E */
+                            case 5: /* F */
+                            case 7: /* G */
+                            case 9: /* A */
+                            case 11: /* B */
+                                ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(0);
+                                break;
+                            case 1: /* C# / Db */
+                            case 3: /* D# / Eb */
+                            case 6: /* F# / Gb */
+                            case 8: /* G# / Ab */
+                            case 10: /* A# / Bb */
+                                if (AddHalfSteps >= 0)
+                                {
+                                    if (((NoteNoteObjectRec)SelectedNote).GetNoteFlatOrSharpStatus() == NoteFlags.eFlatModifier)
+                                    {
+                                        ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(NoteFlags.eFlatModifier);
+                                    }
+                                    else
+                                    {
+                                        ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(NoteFlags.eSharpModifier);
+                                    }
+                                }
+                                else
+                                {
+                                    if (((NoteNoteObjectRec)SelectedNote).GetNoteFlatOrSharpStatus() == NoteFlags.eSharpModifier)
+                                    {
+                                        ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(NoteFlags.eSharpModifier);
+                                    }
+                                    else
+                                    {
+                                        ((NoteNoteObjectRec)SelectedNote).PutNoteFlatOrSharpStatus(NoteFlags.eFlatModifier);
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                    else if (TrackViewIsARangeSelected())
+                    {
+                        for (int FrameScan = RangeSelectStart; FrameScan < RangeSelectEnd; FrameScan += 1)
+                        {
+                            FrameObjectRec Frame = trackObject.FrameArray[FrameScan];
+                            if (!Frame.IsThisACommandFrame)
                             {
-                                NoteNoteObjectRec Note = (NoteNoteObjectRec)Frame[NoteScan];
-                                int NewPitch = Note.GetNotePitch() + AddHalfSteps;
-                                if (NewPitch < 0)
+                                for (int NoteScan = 0; NoteScan < Frame.Count; NoteScan += 1)
                                 {
-                                    NewPitch = 0;
-                                }
-                                else if (NewPitch > Constants.NUMNOTES - 1)
-                                {
-                                    NewPitch = Constants.NUMNOTES - 1;
-                                }
-                                Note.PutNotePitch((short)NewPitch);
-                                switch (NewPitch % 12)
-                                {
-                                    case 0: /* C */
-                                    case 2: /* D */
-                                    case 4: /* E */
-                                    case 5: /* F */
-                                    case 7: /* G */
-                                    case 9: /* A */
-                                    case 11: /* B */
-                                        Note.PutNoteFlatOrSharpStatus(0);
-                                        break;
-                                    case 1: /* C# / Db */
-                                    case 3: /* D# / Eb */
-                                    case 6: /* F# / Gb */
-                                    case 8: /* G# / Ab */
-                                    case 10: /* A# / Bb */
-                                        if (AddHalfSteps >= 0)
-                                        {
-                                            if (Note.GetNoteFlatOrSharpStatus() == NoteFlags.eFlatModifier)
+                                    NoteNoteObjectRec Note = (NoteNoteObjectRec)Frame[NoteScan];
+                                    int NewPitch = Note.GetNotePitch() + AddHalfSteps;
+                                    if (NewPitch < 0)
+                                    {
+                                        NewPitch = 0;
+                                    }
+                                    else if (NewPitch > Constants.NUMNOTES - 1)
+                                    {
+                                        NewPitch = Constants.NUMNOTES - 1;
+                                    }
+                                    Note.PutNotePitch((short)NewPitch);
+                                    switch (NewPitch % 12)
+                                    {
+                                        case 0: /* C */
+                                        case 2: /* D */
+                                        case 4: /* E */
+                                        case 5: /* F */
+                                        case 7: /* G */
+                                        case 9: /* A */
+                                        case 11: /* B */
+                                            Note.PutNoteFlatOrSharpStatus(0);
+                                            break;
+                                        case 1: /* C# / Db */
+                                        case 3: /* D# / Eb */
+                                        case 6: /* F# / Gb */
+                                        case 8: /* G# / Ab */
+                                        case 10: /* A# / Bb */
+                                            if (AddHalfSteps >= 0)
                                             {
-                                                Note.PutNoteFlatOrSharpStatus(NoteFlags.eFlatModifier);
+                                                if (Note.GetNoteFlatOrSharpStatus() == NoteFlags.eFlatModifier)
+                                                {
+                                                    Note.PutNoteFlatOrSharpStatus(NoteFlags.eFlatModifier);
+                                                }
+                                                else
+                                                {
+                                                    Note.PutNoteFlatOrSharpStatus(NoteFlags.eSharpModifier);
+                                                }
                                             }
                                             else
                                             {
-                                                Note.PutNoteFlatOrSharpStatus(NoteFlags.eSharpModifier);
+                                                if (Note.GetNoteFlatOrSharpStatus() == NoteFlags.eSharpModifier)
+                                                {
+                                                    Note.PutNoteFlatOrSharpStatus(NoteFlags.eSharpModifier);
+                                                }
+                                                else
+                                                {
+                                                    Note.PutNoteFlatOrSharpStatus(NoteFlags.eFlatModifier);
+                                                }
                                             }
-                                        }
-                                        else
-                                        {
-                                            if (Note.GetNoteFlatOrSharpStatus() == NoteFlags.eSharpModifier)
-                                            {
-                                                Note.PutNoteFlatOrSharpStatus(NoteFlags.eSharpModifier);
-                                            }
-                                            else
-                                            {
-                                                Note.PutNoteFlatOrSharpStatus(NoteFlags.eFlatModifier);
-                                            }
-                                        }
-                                        break;
+                                            break;
+                                    }
                                 }
                             }
                         }
                     }
+                    else
+                    {
+                        Debug.Assert(false); // improper selection
+                    }
                 }
-                else
+                finally
                 {
-                    Debug.Assert(false); // improper selection
+                    OnEndBatchOperation(this, EventArgs.Empty);
                 }
 
                 TrackViewRedrawAll();
@@ -2287,42 +2337,52 @@ namespace OutOfPhase
         {
             using (GraphicsContext gc = new GraphicsContext(this))
             {
-                /* delete any selected range */
-                if (SelectionMode == SelectionModes.eTrackViewRangeSelection)
-                {
-                    TrackViewDeleteRangeSelection();
-                }
-                Debug.Assert(SelectionMode == SelectionModes.eTrackViewNoSelection);
+                int Scan = 0;
 
-                /* get the scrap */
-                TrackObjectRec track = null;
-                IDataObject dataObject = Clipboard.GetDataObject();
-                foreach (string format in dataObject.GetFormats())
+                OnBeginBatchOperation(this, EventArgs.Empty);
+                try
                 {
-                    if (String.Equals(format, TrackClipboard.ClipboardIdentifer))
+                    /* delete any selected range */
+                    if (SelectionMode == SelectionModes.eTrackViewRangeSelection)
                     {
-                        TrackClipboard clipboard = (TrackClipboard)dataObject.GetData(TrackClipboard.ClipboardIdentifer);
-                        object o = clipboard.Reconstitute(Window.MainWindow.Document);
-                        track = (TrackObjectRec)o;
-                        break;
+                        TrackViewDeleteRangeSelection();
+                    }
+                    Debug.Assert(SelectionMode == SelectionModes.eTrackViewNoSelection);
+
+                    /* get the scrap */
+                    TrackObjectRec track = null;
+                    IDataObject dataObject = Clipboard.GetDataObject();
+                    foreach (string format in dataObject.GetFormats())
+                    {
+                        if (String.Equals(format, TrackClipboard.ClipboardIdentifer))
+                        {
+                            TrackClipboard clipboard = (TrackClipboard)dataObject.GetData(TrackClipboard.ClipboardIdentifer);
+                            object o = clipboard.Reconstitute(Window.MainWindow.Document);
+                            track = (TrackObjectRec)o;
+                            break;
+                        }
+                    }
+                    if (track == null)
+                    {
+                        return false;
+                    }
+
+                    undoHelper.SaveUndoInfo(false/*forRedo*/, "Insert Range");
+
+                    /* scan over all frames and add them */
+                    while (track.FrameArray.Count > 0)
+                    {
+                        FrameObjectRec Thing = track.FrameArray[0];
+                        trackObject.FrameArray.Insert(Scan + InsertionPointIndex, Thing);
+                        track.FrameArray.RemoveAt(0);
+                        Scan++;
                     }
                 }
-                if (track == null)
+                finally
                 {
-                    return false;
+                    OnEndBatchOperation(this, EventArgs.Empty);
                 }
 
-                undoHelper.SaveUndoInfo(false/*forRedo*/, "Insert Range");
-
-                /* scan over all frames and add them */
-                int Scan = 0;
-                while (track.FrameArray.Count > 0)
-                {
-                    FrameObjectRec Thing = track.FrameArray[0];
-                    trackObject.FrameArray.Insert(Scan + InsertionPointIndex, Thing);
-                    track.FrameArray.RemoveAt(0);
-                    Scan++;
-                }
                 TrackObjectAltered(trackObject, InsertionPointIndex);
                 /* update display parameters */
                 InsertionPointIndex += Scan;
@@ -2338,19 +2398,27 @@ namespace OutOfPhase
         /* range.  it returns True if successful. */
         public void TrackViewCopyRangeSelection()
         {
-            Debug.Assert(SelectionMode == SelectionModes.eTrackViewRangeSelection);
-
-            FrameObjectRec[] CopyOfSelection = trackObject.TrackObjectCopyFrameRun(
-                RangeSelectStart,
-                RangeSelectEnd - RangeSelectStart);
-            TrackObjectRec copy = new TrackObjectRec(Window.MainWindow.Document);
-            foreach (FrameObjectRec frame in CopyOfSelection)
+            OnBeginBatchOperation(this, EventArgs.Empty);
+            try
             {
-                copy.FrameArray.Add(frame);
-            }
+                Debug.Assert(SelectionMode == SelectionModes.eTrackViewRangeSelection);
 
-            TrackClipboard clipboard = new TrackClipboard(copy, Window.MainWindow.Document);
-            Clipboard.SetData(TrackClipboard.ClipboardIdentifer, clipboard);
+                FrameObjectRec[] CopyOfSelection = trackObject.TrackObjectCopyFrameRun(
+                    RangeSelectStart,
+                    RangeSelectEnd - RangeSelectStart);
+                TrackObjectRec copy = new TrackObjectRec(Window.MainWindow.Document);
+                foreach (FrameObjectRec frame in CopyOfSelection)
+                {
+                    copy.FrameArray.Add(frame);
+                }
+
+                TrackClipboard clipboard = new TrackClipboard(copy, Window.MainWindow.Document);
+                Clipboard.SetData(TrackClipboard.ClipboardIdentifer, clipboard);
+            }
+            finally
+            {
+                OnEndBatchOperation(this, EventArgs.Empty);
+            }
         }
 
         /* cut the range selection (copy to clipboard, then delete).  returns True if */
@@ -2478,93 +2546,101 @@ namespace OutOfPhase
             int Denominator,
             NoteObjectRec Note)
         {
-            /* commands can just be ignored*/
-            if (Note.IsItACommand)
+            OnBeginBatchOperation(this, EventArgs.Empty);
+            try
             {
-                return;
-            }
-
-            /* halving */
-            if ((Numerator == 1) && (Denominator == 2))
-            {
-                NoteFlags Duration = ((NoteNoteObjectRec)Note).GetNoteDuration();
-                switch (Duration)
+                /* commands can just be ignored*/
+                if (Note.IsItACommand)
                 {
-                    default:
-                    case NoteFlags.e64thNote:
-                        Debug.Assert(false);
-                        throw new ArgumentException();
-                    case NoteFlags.e32ndNote:
-                        Duration = NoteFlags.e64thNote;
-                        break;
-                    case NoteFlags.e16thNote:
-                        Duration = NoteFlags.e32ndNote;
-                        break;
-                    case NoteFlags.e8thNote:
-                        Duration = NoteFlags.e16thNote;
-                        break;
-                    case NoteFlags.e4thNote:
-                        Duration = NoteFlags.e8thNote;
-                        break;
-                    case NoteFlags.e2ndNote:
-                        Duration = NoteFlags.e4thNote;
-                        break;
-                    case NoteFlags.eWholeNote:
-                        Duration = NoteFlags.e2ndNote;
-                        break;
-                    case NoteFlags.eDoubleNote:
-                        Duration = NoteFlags.eWholeNote;
-                        break;
-                    case NoteFlags.eQuadNote:
-                        Duration = NoteFlags.eDoubleNote;
-                        break;
+                    return;
                 }
-                ((NoteNoteObjectRec)Note).PutNoteDuration(Duration);
-                return;
-            }
 
-            /* doubling */
-            if ((Numerator == 2) && (Denominator == 1))
-            {
-                NoteFlags Duration = ((NoteNoteObjectRec)Note).GetNoteDuration();
-                switch (Duration)
+                /* halving */
+                if ((Numerator == 1) && (Denominator == 2))
                 {
-                    default:
-                    case NoteFlags.eQuadNote:
-                        Debug.Assert(false);
-                        throw new ArgumentException();
-                    case NoteFlags.e64thNote:
-                        Duration = NoteFlags.e32ndNote;
-                        break;
-                    case NoteFlags.e32ndNote:
-                        Duration = NoteFlags.e16thNote;
-                        break;
-                    case NoteFlags.e16thNote:
-                        Duration = NoteFlags.e8thNote;
-                        break;
-                    case NoteFlags.e8thNote:
-                        Duration = NoteFlags.e4thNote;
-                        break;
-                    case NoteFlags.e4thNote:
-                        Duration = NoteFlags.e2ndNote;
-                        break;
-                    case NoteFlags.e2ndNote:
-                        Duration = NoteFlags.eWholeNote;
-                        break;
-                    case NoteFlags.eWholeNote:
-                        Duration = NoteFlags.eDoubleNote;
-                        break;
-                    case NoteFlags.eDoubleNote:
-                        Duration = NoteFlags.eQuadNote;
-                        break;
+                    NoteFlags Duration = ((NoteNoteObjectRec)Note).GetNoteDuration();
+                    switch (Duration)
+                    {
+                        default:
+                        case NoteFlags.e64thNote:
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        case NoteFlags.e32ndNote:
+                            Duration = NoteFlags.e64thNote;
+                            break;
+                        case NoteFlags.e16thNote:
+                            Duration = NoteFlags.e32ndNote;
+                            break;
+                        case NoteFlags.e8thNote:
+                            Duration = NoteFlags.e16thNote;
+                            break;
+                        case NoteFlags.e4thNote:
+                            Duration = NoteFlags.e8thNote;
+                            break;
+                        case NoteFlags.e2ndNote:
+                            Duration = NoteFlags.e4thNote;
+                            break;
+                        case NoteFlags.eWholeNote:
+                            Duration = NoteFlags.e2ndNote;
+                            break;
+                        case NoteFlags.eDoubleNote:
+                            Duration = NoteFlags.eWholeNote;
+                            break;
+                        case NoteFlags.eQuadNote:
+                            Duration = NoteFlags.eDoubleNote;
+                            break;
+                    }
+                    ((NoteNoteObjectRec)Note).PutNoteDuration(Duration);
+                    return;
                 }
-                ((NoteNoteObjectRec)Note).PutNoteDuration(Duration);
-                return;
-            }
 
-            /* if we get here, then it's an unrecognized duration change */
-            Debug.Assert(false);
-            throw new ArgumentException();
+                /* doubling */
+                if ((Numerator == 2) && (Denominator == 1))
+                {
+                    NoteFlags Duration = ((NoteNoteObjectRec)Note).GetNoteDuration();
+                    switch (Duration)
+                    {
+                        default:
+                        case NoteFlags.eQuadNote:
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        case NoteFlags.e64thNote:
+                            Duration = NoteFlags.e32ndNote;
+                            break;
+                        case NoteFlags.e32ndNote:
+                            Duration = NoteFlags.e16thNote;
+                            break;
+                        case NoteFlags.e16thNote:
+                            Duration = NoteFlags.e8thNote;
+                            break;
+                        case NoteFlags.e8thNote:
+                            Duration = NoteFlags.e4thNote;
+                            break;
+                        case NoteFlags.e4thNote:
+                            Duration = NoteFlags.e2ndNote;
+                            break;
+                        case NoteFlags.e2ndNote:
+                            Duration = NoteFlags.eWholeNote;
+                            break;
+                        case NoteFlags.eWholeNote:
+                            Duration = NoteFlags.eDoubleNote;
+                            break;
+                        case NoteFlags.eDoubleNote:
+                            Duration = NoteFlags.eQuadNote;
+                            break;
+                    }
+                    ((NoteNoteObjectRec)Note).PutNoteDuration(Duration);
+                    return;
+                }
+
+                /* if we get here, then it's an unrecognized duration change */
+                Debug.Assert(false);
+                throw new ArgumentException();
+            }
+            finally
+            {
+                OnEndBatchOperation(this, EventArgs.Empty);
+            }
         }
 
         /* change the duration of notes in the selection */
@@ -2824,7 +2900,7 @@ namespace OutOfPhase
 
                         // extend range a bit to ensure glyph overextensions are drawn
                         leftFrameInView = Math.Max(leftFrameInView - 1, 0);
-                        rightFrameInView = Math.Min(rightFrameInView + 1, trackObject.FrameArray.Count - 1);
+                        rightFrameInView = Math.Min(rightFrameInView + 1, TrackObj.FrameArray.Count - 1);
 
                         /* draw the insertion point, if there is one */
                         if ((TrackObj == trackObject) && (SelectionMode == SelectionModes.eTrackViewNoSelection))
@@ -4090,6 +4166,7 @@ namespace OutOfPhase
         private readonly IGraphicsContext gc;
         private readonly TrackViewControl ownerView;
 
+        [StructLayout(LayoutKind.Auto)]
         private struct FrameAttrRec
         {
             public int PixelStart;
@@ -4100,12 +4177,14 @@ namespace OutOfPhase
             public NoteMetrics[] metrics;
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct NoteMetrics
         {
             public short offset;
             public short width;
         }
 
+        [StructLayout(LayoutKind.Auto)]
         private struct TrackAttrRec
         {
             public TrackObjectRec TrackObj;
@@ -4120,6 +4199,7 @@ namespace OutOfPhase
             }
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct MeasureBarInfoRec
         {
             public int BarIndex; /* NOMEASUREBAR == no bar */
@@ -4283,6 +4363,7 @@ namespace OutOfPhase
             }
         }
 
+        [StructLayout(LayoutKind.Auto)]
         private struct TrackWorkRec
         {
             public int CurrentIndex;
@@ -5413,14 +5494,18 @@ namespace OutOfPhase
                         else
                         {
                             Color color = GreyedOut ? gc.LightGreyColor : gc.ForeColor;
-                            int yFix = Program.Config.EnableDirectWrite ? gc.LayoutMetrics.BRAVURAYFIX : 0;
+                            int yFix = 0;
+                            if (!Program.Config.EnableDirectWrite)
+                            {
+                                yFix = gc.LayoutMetrics.BRAVURAYFIX_GDI;
+                            }
 
                             tasks.Add(
                                 new TextTaskPoint(
                                     X,
                                     NoteOffset,
                                     gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX,
-                                    gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2,
+                                    gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + LayoutMetrics.BRAVURAYFIX + yFix - gc.BravuraFontHeight / 2,
                                     gc.LayoutMetrics.GLYPHIMAGEWIDTH,
                                     gc.LayoutMetrics.GLYPHIMAGEHEIGHT,
                                     unicodeNote,
@@ -5433,7 +5518,7 @@ namespace OutOfPhase
                                         X,
                                         NoteOffset,
                                         gc.LayoutMetrics.BRAVURAXFIX,
-                                        gc.LayoutMetrics.TOPNOTESTAFFINTERSECT / 2 + yFix - gc.BravuraFontHeight / 2,
+                                        gc.LayoutMetrics.TOPNOTESTAFFINTERSECT / 2 + LayoutMetrics.BRAVURAYFIX + yFix - gc.BravuraFontHeight / 2,
                                         gc.LayoutMetrics.GLYPHIMAGEWIDTH,
                                         gc.LayoutMetrics.GLYPHIMAGEHEIGHT,
                                         unicodeDivision,
@@ -5447,7 +5532,7 @@ namespace OutOfPhase
                                         X,
                                         NoteOffset,
                                         gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX + 5 * gc.BravuraQuarterNoteWidth / 4,
-                                        gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2,
+                                        gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + LayoutMetrics.BRAVURAYFIX + yFix - gc.BravuraFontHeight / 2,
                                         gc.LayoutMetrics.GLYPHIMAGEWIDTH,
                                         gc.LayoutMetrics.GLYPHIMAGEHEIGHT,
                                         unicodeDot,
@@ -5466,7 +5551,7 @@ namespace OutOfPhase
                                         X,
                                         NoteOffset,
                                         gc.LayoutMetrics.LEFTNOTEEDGEINSET + gc.LayoutMetrics.BRAVURAXFIX - 4 * accidentalWidth / 3,
-                                        gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + yFix - gc.BravuraFontHeight / 2,
+                                        gc.LayoutMetrics.TOPNOTESTAFFINTERSECT + LayoutMetrics.BRAVURAYFIX + yFix - gc.BravuraFontHeight / 2,
                                         gc.LayoutMetrics.GLYPHIMAGEWIDTH,
                                         gc.LayoutMetrics.GLYPHIMAGEHEIGHT,
                                         unicodeAccidental,
@@ -6633,10 +6718,16 @@ namespace OutOfPhase
 
         // Bravura
 
-        public readonly int BRAVURAFONTSIZE = 23;
+        public readonly int BRAVURAFONTSIZE = 22;
         public readonly int BRAVURAXFIX = 3;
-        public readonly int BRAVURAYFIX = 1;
+        public const int BRAVURAYFIX = 1;
+        public readonly int BRAVURAYFIX_GDI;
         public readonly int SMALLFONTSIZE = 10;
+
+        // GDI/Uniscribe does not scale the font consistently. Therefore, use this empirically determined table of vertical
+        // offsets to ensure note bodies are centered on the appropriate staff line. Array index is scaled INTERNALSEPARATION
+        // value. Out of bounds means a fix value of zero.
+        private static readonly int[] BRAVURAYFIX_GDIs = new int[] { 0, 0, 0, 1, 2, 3, 1 };
 
 
         // default (1:1) scaled metrics
@@ -6698,7 +6789,10 @@ namespace OutOfPhase
 
             BRAVURAFONTSIZE = (int)Math.Round(BRAVURAFONTSIZE * keyExpansionRatio);
             BRAVURAXFIX = (int)Math.Round(BRAVURAXFIX * keyExpansionRatio);
-            BRAVURAYFIX = (int)Math.Round(BRAVURAYFIX * keyExpansionRatio);
+            if (unchecked((uint)STAFFSEPARATION < (uint)BRAVURAYFIX_GDIs.Length))
+            {
+                BRAVURAYFIX_GDI = BRAVURAYFIX_GDIs[STAFFSEPARATION];
+            }
             SMALLFONTSIZE = (int)Math.Round(SMALLFONTSIZE * keyExpansionRatio);
         }
 

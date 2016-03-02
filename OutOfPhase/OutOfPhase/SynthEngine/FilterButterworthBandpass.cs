@@ -149,6 +149,45 @@ namespace OutOfPhase
                     OutputScaling);
             }
 
+            /* apply filter to an array of values, adding result to output array */
+            public static void Apply4(
+                ButterworthBandpassRec Filter1,
+                ButterworthBandpassRec Filter2,
+                ButterworthBandpassRec Filter3,
+                ButterworthBandpassRec Filter4,
+                float[] XinVector,
+                int XInVectorOffset1,
+                int XInVectorOffset2,
+                int XInVectorOffset3,
+                int XInVectorOffset4,
+                float[] YoutVector,
+                int YoutVectorOffset,
+                int VectorLength,
+                float OutputScaling1,
+                float OutputScaling2,
+                float OutputScaling3,
+                float OutputScaling4,
+                SynthParamRec SynthParams)
+            {
+                IIR2DirectIMAcc_Parallel4(
+                    ref Filter1.iir,
+                    ref Filter2.iir,
+                    ref Filter3.iir,
+                    ref Filter4.iir,
+                    XinVector,
+                    XInVectorOffset1,
+                    XInVectorOffset2,
+                    XInVectorOffset3,
+                    XInVectorOffset4,
+                    YoutVector,
+                    YoutVectorOffset,
+                    VectorLength,
+                    OutputScaling1,
+                    OutputScaling2,
+                    OutputScaling3,
+                    OutputScaling4);
+            }
+
             /* apply filter to an array of values, modifying the array in place */
             public static void ApplyButterworthBandpassVectorModify(
                 ButterworthBandpassRec Filter,
@@ -162,6 +201,37 @@ namespace OutOfPhase
                     VectorOffset,
                     Vector,
                     VectorOffset,
+                    VectorLength);
+            }
+
+            /* apply filter to an array of values, modifying the array in place */
+            public static void ApplyButterworthBandpassVectorModify(
+                ButterworthBandpassRec Filter1,
+                ButterworthBandpassRec Filter2,
+                ButterworthBandpassRec Filter3,
+                ButterworthBandpassRec Filter4,
+                float[] Vector,
+                int VectorOffset1,
+                int VectorOffset2,
+                int VectorOffset3,
+                int VectorOffset4,
+                int VectorLength)
+            {
+                IIR2DirectI_Parallel4(
+                    ref Filter1.iir,
+                    ref Filter2.iir,
+                    ref Filter3.iir,
+                    ref Filter4.iir,
+                    Vector,
+                    VectorOffset1,
+                    VectorOffset2,
+                    VectorOffset3,
+                    VectorOffset4,
+                    Vector,
+                    VectorOffset1,
+                    VectorOffset2,
+                    VectorOffset3,
+                    VectorOffset4,
                     VectorLength);
             }
         }

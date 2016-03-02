@@ -29,6 +29,7 @@ namespace OutOfPhase
     public class BinaryReader : IDisposable
     {
         private Stream stream;
+        private readonly byte[] b = new byte[5];
 
         public BinaryReader(Stream stream)
         {
@@ -52,7 +53,6 @@ namespace OutOfPhase
 
         public byte ReadByte()
         {
-            byte[] b = new byte[1];
             if (1 != stream.Read(b, 0, 1))
             {
                 throw new InvalidDataException();
@@ -72,7 +72,6 @@ namespace OutOfPhase
 
         public int ReadInt32() // little-endian
         {
-            byte[] b = new byte[4];
             if (4 != stream.Read(b, 0, 4))
             {
                 throw new InvalidDataException();
@@ -88,7 +87,6 @@ namespace OutOfPhase
 
         public int ReadInt32BigEndian()
         {
-            byte[] b = new byte[4];
             if (4 != stream.Read(b, 0, 4))
             {
                 throw new InvalidDataException();
@@ -104,7 +102,6 @@ namespace OutOfPhase
 
         public int ReadInt24() // little-endian
         {
-            byte[] b = new byte[3];
             if (3 != stream.Read(b, 0, 3))
             {
                 throw new InvalidDataException();
@@ -114,7 +111,6 @@ namespace OutOfPhase
 
         public int ReadInt24BigEndian()
         {
-            byte[] b = new byte[3];
             if (3 != stream.Read(b, 0, 3))
             {
                 throw new InvalidDataException();
@@ -124,7 +120,6 @@ namespace OutOfPhase
 
         public short ReadInt16() // little-endian
         {
-            byte[] b = new byte[2];
             if (2 != stream.Read(b, 0, 2))
             {
                 throw new InvalidDataException();
@@ -149,7 +144,6 @@ namespace OutOfPhase
 
         public short ReadInt16BigEndian()
         {
-            byte[] b = new byte[2];
             if (2 != stream.Read(b, 0, 2))
             {
                 throw new InvalidDataException();
@@ -219,17 +213,16 @@ namespace OutOfPhase
 
         public uint ReadUInt32Delta()
         {
-            byte[] buf = new byte[1];
             uint ui = 0;
             int c = 0;
-            byte b;
+            byte b1;
             do
             {
-                if (1 != stream.Read(buf, 0, 1))
+                if (1 != stream.Read(b, 0, 1))
                 {
                     throw new InvalidDataException();
                 }
-                b = buf[0];
+                b1 = b[0];
 
                 /* treat overflow as an error */
                 if ((((ui << 7) & 0xffffffff) >> 7) != ui)
@@ -237,7 +230,7 @@ namespace OutOfPhase
                     throw new InvalidDataException();
                 }
 
-                ui = (ui << 7) | ((uint)b & 0x7f);
+                ui = (ui << 7) | ((uint)b1 & 0x7f);
 
                 /* treat too many elements as an error */
                 c += 1;
@@ -245,7 +238,7 @@ namespace OutOfPhase
                 {
                     throw new InvalidDataException();
                 }
-            } while ((b & 0x80) != 0);
+            } while ((b1 & 0x80) != 0);
             return ui;
         }
 
@@ -270,6 +263,7 @@ namespace OutOfPhase
     public class BinaryWriter : IDisposable
     {
         private Stream stream;
+        private readonly byte[] b = new byte[5];
 
         public BinaryWriter(Stream stream)
         {
@@ -297,14 +291,12 @@ namespace OutOfPhase
 
         public void WriteByte(byte v)
         {
-            byte[] b = new byte[1];
             b[0] = v;
             stream.Write(b, 0, 1);
         }
 
         public void WriteInt32(int i) // little-endian
         {
-            byte[] b = new byte[4];
             b[0] = (byte)(i & 0xff);
             b[1] = (byte)((i >> 8) & 0xff);
             b[2] = (byte)((i >> 16) & 0xff);
@@ -319,7 +311,6 @@ namespace OutOfPhase
 
         public void WriteInt32BigEndian(int i)
         {
-            byte[] b = new byte[4];
             b[3] = (byte)(i & 0xff);
             b[2] = (byte)((i >> 8) & 0xff);
             b[1] = (byte)((i >> 16) & 0xff);
@@ -334,7 +325,6 @@ namespace OutOfPhase
 
         public void WriteInt24(int i) // little-endian
         {
-            byte[] b = new byte[3];
             b[0] = (byte)(i & 0xff);
             b[1] = (byte)((i >> 8) & 0xff);
             b[2] = (byte)((i >> 16) & 0xff);
@@ -343,7 +333,6 @@ namespace OutOfPhase
 
         public void WriteInt24BigEndian(int i)
         {
-            byte[] b = new byte[3];
             b[2] = (byte)(i & 0xff);
             b[1] = (byte)((i >> 8) & 0xff);
             b[0] = (byte)((i >> 16) & 0xff);
@@ -352,7 +341,6 @@ namespace OutOfPhase
 
         public void WriteInt16(short i) // little-endian
         {
-            byte[] b = new byte[2];
             b[0] = (byte)(i & 0xff);
             b[1] = (byte)((i >> 8) & 0xff);
             stream.Write(b, 0, 2);
@@ -372,7 +360,6 @@ namespace OutOfPhase
 
         public void WriteInt16BigEndian(short i)
         {
-            byte[] b = new byte[2];
             b[1] = (byte)(i & 0xff);
             b[0] = (byte)((i >> 8) & 0xff);
             stream.Write(b, 0, 2);
@@ -434,7 +421,6 @@ namespace OutOfPhase
 
         public void WriteUInt32Delta(uint ui)
         {
-            byte[] b = new byte[5];
             int c = 0;
             do
             {

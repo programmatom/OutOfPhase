@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -871,6 +872,7 @@ namespace OutOfPhase
         };
 
         /* error table entry structure */
+        [StructLayout(LayoutKind.Auto)]
         public struct InstrErrorRec
         {
             /* for checking index consistency */
@@ -7273,7 +7275,7 @@ namespace OutOfPhase
                 case InstrKeywordType.eKeywordRight:
                     SetSingleFilterChannel(FilterElement, FilterChannels.eFilterRight);
                     break;
-                case InstrKeywordType.eKeywordMono:
+                //case InstrKeywordType.eKeywordMono:
                 case InstrKeywordType.eKeywordJoint:
                     SetSingleFilterChannel(FilterElement, FilterChannels.eFilterBoth);
                     break;
@@ -7967,7 +7969,7 @@ namespace OutOfPhase
                 case InstrKeywordType.eKeywordRight:
                     SetSingleFilterChannel(OneFilter, FilterChannels.eFilterRight);
                     break;
-                case InstrKeywordType.eKeywordMono:
+                //case InstrKeywordType.eKeywordMono:
                 case InstrKeywordType.eKeywordJoint:
                     SetSingleFilterChannel(OneFilter, FilterChannels.eFilterBoth);
                     break;
@@ -8795,6 +8797,7 @@ namespace OutOfPhase
         /* <bistereo>								::= bistereo leftintoleft <string> rightintoleft <string> leftintoright <string> rightintoright <string> */
         /* <props>									::= directgain <number> processedgain <number> latency <number> */
         private delegate void ParseConvolverSpecSetImpulseResponseMethod(ConvolverSpecRec Spec, string Name);
+        [StructLayout(LayoutKind.Auto)]
         private struct ConvolveParseRec
         {
             public readonly InstrKeywordType Keyword;

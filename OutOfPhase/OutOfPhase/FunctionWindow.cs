@@ -245,7 +245,7 @@ namespace OutOfPhase
                             sb.AppendLine(TheFunction.GetFunctionName());
                             sb.AppendLine();
 
-                            sb.Append(Compiler.DisassemblePcode(TheFunction.GetFunctionPcode(), Environment.NewLine));
+                            sb.Append(Compiler.DisassemblePcode(TheFunction.GetFunctionPcode()));
                         }
                         sb.AppendLine();
                         new DisassemblyWindow(sb.ToString(), mainWindow, textBoxFunctionName.Text).Show();

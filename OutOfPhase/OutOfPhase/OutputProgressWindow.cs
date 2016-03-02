@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Threading;
@@ -38,6 +39,9 @@ namespace OutOfPhase
         private readonly IFinished finished; // them telling us they stopped
         private readonly IWaitFinished waitFinished; // us waiting for them to complete the stopping process
         private readonly ShowCompletionMethod showCompletion;
+
+        private bool layoutSuspendable;
+        private bool layoutSuspended;
 
         private static int lastX = -1, lastY = -1;
 
@@ -62,7 +66,7 @@ namespace OutOfPhase
             this.Icon = OutOfPhase.Properties.Resources.Icon2;
 
             DpiChangeHelper.ScaleFont(this, Program.Config.AdditionalUIZoom);
-            
+
             if (!showClipping)
             {
                 labelTotalClippedPoints.Visible = false;
@@ -75,7 +79,12 @@ namespace OutOfPhase
 
         protected override void WndProc(ref Message m)
         {
-            dpiChangeHelper.WndProcDelegate(ref m);
+            if (m.Msg == DpiChangeHelper.WM_DPICHANGED)
+            {
+                SafeResumeLayout(); // one of the rare cases in which the layout might actually change
+                dpiChangeHelper.WndProcDelegate(ref m);
+            }
+
             base.WndProc(ref m);
         }
 
@@ -105,8 +114,51 @@ namespace OutOfPhase
             base.OnFormClosing(e);
         }
 
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            // Defeat Alt-F4 to close window -- forcing user to use the "stop" button -- beause it's too easy to accidentally
+            // terminate playback and the cost of terminating playback is high.
+            // Escape is still permitted. Rationale: Alt-F4 is more likely to be used for cleaning up open document windows
+            // and more likely to be unintentional to a modal dialog. Escape is more often used for modal dialogs and less likely
+            // to be accidental.
+            if (keyData == (Keys.F4 | Keys.Alt))
+            {
+                return true;
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private void SafeSuspendLayout()
+        {
+            if (layoutSuspendable && !layoutSuspended)
+            {
+                layoutSuspended = true;
+                //SuspendLayout();
+            }
+        }
+
+        private void SafeResumeLayout()
+        {
+            if (layoutSuspendable && layoutSuspended)
+            {
+                layoutSuspended = false;
+                //ResumeLayout();
+            }
+        }
+
+        protected override void OnLayout(LayoutEventArgs levent)
+        {
+            if (!layoutSuspended)
+            {
+                base.OnLayout(levent);
+            }
+        }
+
         private void UpdateValues()
         {
+            SuspendLayout();
+
             Decimal elapsedSeconds = Decimal.Round((Decimal)progressInfo.ElapsedAudioSeconds, 3);
             textElapsedAudioSeconds.Text = String.Format(
                 elapsedSeconds <= 60 ? "{0:0.000}" : elapsedSeconds <= 60 * 60 ? "{0:0.000}  ({2:00}:{3:00.000})" : "{0:0.000}  ({1}:{2:00}:{3:00.000})",
@@ -134,6 +186,8 @@ namespace OutOfPhase
                 myProgressBarBufferLoading.Level = bufferLoading.Level;
                 labelBufferSeconds.Text = String.Format("{0:0.0} sec", bufferLoading.Maximum);
             }
+
+            ResumeLayout();
         }
 
         private void buttonStop_Click(object sender, EventArgs e)
@@ -151,6 +205,10 @@ namespace OutOfPhase
 
         private void timerUpdate_Tick(object sender, EventArgs e)
         {
+            layoutSuspendable = true; // when idle happens, it's safe to suspend layout
+            // Try to suspend layout as often as possible since this window generally doesn't need it and it allocates a lot of memory.
+            SafeSuspendLayout();
+
             UpdateValues();
             if (finished.Finished)
             {

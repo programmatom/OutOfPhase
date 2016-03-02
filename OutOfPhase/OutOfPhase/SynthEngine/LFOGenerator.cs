@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -39,11 +40,12 @@ namespace OutOfPhase
         // TODO: Convert delegates to interfaces (or make static delegates)
 
         public delegate double LFOGenFunctionMethod(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude);
 
-        public class LFOOneStateRec
+        [StructLayout(LayoutKind.Auto)]
+        public struct LFOOneStateRec
         {
             /* pointer to the LFO generating function */
             public LFOGenFunctionMethod GenFunction;
@@ -136,6 +138,22 @@ namespace OutOfPhase
 
             /* list of single LFO entries, which we sum up. */
             public LFOOneStateRec[] LFOVector;
+
+#if DEBUG
+            public LFOGenRec()
+            {
+                if (!EnableFreeLists)
+                {
+                    GC.SuppressFinalize(this);
+                }
+            }
+
+            ~LFOGenRec()
+            {
+                Debug.Assert(false, GetType().Name + " finalizer invoked - have you forgotten to .Dispose()? " + allocatedFrom.ToString());
+            }
+            private readonly StackTrace allocatedFrom = new StackTrace(true);
+#endif
         }
 
         /* create a new LFO generator based on a list of specifications */
@@ -156,25 +174,27 @@ namespace OutOfPhase
             object ParamGetterContext,
             SynthParamRec SynthParams)
         {
-            int l = LFOListSpecGetNumElements(LFOListSpec);
+            int count = LFOListSpecGetNumElements(LFOListSpec);
 
-            LFOGenRec LFOGen = new LFOGenRec();
-            LFOGen.LFOVector = new LFOOneStateRec[l];
+            LFOGenRec LFOGen = New(ref SynthParams.freelists.lfoGenStateFreeList);
 
-            LFOGen.NumLFOs = l;
+            // all fields must be assigned: LFOGen, LFOGen.LFOVector
+
+            LFOGen.NumLFOs = count;
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector = New(ref SynthParams.freelists.lfoGenOneFreeList, count); // cleared
 
             /* build the list of thingers */
             int MaxPreOrigin = 0;
-            for (int i = 0; i < l; i += 1)
+            for (int i = 0; i < count; i++)
             {
+                Debug.Assert(LFOVector[i].Equals(new LFOOneStateRec())); // verify cleared
+
                 int PreOriginTime;
 
                 LFOSpecRec OneLFOSpec = LFOListSpecGetLFOSpec(LFOListSpec, i);
 
-                LFOOneStateRec ListNode = LFOGen.LFOVector[i] = new LFOOneStateRec();
-
                 /* add frequency envelope generator */
-                ListNode.LFOFrequencyEnvelope = NewEnvelopeStateRecord(
+                LFOVector[i].LFOFrequencyEnvelope = NewEnvelopeStateRecord(
                     GetLFOSpecFrequencyEnvelope(OneLFOSpec),
                     ref Accents,
                     FrequencyHertz,
@@ -196,18 +216,18 @@ namespace OutOfPhase
                         Debug.Assert(false);
                         throw new ArgumentException();
                     case LFOAdderMode.eLFOArithmetic:
-                        ListNode.ModulationMode = LFOArithSelect.eLFOArithAdditive;
+                        LFOVector[i].ModulationMode = LFOArithSelect.eLFOArithAdditive;
                         break;
                     case LFOAdderMode.eLFOGeometric:
-                        ListNode.ModulationMode = LFOArithSelect.eLFOArithGeometric;
+                        LFOVector[i].ModulationMode = LFOArithSelect.eLFOArithGeometric;
                         break;
                     case LFOAdderMode.eLFOHalfSteps:
-                        ListNode.ModulationMode = LFOArithSelect.eLFOArithHalfSteps;
+                        LFOVector[i].ModulationMode = LFOArithSelect.eLFOArithHalfSteps;
                         break;
                 }
 
                 /* add the amplitude envelope generator */
-                ListNode.LFOAmplitudeEnvelope = NewEnvelopeStateRecord(
+                LFOVector[i].LFOAmplitudeEnvelope = NewEnvelopeStateRecord(
                     GetLFOSpecAmplitudeEnvelope(OneLFOSpec),
                     ref Accents,
                     FrequencyHertz,
@@ -223,7 +243,7 @@ namespace OutOfPhase
                 }
 
                 /* add the frequency lfo modulator */
-                ListNode.LFOFrequencyLFOGenerator = NewLFOGenerator(
+                LFOVector[i].LFOFrequencyLFOGenerator = NewLFOGenerator(
                     GetLFOSpecFrequencyLFOList(OneLFOSpec),
                     out PreOriginTime,
                     ref Accents,
@@ -241,7 +261,7 @@ namespace OutOfPhase
                 }
 
                 /* add the amplitude lfo modulator */
-                ListNode.LFOAmplitudeLFOGenerator = NewLFOGenerator(
+                LFOVector[i].LFOAmplitudeLFOGenerator = NewLFOGenerator(
                     GetLFOSpecAmplitudeLFOList(OneLFOSpec),
                     out PreOriginTime,
                     ref Accents,
@@ -259,281 +279,281 @@ namespace OutOfPhase
                 }
 
                 /* determine what function to use */
-                ListNode.Operator = LFOSpecGetOscillatorType(OneLFOSpec);
-                ListNode.OperatorIsLinearFuzz = /* this is an optimization */
-                    ((ListNode.Operator == LFOOscTypes.eLFOSignedLinearFuzzTriangle)
-                    || (ListNode.Operator == LFOOscTypes.eLFOPositiveLinearFuzzTriangle)
-                    || (ListNode.Operator == LFOOscTypes.eLFOSignedLinearFuzzSquare)
-                    || (ListNode.Operator == LFOOscTypes.eLFOPositiveLinearFuzzSquare));
-                ListNode.ModulationMethod = LFOSpecGetModulationMode(OneLFOSpec);
-                switch (ListNode.Operator)
+                LFOVector[i].Operator = LFOSpecGetOscillatorType(OneLFOSpec);
+                LFOVector[i].OperatorIsLinearFuzz = /* this is an optimization */
+                    ((LFOVector[i].Operator == LFOOscTypes.eLFOSignedLinearFuzzTriangle)
+                    || (LFOVector[i].Operator == LFOOscTypes.eLFOPositiveLinearFuzzTriangle)
+                    || (LFOVector[i].Operator == LFOOscTypes.eLFOSignedLinearFuzzSquare)
+                    || (LFOVector[i].Operator == LFOOscTypes.eLFOPositiveLinearFuzzSquare));
+                LFOVector[i].ModulationMethod = LFOSpecGetModulationMode(OneLFOSpec);
+                switch (LFOVector[i].Operator)
                 {
                     default:
                         Debug.Assert(false);
                         throw new ArgumentException();
 
                     case LFOOscTypes.eLFOConstant1:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddConst;
+                                LFOVector[i].GenFunction = _AddConst;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultConst;
+                                LFOVector[i].GenFunction = _MultConst;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultConst;
+                                LFOVector[i].GenFunction = _InvMultConst;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOSignedSine:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddSignSine;
+                                LFOVector[i].GenFunction = _AddSignSine;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultSignSine;
+                                LFOVector[i].GenFunction = _MultSignSine;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultSignSine;
+                                LFOVector[i].GenFunction = _InvMultSignSine;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOPositiveSine:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddPosSine;
+                                LFOVector[i].GenFunction = _AddPosSine;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultPosSine;
+                                LFOVector[i].GenFunction = _MultPosSine;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultPosSine;
+                                LFOVector[i].GenFunction = _InvMultPosSine;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOSignedTriangle:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddSignTriangle;
+                                LFOVector[i].GenFunction = _AddSignTriangle;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultSignTriangle;
+                                LFOVector[i].GenFunction = _MultSignTriangle;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultSignTriangle;
+                                LFOVector[i].GenFunction = _InvMultSignTriangle;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOPositiveTriangle:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddPosTriangle;
+                                LFOVector[i].GenFunction = _AddPosTriangle;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultPosTriangle;
+                                LFOVector[i].GenFunction = _MultPosTriangle;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultPosTriangle;
+                                LFOVector[i].GenFunction = _InvMultPosTriangle;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOSignedSquare:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddSignSquare;
+                                LFOVector[i].GenFunction = _AddSignSquare;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultSignSquare;
+                                LFOVector[i].GenFunction = _MultSignSquare;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultSignSquare;
+                                LFOVector[i].GenFunction = _InvMultSignSquare;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOPositiveSquare:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddPosSquare;
+                                LFOVector[i].GenFunction = _AddPosSquare;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultPosSquare;
+                                LFOVector[i].GenFunction = _MultPosSquare;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultPosSquare;
+                                LFOVector[i].GenFunction = _InvMultPosSquare;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOSignedRamp:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddSignRamp;
+                                LFOVector[i].GenFunction = _AddSignRamp;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultSignRamp;
+                                LFOVector[i].GenFunction = _MultSignRamp;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultSignRamp;
+                                LFOVector[i].GenFunction = _InvMultSignRamp;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOPositiveRamp:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddPosRamp;
+                                LFOVector[i].GenFunction = _AddPosRamp;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultPosRamp;
+                                LFOVector[i].GenFunction = _MultPosRamp;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultPosRamp;
+                                LFOVector[i].GenFunction = _InvMultPosRamp;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOSignedLinearFuzzTriangle:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddSignFuzzTriangle;
+                                LFOVector[i].GenFunction = _AddSignFuzzTriangle;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultSignFuzzTriangle;
+                                LFOVector[i].GenFunction = _MultSignFuzzTriangle;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultSignFuzzTriangle;
+                                LFOVector[i].GenFunction = _InvMultSignFuzzTriangle;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOSignedLinearFuzzSquare:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddSignFuzzSquare;
+                                LFOVector[i].GenFunction = _AddSignFuzzSquare;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultSignFuzzSquare;
+                                LFOVector[i].GenFunction = _MultSignFuzzSquare;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultSignFuzzSquare;
+                                LFOVector[i].GenFunction = _InvMultSignFuzzSquare;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOPositiveLinearFuzzTriangle:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddPosFuzzTriangle;
+                                LFOVector[i].GenFunction = _AddPosFuzzTriangle;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultPosFuzzTriangle;
+                                LFOVector[i].GenFunction = _MultPosFuzzTriangle;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultPosFuzzTriangle;
+                                LFOVector[i].GenFunction = _InvMultPosFuzzTriangle;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOPositiveLinearFuzzSquare:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddPosFuzzSquare;
+                                LFOVector[i].GenFunction = _AddPosFuzzSquare;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultPosFuzzSquare;
+                                LFOVector[i].GenFunction = _MultPosFuzzSquare;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultPosFuzzSquare;
+                                LFOVector[i].GenFunction = _InvMultPosFuzzSquare;
                                 break;
                         }
                         break;
 
                     case LFOOscTypes.eLFOWaveTable:
-                        switch (ListNode.ModulationMethod)
+                        switch (LFOVector[i].ModulationMethod)
                         {
                             default:
                                 Debug.Assert(false);
                                 throw new ArgumentException();
                             case LFOModulationTypes.eLFOAdditive:
-                                ListNode.GenFunction = AddWaveTable;
+                                LFOVector[i].GenFunction = _AddWaveTable;
                                 break;
                             case LFOModulationTypes.eLFOMultiplicative:
-                                ListNode.GenFunction = MultWaveTable;
+                                LFOVector[i].GenFunction = _MultWaveTable;
                                 break;
                             case LFOModulationTypes.eLFOInverseMultiplicative:
-                                ListNode.GenFunction = InvMultWaveTable;
+                                LFOVector[i].GenFunction = _InvMultWaveTable;
                                 break;
                         }
 
-                        ListNode.WaveTableSourceSelector = NewMultiWaveTable(
+                        LFOVector[i].WaveTableSourceSelector = NewMultiWaveTable(
                             GetLFOSpecSampleSelector(OneLFOSpec),
                             SynthParams.Dictionary);
-                        ListNode.WaveTableWasDefined = GetMultiWaveTableReference(
-                            ListNode.WaveTableSourceSelector,
+                        LFOVector[i].WaveTableWasDefined = GetMultiWaveTableReference(
+                            LFOVector[i].WaveTableSourceSelector,
                             FreqForMultisampling,
-                            out ListNode.WaveTableMatrix,
-                            out ListNode.FramesPerTable,
-                            out ListNode.NumberOfTables);
+                            out LFOVector[i].WaveTableMatrix,
+                            out LFOVector[i].FramesPerTable,
+                            out LFOVector[i].NumberOfTables);
 
-                        ListNode.WaveTableIndexEnvelope = NewEnvelopeStateRecord(
+                        LFOVector[i].WaveTableIndexEnvelope = NewEnvelopeStateRecord(
                             GetLFOSpecWaveTableIndexEnvelope(OneLFOSpec),
                             ref Accents,
                             FrequencyHertz,
@@ -549,7 +569,7 @@ namespace OutOfPhase
                         }
 
                         /* add the index lfo modulator */
-                        ListNode.WaveTableLFOGenerator = NewLFOGenerator(
+                        LFOVector[i].WaveTableLFOGenerator = NewLFOGenerator(
                             GetLFOSpecWaveTableIndexLFOList(OneLFOSpec),
                             out PreOriginTime,
                             ref Accents,
@@ -566,33 +586,33 @@ namespace OutOfPhase
                             MaxPreOrigin = PreOriginTime;
                         }
 
-                        ListNode.EnableCrossWaveTableInterpolation = LFOSpecGetEnableCrossWaveTableInterpolation(OneLFOSpec);
+                        LFOVector[i].EnableCrossWaveTableInterpolation = LFOSpecGetEnableCrossWaveTableInterpolation(OneLFOSpec);
 
                         break;
 
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
                     case LFOOscTypes.eLFOLoopedEnvelope:
                         {
-                            switch (ListNode.ModulationMethod)
+                            switch (LFOVector[i].ModulationMethod)
                             {
                                 default:
                                     Debug.Assert(false);
                                     throw new ArgumentException();
                                 case LFOModulationTypes.eLFOAdditive:
-                                    ListNode.GenFunction = AddLoopedEnvelope;
+                                    LFOVector[i].GenFunction = _AddLoopedEnvelope;
                                     break;
                                 case LFOModulationTypes.eLFOMultiplicative:
-                                    ListNode.GenFunction = MultLoopedEnvelope;
+                                    LFOVector[i].GenFunction = _MultLoopedEnvelope;
                                     break;
                                 case LFOModulationTypes.eLFOInverseMultiplicative:
-                                    ListNode.GenFunction = InvMultLoopedEnvelope;
+                                    LFOVector[i].GenFunction = _InvMultLoopedEnvelope;
                                     break;
                             }
 
                             // TODO: Because of the context in which the envelope is evaluated it is not parameterized
                             // by any of the usual values. It would be interesting to permit that.
                             int discardedPreOriginTime; // not used for this case
-                            ListNode.LoopEnvelope = NewEnvelopeStateRecord(
+                            LFOVector[i].LoopEnvelope = NewEnvelopeStateRecord(
                                 GetLFOSpecLoopedEnvelope(OneLFOSpec),
                                 ref Accents,
                                 Constants.MIDDLEC/*FrequencyHertz*/,
@@ -606,32 +626,32 @@ namespace OutOfPhase
                                 }/*ParamGetter*/,
                                 null/*ParamGetterContext*/,
                                 SynthParams);
-                            ListNode.CurrentPhase = SynthParams.dEnvelopeRate;
+                            LFOVector[i].CurrentPhase = SynthParams.dEnvelopeRate;
                         }
                         break;
 #endif
                 }
 
                 /* set up special values */
-                ListNode.ExtraValue = GetLFOSpecExtraValue(OneLFOSpec);
-                if ((ListNode.Operator == LFOOscTypes.eLFOSignedLinearFuzzTriangle)
-                    || (ListNode.Operator == LFOOscTypes.eLFOPositiveLinearFuzzTriangle)
-                    || (ListNode.Operator == LFOOscTypes.eLFOSignedLinearFuzzSquare)
-                    || (ListNode.Operator == LFOOscTypes.eLFOPositiveLinearFuzzSquare))
+                LFOVector[i].ExtraValue = GetLFOSpecExtraValue(OneLFOSpec);
+                if ((LFOVector[i].Operator == LFOOscTypes.eLFOSignedLinearFuzzTriangle)
+                    || (LFOVector[i].Operator == LFOOscTypes.eLFOPositiveLinearFuzzTriangle)
+                    || (LFOVector[i].Operator == LFOOscTypes.eLFOSignedLinearFuzzSquare)
+                    || (LFOVector[i].Operator == LFOOscTypes.eLFOPositiveLinearFuzzSquare))
                 {
                     double seed = GetLFOSpecExtraValue(OneLFOSpec);
-                    ListNode.Seed.ConstrainedSetSeed(unchecked((int)seed + 1/*legacy bug*/));
-                    ListNode.LeftNoise = ParkAndMiller.Double0Through1(ListNode.Seed.Random());
-                    ListNode.RightNoise = ParkAndMiller.Double0Through1(ListNode.Seed.Random());
+                    LFOVector[i].Seed.ConstrainedSetSeed(unchecked((int)seed + 1/*legacy bug*/));
+                    LFOVector[i].LeftNoise = ParkAndMiller.Double0Through1(LFOVector[i].Seed.Random());
+                    LFOVector[i].RightNoise = ParkAndMiller.Double0Through1(LFOVector[i].Seed.Random());
                 }
 
                 /* filter */
-                ListNode.LowpassFilterEnabled = HasLFOSpecFilterBeenSpecified(OneLFOSpec);
-                if (ListNode.LowpassFilterEnabled)
+                LFOVector[i].LowpassFilterEnabled = HasLFOSpecFilterBeenSpecified(OneLFOSpec);
+                if (LFOVector[i].LowpassFilterEnabled)
                 {
-                    ListNode.LowpassFilter = new FirstOrderLowpassRec();
+                    LFOVector[i].LowpassFilter = new FirstOrderLowpassRec();
 
-                    ListNode.LFOFilterCutoffEnvelope = NewEnvelopeStateRecord(
+                    LFOVector[i].LFOFilterCutoffEnvelope = NewEnvelopeStateRecord(
                         GetLFOSpecFilterCutoffEnvelope(OneLFOSpec),
                         ref Accents,
                         FrequencyHertz,
@@ -646,7 +666,7 @@ namespace OutOfPhase
                         MaxPreOrigin = PreOriginTime;
                     }
 
-                    ListNode.LFOFilterCutoffLFOGenerator = NewLFOGenerator(
+                    LFOVector[i].LFOFilterCutoffLFOGenerator = NewLFOGenerator(
                         GetLFOSpecFilterCutoffLFOList(OneLFOSpec),
                         out PreOriginTime,
                         ref Accents,
@@ -665,10 +685,10 @@ namespace OutOfPhase
                 }
 
                 /* sample and hold */
-                ListNode.SampleAndHoldEnabled = HasLFOSpecSampleHoldBeenSpecified(OneLFOSpec);
-                if (ListNode.SampleAndHoldEnabled)
+                LFOVector[i].SampleAndHoldEnabled = HasLFOSpecSampleHoldBeenSpecified(OneLFOSpec);
+                if (LFOVector[i].SampleAndHoldEnabled)
                 {
-                    ListNode.LFOSampleHoldEnvelope = NewEnvelopeStateRecord(
+                    LFOVector[i].LFOSampleHoldEnvelope = NewEnvelopeStateRecord(
                         GetLFOSpecSampleHoldFreqEnvelope(OneLFOSpec),
                         ref Accents,
                         FrequencyHertz,
@@ -683,7 +703,7 @@ namespace OutOfPhase
                         MaxPreOrigin = PreOriginTime;
                     }
 
-                    ListNode.LFOSampleHoldLFOGenerator = NewLFOGenerator(
+                    LFOVector[i].LFOSampleHoldLFOGenerator = NewLFOGenerator(
                         GetLFOSpecSampleHoldFreqLFOList(OneLFOSpec),
                         out PreOriginTime,
                         ref Accents,
@@ -699,8 +719,8 @@ namespace OutOfPhase
                     {
                         MaxPreOrigin = PreOriginTime;
                     }
-                    ListNode.SampleHoldPhase = 1; /* trigger immediately */
-                    ListNode.CurrentSampleHold = 0;
+                    LFOVector[i].SampleHoldPhase = 1; /* trigger immediately */
+                    LFOVector[i].CurrentSampleHold = 0;
                 }
             }
 
@@ -708,52 +728,115 @@ namespace OutOfPhase
             return LFOGen;
         }
 
+        public static void FreeLFOGenerator(
+            ref LFOGenRec LFOGen,
+            SynthParamRec SynthParams)
+        {
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector;
+            if (unchecked((uint)LFOGen.NumLFOs > (uint)LFOVector.Length))
+            {
+                throw new IndexOutOfRangeException();
+            }
+            for (int i = 0; i < LFOGen.NumLFOs; i++)
+            {
+                FreeEnvelopeStateRecord(
+                    ref LFOVector[i].LFOAmplitudeEnvelope,
+                    SynthParams);
+                FreeLFOGenerator(
+                    ref LFOVector[i].LFOAmplitudeLFOGenerator,
+                    SynthParams);
+
+                FreeEnvelopeStateRecord(
+                    ref LFOVector[i].LFOFrequencyEnvelope,
+                    SynthParams);
+                FreeLFOGenerator(
+                    ref LFOVector[i].LFOFrequencyLFOGenerator,
+                    SynthParams);
+
+                if (LFOVector[i].Operator == LFOOscTypes.eLFOWaveTable)
+                {
+                    FreeEnvelopeStateRecord(
+                        ref LFOVector[i].WaveTableIndexEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref LFOVector[i].WaveTableLFOGenerator,
+                        SynthParams);
+                }
+
+                if (LFOVector[i].LowpassFilterEnabled)
+                {
+                    FreeEnvelopeStateRecord(
+                        ref LFOVector[i].LFOFilterCutoffEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref LFOVector[i].LFOFilterCutoffLFOGenerator,
+                        SynthParams);
+                }
+
+                if (LFOVector[i].SampleAndHoldEnabled)
+                {
+                    FreeEnvelopeStateRecord(
+                        ref LFOVector[i].LFOSampleHoldEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref LFOVector[i].LFOSampleHoldLFOGenerator,
+                        SynthParams);
+                }
+            }
+
+            Free(ref SynthParams.freelists.lfoGenOneFreeList, ref LFOGen.LFOVector);
+            Free(ref SynthParams.freelists.lfoGenStateFreeList, ref LFOGen);
+        }
+
         /* fix up the origin time so that envelopes start at the proper times */
         public static void LFOGeneratorFixEnvelopeOrigins(
             LFOGenRec LFOGen,
             int ActualPreOriginTime)
         {
-            for (int i = 0; i < LFOGen.NumLFOs; i += 1)
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector;
+            if (unchecked((uint)LFOGen.NumLFOs > (uint)LFOVector.Length))
             {
-                LFOOneStateRec Scan = LFOGen.LFOVector[i];
-
+                throw new IndexOutOfRangeException();
+            }
+            for (int i = 0; i < LFOGen.NumLFOs; i++)
+            {
                 EnvelopeStateFixUpInitialDelay(
-                    Scan.LFOAmplitudeEnvelope,
+                    LFOVector[i].LFOAmplitudeEnvelope,
                     ActualPreOriginTime);
                 EnvelopeStateFixUpInitialDelay(
-                    Scan.LFOFrequencyEnvelope,
+                    LFOVector[i].LFOFrequencyEnvelope,
                     ActualPreOriginTime);
                 LFOGeneratorFixEnvelopeOrigins(
-                    Scan.LFOAmplitudeLFOGenerator,
+                    LFOVector[i].LFOAmplitudeLFOGenerator,
                     ActualPreOriginTime);
                 LFOGeneratorFixEnvelopeOrigins(
-                    Scan.LFOFrequencyLFOGenerator,
+                    LFOVector[i].LFOFrequencyLFOGenerator,
                     ActualPreOriginTime);
-                if (Scan.Operator == LFOOscTypes.eLFOWaveTable)
+                if (LFOVector[i].Operator == LFOOscTypes.eLFOWaveTable)
                 {
                     EnvelopeStateFixUpInitialDelay(
-                        Scan.WaveTableIndexEnvelope,
+                        LFOVector[i].WaveTableIndexEnvelope,
                         ActualPreOriginTime);
                     LFOGeneratorFixEnvelopeOrigins(
-                        Scan.WaveTableLFOGenerator,
+                        LFOVector[i].WaveTableLFOGenerator,
                         ActualPreOriginTime);
                 }
-                if (Scan.LowpassFilterEnabled)
+                if (LFOVector[i].LowpassFilterEnabled)
                 {
                     EnvelopeStateFixUpInitialDelay(
-                        Scan.LFOFilterCutoffEnvelope,
+                        LFOVector[i].LFOFilterCutoffEnvelope,
                         ActualPreOriginTime);
                     LFOGeneratorFixEnvelopeOrigins(
-                        Scan.LFOFilterCutoffLFOGenerator,
+                        LFOVector[i].LFOFilterCutoffLFOGenerator,
                         ActualPreOriginTime);
                 }
-                if (Scan.SampleAndHoldEnabled)
+                if (LFOVector[i].SampleAndHoldEnabled)
                 {
                     EnvelopeStateFixUpInitialDelay(
-                        Scan.LFOSampleHoldEnvelope,
+                        LFOVector[i].LFOSampleHoldEnvelope,
                         ActualPreOriginTime);
                     LFOGeneratorFixEnvelopeOrigins(
-                        Scan.LFOSampleHoldLFOGenerator,
+                        LFOVector[i].LFOSampleHoldLFOGenerator,
                         ActualPreOriginTime);
                 }
 
@@ -768,12 +851,12 @@ namespace OutOfPhase
                     // Note that it won't work unless the frequency envelope is a constant.
 
                     double envelopeRate = Scan.CurrentPhase; // initialized to that value in the constructor
-                    Scan.CurrentPhase = -EnvelopeInitialValue(Scan.LFOFrequencyEnvelope) * ActualPreOriginTime / envelopeRate;
-                    Scan.CurrentPhase = Scan.CurrentPhase - Math.Floor(Scan.CurrentPhase);
+                    LFOVector[i].CurrentPhase = -EnvelopeInitialValue(Scan.LFOFrequencyEnvelope) * ActualPreOriginTime / envelopeRate;
+                    LFOVector[i].CurrentPhase = Scan.CurrentPhase - Math.Floor(Scan.CurrentPhase);
 
                     // prevent envelope generator from running before event origin.
                     EnvelopeStateFixUpInitialDelay(
-                        Scan.LoopEnvelope,
+                        LFOVector[i].LoopEnvelope,
                         ActualPreOriginTime);
 
                     // TODO: ought to advance the phase of the envelope generator to the right spot
@@ -796,16 +879,19 @@ namespace OutOfPhase
                 return 0;
             }
 
-            for (int i = 0; i < LFOGen.NumLFOs; i += 1)
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector;
+            if (unchecked((uint)LFOGen.NumLFOs > (uint)LFOVector.Length))
             {
-                LFOOneStateRec Scan = LFOGen.LFOVector[i];
-
+                throw new IndexOutOfRangeException();
+            }
+            for (int i = 0; i < LFOGen.NumLFOs; i++)
+            {
                 /* compute amplitude envelope/lfo thing */
                 SynthErrorCodes error = SynthErrorCodes.eSynthDone;
                 double VariantAmplitude = LFOGenUpdateCycle(
-                    Scan.LFOAmplitudeLFOGenerator,
+                    LFOVector[i].LFOAmplitudeLFOGenerator,
                     EnvelopeUpdate(
-                        Scan.LFOAmplitudeEnvelope,
+                        LFOVector[i].LFOAmplitudeEnvelope,
                         OscillatorFrequency,
                         SynthParams,
                         ref error),
@@ -819,12 +905,12 @@ namespace OutOfPhase
                 }
 
                 // specialized additional parameters for certain types
-                if (Scan.Operator == LFOOscTypes.eLFOWaveTable)
+                if (LFOVector[i].Operator == LFOOscTypes.eLFOWaveTable)
                 {
-                    Scan.CurrentWaveTableIndex = LFOGenUpdateCycle(
-                        Scan.WaveTableLFOGenerator,
+                    LFOVector[i].CurrentWaveTableIndex = LFOGenUpdateCycle(
+                        LFOVector[i].WaveTableLFOGenerator,
                         EnvelopeUpdate(
-                            Scan.WaveTableIndexEnvelope,
+                            LFOVector[i].WaveTableIndexEnvelope,
                             OscillatorFrequency,
                             SynthParams,
                             ref error),
@@ -840,18 +926,18 @@ namespace OutOfPhase
 
                 /* perform the calculations */
 #if DEBUG
-                if ((Scan.ModulationMode != LFOArithSelect.eLFOArithAdditive)
-                    && (Scan.ModulationMode != LFOArithSelect.eLFOArithGeometric)
-                    && (Scan.ModulationMode != LFOArithSelect.eLFOArithHalfSteps))
+                if ((LFOVector[i].ModulationMode != LFOArithSelect.eLFOArithAdditive)
+                    && (LFOVector[i].ModulationMode != LFOArithSelect.eLFOArithGeometric)
+                    && (LFOVector[i].ModulationMode != LFOArithSelect.eLFOArithHalfSteps))
                 {
                     Debug.Assert(false);
                     throw new ArgumentException();
                 }
 #endif
-                if (Scan.ModulationMode == LFOArithSelect.eLFOArithAdditive)
+                if (LFOVector[i].ModulationMode == LFOArithSelect.eLFOArithAdditive)
                 {
-                    OriginalValue = Scan.GenFunction(
-                        Scan,
+                    OriginalValue = LFOVector[i].GenFunction(
+                        ref LFOVector[i],
                         OriginalValue,
                         VariantAmplitude);
                 }
@@ -866,20 +952,20 @@ namespace OutOfPhase
                     {
                         double ScalingConstant;
 
-                        if (Scan.ModulationMode == LFOArithSelect.eLFOArithGeometric)
+                        if (LFOVector[i].ModulationMode == LFOArithSelect.eLFOArithGeometric)
                         {
                             /* the LOG2 is to normalize the values, so that 1/12 will */
                             /* be 1 halfstep */
                             ScalingConstant = Constants.LOG2;
                         }
-                        else /* if (Scan.ModulationMode == eLFOArithHalfSteps) */
+                        else /* if (LFOVector[i].ModulationMode == eLFOArithHalfSteps) */
                         {
                             /* this one means 1 is a halfstep */
                             ScalingConstant = Constants.LOG2 / 12;
                         }
                         OriginalValue = Math.Exp(
-                            Scan.GenFunction(
-                                Scan,
+                            LFOVector[i].GenFunction(
+                                ref LFOVector[i],
                                 Math.Log(OriginalValue),
                                 VariantAmplitude * ScalingConstant));
                     }
@@ -890,18 +976,16 @@ namespace OutOfPhase
                 }
 
                 /* apply sample and hold */
-                if (Scan.SampleAndHoldEnabled)
+                if (LFOVector[i].SampleAndHoldEnabled)
                 {
-                    double SampleHoldPhase;
-
                     /* update sample/hold phase generator */
                     error = SynthErrorCodes.eSynthDone;
-                    SampleHoldPhase = Scan.SampleHoldPhase;
+                    double SampleHoldPhase = LFOVector[i].SampleHoldPhase;
                     SampleHoldPhase = SampleHoldPhase +
                         LFOGenUpdateCycle(
-                            Scan.LFOSampleHoldLFOGenerator,
+                            LFOVector[i].LFOSampleHoldLFOGenerator,
                             EnvelopeUpdate(
-                                Scan.LFOSampleHoldEnvelope,
+                                LFOVector[i].LFOSampleHoldEnvelope,
                                 OscillatorFrequency,
                                 SynthParams,
                                 ref error),
@@ -918,23 +1002,23 @@ namespace OutOfPhase
                     if (SampleHoldPhase >= 1)
                     {
                         SampleHoldPhase -= Math.Floor(SampleHoldPhase);
-                        Scan.CurrentSampleHold = OriginalValue;
+                        LFOVector[i].CurrentSampleHold = OriginalValue;
                     }
-                    Scan.SampleHoldPhase = SampleHoldPhase;
+                    LFOVector[i].SampleHoldPhase = SampleHoldPhase;
                     /* set current value to held value */
-                    OriginalValue = Scan.CurrentSampleHold;
+                    OriginalValue = LFOVector[i].CurrentSampleHold;
                 }
 
                 /* apply lowpass filter */
-                if (Scan.LowpassFilterEnabled)
+                if (LFOVector[i].LowpassFilterEnabled)
                 {
                     error = SynthErrorCodes.eSynthDone;
                     FirstOrderLowpassRec.SetFirstOrderLowpassCoefficients(
-                        Scan.LowpassFilter,
+                        LFOVector[i].LowpassFilter,
                         LFOGenUpdateCycle(
-                            Scan.LFOFilterCutoffLFOGenerator,
+                            LFOVector[i].LFOFilterCutoffLFOGenerator,
                             EnvelopeUpdate(
-                                Scan.LFOFilterCutoffEnvelope,
+                                LFOVector[i].LFOFilterCutoffEnvelope,
                                 OscillatorFrequency,
                                 SynthParams,
                                 ref error),
@@ -948,17 +1032,17 @@ namespace OutOfPhase
                         return 0;
                     }
                     OriginalValue = FirstOrderLowpassRec.ApplyFirstOrderLowpass(
-                        Scan.LowpassFilter,
+                        LFOVector[i].LowpassFilter,
                         (float)OriginalValue);
                 }
 
                 /* update phase of oscillator */
                 error = SynthErrorCodes.eSynthDone;
-                Scan.CurrentPhase = Scan.CurrentPhase +
+                LFOVector[i].CurrentPhase = LFOVector[i].CurrentPhase +
                     LFOGenUpdateCycle(
-                        Scan.LFOFrequencyLFOGenerator,
+                        LFOVector[i].LFOFrequencyLFOGenerator,
                         EnvelopeUpdate(
-                            Scan.LFOFrequencyEnvelope,
+                            LFOVector[i].LFOFrequencyEnvelope,
                             OscillatorFrequency,
                             SynthParams,
                             ref error),
@@ -976,45 +1060,45 @@ namespace OutOfPhase
 #if DEBUG
                 if (
                     !(
-                        (Scan.OperatorIsLinearFuzz &&
-                            ((Scan.Operator == LFOOscTypes.eLFOSignedLinearFuzzTriangle)
-                                || (Scan.Operator == LFOOscTypes.eLFOPositiveLinearFuzzTriangle)
-                                || (Scan.Operator == LFOOscTypes.eLFOSignedLinearFuzzSquare)
-                                || (Scan.Operator == LFOOscTypes.eLFOPositiveLinearFuzzSquare)))
+                        (LFOVector[i].OperatorIsLinearFuzz &&
+                            ((LFOVector[i].Operator == LFOOscTypes.eLFOSignedLinearFuzzTriangle)
+                                || (LFOVector[i].Operator == LFOOscTypes.eLFOPositiveLinearFuzzTriangle)
+                                || (LFOVector[i].Operator == LFOOscTypes.eLFOSignedLinearFuzzSquare)
+                                || (LFOVector[i].Operator == LFOOscTypes.eLFOPositiveLinearFuzzSquare)))
                         ||
-                        (!Scan.OperatorIsLinearFuzz &&
-                            !((Scan.Operator == LFOOscTypes.eLFOSignedLinearFuzzTriangle)
-                                || (Scan.Operator == LFOOscTypes.eLFOPositiveLinearFuzzTriangle)
-                                || (Scan.Operator == LFOOscTypes.eLFOSignedLinearFuzzSquare)
-                                || (Scan.Operator == LFOOscTypes.eLFOPositiveLinearFuzzSquare)))))
+                        (!LFOVector[i].OperatorIsLinearFuzz &&
+                            !((LFOVector[i].Operator == LFOOscTypes.eLFOSignedLinearFuzzTriangle)
+                                || (LFOVector[i].Operator == LFOOscTypes.eLFOPositiveLinearFuzzTriangle)
+                                || (LFOVector[i].Operator == LFOOscTypes.eLFOSignedLinearFuzzSquare)
+                                || (LFOVector[i].Operator == LFOOscTypes.eLFOPositiveLinearFuzzSquare)))))
                 {
                     // Operator and OperatorIsLinearFuzz are inconsistent
                     Debug.Assert(false);
                     throw new ArgumentException();
                 }
 #endif
-                if (Scan.OperatorIsLinearFuzz)
+                if (LFOVector[i].OperatorIsLinearFuzz)
                 {
-                    for (int Counter = (int)(Math.Floor(Scan.CurrentPhase)); Counter >= 1; Counter -= 1)
+                    for (int Counter = (int)(Math.Floor(LFOVector[i].CurrentPhase)); Counter >= 1; Counter -= 1)
                     {
-                        Scan.LeftNoise = Scan.RightNoise;
-                        Scan.RightNoise = ParkAndMiller.Double0Through1(Scan.Seed.Random());
+                        LFOVector[i].LeftNoise = LFOVector[i].RightNoise;
+                        LFOVector[i].RightNoise = ParkAndMiller.Double0Through1(LFOVector[i].Seed.Random());
                     }
                 }
 
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
-                if (Scan.LoopEnvelope != null)
+                if (LFOVector[i].LoopEnvelope != null)
                 {
                     // For looped envelopes, retriggering is keyed off of the phase, which requires the user to specify
                     // the period for the oscillator. This complication avoids needing to implement a high-precision envelope
                     // generator that can stay in sync with the note event clock over long periods of time.
-                    if (Scan.CurrentPhase >= 1)
+                    if (LFOVector[i].CurrentPhase >= 1)
                     {
                         // TODO: Because of the context in which the envelope is evaluated it is not parameterized
                         // by any of the usual values. It would be interesting to permit that.
                         AccentRec zero = new AccentRec();
                         EnvelopeRetriggerFromOrigin(
-                            Scan.LoopEnvelope,
+                            LFOVector[i].LoopEnvelope,
                             ref zero,
                             Constants.MIDDLEC/*FrequencyHertz*/,
                             1/*Loudness*/,
@@ -1026,9 +1110,9 @@ namespace OutOfPhase
 #endif
 
                 /* wrap phase */
-                Scan.CurrentPhase = Scan.CurrentPhase - Math.Floor(Scan.CurrentPhase);
+                LFOVector[i].CurrentPhase = LFOVector[i].CurrentPhase - Math.Floor(LFOVector[i].CurrentPhase);
 #if DEBUG
-                if (Scan.CurrentPhase >= 1)
+                if (LFOVector[i].CurrentPhase >= 1)
                 {
                     // phase has integer component
                     Debug.Assert(false);
@@ -1045,41 +1129,44 @@ namespace OutOfPhase
             LFOGenRec LFOGen,
             double OriginalValue)
         {
-            for (int i = 0; i < LFOGen.NumLFOs; i += 1)
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector;
+            if (unchecked((uint)LFOGen.NumLFOs > (uint)LFOVector.Length))
             {
-                LFOOneStateRec Scan = LFOGen.LFOVector[i];
-
+                throw new IndexOutOfRangeException();
+            }
+            for (int i = 0; i < LFOGen.NumLFOs; i++)
+            {
                 /* compute amplitude envelope/lfo thing */
                 double VariantAmplitude = LFOGenInitialValue(
-                    Scan.LFOAmplitudeLFOGenerator,
+                    LFOVector[i].LFOAmplitudeLFOGenerator,
                     EnvelopeInitialValue(
-                        Scan.LFOAmplitudeEnvelope));
+                        LFOVector[i].LFOAmplitudeEnvelope));
 
                 // specialized additional parameters for certain types
-                if (Scan.Operator == LFOOscTypes.eLFOWaveTable)
+                if (LFOVector[i].Operator == LFOOscTypes.eLFOWaveTable)
                 {
                     // WARNING: CurrentWaveTableIndex is updated here for the benefit of the GenFunction() below, but
                     // should be safe beacuse it will be regenerated fresh in the next LFOGenUpdateCycle() 
-                    Scan.CurrentWaveTableIndex = LFOGenInitialValue(
-                        Scan.WaveTableLFOGenerator,
+                    LFOVector[i].CurrentWaveTableIndex = LFOGenInitialValue(
+                        LFOVector[i].WaveTableLFOGenerator,
                         EnvelopeInitialValue(
-                            Scan.WaveTableIndexEnvelope));
+                            LFOVector[i].WaveTableIndexEnvelope));
                 }
 
                 /* perform the calculations */
 #if DEBUG
-                if ((Scan.ModulationMode != LFOArithSelect.eLFOArithAdditive)
-                    && (Scan.ModulationMode != LFOArithSelect.eLFOArithGeometric)
-                    && (Scan.ModulationMode != LFOArithSelect.eLFOArithHalfSteps))
+                if ((LFOVector[i].ModulationMode != LFOArithSelect.eLFOArithAdditive)
+                    && (LFOVector[i].ModulationMode != LFOArithSelect.eLFOArithGeometric)
+                    && (LFOVector[i].ModulationMode != LFOArithSelect.eLFOArithHalfSteps))
                 {
                     Debug.Assert(false);
                     throw new ArgumentException();
                 }
 #endif
-                if (Scan.ModulationMode == LFOArithSelect.eLFOArithAdditive)
+                if (LFOVector[i].ModulationMode == LFOArithSelect.eLFOArithAdditive)
                 {
-                    OriginalValue = Scan.GenFunction(
-                        Scan,
+                    OriginalValue = LFOVector[i].GenFunction(
+                        ref LFOVector[i],
                         OriginalValue,
                         VariantAmplitude);
                 }
@@ -1094,20 +1181,20 @@ namespace OutOfPhase
                     {
                         double ScalingConstant;
 
-                        if (Scan.ModulationMode == LFOArithSelect.eLFOArithGeometric)
+                        if (LFOVector[i].ModulationMode == LFOArithSelect.eLFOArithGeometric)
                         {
                             /* the LOG2 is to normalize the values, so that 1/12 will */
                             /* be 1 halfstep */
                             ScalingConstant = Constants.LOG2;
                         }
-                        else /* if (Scan.ModulationMode == eLFOArithHalfSteps) */
+                        else /* if (LFOVector[i].ModulationMode == eLFOArithHalfSteps) */
                         {
                             /* this one means 1 is a halfstep */
                             ScalingConstant = Constants.LOG2 / 12;
                         }
                         OriginalValue = Math.Exp(
-                            Scan.GenFunction(
-                                Scan,
+                            LFOVector[i].GenFunction(
+                                ref LFOVector[i],
                                 Math.Log(OriginalValue),
                                 VariantAmplitude * ScalingConstant));
                     }
@@ -1124,38 +1211,41 @@ namespace OutOfPhase
         /* pass the key-up impulse on to the envelopes contained inside */
         public static void LFOGeneratorKeyUpSustain1(LFOGenRec LFOGen)
         {
-            for (int i = 0; i < LFOGen.NumLFOs; i += 1)
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector;
+            if (unchecked((uint)LFOGen.NumLFOs > (uint)LFOVector.Length))
             {
-                LFOOneStateRec Scan = LFOGen.LFOVector[i];
-
+                throw new IndexOutOfRangeException();
+            }
+            for (int i = 0; i < LFOGen.NumLFOs; i++)
+            {
                 EnvelopeKeyUpSustain1(
-                    Scan.LFOAmplitudeEnvelope);
+                    LFOVector[i].LFOAmplitudeEnvelope);
                 EnvelopeKeyUpSustain1(
-                    Scan.LFOFrequencyEnvelope);
+                    LFOVector[i].LFOFrequencyEnvelope);
                 LFOGeneratorKeyUpSustain1(
-                    Scan.LFOAmplitudeLFOGenerator);
+                    LFOVector[i].LFOAmplitudeLFOGenerator);
                 LFOGeneratorKeyUpSustain1(
-                    Scan.LFOFrequencyLFOGenerator);
-                if (Scan.Operator == LFOOscTypes.eLFOWaveTable)
+                    LFOVector[i].LFOFrequencyLFOGenerator);
+                if (LFOVector[i].Operator == LFOOscTypes.eLFOWaveTable)
                 {
                     EnvelopeKeyUpSustain1(
-                        Scan.WaveTableIndexEnvelope);
+                        LFOVector[i].WaveTableIndexEnvelope);
                     LFOGeneratorKeyUpSustain1(
-                        Scan.WaveTableLFOGenerator);
+                        LFOVector[i].WaveTableLFOGenerator);
                 }
-                if (Scan.LowpassFilterEnabled)
+                if (LFOVector[i].LowpassFilterEnabled)
                 {
                     EnvelopeKeyUpSustain1(
-                        Scan.LFOFilterCutoffEnvelope);
+                        LFOVector[i].LFOFilterCutoffEnvelope);
                     LFOGeneratorKeyUpSustain1(
-                        Scan.LFOFilterCutoffLFOGenerator);
+                        LFOVector[i].LFOFilterCutoffLFOGenerator);
                 }
-                if (Scan.SampleAndHoldEnabled)
+                if (LFOVector[i].SampleAndHoldEnabled)
                 {
                     EnvelopeKeyUpSustain1(
-                        Scan.LFOSampleHoldEnvelope);
+                        LFOVector[i].LFOSampleHoldEnvelope);
                     LFOGeneratorKeyUpSustain1(
-                        Scan.LFOSampleHoldLFOGenerator);
+                        LFOVector[i].LFOSampleHoldLFOGenerator);
                 }
             }
         }
@@ -1163,38 +1253,41 @@ namespace OutOfPhase
         /* pass the key-up impulse on to the envelopes contained inside */
         public static void LFOGeneratorKeyUpSustain2(LFOGenRec LFOGen)
         {
-            for (int i = 0; i < LFOGen.NumLFOs; i += 1)
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector;
+            if (unchecked((uint)LFOGen.NumLFOs > (uint)LFOVector.Length))
             {
-                LFOOneStateRec Scan = LFOGen.LFOVector[i];
-
+                throw new IndexOutOfRangeException();
+            }
+            for (int i = 0; i < LFOGen.NumLFOs; i++)
+            {
                 EnvelopeKeyUpSustain2(
-                    Scan.LFOAmplitudeEnvelope);
+                    LFOVector[i].LFOAmplitudeEnvelope);
                 EnvelopeKeyUpSustain2(
-                    Scan.LFOFrequencyEnvelope);
+                    LFOVector[i].LFOFrequencyEnvelope);
                 LFOGeneratorKeyUpSustain2(
-                    Scan.LFOAmplitudeLFOGenerator);
+                    LFOVector[i].LFOAmplitudeLFOGenerator);
                 LFOGeneratorKeyUpSustain2(
-                    Scan.LFOFrequencyLFOGenerator);
-                if (Scan.Operator == LFOOscTypes.eLFOWaveTable)
+                    LFOVector[i].LFOFrequencyLFOGenerator);
+                if (LFOVector[i].Operator == LFOOscTypes.eLFOWaveTable)
                 {
                     EnvelopeKeyUpSustain2(
-                        Scan.WaveTableIndexEnvelope);
+                        LFOVector[i].WaveTableIndexEnvelope);
                     LFOGeneratorKeyUpSustain2(
-                        Scan.WaveTableLFOGenerator);
+                        LFOVector[i].WaveTableLFOGenerator);
                 }
-                if (Scan.LowpassFilterEnabled)
+                if (LFOVector[i].LowpassFilterEnabled)
                 {
                     EnvelopeKeyUpSustain2(
-                        Scan.LFOFilterCutoffEnvelope);
+                        LFOVector[i].LFOFilterCutoffEnvelope);
                     LFOGeneratorKeyUpSustain2(
-                        Scan.LFOFilterCutoffLFOGenerator);
+                        LFOVector[i].LFOFilterCutoffLFOGenerator);
                 }
-                if (Scan.SampleAndHoldEnabled)
+                if (LFOVector[i].SampleAndHoldEnabled)
                 {
                     EnvelopeKeyUpSustain2(
-                        Scan.LFOSampleHoldEnvelope);
+                        LFOVector[i].LFOSampleHoldEnvelope);
                     LFOGeneratorKeyUpSustain2(
-                        Scan.LFOSampleHoldLFOGenerator);
+                        LFOVector[i].LFOSampleHoldLFOGenerator);
                 }
             }
         }
@@ -1202,38 +1295,41 @@ namespace OutOfPhase
         /* pass the key-up impulse on to the envelopes contained inside */
         public static void LFOGeneratorKeyUpSustain3(LFOGenRec LFOGen)
         {
-            for (int i = 0; i < LFOGen.NumLFOs; i += 1)
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector;
+            if (unchecked((uint)LFOGen.NumLFOs > (uint)LFOVector.Length))
             {
-                LFOOneStateRec Scan = LFOGen.LFOVector[i];
-
+                throw new IndexOutOfRangeException();
+            }
+            for (int i = 0; i < LFOGen.NumLFOs; i++)
+            {
                 EnvelopeKeyUpSustain3(
-                    Scan.LFOAmplitudeEnvelope);
+                    LFOVector[i].LFOAmplitudeEnvelope);
                 EnvelopeKeyUpSustain3(
-                    Scan.LFOFrequencyEnvelope);
+                    LFOVector[i].LFOFrequencyEnvelope);
                 LFOGeneratorKeyUpSustain3(
-                    Scan.LFOAmplitudeLFOGenerator);
+                    LFOVector[i].LFOAmplitudeLFOGenerator);
                 LFOGeneratorKeyUpSustain3(
-                    Scan.LFOFrequencyLFOGenerator);
-                if (Scan.Operator == LFOOscTypes.eLFOWaveTable)
+                    LFOVector[i].LFOFrequencyLFOGenerator);
+                if (LFOVector[i].Operator == LFOOscTypes.eLFOWaveTable)
                 {
                     EnvelopeKeyUpSustain3(
-                        Scan.WaveTableIndexEnvelope);
+                        LFOVector[i].WaveTableIndexEnvelope);
                     LFOGeneratorKeyUpSustain3(
-                        Scan.WaveTableLFOGenerator);
+                        LFOVector[i].WaveTableLFOGenerator);
                 }
-                if (Scan.LowpassFilterEnabled)
+                if (LFOVector[i].LowpassFilterEnabled)
                 {
                     EnvelopeKeyUpSustain3(
-                        Scan.LFOFilterCutoffEnvelope);
+                        LFOVector[i].LFOFilterCutoffEnvelope);
                     LFOGeneratorKeyUpSustain3(
-                        Scan.LFOFilterCutoffLFOGenerator);
+                        LFOVector[i].LFOFilterCutoffLFOGenerator);
                 }
-                if (Scan.SampleAndHoldEnabled)
+                if (LFOVector[i].SampleAndHoldEnabled)
                 {
                     EnvelopeKeyUpSustain3(
-                        Scan.LFOSampleHoldEnvelope);
+                        LFOVector[i].LFOSampleHoldEnvelope);
                     LFOGeneratorKeyUpSustain3(
-                        Scan.LFOSampleHoldLFOGenerator);
+                        LFOVector[i].LFOSampleHoldLFOGenerator);
                 }
             }
         }
@@ -1249,12 +1345,15 @@ namespace OutOfPhase
             bool ActuallyRetrigger,
             SynthParamRec SynthParams)
         {
-            for (int i = 0; i < LFOGen.NumLFOs; i += 1)
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector;
+            if (unchecked((uint)LFOGen.NumLFOs > (uint)LFOVector.Length))
             {
-                LFOOneStateRec Scan = LFOGen.LFOVector[i];
-
+                throw new IndexOutOfRangeException();
+            }
+            for (int i = 0; i < LFOGen.NumLFOs; i++)
+            {
                 EnvelopeRetriggerFromOrigin(
-                    Scan.LFOAmplitudeEnvelope,
+                    LFOVector[i].LFOAmplitudeEnvelope,
                     ref Accents,
                     FrequencyHertz,
                     AmplitudeScaling,
@@ -1262,7 +1361,7 @@ namespace OutOfPhase
                     ActuallyRetrigger,
                     SynthParams);
                 EnvelopeRetriggerFromOrigin(
-                    Scan.LFOFrequencyEnvelope,
+                    LFOVector[i].LFOFrequencyEnvelope,
                     ref Accents,
                     FrequencyHertz,
                     FrequencyScaling,
@@ -1270,7 +1369,7 @@ namespace OutOfPhase
                     ActuallyRetrigger,
                     SynthParams);
                 LFOGeneratorRetriggerFromOrigin(
-                    Scan.LFOAmplitudeLFOGenerator,
+                    LFOVector[i].LFOAmplitudeLFOGenerator,
                     ref Accents,
                     FrequencyHertz,
                     HurryUp,
@@ -1279,7 +1378,7 @@ namespace OutOfPhase
                     ActuallyRetrigger,
                     SynthParams);
                 LFOGeneratorRetriggerFromOrigin(
-                    Scan.LFOFrequencyLFOGenerator,
+                    LFOVector[i].LFOFrequencyLFOGenerator,
                     ref Accents,
                     FrequencyHertz,
                     HurryUp,
@@ -1287,10 +1386,10 @@ namespace OutOfPhase
                     1/*no recursive scaling*/,
                     ActuallyRetrigger,
                     SynthParams);
-                if (Scan.Operator == LFOOscTypes.eLFOWaveTable)
+                if (LFOVector[i].Operator == LFOOscTypes.eLFOWaveTable)
                 {
                     EnvelopeRetriggerFromOrigin(
-                        Scan.WaveTableIndexEnvelope,
+                        LFOVector[i].WaveTableIndexEnvelope,
                         ref Accents,
                         FrequencyHertz,
                         FrequencyScaling,
@@ -1298,7 +1397,7 @@ namespace OutOfPhase
                         ActuallyRetrigger,
                         SynthParams);
                     LFOGeneratorRetriggerFromOrigin(
-                        Scan.WaveTableLFOGenerator,
+                        LFOVector[i].WaveTableLFOGenerator,
                         ref Accents,
                         FrequencyHertz,
                         HurryUp,
@@ -1307,10 +1406,10 @@ namespace OutOfPhase
                         ActuallyRetrigger,
                         SynthParams);
                 }
-                if (Scan.LowpassFilterEnabled)
+                if (LFOVector[i].LowpassFilterEnabled)
                 {
                     EnvelopeRetriggerFromOrigin(
-                        Scan.LFOFilterCutoffEnvelope,
+                        LFOVector[i].LFOFilterCutoffEnvelope,
                         ref Accents,
                         FrequencyHertz,
                         FrequencyScaling,
@@ -1318,7 +1417,7 @@ namespace OutOfPhase
                         ActuallyRetrigger,
                         SynthParams);
                     LFOGeneratorRetriggerFromOrigin(
-                        Scan.LFOFilterCutoffLFOGenerator,
+                        LFOVector[i].LFOFilterCutoffLFOGenerator,
                         ref Accents,
                         FrequencyHertz,
                         HurryUp,
@@ -1327,10 +1426,10 @@ namespace OutOfPhase
                         ActuallyRetrigger,
                         SynthParams);
                 }
-                if (Scan.SampleAndHoldEnabled)
+                if (LFOVector[i].SampleAndHoldEnabled)
                 {
                     EnvelopeRetriggerFromOrigin(
-                        Scan.LFOSampleHoldEnvelope,
+                        LFOVector[i].LFOSampleHoldEnvelope,
                         ref Accents,
                         FrequencyHertz,
                         FrequencyScaling,
@@ -1338,7 +1437,7 @@ namespace OutOfPhase
                         ActuallyRetrigger,
                         SynthParams);
                     LFOGeneratorRetriggerFromOrigin(
-                        Scan.LFOSampleHoldLFOGenerator,
+                        LFOVector[i].LFOSampleHoldLFOGenerator,
                         ref Accents,
                         FrequencyHertz,
                         HurryUp,
@@ -1353,56 +1452,59 @@ namespace OutOfPhase
         /* find out if LFO generator has started yet */
         public static bool HasLFOGeneratorStarted(LFOGenRec LFOGen)
         {
-            for (int i = 0; i < LFOGen.NumLFOs; i += 1)
+            LFOOneStateRec[] LFOVector = LFOGen.LFOVector;
+            if (unchecked((uint)LFOGen.NumLFOs > (uint)LFOVector.Length))
             {
-                LFOOneStateRec StateScan = LFOGen.LFOVector[i];
-
-                if (StateScan.Operator == LFOOscTypes.eLFOWaveTable)
+                throw new IndexOutOfRangeException();
+            }
+            for (int i = 0; i < LFOGen.NumLFOs; i++)
+            {
+                if (LFOVector[i].Operator == LFOOscTypes.eLFOWaveTable)
                 {
-                    if (HasEnvelopeStartedYet(StateScan.WaveTableIndexEnvelope))
+                    if (HasEnvelopeStartedYet(LFOVector[i].WaveTableIndexEnvelope))
                     {
                         return true;
                     }
-                    if (HasLFOGeneratorStarted(StateScan.WaveTableLFOGenerator))
+                    if (HasLFOGeneratorStarted(LFOVector[i].WaveTableLFOGenerator))
                     {
                         return true;
                     }
                 }
-                if (StateScan.LowpassFilterEnabled)
+                if (LFOVector[i].LowpassFilterEnabled)
                 {
-                    if (HasEnvelopeStartedYet(StateScan.LFOFilterCutoffEnvelope))
+                    if (HasEnvelopeStartedYet(LFOVector[i].LFOFilterCutoffEnvelope))
                     {
                         return true;
                     }
-                    if (HasLFOGeneratorStarted(StateScan.LFOFilterCutoffLFOGenerator))
+                    if (HasLFOGeneratorStarted(LFOVector[i].LFOFilterCutoffLFOGenerator))
                     {
                         return true;
                     }
                 }
-                if (StateScan.SampleAndHoldEnabled)
+                if (LFOVector[i].SampleAndHoldEnabled)
                 {
-                    if (HasEnvelopeStartedYet(StateScan.LFOSampleHoldEnvelope))
+                    if (HasEnvelopeStartedYet(LFOVector[i].LFOSampleHoldEnvelope))
                     {
                         return true;
                     }
-                    if (HasLFOGeneratorStarted(StateScan.LFOSampleHoldLFOGenerator))
+                    if (HasLFOGeneratorStarted(LFOVector[i].LFOSampleHoldLFOGenerator))
                     {
                         return true;
                     }
                 }
-                if (HasEnvelopeStartedYet(StateScan.LFOAmplitudeEnvelope))
-                {
-                    return true;
-                }
-                if (HasEnvelopeStartedYet(StateScan.LFOFrequencyEnvelope))
+                if (HasEnvelopeStartedYet(LFOVector[i].LFOAmplitudeEnvelope))
                 {
                     return true;
                 }
-                if (HasLFOGeneratorStarted(StateScan.LFOAmplitudeLFOGenerator))
+                if (HasEnvelopeStartedYet(LFOVector[i].LFOFrequencyEnvelope))
                 {
                     return true;
                 }
-                if (HasLFOGeneratorStarted(StateScan.LFOFrequencyLFOGenerator))
+                if (HasLFOGeneratorStarted(LFOVector[i].LFOAmplitudeLFOGenerator))
+                {
+                    return true;
+                }
+                if (HasLFOGeneratorStarted(LFOVector[i].LFOFrequencyLFOGenerator))
                 {
                     return true;
                 }
@@ -1419,32 +1521,36 @@ namespace OutOfPhase
                 && !LFOGen.LFOVector[LFOGen.NumLFOs - 1].LowpassFilterEnabled;
         }
 
+        private readonly static LFOGenFunctionMethod _AddConst = AddConst;
         private static double AddConst(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
             return OriginalValue + Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _AddSignSine = AddSignSine;
         private static double AddSignSine(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
             return OriginalValue + Amplitude * Math.Sin(State.CurrentPhase * 2 * Math.PI);
         }
 
+        private readonly static LFOGenFunctionMethod _AddPosSine = AddPosSine;
         private static double AddPosSine(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
             return OriginalValue + Amplitude * 0.5 * (1 + Math.Sin(State.CurrentPhase * 2 * Math.PI));
         }
 
+        private readonly static LFOGenFunctionMethod _AddSignTriangle = AddSignTriangle;
         private static double AddSignTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1465,8 +1571,9 @@ namespace OutOfPhase
             return OriginalValue + Temp * 4 * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _AddPosTriangle = AddPosTriangle;
         private static double AddPosTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1487,8 +1594,9 @@ namespace OutOfPhase
             return OriginalValue + (Temp + 0.25) * 2 * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _AddSignSquare = AddSignSquare;
         private static double AddSignSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1520,8 +1628,9 @@ namespace OutOfPhase
             return OriginalValue + Amplitude * ((State.CurrentPhase - Trough2) / (State.ExtraValue * 0.25) - 1);
         }
 
+        private readonly static LFOGenFunctionMethod _AddPosSquare = AddPosSquare;
         private static double AddPosSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1553,8 +1662,9 @@ namespace OutOfPhase
             return OriginalValue + Amplitude * 0.5 * (1 + ((State.CurrentPhase - Trough2) / (State.ExtraValue * 0.25) - 1));
         }
 
+        private readonly static LFOGenFunctionMethod _AddSignRamp = AddSignRamp;
         private static double AddSignRamp(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1568,8 +1678,9 @@ namespace OutOfPhase
             }
         }
 
+        private readonly static LFOGenFunctionMethod _AddPosRamp = AddPosRamp;
         private static double AddPosRamp(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1583,8 +1694,9 @@ namespace OutOfPhase
             }
         }
 
+        private readonly static LFOGenFunctionMethod _AddSignFuzzTriangle = AddSignFuzzTriangle;
         private static double AddSignFuzzTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1592,8 +1704,9 @@ namespace OutOfPhase
             return OriginalValue + (2 * ReturnValue - 1) * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _AddSignFuzzSquare = AddSignFuzzSquare;
         private static double AddSignFuzzSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1601,8 +1714,9 @@ namespace OutOfPhase
             return OriginalValue + (2 * ReturnValue - 1) * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _AddPosFuzzTriangle = AddPosFuzzTriangle;
         private static double AddPosFuzzTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1610,8 +1724,9 @@ namespace OutOfPhase
             return OriginalValue + ReturnValue * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _AddPosFuzzSquare = AddPosFuzzSquare;
         private static double AddPosFuzzSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1619,32 +1734,36 @@ namespace OutOfPhase
             return OriginalValue + ReturnValue * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _MultConst = MultConst;
         private static double MultConst(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
             return OriginalValue * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _MultSignSine = MultSignSine;
         private static double MultSignSine(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
             return OriginalValue * Amplitude * Math.Sin(State.CurrentPhase * 2 * Math.PI);
         }
 
+        private readonly static LFOGenFunctionMethod _MultPosSine = MultPosSine;
         private static double MultPosSine(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
             return OriginalValue * Amplitude * 0.5 * (1 + Math.Sin(State.CurrentPhase * 2 * Math.PI));
         }
 
+        private readonly static LFOGenFunctionMethod _MultSignTriangle = MultSignTriangle;
         private static double MultSignTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1665,8 +1784,9 @@ namespace OutOfPhase
             return OriginalValue * Temp * 4 * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _MultPosTriangle = MultPosTriangle;
         private static double MultPosTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1687,8 +1807,9 @@ namespace OutOfPhase
             return OriginalValue * (Temp + 0.25) * 2 * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _MultSignSquare = MultSignSquare;
         private static double MultSignSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1720,8 +1841,9 @@ namespace OutOfPhase
             return OriginalValue * Amplitude * ((State.CurrentPhase - Trough2) / (State.ExtraValue * 0.25) - 1);
         }
 
+        private readonly static LFOGenFunctionMethod _MultPosSquare = MultPosSquare;
         private static double MultPosSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1753,8 +1875,9 @@ namespace OutOfPhase
             return OriginalValue * Amplitude * 0.5 * (1 + ((State.CurrentPhase - Trough2) / (State.ExtraValue * 0.25) - 1));
         }
 
+        private readonly static LFOGenFunctionMethod _MultSignRamp = MultSignRamp;
         private static double MultSignRamp(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1768,8 +1891,9 @@ namespace OutOfPhase
             }
         }
 
+        private readonly static LFOGenFunctionMethod _MultPosRamp = MultPosRamp;
         private static double MultPosRamp(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1783,8 +1907,9 @@ namespace OutOfPhase
             }
         }
 
+        private readonly static LFOGenFunctionMethod _MultSignFuzzTriangle = MultSignFuzzTriangle;
         private static double MultSignFuzzTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1792,8 +1917,9 @@ namespace OutOfPhase
             return OriginalValue * (2 * ReturnValue - 1) * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _MultSignFuzzSquare = MultSignFuzzSquare;
         private static double MultSignFuzzSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1801,8 +1927,9 @@ namespace OutOfPhase
             return OriginalValue * (2 * ReturnValue - 1) * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _MultPosFuzzTriangle = MultPosFuzzTriangle;
         private static double MultPosFuzzTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1810,8 +1937,9 @@ namespace OutOfPhase
             return OriginalValue * ReturnValue * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _MultPosFuzzSquare = MultPosFuzzSquare;
         private static double MultPosFuzzSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1819,32 +1947,36 @@ namespace OutOfPhase
             return OriginalValue * ReturnValue * Amplitude;
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultConst = InvMultConst;
         private static double InvMultConst(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
             return OriginalValue * (1 - Amplitude);
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultSignSine = InvMultSignSine;
         private static double InvMultSignSine(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
             return OriginalValue * (1 - Amplitude * Math.Sin(State.CurrentPhase * 2 * Math.PI));
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultPosSine = InvMultPosSine;
         private static double InvMultPosSine(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
             return OriginalValue * (1 - Amplitude * 0.5 * (1 + Math.Sin(State.CurrentPhase * 2 * Math.PI)));
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultSignTriangle = InvMultSignTriangle;
         private static double InvMultSignTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1865,8 +1997,9 @@ namespace OutOfPhase
             return OriginalValue * (1 - Temp * 4 * Amplitude);
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultPosTriangle = InvMultPosTriangle;
         private static double InvMultPosTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1887,8 +2020,9 @@ namespace OutOfPhase
             return OriginalValue * (1 - ((Temp + 0.25) * 2 * Amplitude));
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultSignSquare = InvMultSignSquare;
         private static double InvMultSignSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1920,8 +2054,9 @@ namespace OutOfPhase
             return OriginalValue * (1 - Amplitude * ((State.CurrentPhase - Trough2) / (State.ExtraValue * 0.25) - 1));
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultPosSquare = InvMultPosSquare;
         private static double InvMultPosSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1953,8 +2088,9 @@ namespace OutOfPhase
             return OriginalValue * (1 - Amplitude * 0.5 * (1 + ((State.CurrentPhase - Trough2) / (State.ExtraValue * 0.25) - 1)));
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultSignRamp = InvMultSignRamp;
         private static double InvMultSignRamp(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1968,8 +2104,9 @@ namespace OutOfPhase
             }
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultPosRamp = InvMultPosRamp;
         private static double InvMultPosRamp(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1983,8 +2120,9 @@ namespace OutOfPhase
             }
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultSignFuzzTriangle = InvMultSignFuzzTriangle;
         private static double InvMultSignFuzzTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -1992,8 +2130,9 @@ namespace OutOfPhase
             return OriginalValue * (1 - (2 * ReturnValue - 1) * Amplitude);
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultSignFuzzSquare = InvMultSignFuzzSquare;
         private static double InvMultSignFuzzSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -2001,8 +2140,9 @@ namespace OutOfPhase
             return OriginalValue * (1 - (2 * ReturnValue - 1) * Amplitude);
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultPosFuzzTriangle = InvMultPosFuzzTriangle;
         private static double InvMultPosFuzzTriangle(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -2010,8 +2150,9 @@ namespace OutOfPhase
             return OriginalValue * (1 - ReturnValue * Amplitude);
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultPosFuzzSquare = InvMultPosFuzzSquare;
         private static double InvMultPosFuzzSquare(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -2019,8 +2160,9 @@ namespace OutOfPhase
             return OriginalValue * (1 - ReturnValue * Amplitude);
         }
 
+        private readonly static LFOGenFunctionMethod _AddWaveTable = AddWaveTable;
         private static double AddWaveTable(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -2038,8 +2180,9 @@ namespace OutOfPhase
             return OriginalValue;
         }
 
+        private readonly static LFOGenFunctionMethod _MultWaveTable = MultWaveTable;
         private static double MultWaveTable(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -2057,8 +2200,9 @@ namespace OutOfPhase
             return 0;
         }
 
+        private readonly static LFOGenFunctionMethod _InvMultWaveTable = InvMultWaveTable;
         private static double InvMultWaveTable(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude)
         {
@@ -2078,7 +2222,7 @@ namespace OutOfPhase
 
 #if LFO_LOOPENV // TODO: experimental - looped-envelope lfo
         private static double LoopedEnvelopeHelper(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OscillatorFrequency,
             SynthParamRec SynthParams,
             ref SynthErrorCodes ErrorRef)
@@ -2098,7 +2242,7 @@ namespace OutOfPhase
         }
 
         private static double AddLoopedEnvelope(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
@@ -2114,7 +2258,7 @@ namespace OutOfPhase
         }
 
         private static double MultLoopedEnvelope(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,
@@ -2130,7 +2274,7 @@ namespace OutOfPhase
         }
 
         private static double InvMultLoopedEnvelope(
-            LFOOneStateRec State,
+            ref LFOOneStateRec State,
             double OriginalValue,
             double Amplitude,
             double OscillatorFrequency,

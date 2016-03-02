@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -58,6 +59,7 @@ namespace OutOfPhase
             Pitch = 512, // for dynamic Double only - which parameter serves as the pitch envelope (at most one param can have this)
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct PluggableParameter
         {
             public string ParserName;
@@ -415,6 +417,7 @@ namespace OutOfPhase
             }
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct PluggableOscStaticParam
         {
             public readonly double Value;
@@ -429,6 +432,7 @@ namespace OutOfPhase
             }
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct PluggableOscDynamicParam
         {
             public readonly EnvelopeRec EnvelopeTemplate;
@@ -448,7 +452,7 @@ namespace OutOfPhase
             public readonly IPluggableProcessor Processor;
 
             public readonly PluggableOscDynamicEvalParam[] DynamicDoubleParams;
-            public readonly double[] DynamicDoubleParamCurrent;
+            public readonly double[] DynamicDoubleParamsCurrent;
             public readonly int PitchParameterOffset;
             public readonly int LoudnessParameterOffset;
 
@@ -487,7 +491,7 @@ namespace OutOfPhase
                 this.Template = Template;
                 this.Processor = Processor;
                 this.DynamicDoubleParams = DynamicDoubleParams;
-                this.DynamicDoubleParamCurrent = DynamicDoubleParamCurrent;
+                this.DynamicDoubleParamsCurrent = DynamicDoubleParamCurrent;
                 this.PitchParameterOffset = Template.PitchParamOffset;
                 this.LoudnessParameterOffset = Template.LoudnessParamOffset;
                 this.NoteLoudnessScaling = NoteLoudnessScaling;
@@ -609,12 +613,6 @@ namespace OutOfPhase
                         TrackInfo,
                         synthParams);
                     maxPreOrigin = Math.Max(maxPreOrigin, OnePreOrigin);
-
-                    // initial value for envelope smoothing
-                    dynamicDoubleParamsCurrent[i] = LFOGenInitialValue(
-                        dynamicDoubleParams[i].LFOGenerator,
-                        EnvelopeInitialValue(
-                           dynamicDoubleParams[i].Envelope));
                 }
 
                 OscEffectGenRec oscEffectGenerator = null;
@@ -684,16 +682,16 @@ namespace OutOfPhase
 
                 // frequency computation first
                 NewFrequencyHertz = NewFrequencyHertz * Template.FrequencyMultiplier + Template.FrequencyAdder;
-                DynamicDoubleParams[PitchParameterOffset].Previous = DynamicDoubleParamCurrent[PitchParameterOffset];
+                DynamicDoubleParams[PitchParameterOffset].Previous = DynamicDoubleParamsCurrent[PitchParameterOffset];
                 if (PitchLFOStartCountdown > 0)
                 {
                     PitchLFOStartCountdown -= 1;
-                    DynamicDoubleParamCurrent[PitchParameterOffset] = NewFrequencyHertz;
+                    DynamicDoubleParamsCurrent[PitchParameterOffset] = NewFrequencyHertz;
                 }
                 else
                 {
                     error = SynthErrorCodes.eSynthDone;
-                    DynamicDoubleParamCurrent[PitchParameterOffset] =
+                    DynamicDoubleParamsCurrent[PitchParameterOffset] =
                         LFOGenUpdateCycle(
                             DynamicDoubleParams[PitchParameterOffset].LFOGenerator,
                             NewFrequencyHertz * EnvelopeUpdate(
@@ -720,8 +718,8 @@ namespace OutOfPhase
                     double scaling = i == LoudnessParameterOffset ? NoteLoudnessScaling : 1;
 
                     error = SynthErrorCodes.eSynthDone;
-                    DynamicDoubleParams[i].Previous = DynamicDoubleParamCurrent[i];
-                    DynamicDoubleParamCurrent[i] = scaling *
+                    DynamicDoubleParams[i].Previous = DynamicDoubleParamsCurrent[i];
+                    DynamicDoubleParamsCurrent[i] = scaling *
                         LFOGenUpdateCycle(
                             DynamicDoubleParams[i].LFOGenerator,
                             EnvelopeUpdate(
@@ -750,7 +748,7 @@ namespace OutOfPhase
                     }
                 }
 
-                error = Processor.Update(DynamicDoubleParamCurrent);
+                error = Processor.Update(DynamicDoubleParamsCurrent);
                 if (error != SynthErrorCodes.eSynthDone)
                 {
                     return error;
@@ -769,6 +767,14 @@ namespace OutOfPhase
                     LFOGeneratorFixEnvelopeOrigins(
                         DynamicDoubleParams[i].LFOGenerator,
                         ActualPreOrigin);
+
+                    // initial value for envelope smoothing
+                    double scaling = i == LoudnessParameterOffset ? NoteLoudnessScaling : 1;
+                    DynamicDoubleParamsCurrent[i] = scaling *
+                        LFOGenInitialValue(
+                            DynamicDoubleParams[i].LFOGenerator,
+                            EnvelopeInitialValue(
+                               DynamicDoubleParams[i].Envelope));
                 }
 
                 if (OscEffectGenerator != null)
@@ -922,7 +928,7 @@ namespace OutOfPhase
                 for (int i = 0; i < Template.SmoothedParamOffsets.Length; i++)
                 {
                     int index = Template.SmoothedParamOffsets[i];
-                    float localCurrentValue = (float)DynamicDoubleParamCurrent[index];
+                    float localCurrentValue = (float)DynamicDoubleParamsCurrent[index];
                     float localPreviousValue = (float)DynamicDoubleParams[index].Previous;
 
                     // intentional discretization by means of sample-and-hold lfo should not be smoothed.
@@ -1060,9 +1066,20 @@ namespace OutOfPhase
                 {
                     FinalizeOscEffectGenerator(OscEffectGenerator, SynthParams, writeOutputLogs);
                 }
+
+                for (int i = 0; i < DynamicDoubleParams.Length; i++)
+                {
+                    FreeEnvelopeStateRecord(
+                        ref DynamicDoubleParams[i].Envelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref DynamicDoubleParams[i].LFOGenerator,
+                        SynthParams);
+                }
             }
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct PluggableOscDynamicEvalParam
         {
             //public double Current; -- stored separately
@@ -1174,7 +1191,7 @@ namespace OutOfPhase
             public readonly IPluggableProcessor Processor;
 
             public readonly PluggableOscDynamicEvalParam[] DynamicDoubleParams;
-            public readonly double[] DynamicDoubleParamCurrent;
+            public readonly double[] DynamicDoubleParamsCurrent;
 
             public readonly bool[] smoothedNonConst;
             public readonly int[] smoothedWorkspaceBases;
@@ -1191,7 +1208,7 @@ namespace OutOfPhase
                 this.Template = Template;
                 this.Processor = Processor;
                 this.DynamicDoubleParams = DynamicDoubleParams;
-                this.DynamicDoubleParamCurrent = DynamicDoubleParamsCurrent;
+                this.DynamicDoubleParamsCurrent = DynamicDoubleParamsCurrent;
 
                 this.smoothedNonConst = new bool[Template.SmoothedParamOffsets.Length];
                 PluggableAllocateWorkspaces(
@@ -1291,12 +1308,6 @@ namespace OutOfPhase
                         TrackInfo,
                         SynthParams);
                     maxPreOrigin = Math.Max(maxPreOrigin, OnePreOrigin);
-
-                    // initial value for envelope smoothing
-                    dynamicDoubleParamsCurrent[i] = LFOGenInitialValue(
-                        dynamicDoubleParams[i].LFOGenerator,
-                        EnvelopeInitialValue(
-                           dynamicDoubleParams[i].Envelope));
                 }
 
                 IPluggableProcessor processor;
@@ -1332,6 +1343,12 @@ namespace OutOfPhase
                     LFOGeneratorFixEnvelopeOrigins(
                         DynamicDoubleParams[i].LFOGenerator,
                         ActualPreOrigin);
+
+                    // initial value for envelope smoothing
+                    DynamicDoubleParamsCurrent[i] = LFOGenInitialValue(
+                        DynamicDoubleParams[i].LFOGenerator,
+                        EnvelopeInitialValue(
+                           DynamicDoubleParams[i].Envelope));
                 }
             }
 
@@ -1344,8 +1361,8 @@ namespace OutOfPhase
                 for (int i = 0; i < DynamicDoubleParams.Length; i++)
                 {
                     error = SynthErrorCodes.eSynthDone;
-                    DynamicDoubleParams[i].Previous = DynamicDoubleParamCurrent[i];
-                    DynamicDoubleParamCurrent[i] = LFOGenUpdateCycle(
+                    DynamicDoubleParams[i].Previous = DynamicDoubleParamsCurrent[i];
+                    DynamicDoubleParamsCurrent[i] = LFOGenUpdateCycle(
                         DynamicDoubleParams[i].LFOGenerator,
                         EnvelopeUpdate(
                             DynamicDoubleParams[i].Envelope,
@@ -1361,7 +1378,7 @@ namespace OutOfPhase
                     }
                 }
 
-                error = Processor.Update(DynamicDoubleParamCurrent);
+                error = Processor.Update(DynamicDoubleParamsCurrent);
                 if (error != SynthErrorCodes.eSynthDone)
                 {
                     return error;
@@ -1466,7 +1483,7 @@ namespace OutOfPhase
                 for (int i = 0; i < Template.SmoothedParamOffsets.Length; i++)
                 {
                     int index = Template.SmoothedParamOffsets[i];
-                    float localCurrentValue = (float)DynamicDoubleParamCurrent[index];
+                    float localCurrentValue = (float)DynamicDoubleParamsCurrent[index];
                     float localPreviousValue = (float)DynamicDoubleParams[index].Previous;
 
                     // intentional discretization by means of sample-and-hold lfo should not be smoothed.
@@ -1517,6 +1534,16 @@ namespace OutOfPhase
                 bool writeOutputLogs)
             {
                 Processor.Finalize(SynthParams, writeOutputLogs);
+
+                for (int i = 0; i < DynamicDoubleParams.Length; i++)
+                {
+                    FreeEnvelopeStateRecord(
+                        ref DynamicDoubleParams[i].Envelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref DynamicDoubleParams[i].LFOGenerator,
+                        SynthParams);
+                }
             }
         }
 
@@ -1613,6 +1640,7 @@ namespace OutOfPhase
             }
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct PluggableTrackStaticParam
         {
             public readonly double Value;
@@ -1625,6 +1653,7 @@ namespace OutOfPhase
             }
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct PluggableTrackDynamicParam
         {
             public readonly double Value;
@@ -1824,6 +1853,7 @@ namespace OutOfPhase
             }
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct PluggableTrackDynamicEvalParam
         {
             //public double Current; -- stored separately

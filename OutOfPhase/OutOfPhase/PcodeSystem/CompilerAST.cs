@@ -36,17 +36,23 @@ namespace OutOfPhase
             public readonly Dictionary<string, int> argumentTable;
             public readonly Dictionary<SymbolRec, LocalBuilder> variableTable;
             public readonly ManagedFunctionLinkerRec managedFunctionLinker;
+            public readonly bool argsByRef;
+            public readonly Dictionary<string, LocalBuilder> localArgMap;
 
             public ILGenContext(
                 ILGenerator ilGenerator,
                 Dictionary<string, int> argumentTable,
                 Dictionary<SymbolRec, LocalBuilder> variableTable,
-                ManagedFunctionLinkerRec managedFunctionLinker)
+                ManagedFunctionLinkerRec managedFunctionLinker,
+                bool argsByRef,
+                Dictionary<string, LocalBuilder> localArgMap)
             {
                 this.ilGenerator = ilGenerator;
                 this.argumentTable = argumentTable;
                 this.variableTable = variableTable;
                 this.managedFunctionLinker = managedFunctionLinker;
+                this.argsByRef = argsByRef;
+                this.localArgMap = localArgMap;
             }
         }
 
@@ -292,6 +298,13 @@ namespace OutOfPhase
 
                 replacementExpr = null;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("var {0}({1})", symbol, sizeExpression);
+            }
+#endif
         }
 
 
@@ -592,10 +605,18 @@ namespace OutOfPhase
                                 default:
                                     Debug.Assert(false);
                                     throw new InvalidOperationException();
+
                                 case DataTypes.eBoolean:
                                 case DataTypes.eInteger:
                                 case DataTypes.eFloat:
                                 case DataTypes.eDouble:
+
+                                case DataTypes.eArrayOfBoolean:
+                                case DataTypes.eArrayOfByte:
+                                case DataTypes.eArrayOfInteger:
+                                case DataTypes.eArrayOfFloat:
+                                case DataTypes.eArrayOfDouble:
+
                                     if (context.variableTable.ContainsKey(TheVariable)) // local variables can mask arguments
                                     {
                                         LocalBuilder localVariable = context.variableTable[TheVariable];
@@ -604,124 +625,21 @@ namespace OutOfPhase
                                     }
                                     else if (context.argumentTable.ContainsKey(TheVariable.SymbolName))
                                     {
-                                        int argIndex = context.argumentTable[TheVariable.SymbolName];
+                                        Debug.Assert(!context.argsByRef);
                                         context.ilGenerator.Emit(OpCodes.Dup);
+                                        int argIndex = context.argumentTable[TheVariable.SymbolName];
                                         context.ilGenerator.Emit(OpCodes.Starg, argIndex);
+                                    }
+                                    else if (context.localArgMap.ContainsKey(TheVariable.SymbolName))
+                                    {
+                                        Debug.Assert(context.argsByRef);
+                                        context.ilGenerator.Emit(OpCodes.Dup);
+                                        context.ilGenerator.Emit(OpCodes.Stloc, context.localArgMap[TheVariable.SymbolName]);
                                     }
                                     else
                                     {
                                         Debug.Assert(false);
                                         throw new InvalidOperationException();
-                                    }
-                                    break;
-
-                                case DataTypes.eArrayOfBoolean:
-                                case DataTypes.eArrayOfByte:
-                                case DataTypes.eArrayOfInteger:
-                                case DataTypes.eArrayOfFloat:
-                                case DataTypes.eArrayOfDouble:
-                                    {
-                                        // This has unusual semantics: update of existing array transfers the array ref without
-                                        // changing the handle. This allows out-arg behavior for assigning an array arg
-                                        // that was passed in.
-                                        LocalBuilder localVariable = null;
-                                        int argIndex = -1;
-                                        if (context.variableTable.ContainsKey(TheVariable)) // local variables can mask arguments
-                                        {
-                                            localVariable = context.variableTable[TheVariable];
-                                        }
-                                        else if (context.argumentTable.ContainsKey(TheVariable.SymbolName))
-                                        {
-                                            argIndex = context.argumentTable[TheVariable.SymbolName];
-                                        }
-                                        else
-                                        {
-                                            Debug.Assert(false);
-                                            throw new InvalidOperationException();
-                                        }
-                                        Label labelEnd = context.ilGenerator.DefineLabel();
-                                        Label labelCopy = context.ilGenerator.DefineLabel();
-                                        context.ilGenerator.Emit(OpCodes.Dup);
-                                        context.ilGenerator.Emit(OpCodes.Brfalse, labelCopy);
-                                        if (localVariable != null)
-                                        {
-                                            context.ilGenerator.Emit(OpCodes.Ldloc, localVariable);
-                                        }
-                                        else
-                                        {
-                                            context.ilGenerator.Emit(OpCodes.Ldarg, (short)argIndex); // operand is 'short' -- see https://msdn.microsoft.com/en-us/library/system.reflection.emit.opcodes.ldarg(v=vs.110).aspx
-                                        }
-                                        context.ilGenerator.Emit(OpCodes.Brfalse, labelCopy);
-                                        // transfer inner array ref
-                                        context.ilGenerator.Emit(OpCodes.Dup);
-                                        LocalBuilder scratchRValue;
-                                        switch (TheVariable.VariableDataType)
-                                        {
-                                            default:
-                                                Debug.Assert(false);
-                                                throw new InvalidOperationException();
-                                            case DataTypes.eArrayOfBoolean:
-                                                scratchRValue = context.ilGenerator.DeclareLocal(typeof(byte[]));
-                                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleByte).GetField("bytes"));
-                                                break;
-                                            case DataTypes.eArrayOfInteger:
-                                                scratchRValue = context.ilGenerator.DeclareLocal(typeof(int[]));
-                                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleInt32).GetField("ints"));
-                                                break;
-                                            case DataTypes.eArrayOfFloat:
-                                                scratchRValue = context.ilGenerator.DeclareLocal(typeof(float[]));
-                                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleFloat).GetField("floats"));
-                                                break;
-                                            case DataTypes.eArrayOfDouble:
-                                                scratchRValue = context.ilGenerator.DeclareLocal(typeof(double[]));
-                                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleDouble).GetField("doubles"));
-                                                break;
-                                        }
-                                        context.ilGenerator.Emit(OpCodes.Stloc, scratchRValue);
-                                        if (localVariable != null)
-                                        {
-                                            context.ilGenerator.Emit(OpCodes.Ldloc, localVariable);
-                                        }
-                                        else
-                                        {
-                                            context.ilGenerator.Emit(OpCodes.Ldarg, (short)argIndex); // operand is 'short' -- see https://msdn.microsoft.com/en-us/library/system.reflection.emit.opcodes.ldarg(v=vs.110).aspx
-                                        }
-                                        context.ilGenerator.Emit(OpCodes.Ldloc, scratchRValue);
-                                        switch (TheVariable.VariableDataType)
-                                        {
-                                            default:
-                                                Debug.Assert(false);
-                                                throw new InvalidOperationException();
-                                            case DataTypes.eArrayOfBoolean:
-                                                scratchRValue = context.ilGenerator.DeclareLocal(typeof(byte[]));
-                                                context.ilGenerator.Emit(OpCodes.Stfld, typeof(ArrayHandleByte).GetField("bytes"));
-                                                break;
-                                            case DataTypes.eArrayOfInteger:
-                                                scratchRValue = context.ilGenerator.DeclareLocal(typeof(int[]));
-                                                context.ilGenerator.Emit(OpCodes.Stfld, typeof(ArrayHandleInt32).GetField("ints"));
-                                                break;
-                                            case DataTypes.eArrayOfFloat:
-                                                scratchRValue = context.ilGenerator.DeclareLocal(typeof(float[]));
-                                                context.ilGenerator.Emit(OpCodes.Stfld, typeof(ArrayHandleFloat).GetField("floats"));
-                                                break;
-                                            case DataTypes.eArrayOfDouble:
-                                                scratchRValue = context.ilGenerator.DeclareLocal(typeof(double[]));
-                                                context.ilGenerator.Emit(OpCodes.Stfld, typeof(ArrayHandleDouble).GetField("doubles"));
-                                                break;
-                                        }
-                                        context.ilGenerator.Emit(OpCodes.Br, labelEnd);
-                                        // simple copy
-                                        context.ilGenerator.MarkLabel(labelCopy);
-                                        context.ilGenerator.Emit(OpCodes.Dup);
-                                        if (localVariable != null)
-                                        {
-                                            context.ilGenerator.Emit(OpCodes.Stloc, localVariable);
-                                        }
-                                        else
-                                        {
-                                            context.ilGenerator.Emit(OpCodes.Starg, argIndex);
-                                        }
-                                        context.ilGenerator.MarkLabel(labelEnd);
                                     }
                                     break;
                             }
@@ -838,6 +756,13 @@ namespace OutOfPhase
                 DidSomething = WeDidSomething;
                 ReplacementExpr = null;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("set {0} := {1}", lValueGenerator, objectValue);
+            }
+#endif
         }
 
 
@@ -2428,6 +2353,11 @@ namespace OutOfPhase
                         break;
 
                     case BinaryOperatorKind.eBinaryResizeArray:
+                        Debug.Assert((this.LeftArg.ResultType == DataTypes.eArrayOfBoolean)
+                            || (this.LeftArg.ResultType == DataTypes.eArrayOfByte)
+                            || (this.LeftArg.ResultType == DataTypes.eArrayOfInteger)
+                            || (this.LeftArg.ResultType == DataTypes.eArrayOfFloat)
+                            || (this.LeftArg.ResultType == DataTypes.eArrayOfDouble));
                         if (this.RightArg.ResultType != DataTypes.eInteger)
                         {
                             // CodeGenBinaryOperator[eBinaryResizeArray]:  type check failure -- right operand isn't an integer
@@ -2435,60 +2365,11 @@ namespace OutOfPhase
                             throw new InvalidOperationException();
                         }
                         {
-                            // save subscript to dereference array handle
-                            LocalBuilder scratchVariable = context.ilGenerator.DeclareLocal(typeof(int));
-                            context.ilGenerator.Emit(OpCodes.Stloc, scratchVariable);
+                            LocalBuilder newLength = context.ilGenerator.DeclareLocal(typeof(int));
+                            context.ilGenerator.Emit(OpCodes.Stloc, newLength); // save new size to get at array handle
                             context.ilGenerator.Emit(OpCodes.Dup); // duplicate array handle for return value
-                            switch (this.LeftArg.ResultType)
-                            {
-                                default:
-                                    // CodeGenBinaryOperator[eBinaryResizeArray]:  bad operand types
-                                    Debug.Assert(false);
-                                    throw new InvalidOperationException();
-                                case DataTypes.eArrayOfBoolean:
-                                case DataTypes.eArrayOfByte:
-                                    context.ilGenerator.Emit(OpCodes.Ldflda, typeof(ArrayHandleByte).GetField("bytes"));
-                                    break;
-                                case DataTypes.eArrayOfInteger:
-                                    context.ilGenerator.Emit(OpCodes.Ldflda, typeof(ArrayHandleInt32).GetField("ints"));
-                                    break;
-                                case DataTypes.eArrayOfFloat:
-                                    context.ilGenerator.Emit(OpCodes.Ldflda, typeof(ArrayHandleFloat).GetField("floats"));
-                                    break;
-                                case DataTypes.eArrayOfDouble:
-                                    context.ilGenerator.Emit(OpCodes.Ldflda, typeof(ArrayHandleDouble).GetField("doubles"));
-                                    break;
-                            }
-                            context.ilGenerator.Emit(OpCodes.Ldloc, scratchVariable);
-                            MethodInfo resizeMethod = null;
-                            foreach (MethodInfo methodInfo in typeof(Array).GetMethods())
-                            {
-                                if (String.Equals(methodInfo.Name, "Resize"))
-                                {
-                                    resizeMethod = methodInfo;
-                                    break;
-                                }
-                            }
-                            switch (this.LeftArg.ResultType)
-                            {
-                                default:
-                                    // CodeGenBinaryOperator[eBinaryResizeArray]:  bad operand types
-                                    Debug.Assert(false);
-                                    throw new InvalidOperationException();
-                                case DataTypes.eArrayOfBoolean:
-                                case DataTypes.eArrayOfByte:
-                                    context.ilGenerator.Emit(OpCodes.Call, resizeMethod.MakeGenericMethod(new Type[] { typeof(byte) }));
-                                    break;
-                                case DataTypes.eArrayOfInteger:
-                                    context.ilGenerator.Emit(OpCodes.Call, resizeMethod.MakeGenericMethod(new Type[] { typeof(int) }));
-                                    break;
-                                case DataTypes.eArrayOfFloat:
-                                    context.ilGenerator.Emit(OpCodes.Call, resizeMethod.MakeGenericMethod(new Type[] { typeof(float) }));
-                                    break;
-                                case DataTypes.eArrayOfDouble:
-                                    context.ilGenerator.Emit(OpCodes.Call, resizeMethod.MakeGenericMethod(new Type[] { typeof(double) }));
-                                    break;
-                            }
+                            context.ilGenerator.Emit(OpCodes.Ldloc, newLength);
+                            context.ilGenerator.Emit(OpCodes.Callvirt, typeof(ArrayHandle).GetMethod("Resize"));
                         }
                         break;
                 }
@@ -3472,6 +3353,13 @@ namespace OutOfPhase
 
                 DidSomething = WeDidSomething;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("{0}({1},{2})", kind, LeftArg, rightArg);
+            }
+#endif
         }
 
 
@@ -3922,6 +3810,13 @@ namespace OutOfPhase
                 Debug.Assert(LocalResultType == this.resultType);
                 DidSomething = WeDidSomething;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("if {0} then{3}{1}{3}else{3}{2}", conditional, ASTExpressionList.IndentAll(consequent.ToString()), ASTExpressionList.IndentAll(alternate != null ? alternate.ToString() : "()"), Environment.NewLine);
+            }
+#endif
         }
 
 
@@ -4042,6 +3937,13 @@ namespace OutOfPhase
 
                 replacementExpression = null;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("error \"{0}\" resumable {1}", messageString, resumeCondition);
+            }
+#endif
         }
 
 
@@ -4696,6 +4598,13 @@ namespace OutOfPhase
 
                 DidSomething = OneDidSomething;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return u.ToString();
+            }
+#endif
         }
 
 
@@ -4947,6 +4856,39 @@ namespace OutOfPhase
 
                 DidSomething = WeDidSomething;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("(");
+                ASTExpressionList scan = this;
+                while (scan != null)
+                {
+                    sb.Append(IndentAll(scan.first.ToString()));
+                    sb.AppendLine(";");
+                    scan = scan.rest;
+                }
+                sb.Append(")");
+                return sb.ToString();
+            }
+
+            public static string IndentAll(string s)
+            {
+                StringBuilder sb = new StringBuilder();
+                string[] lines = s.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    sb.Append("\t");
+                    sb.Append(lines[i]);
+                    if (i < lines.Length - 1)
+                    {
+                        sb.AppendLine();
+                    }
+                }
+                return sb.ToString();
+            }
+#endif
         }
 
 
@@ -5043,6 +4985,28 @@ namespace OutOfPhase
                     true/*isFunctionArgumentList*/);
                 Debug.Assert(replacementExpr == null);
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append("(");
+                ASTExpressionList scan = argumentList;
+                bool first = true;
+                while (scan != null)
+                {
+                    if (!first)
+                    {
+                        sb.Append(", ");
+                    }
+                    first = false;
+                    sb.Append(scan.First);
+                    scan = scan.Rest;
+                }
+                sb.Append(")");
+                return sb.ToString();
+            }
+#endif
         }
 
 
@@ -5933,6 +5897,13 @@ namespace OutOfPhase
 
                 DidSomething = WeDidSomething;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("{0}{1}", functionGenerator, argumentList);
+            }
+#endif
         }
 
 
@@ -6330,6 +6301,22 @@ namespace OutOfPhase
 
                 DidSomething = WeDidSomething;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                switch (kind)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case LoopKind.eLoopDoWhile:
+                        return String.Format("while {0} do {1}", controlExpression, bodyExpression);
+                    case LoopKind.eLoopWhileDo:
+                        return String.Format("do {1} while {0}", controlExpression, bodyExpression);
+                }
+            }
+#endif
         }
 
 
@@ -6698,7 +6685,14 @@ namespace OutOfPhase
                         else
                         {
                             // function argument
-                            context.ilGenerator.Emit(OpCodes.Ldarg, (short)context.argumentTable[this.Symbol.SymbolName]); // operand is 'short' -- see https://msdn.microsoft.com/en-us/library/system.reflection.emit.opcodes.ldarg(v=vs.110).aspx
+                            if (!context.argsByRef)
+                            {
+                                context.ilGenerator.Emit(OpCodes.Ldarg, (short)context.argumentTable[this.Symbol.SymbolName]); // operand is 'short' -- see https://msdn.microsoft.com/en-us/library/system.reflection.emit.opcodes.ldarg(v=vs.110).aspx
+                            }
+                            else
+                            {
+                                context.ilGenerator.Emit(OpCodes.Ldloc, context.localArgMap[this.Symbol.SymbolName]);
+                            }
                         }
                         break;
 
@@ -6719,6 +6713,29 @@ namespace OutOfPhase
                 DidSomething = false;
                 replacementExpr = null;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                switch (kind)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case ASTOperandKind.eASTOperandIntegerLiteral:
+                    case ASTOperandKind.eASTOperandSymbol:
+                        return String.Format("{0}", u);
+                    case ASTOperandKind.eASTOperandBooleanLiteral:
+                        return String.Format("{0}", u.ToString().ToLower());
+                    case ASTOperandKind.eASTOperandSingleLiteral:
+                        return String.Format("{0}f", u);
+                    case ASTOperandKind.eASTOperandDoubleLiteral:
+                        return String.Format("{0}d", u);
+                    case ASTOperandKind.eASTOperandStringLiteral:
+                        return String.Format("\"{0}\"", u);
+                }
+            }
+#endif
         }
 
 
@@ -6910,6 +6927,13 @@ namespace OutOfPhase
 
                 replacementExpr = null;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("print {0}", value);
+            }
+#endif
         }
 
 
@@ -7001,6 +7025,13 @@ namespace OutOfPhase
                 DidSomething = false;
                 replacementExpr = null;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("print \"{0}\"", messageString);
+            }
+#endif
         }
 
 
@@ -7149,6 +7180,13 @@ namespace OutOfPhase
                 DidSomething = false;
                 replacementExpr = null;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("loadsample({0}, \"{1}\", \"{2}\"", kind, sampleName, fileType);
+            }
+#endif
         }
 
 
@@ -8548,25 +8586,22 @@ namespace OutOfPhase
                                 throw new InvalidOperationException();
                             case DataTypes.eArrayOfBoolean:
                             case DataTypes.eArrayOfByte:
-                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleByte).GetField("bytes"));
-                                context.ilGenerator.Emit(OpCodes.Ldlen);
+                                context.ilGenerator.Emit(OpCodes.Call, typeof(ArrayHandleByte).GetMethod("get_Length"));
                                 break;
                             case DataTypes.eArrayOfInteger:
-                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleInt32).GetField("ints"));
-                                context.ilGenerator.Emit(OpCodes.Ldlen);
+                                context.ilGenerator.Emit(OpCodes.Call, typeof(ArrayHandleInt32).GetMethod("get_Length"));
                                 break;
                             case DataTypes.eArrayOfFloat:
-                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleFloat).GetField("floats"));
-                                context.ilGenerator.Emit(OpCodes.Ldlen);
+                                context.ilGenerator.Emit(OpCodes.Call, typeof(ArrayHandleFloat).GetMethod("get_Length"));
                                 break;
                             case DataTypes.eArrayOfDouble:
-                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleDouble).GetField("doubles"));
-                                context.ilGenerator.Emit(OpCodes.Ldlen);
+                                context.ilGenerator.Emit(OpCodes.Call, typeof(ArrayHandleDouble).GetMethod("get_Length"));
                                 break;
                         }
                         break;
 
                     case UnaryOpKind.eUnaryDuplicateArray:
+                        context.ilGenerator.Emit(OpCodes.Callvirt, typeof(ArrayHandle).GetMethod("Duplicate"));
                         switch (this.Argument.ResultType)
                         {
                             default:
@@ -8575,28 +8610,16 @@ namespace OutOfPhase
                                 throw new InvalidOperationException();
                             case DataTypes.eArrayOfBoolean:
                             case DataTypes.eArrayOfByte:
-                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleByte).GetField("bytes"));
-                                context.ilGenerator.Emit(OpCodes.Call, typeof(byte[]).GetMethod("Clone"));
-                                context.ilGenerator.Emit(OpCodes.Castclass, typeof(byte[]));
-                                context.ilGenerator.Emit(OpCodes.Newobj, typeof(ArrayHandleByte).GetConstructor(new Type[] { typeof(byte[]) }));
+                                context.ilGenerator.Emit(OpCodes.Castclass, typeof(ArrayHandleByte));
                                 break;
                             case DataTypes.eArrayOfInteger:
-                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleInt32).GetField("ints"));
-                                context.ilGenerator.Emit(OpCodes.Call, typeof(int[]).GetMethod("Clone"));
-                                context.ilGenerator.Emit(OpCodes.Castclass, typeof(int[]));
-                                context.ilGenerator.Emit(OpCodes.Newobj, typeof(ArrayHandleInt32).GetConstructor(new Type[] { typeof(int[]) }));
+                                context.ilGenerator.Emit(OpCodes.Castclass, typeof(ArrayHandleInt32));
                                 break;
                             case DataTypes.eArrayOfFloat:
-                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleFloat).GetField("floats"));
-                                context.ilGenerator.Emit(OpCodes.Call, typeof(float[]).GetMethod("Clone"));
-                                context.ilGenerator.Emit(OpCodes.Castclass, typeof(float[]));
-                                context.ilGenerator.Emit(OpCodes.Newobj, typeof(ArrayHandleFloat).GetConstructor(new Type[] { typeof(float[]) }));
+                                context.ilGenerator.Emit(OpCodes.Castclass, typeof(ArrayHandleFloat));
                                 break;
                             case DataTypes.eArrayOfDouble:
-                                context.ilGenerator.Emit(OpCodes.Ldfld, typeof(ArrayHandleDouble).GetField("doubles"));
-                                context.ilGenerator.Emit(OpCodes.Call, typeof(double[]).GetMethod("Clone"));
-                                context.ilGenerator.Emit(OpCodes.Castclass, typeof(double[]));
-                                context.ilGenerator.Emit(OpCodes.Newobj, typeof(ArrayHandleDouble).GetConstructor(new Type[] { typeof(double[]) }));
+                                context.ilGenerator.Emit(OpCodes.Castclass, typeof(ArrayHandleDouble));
                                 break;
                         }
                         break;
@@ -9513,6 +9536,13 @@ namespace OutOfPhase
                 Debug.Assert(LocalResultType == this.resultType);
                 DidSomething = WeDidSomething;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("{0}({1})", kind, argument);
+            }
+#endif
         }
 
 
@@ -9750,6 +9780,13 @@ namespace OutOfPhase
 
                 replacementExpr = null;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("var {0} = {1}", symbol, initializationExpression != null ? initializationExpression.ToString() : "NULL");
+            }
+#endif
         }
 
 
@@ -9941,6 +9978,13 @@ namespace OutOfPhase
                 DidSomething = false;
                 replacementExpr = null;
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("getwave({0}, \"{1}\")", kind, sampleName);
+            }
+#endif
         }
 
 
@@ -9951,7 +9995,7 @@ namespace OutOfPhase
             private readonly SymbolRec symbol; // enumeration variable
             private ASTExpression initializationExpression;
             private ASTExpression whileExpression;
-            private ASTAssignment incrementExpression;
+            private ASTExpression incrementExpression;
             private ASTExpression bodyExpression;
             private readonly int lineNumber;
 
@@ -9960,7 +10004,7 @@ namespace OutOfPhase
             public SymbolRec Symbol { get { return symbol; } } // enumeration variable
             public ASTExpression InitializationExpression { get { return initializationExpression; } }
             public ASTExpression WhileExpression { get { return whileExpression; } }
-            public ASTAssignment IncrementExpression { get { return incrementExpression; } }
+            public ASTExpression IncrementExpression { get { return incrementExpression; } }
             public ASTExpression BodyExpression { get { return bodyExpression; } }
             public override int LineNumber { get { return lineNumber; } }
             public override DataTypes ResultType { get { return resultType; } }
@@ -9970,7 +10014,7 @@ namespace OutOfPhase
                 SymbolRec symbol,
                 ASTExpression InitializationExpression,
                 ASTExpression WhileExpression,
-                ASTAssignment IncrementExpression,
+                ASTExpression IncrementExpression,
                 ASTExpression BodyExpression,
                 int LineNumber)
             {
@@ -10243,7 +10287,7 @@ namespace OutOfPhase
                 if (incrementReplacement != null)
                 {
                     Debug.Assert(incrementReplacement.Kind == ExprKind.eExprAssignment);
-                    this.incrementExpression = (ASTAssignment)incrementReplacement.U;
+                    this.incrementExpression = incrementReplacement;
                 }
 
                 ASTExpression bodyReplacement;
@@ -10256,6 +10300,13 @@ namespace OutOfPhase
 
                 // TODO: try to fold loop iterations
             }
+
+#if DEBUG
+            public override string ToString()
+            {
+                return String.Format("for {1} = {2} while {3} step {4} do{0}{5}", Environment.NewLine, symbol, initializationExpression, whileExpression, incrementExpression, ASTExpressionList.IndentAll(bodyExpression.ToString()));
+            }
+#endif
         }
 
 

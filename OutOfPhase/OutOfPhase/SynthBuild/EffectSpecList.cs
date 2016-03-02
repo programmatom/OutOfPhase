@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -45,6 +46,7 @@ namespace OutOfPhase
             ePluggableEffect,
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct EffectNodeRec
         {
             public EffectTypes Type;
@@ -225,6 +227,19 @@ namespace OutOfPhase
         public static int GetEffectSpecListLength(EffectSpecListRec EffectSpecList)
         {
             return EffectSpecList.List.Length;
+        }
+
+        public static int GetEffectSpecListEnabledLength(EffectSpecListRec EffectSpecList)
+        {
+            int count = 0;
+            for (int i = 0; i < EffectSpecList.List.Length; i++)
+            {
+                if (IsEffectFromEffectSpecListEnabled(EffectSpecList, i))
+                {
+                    count++;
+                }
+            }
+            return count;
         }
 
         /* get the type of the specified effect */

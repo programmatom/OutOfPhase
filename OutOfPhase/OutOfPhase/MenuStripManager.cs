@@ -55,7 +55,7 @@ namespace OutOfPhase
 
             InitializeComponent();
 
-            menuStrip.MenuActivate += new EventHandler(delegate(object sender, EventArgs e) { EnableMenuItems(); });
+            menuStrip.MenuActivate += new EventHandler(delegate (object sender, EventArgs e) { EnableMenuItems(); });
             foreach (ToolStripMenuItem menuItem in menuStrip.Items)
             {
                 AttachHandlerMenuItemsRecursive(menuItem);
@@ -80,6 +80,7 @@ namespace OutOfPhase
                 loop1ToolStripMenuItem,
                 loop2ToolStripMenuItem,
                 loop3ToolStripMenuItem,
+                disassembleApplicationMethodToolStripMenuItem,
             };
         }
 
@@ -298,7 +299,7 @@ namespace OutOfPhase
 
         public void ProcessCmdKeyDelegate(ref Message msg, Keys keyData)
         {
-            if ((keyData & Keys.ControlKey) != 0)
+            if ((keyData & Keys.Control) != 0)
             {
                 EnableMenuItems();
             }

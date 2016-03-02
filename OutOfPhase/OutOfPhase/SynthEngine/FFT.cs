@@ -92,7 +92,7 @@ namespace OutOfPhase
             private readonly StackTrace allocatedFrom = new StackTrace(true);
 #endif
 
-            public FFTSimple(int n, FFT share)
+            public unsafe FFTSimple(int n, FFT share)
                 : base(n, 1)
             {
                 if (share != null)
@@ -113,9 +113,13 @@ namespace OutOfPhase
                     int count = n + 2;
                     this.workspace = new float[count + SynthParamRec.WORKSPACEALIGNBYTES];
                     this.hWorkspace = GCHandle.Alloc(this.workspace, GCHandleType.Pinned);
-                    this.offset = 0;
-                    SynthParamRec.Align(this.hWorkspace.AddrOfPinnedObject(), ref this.offset, SynthParamRec.WORKSPACEALIGNBYTES, SizeOfFloat);
-                    Debug.Assert(this.offset + count <= this.workspace.Length);
+                    fixed (float* pWorkspace0 = &(this.workspace[0]))
+                    {
+                        IntPtr iWorkspace0 = new IntPtr(pWorkspace0);
+                        this.offset = 0;
+                        SynthParamRec.Align(iWorkspace0, ref this.offset, SynthParamRec.WORKSPACEALIGNBYTES, SizeOfFloat);
+                        Debug.Assert(this.offset + count <= this.workspace.Length);
+                    }
                 }
             }
 
@@ -399,13 +403,13 @@ namespace OutOfPhase
                 Debug.Assert(lockObject != null);
                 lock (lockObject)
                 {
-                    fftwf_export_wisdom(delegate(char c, IntPtr pv) { sb.Append(c); }, IntPtr.Zero);
+                    fftwf_export_wisdom(delegate (char c, IntPtr pv) { sb.Append(c); }, IntPtr.Zero);
                 }
 
                 return sb.ToString();
             }
 
-            public FFTW(int n, int concurrency, FFT share)
+            public unsafe FFTW(int n, int concurrency, FFT share)
                 : base(n, 1f / n)
             {
                 Debug.Assert(lockObject != null);
@@ -429,9 +433,13 @@ namespace OutOfPhase
                         int count = n + 2;
                         this.workspace = new float[count + SynthParamRec.WORKSPACEALIGNBYTES];
                         this.hWorkspace = GCHandle.Alloc(this.workspace, GCHandleType.Pinned);
-                        this.offset = 0;
-                        SynthParamRec.Align(this.hWorkspace.AddrOfPinnedObject(), ref this.offset, SynthParamRec.WORKSPACEALIGNBYTES, SizeOfFloat);
-                        Debug.Assert(this.offset + count <= this.workspace.Length);
+                        fixed (float* pWorkspace0 = &(this.workspace[0]))
+                        {
+                            IntPtr iWorkspace0 = new IntPtr(pWorkspace0);
+                            this.offset = 0;
+                            SynthParamRec.Align(iWorkspace0, ref this.offset, SynthParamRec.WORKSPACEALIGNBYTES, SizeOfFloat);
+                            Debug.Assert(this.offset + count <= this.workspace.Length);
+                        }
                     }
 
                     // create plan

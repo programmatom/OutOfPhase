@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -44,6 +45,7 @@ namespace OutOfPhase
 
 
             public delegate string ConvolverSpecGetImpulseResponseMethod(ConvolverSpecRec Spec);
+            [StructLayout(LayoutKind.Auto)]
             private struct ConvRuleRec
             {
                 public ConvolverSpecGetImpulseResponseMethod ConvolverSpecGetImpulseResponse;

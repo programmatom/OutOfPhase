@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -175,6 +176,7 @@ namespace OutOfPhase
     }
 
     /* this function is used for specifying information about a parameter */
+    [StructLayout(LayoutKind.Auto)]
     public struct FunctionParamRec
     {
         public readonly string ParameterName;
@@ -268,6 +270,7 @@ namespace OutOfPhase
             new KeywordRec<KeywordsType>("xor", KeywordsType.eExprKwrdXor),
         };
 
+        [StructLayout(LayoutKind.Auto)]
         private struct CompileErrorRec
         {
             public readonly CompileErrors ErrorCode;
@@ -772,7 +775,8 @@ namespace OutOfPhase
                         argsNames,
                         SymbolTableEntryForForm.FunctionReturnType,
                         FunctionBodyRecord,
-                        cilAssembly);
+                        cilAssembly,
+                        false/*argsByRef*/);
                     TheWholeFunctionThing.CILObject = cilObject;
                 }
             }
@@ -930,10 +934,11 @@ namespace OutOfPhase
             /* now put the return instruction */
             int unused;
             TheFunctionCode.AddPcodeInstruction(Pcodes.epReturnFromSubroutine, out unused, TheScanner.GetCurrentLineNumber());
-            TheFunctionCode.AddPcodeOperandInteger(FuncArray.Length);
-            StackDepth = StackDepth - (FuncArray.Length + 1); /* also pops retaddr */
+            // special function returns without popping args -- so that args can be have in/out behavior
+            TheFunctionCode.AddPcodeOperandInteger(0);
+            StackDepth -= 1; /* pop retaddr */
             Debug.Assert(StackDepth <= MaxStackDepth);
-            if (StackDepth != 1)
+            if (StackDepth != 1 + FuncArray.Length)
             {
                 // stack depth is wrong at end of function
                 Debug.Assert(false);
@@ -962,7 +967,8 @@ namespace OutOfPhase
                     argsNames,
                     TheExpressionThang.ResultType,
                     TheExpressionThang,
-                    cilAssembly);
+                    cilAssembly,
+                    true/*argsByRef*/); // args by ref true for special functions to permit multiple return values
                 TheFunctionCode.cilObject = cilObject;
                 cilAssembly.Finish();
             }

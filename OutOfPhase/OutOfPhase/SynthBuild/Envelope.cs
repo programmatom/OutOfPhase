@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -51,7 +52,8 @@ namespace OutOfPhase
             eEnvelopeReleasePointNoSkip, /* don't hold this point and don't skip ahead on release */
         }
 
-        public class EnvStepRec
+        [StructLayout(LayoutKind.Auto)]
+        public struct EnvStepRec
         {
             /* transition duration (seconds) */
             public double Duration;

@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
@@ -53,6 +54,7 @@ namespace OutOfPhase
         /* representable in this scheme. */
 
         /* structure used for matching -- maps MIDI clock ticks to duration descriptor */
+        [StructLayout(LayoutKind.Auto)]
         public struct TimeMatchRec
         {
             public int Ticks;

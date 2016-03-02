@@ -536,14 +536,16 @@ namespace OutOfPhase
                 ArrayHandleFloat dataHandleLeft = new ArrayHandleFloat(vectorL);
                 ArrayHandleFloat dataHandleRight = vectorR != null ? new ArrayHandleFloat(vectorR) : null;
 
-                ParamList.EmptyParamStackEnsureCapacity(
+                int initialCapacity =
                     1/*loopstart1*/ + 1/*loopstart2*/ + 1/*loopstart3*/ +
                     1/*loopend1*/ + 1/*loopend2*/ + 1/*loopend3*/ +
                     1/*loopbidir1*/ + 1/*loopbidir2*/ + 1/*loopbidir3*/ +
                     1/*origin*/ + 1/*samplingrate*/ + 1/*naturalfrequency*/ +
                     1/*selectstart*/ + 1/*selectend*/ +
                     (sampleObject.SampleData.NumChannels == NumChannelsType.eSampleStereo ? 2 : 1)/*data or leftdata/rightdata */ +
-                    1/*retaddr*/);
+                    1/*retaddr*/;
+                ParamList.EmptyParamStackEnsureCapacity(initialCapacity);
+
                 ParamList.AddIntegerToStack(sampleObject.LoopStart1);
                 ParamList.AddIntegerToStack(sampleObject.LoopStart2);
                 ParamList.AddIntegerToStack(sampleObject.LoopStart3);
@@ -583,7 +585,18 @@ namespace OutOfPhase
                     MessageBox.Show(errorInfo.CompositeErrorMessage, "Error", MessageBoxButtons.OK);
                     return;
                 }
-                Debug.Assert(ParamList.GetStackNumElements() == 1); // return value
+                Debug.Assert(ParamList.GetStackNumElements() == initialCapacity); // args - retaddr + return value
+#if DEBUG
+                ParamList.Elements[14].AssertFloatArray();
+#endif
+                dataHandleLeft = ParamList.Elements[14].reference.arrayHandleFloat;
+                if (sampleObject.SampleData.NumChannels == NumChannelsType.eSampleStereo)
+                {
+#if DEBUG
+                    ParamList.Elements[15].AssertFloatArray();
+#endif
+                    dataHandleRight = ParamList.Elements[15].reference.arrayHandleFloat;
+                }
 
                 SampleStorageActualRec sampleDataNew = null;
                 if (sampleObject.SampleData.NumChannels == NumChannelsType.eSampleStereo)

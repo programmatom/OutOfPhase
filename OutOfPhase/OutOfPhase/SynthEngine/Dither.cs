@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -49,6 +50,7 @@ namespace OutOfPhase
             private ChannelStateRec Left;
             private ChannelStateRec Right;
 
+            [StructLayout(LayoutKind.Auto)]
             private struct ChannelStateRec
             {
                 public ParkAndMiller Seed1;
@@ -165,6 +167,7 @@ namespace OutOfPhase
             private ChannelStateRec Left;
             private ChannelStateRec Right;
 
+            [StructLayout(LayoutKind.Auto)]
             private struct ChannelStateRec
             {
                 public ParkAndMiller Seed;

@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -47,6 +48,7 @@ namespace OutOfPhase
     }
 
     /* error information */
+    [StructLayout(LayoutKind.Auto)]
     public struct EvalErrInfoRec
     {
         public OpcodeRec[] OffendingPcode;
@@ -249,7 +251,7 @@ namespace OutOfPhase
                 bool suspended = false;
                 try
                 {
-                    threadContext.GlobalCancelPending = 1;
+                    Thread.VolatileWrite(ref threadContext.GlobalCancelPending, 1);
 
                     // First, give the thread some time to exit normally. This covers the 90% case (cancelling the synth engine)
                     // where user functions will finish very quickly.
@@ -271,7 +273,7 @@ namespace OutOfPhase
                     suspended = true;
 
                     // check thread if it's in pcodesystem execution. eventually timeout if not.
-                    if (threadContext.InEval != 0)
+                    if (Thread.VolatileRead(ref threadContext.InEval) != 0)
                     {
                         // set abort request on thread
                         thread.Abort();
@@ -320,10 +322,11 @@ namespace OutOfPhase
             }
         }
 
+        [StructLayout(LayoutKind.Auto)]
         public struct PcodeThreadContext
         {
-            public volatile int InEval; // non-zero: pcode eval loop is executing on stack (may have called out to extern or reentered)
-            public volatile int GlobalCancelPending;
+            public int InEval; // non-zero: pcode eval loop is executing on stack (may have called out to extern or reentered)
+            public int GlobalCancelPending;
         }
 
         public interface IEvaluationContext
@@ -396,7 +399,7 @@ namespace OutOfPhase
                     Array.Resize(ref Stack, maxStackCapacity);
                 }
 
-                if (threadContext.GlobalCancelPending != 0)
+                if (Thread.VolatileRead(ref threadContext.GlobalCancelPending) != 0)
                 {
                     ErrorCode = EvalErrors.eEvalUserCancelled;
                     goto ExceptionPoint;
@@ -410,6 +413,12 @@ namespace OutOfPhase
                 {
                     switch (CurrentProcedure[ProgramCounter++].Opcode)
                     {
+                        // There are a number of performance issues with the code contained herein. They include (among
+                        // others) inefficient clearing (i.e. generic clearing even though static type is known) and
+                        // redundant nullcheck/boundscheck. However, this code is deprecated since CIL generation will
+                        // always be more performant; it's maintained as a reference and debugging aid. Therefore,
+                        // performance improvement work is not being done here any more.
+
                         default:
                             //ErrorCode = EvalErrors.eEvalErrorTrapEncountered;
                             //goto ExceptionPoint;
@@ -1415,7 +1424,7 @@ namespace OutOfPhase
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
-                                int c = Stack[StackPtr].reference.arrayHandleByte.bytes.Length;
+                                int c = Stack[StackPtr].reference.arrayHandleByte.Length;
                                 Stack[StackPtr].ClearArray();
                                 Stack[StackPtr].Data.Integer = c;
                             }
@@ -1430,7 +1439,7 @@ namespace OutOfPhase
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
-                                int c = Stack[StackPtr].reference.arrayHandleInt32.ints.Length;
+                                int c = Stack[StackPtr].reference.arrayHandleInt32.Length;
                                 Stack[StackPtr].ClearArray();
                                 Stack[StackPtr].Data.Integer = c;
                             }
@@ -1445,7 +1454,7 @@ namespace OutOfPhase
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
-                                int c = Stack[StackPtr].reference.arrayHandleFloat.floats.Length;
+                                int c = Stack[StackPtr].reference.arrayHandleFloat.Length;
                                 Stack[StackPtr].ClearArray();
                                 Stack[StackPtr].Data.Integer = c;
                             }
@@ -1460,65 +1469,32 @@ namespace OutOfPhase
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
-                                int c = Stack[StackPtr].reference.arrayHandleDouble.doubles.Length;
+                                int c = Stack[StackPtr].reference.arrayHandleDouble.Length;
                                 Stack[StackPtr].ClearArray();
                                 Stack[StackPtr].Data.Integer = c;
                             }
                             break;
 
+                        // these are identical because the variance is the virtual method ArrayHandle.Resize()
                         case Pcodes.epResizeByteArray2:
-#if DEBUG
-                            Stack[StackPtr].AssertScalar();
-                            Stack[StackPtr - 1].AssertByteArray();
-#endif
-                            if (Stack[StackPtr - 1].reference.arrayHandleByte == null)
-                            {
-                                ErrorCode = EvalErrors.eEvalArrayDoesntExist;
-                                goto ExceptionPoint;
-                            }
-                            Array.Resize(ref Stack[StackPtr - 1].reference.arrayHandleByte.bytes, Stack[StackPtr].Data.Integer);
-                            Stack[StackPtr].ClearScalar();
-                            StackPtr--;
-                            break;
                         case Pcodes.epResizeIntegerArray2:
-#if DEBUG
-                            Stack[StackPtr].AssertScalar();
-                            Stack[StackPtr - 1].AssertIntegerArray();
-#endif
-                            if (Stack[StackPtr - 1].reference.arrayHandleInt32 == null)
-                            {
-                                ErrorCode = EvalErrors.eEvalArrayDoesntExist;
-                                goto ExceptionPoint;
-                            }
-                            Array.Resize(ref Stack[StackPtr - 1].reference.arrayHandleInt32.ints, Stack[StackPtr].Data.Integer);
-                            Stack[StackPtr].ClearScalar();
-                            StackPtr--;
-                            break;
                         case Pcodes.epResizeFloatArray2:
-#if DEBUG
-                            Stack[StackPtr].AssertScalar();
-                            Stack[StackPtr - 1].AssertFloatArray();
-#endif
-                            if (Stack[StackPtr - 1].reference.arrayHandleFloat == null)
-                            {
-                                ErrorCode = EvalErrors.eEvalArrayDoesntExist;
-                                goto ExceptionPoint;
-                            }
-                            Array.Resize(ref Stack[StackPtr - 1].reference.arrayHandleFloat.floats, Stack[StackPtr].Data.Integer);
-                            Stack[StackPtr].ClearScalar();
-                            StackPtr--;
-                            break;
                         case Pcodes.epResizeDoubleArray2:
 #if DEBUG
                             Stack[StackPtr].AssertScalar();
-                            Stack[StackPtr - 1].AssertDoubleArray();
+                            Stack[StackPtr - 1].AssertAnyArray();
 #endif
-                            if (Stack[StackPtr - 1].reference.arrayHandleDouble == null)
+                            if (Stack[StackPtr - 1].reference.arrayHandleGeneric == null)
                             {
                                 ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                 goto ExceptionPoint;
                             }
-                            Array.Resize(ref Stack[StackPtr - 1].reference.arrayHandleDouble.doubles, Stack[StackPtr].Data.Integer);
+                            if (Stack[StackPtr].Data.Integer < 0)
+                            {
+                                ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
+                                goto ExceptionPoint;
+                            }
+                            Stack[StackPtr - 1].reference.arrayHandleGeneric.Resize(Stack[StackPtr].Data.Integer);
                             Stack[StackPtr].ClearScalar();
                             StackPtr--;
                             break;
@@ -1582,19 +1558,7 @@ namespace OutOfPhase
 #if DEBUG
                                 Stack[Index].AssertByteArray();
 #endif
-                                // This has unusual semantics: update of existing array transfers the array ref without
-                                // changing the handle. This allows out-arg behavior for assigning an array arg
-                                // that was passed in.
-                                if ((Stack[Index].reference.arrayHandleByte != null)
-                                    && (Stack[StackPtr].reference.arrayHandleByte != null))
-                                {
-                                    Stack[Index].reference.arrayHandleByte.bytes =
-                                        Stack[StackPtr].reference.arrayHandleByte.bytes;
-                                }
-                                else
-                                {
-                                    Stack[Index].reference.arrayHandleByte = Stack[StackPtr].reference.arrayHandleByte;
-                                }
+                                Stack[Index].reference.arrayHandleByte = Stack[StackPtr].reference.arrayHandleByte;
                                 ProgramCounter++;
                                 /* don't pop the value from the stack though */
                             }
@@ -1610,19 +1574,7 @@ namespace OutOfPhase
 #if DEBUG
                                 Stack[Index].AssertIntegerArray();
 #endif
-                                // This has unusual semantics: update of existing array transfers the array ref without
-                                // changing the handle. This allows out-arg behavior for assigning an array arg
-                                // that was passed in.
-                                if ((Stack[Index].reference.arrayHandleInt32 != null)
-                                    && (Stack[StackPtr].reference.arrayHandleInt32 != null))
-                                {
-                                    Stack[Index].reference.arrayHandleInt32.ints =
-                                        Stack[StackPtr].reference.arrayHandleInt32.ints;
-                                }
-                                else
-                                {
-                                    Stack[Index].reference.arrayHandleInt32 = Stack[StackPtr].reference.arrayHandleInt32;
-                                }
+                                Stack[Index].reference.arrayHandleInt32 = Stack[StackPtr].reference.arrayHandleInt32;
                                 ProgramCounter++;
                                 /* don't pop the value from the stack though */
                             }
@@ -1638,19 +1590,7 @@ namespace OutOfPhase
 #if DEBUG
                                 Stack[Index].AssertFloatArray();
 #endif
-                                // This has unusual semantics: update of existing array transfers the array ref without
-                                // changing the handle. This allows out-arg behavior for assigning an array arg
-                                // that was passed in.
-                                if ((Stack[Index].reference.arrayHandleFloat != null)
-                                    && (Stack[StackPtr].reference.arrayHandleFloat != null))
-                                {
-                                    Stack[Index].reference.arrayHandleFloat.floats =
-                                        Stack[StackPtr].reference.arrayHandleFloat.floats;
-                                }
-                                else
-                                {
-                                    Stack[Index].reference.arrayHandleFloat = Stack[StackPtr].reference.arrayHandleFloat;
-                                }
+                                Stack[Index].reference.arrayHandleFloat = Stack[StackPtr].reference.arrayHandleFloat;
                                 ProgramCounter++;
                                 /* don't pop the value from the stack though */
                             }
@@ -1666,19 +1606,7 @@ namespace OutOfPhase
 #if DEBUG
                                 Stack[Index].AssertDoubleArray();
 #endif
-                                // This has unusual semantics: update of existing array transfers the array ref without
-                                // changing the handle. This allows out-arg behavior for assigning an array arg
-                                // that was passed in.
-                                if ((Stack[Index].reference.arrayHandleDouble != null)
-                                    && (Stack[StackPtr].reference.arrayHandleDouble != null))
-                                {
-                                    Stack[Index].reference.arrayHandleDouble.doubles =
-                                        Stack[StackPtr].reference.arrayHandleDouble.doubles;
-                                }
-                                else
-                                {
-                                    Stack[Index].reference.arrayHandleDouble = Stack[StackPtr].reference.arrayHandleDouble;
-                                }
+                                Stack[Index].reference.arrayHandleDouble = Stack[StackPtr].reference.arrayHandleDouble;
                                 ProgramCounter++;
                                 /* don't pop the value from the stack though */
                             }
@@ -1735,8 +1663,10 @@ namespace OutOfPhase
 #endif
                                 StackPtr++;
                                 Debug.Assert(StackPtr < Stack.Length);
-                                //Stack[StackPtr].reference.arrayHandle = Stack[Index].reference.arrayHandle;
+                                Stack[StackPtr].reference.arrayHandleGeneric = Stack[Index].reference.arrayHandleGeneric;
+#if false // TODO: what was this for?
                                 Stack[StackPtr].reference.generic = Stack[Index].reference.generic;
+#endif
                                 ProgramCounter++;
                             }
                             break;
@@ -1846,96 +1776,101 @@ namespace OutOfPhase
                             break;
 
                         case Pcodes.epStoreByteIntoArray2:
+                            {
 #if DEBUG
-                            Stack[StackPtr].AssertScalar();
-                            Stack[StackPtr - 1].AssertByteArray();
-                            Stack[StackPtr - 2].AssertScalar();
+                                Stack[StackPtr].AssertScalar();
+                                Stack[StackPtr - 1].AssertByteArray();
+                                Stack[StackPtr - 2].AssertScalar();
 #endif
-                            if (Stack[StackPtr - 1].reference.arrayHandleByte == null)
-                            {
-                                ErrorCode = EvalErrors.eEvalArrayDoesntExist;
-                                goto ExceptionPoint;
+                                if (Stack[StackPtr - 1].reference.arrayHandleByte == null)
+                                {
+                                    ErrorCode = EvalErrors.eEvalArrayDoesntExist;
+                                    goto ExceptionPoint;
+                                }
+                                int offset = Stack[StackPtr].Data.Integer;
+                                if (unchecked((uint)offset >= (uint)Stack[StackPtr - 1].reference.arrayHandleByte.Length))
+                                {
+                                    ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
+                                    goto ExceptionPoint;
+                                }
+                                Stack[StackPtr - 1].reference.arrayHandleByte.bytes[offset]
+                                    = unchecked((byte)Stack[StackPtr - 2].Data.Integer);
+                                Stack[StackPtr].ClearScalar();
+                                Stack[StackPtr - 1].ClearArray();
+                                StackPtr -= 2; /* pop subscript and reference */
                             }
-                            if ((Stack[StackPtr].Data.Integer < 0) || (Stack[StackPtr].Data.Integer
-                                >= Stack[StackPtr - 1].reference.arrayHandleByte.bytes.Length))
-                            {
-                                ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
-                                goto ExceptionPoint;
-                            }
-                            Stack[StackPtr - 1].reference.arrayHandleByte.bytes[
-                                Stack[StackPtr].Data.Integer] = unchecked((byte)Stack[StackPtr - 2].Data.Integer);
-                            Stack[StackPtr].ClearScalar();
-                            Stack[StackPtr - 1].ClearArray();
-                            StackPtr -= 2; /* pop subscript and reference */
                             break;
                         case Pcodes.epStoreIntegerIntoArray2:
+                            {
 #if DEBUG
-                            Stack[StackPtr].AssertScalar();
-                            Stack[StackPtr - 1].AssertIntegerArray();
-                            Stack[StackPtr - 2].AssertScalar();
+                                Stack[StackPtr].AssertScalar();
+                                Stack[StackPtr - 1].AssertIntegerArray();
+                                Stack[StackPtr - 2].AssertScalar();
 #endif
-                            if (Stack[StackPtr - 1].reference.arrayHandleInt32 == null)
-                            {
-                                ErrorCode = EvalErrors.eEvalArrayDoesntExist;
-                                goto ExceptionPoint;
+                                if (Stack[StackPtr - 1].reference.arrayHandleInt32 == null)
+                                {
+                                    ErrorCode = EvalErrors.eEvalArrayDoesntExist;
+                                    goto ExceptionPoint;
+                                }
+                                int offset = Stack[StackPtr].Data.Integer;
+                                if (unchecked((uint)offset >= (uint)Stack[StackPtr - 1].reference.arrayHandleInt32.Length))
+                                {
+                                    ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
+                                    goto ExceptionPoint;
+                                }
+                                Stack[StackPtr - 1].reference.arrayHandleInt32.ints[offset] = Stack[StackPtr - 2].Data.Integer;
+                                Stack[StackPtr].ClearScalar();
+                                Stack[StackPtr - 1].ClearArray();
+                                StackPtr -= 2; /* pop subscript and reference */
                             }
-                            if ((Stack[StackPtr].Data.Integer < 0) || (Stack[StackPtr].Data.Integer
-                                >= Stack[StackPtr - 1].reference.arrayHandleInt32.ints.Length))
-                            {
-                                ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
-                                goto ExceptionPoint;
-                            }
-                            Stack[StackPtr - 1].reference.arrayHandleInt32.ints[
-                                Stack[StackPtr].Data.Integer] = Stack[StackPtr - 2].Data.Integer;
-                            Stack[StackPtr].ClearScalar();
-                            Stack[StackPtr - 1].ClearArray();
-                            StackPtr -= 2; /* pop subscript and reference */
                             break;
                         case Pcodes.epStoreFloatIntoArray2:
+                            {
 #if DEBUG
-                            Stack[StackPtr].AssertScalar();
-                            Stack[StackPtr - 1].AssertFloatArray();
-                            Stack[StackPtr - 2].AssertScalar();
+                                Stack[StackPtr].AssertScalar();
+                                Stack[StackPtr - 1].AssertFloatArray();
+                                Stack[StackPtr - 2].AssertScalar();
 #endif
-                            if (Stack[StackPtr - 1].reference.arrayHandleFloat == null)
-                            {
-                                ErrorCode = EvalErrors.eEvalArrayDoesntExist;
-                                goto ExceptionPoint;
+                                if (Stack[StackPtr - 1].reference.arrayHandleFloat == null)
+                                {
+                                    ErrorCode = EvalErrors.eEvalArrayDoesntExist;
+                                    goto ExceptionPoint;
+                                }
+                                int offset = Stack[StackPtr].Data.Integer;
+                                if (unchecked((uint)offset >= (uint)Stack[StackPtr - 1].reference.arrayHandleFloat.Length))
+                                {
+                                    ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
+                                    goto ExceptionPoint;
+                                }
+                                Stack[StackPtr - 1].reference.arrayHandleFloat.floats[offset] = Stack[StackPtr - 2].Data.Float;
+                                Stack[StackPtr].ClearScalar();
+                                Stack[StackPtr - 1].ClearArray();
+                                StackPtr -= 2; /* pop subscript and reference */
                             }
-                            if ((Stack[StackPtr].Data.Integer < 0) || (Stack[StackPtr].Data.Integer
-                                >= Stack[StackPtr - 1].reference.arrayHandleFloat.floats.Length))
-                            {
-                                ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
-                                goto ExceptionPoint;
-                            }
-                            Stack[StackPtr - 1].reference.arrayHandleFloat.floats[
-                                Stack[StackPtr].Data.Integer] = Stack[StackPtr - 2].Data.Float;
-                            Stack[StackPtr].ClearScalar();
-                            Stack[StackPtr - 1].ClearArray();
-                            StackPtr -= 2; /* pop subscript and reference */
                             break;
                         case Pcodes.epStoreDoubleIntoArray2:
+                            {
 #if DEBUG
-                            Stack[StackPtr].AssertScalar();
-                            Stack[StackPtr - 1].AssertDoubleArray();
-                            Stack[StackPtr - 2].AssertScalar();
+                                Stack[StackPtr].AssertScalar();
+                                Stack[StackPtr - 1].AssertDoubleArray();
+                                Stack[StackPtr - 2].AssertScalar();
 #endif
-                            if (Stack[StackPtr - 1].reference.arrayHandleDouble == null)
-                            {
-                                ErrorCode = EvalErrors.eEvalArrayDoesntExist;
-                                goto ExceptionPoint;
+                                if (Stack[StackPtr - 1].reference.arrayHandleDouble == null)
+                                {
+                                    ErrorCode = EvalErrors.eEvalArrayDoesntExist;
+                                    goto ExceptionPoint;
+                                }
+                                int offset = Stack[StackPtr].Data.Integer;
+                                if (unchecked((uint)offset >= (uint)Stack[StackPtr - 1].reference.arrayHandleDouble.Length))
+                                {
+                                    ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
+                                    goto ExceptionPoint;
+                                }
+                                Stack[StackPtr - 1].reference.arrayHandleDouble.doubles[offset] = Stack[StackPtr - 2].Data.Double;
+                                Stack[StackPtr].ClearScalar();
+                                Stack[StackPtr - 1].ClearArray();
+                                StackPtr -= 2; /* pop subscript and reference */
                             }
-                            if ((Stack[StackPtr].Data.Integer < 0) || (Stack[StackPtr].Data.Integer
-                                >= Stack[StackPtr - 1].reference.arrayHandleDouble.doubles.Length))
-                            {
-                                ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
-                                goto ExceptionPoint;
-                            }
-                            Stack[StackPtr - 1].reference.arrayHandleDouble.doubles[
-                                Stack[StackPtr].Data.Integer] = Stack[StackPtr - 2].Data.Double;
-                            Stack[StackPtr].ClearScalar();
-                            Stack[StackPtr - 1].ClearArray();
-                            StackPtr -= 2; /* pop subscript and reference */
                             break;
 
                         case Pcodes.epLoadByteFromArray2:
@@ -1949,18 +1884,17 @@ namespace OutOfPhase
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
-                                if ((Stack[StackPtr].Data.Integer < 0) || (Stack[StackPtr].Data.Integer
-                                    >= Stack[StackPtr - 1].reference.arrayHandleByte.bytes.Length))
+                                int offset = Stack[StackPtr].Data.Integer;
+                                if (unchecked((uint)offset >= (uint)Stack[StackPtr - 1].reference.arrayHandleByte.Length))
                                 {
                                     ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
                                     goto ExceptionPoint;
                                 }
-                                byte ByteTemp = Stack[StackPtr - 1].reference.arrayHandleByte.bytes[
-                                        Stack[StackPtr].Data.Integer];
+                                byte temp = Stack[StackPtr - 1].reference.arrayHandleByte.bytes[offset];
                                 Stack[StackPtr].ClearScalar();
                                 StackPtr--;
                                 Stack[StackPtr].ClearArray();
-                                Stack[StackPtr].Data.Integer = ByteTemp;
+                                Stack[StackPtr].Data.Integer = temp;
                             }
                             break;
                         case Pcodes.epLoadIntegerFromArray2:
@@ -1974,18 +1908,17 @@ namespace OutOfPhase
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
-                                if ((Stack[StackPtr].Data.Integer < 0) || (Stack[StackPtr].Data.Integer
-                                    >= Stack[StackPtr - 1].reference.arrayHandleInt32.ints.Length))
+                                int offset = Stack[StackPtr].Data.Integer;
+                                if (unchecked((uint)offset >= (uint)Stack[StackPtr - 1].reference.arrayHandleInt32.Length))
                                 {
                                     ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
                                     goto ExceptionPoint;
                                 }
-                                int IntegerTemp = Stack[StackPtr - 1].reference.arrayHandleInt32.ints[
-                                    Stack[StackPtr].Data.Integer];
+                                int temp = Stack[StackPtr - 1].reference.arrayHandleInt32.ints[offset];
                                 Stack[StackPtr].ClearScalar();
                                 StackPtr--;
                                 Stack[StackPtr].ClearArray();
-                                Stack[StackPtr].Data.Integer = IntegerTemp;
+                                Stack[StackPtr].Data.Integer = temp;
                             }
                             break;
                         case Pcodes.epLoadFloatFromArray2:
@@ -1999,18 +1932,17 @@ namespace OutOfPhase
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
-                                if ((Stack[StackPtr].Data.Integer < 0) || (Stack[StackPtr].Data.Integer
-                                    >= Stack[StackPtr - 1].reference.arrayHandleFloat.floats.Length))
+                                int offset = Stack[StackPtr].Data.Integer;
+                                if (unchecked((uint)offset >= (uint)Stack[StackPtr - 1].reference.arrayHandleFloat.Length))
                                 {
                                     ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
                                     goto ExceptionPoint;
                                 }
-                                float FloatTemp = Stack[StackPtr - 1].reference.arrayHandleFloat.floats[
-                                    Stack[StackPtr].Data.Integer];
+                                float temp = Stack[StackPtr - 1].reference.arrayHandleFloat.floats[offset];
                                 Stack[StackPtr].ClearScalar();
                                 StackPtr--;
                                 Stack[StackPtr].ClearArray();
-                                Stack[StackPtr].Data.Float = FloatTemp;
+                                Stack[StackPtr].Data.Float = temp;
                             }
                             break;
                         case Pcodes.epLoadDoubleFromArray2:
@@ -2024,18 +1956,17 @@ namespace OutOfPhase
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
-                                if ((Stack[StackPtr].Data.Integer < 0) || (Stack[StackPtr].Data.Integer
-                                    >= Stack[StackPtr - 1].reference.arrayHandleDouble.doubles.Length))
+                                int offset = Stack[StackPtr].Data.Integer;
+                                if (unchecked((uint)offset >= (uint)Stack[StackPtr - 1].reference.arrayHandleDouble.Length))
                                 {
                                     ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
                                     goto ExceptionPoint;
                                 }
-                                double DoubleTemp = Stack[StackPtr - 1].reference.arrayHandleDouble.doubles[
-                                    Stack[StackPtr].Data.Integer];
+                                double temp = Stack[StackPtr - 1].reference.arrayHandleDouble.doubles[offset];
                                 Stack[StackPtr].ClearScalar();
                                 StackPtr--;
                                 Stack[StackPtr].ClearArray();
-                                Stack[StackPtr].Data.Double = DoubleTemp;
+                                Stack[StackPtr].Data.Double = temp;
                             }
                             break;
 
@@ -2078,15 +2009,17 @@ namespace OutOfPhase
 #if DEBUG
                                 Stack[StackPtr].AssertAnyArray();
 #endif
-                                //if (Stack[StackPtr].reference.arrayHandle == null)
+                                if (Stack[StackPtr].reference.arrayHandleGeneric == null)
+#if false // TODO: what was this for?
                                 if (Stack[StackPtr].reference.generic == null)
+#endif
                                 {
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
                                 Debug.Assert(Stack[StackPtr].reference.generic is ArrayHandleByte);
-                                byte[] copy = (byte[])Stack[StackPtr].reference.arrayHandleByte.bytes.Clone();
-                                Stack[StackPtr].reference.arrayHandleByte = new ArrayHandleByte(copy);
+                                Stack[StackPtr].reference.arrayHandleByte
+                                    = (ArrayHandleByte)Stack[StackPtr].reference.arrayHandleByte.Duplicate();
                             }
                             break;
                         case Pcodes.epCopyArrayInteger:
@@ -2094,15 +2027,17 @@ namespace OutOfPhase
 #if DEBUG
                                 Stack[StackPtr].AssertAnyArray();
 #endif
-                                //if (Stack[StackPtr].reference.arrayHandle == null)
+                                if (Stack[StackPtr].reference.arrayHandleGeneric == null)
+#if false // TODO: what was this for?
                                 if (Stack[StackPtr].reference.generic == null)
+#endif
                                 {
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
                                 Debug.Assert(Stack[StackPtr].reference.generic is ArrayHandleInt32);
-                                int[] copy = (int[])Stack[StackPtr].reference.arrayHandleInt32.ints.Clone();
-                                Stack[StackPtr].reference.arrayHandleInt32 = new ArrayHandleInt32(copy);
+                                Stack[StackPtr].reference.arrayHandleInt32
+                                    = (ArrayHandleInt32)Stack[StackPtr].reference.arrayHandleInt32.Duplicate();
                             }
                             break;
                         case Pcodes.epCopyArrayFloat:
@@ -2110,15 +2045,17 @@ namespace OutOfPhase
 #if DEBUG
                                 Stack[StackPtr].AssertAnyArray();
 #endif
-                                //if (Stack[StackPtr].reference.arrayHandle == null)
+                                if (Stack[StackPtr].reference.arrayHandleGeneric == null)
+#if false // TODO: what was this for?
                                 if (Stack[StackPtr].reference.generic == null)
+#endif
                                 {
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
                                 Debug.Assert(Stack[StackPtr].reference.generic is ArrayHandleFloat);
-                                float[] copy = (float[])Stack[StackPtr].reference.arrayHandleFloat.floats.Clone();
-                                Stack[StackPtr].reference.arrayHandleFloat = new ArrayHandleFloat(copy);
+                                Stack[StackPtr].reference.arrayHandleFloat
+                                    = (ArrayHandleFloat)Stack[StackPtr].reference.arrayHandleFloat.Duplicate();
                             }
                             break;
                         case Pcodes.epCopyArrayDouble:
@@ -2126,15 +2063,17 @@ namespace OutOfPhase
 #if DEBUG
                                 Stack[StackPtr].AssertAnyArray();
 #endif
-                                //if (Stack[StackPtr].reference.arrayHandle == null)
+                                if (Stack[StackPtr].reference.arrayHandleGeneric == null)
+#if false // TODO: what was this for?
                                 if (Stack[StackPtr].reference.generic == null)
+#endif
                                 {
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
                                 }
                                 Debug.Assert(Stack[StackPtr].reference.generic is ArrayHandleDouble);
-                                double[] copy = (double[])Stack[StackPtr].reference.arrayHandleDouble.doubles.Clone();
-                                Stack[StackPtr].reference.arrayHandleDouble = new ArrayHandleDouble(copy);
+                                Stack[StackPtr].reference.arrayHandleDouble
+                                    = (ArrayHandleDouble)Stack[StackPtr].reference.arrayHandleDouble.Duplicate();
                             }
                             break;
 
@@ -2255,10 +2194,9 @@ namespace OutOfPhase
                 ;
             ExceptionPoint:
 
-                /* first, release all objects */
+                // in error case, clear entire stack
                 while (StackPtr >= 0)
                 {
-                    /* pop all elements except those that were there originally */
                     Stack[StackPtr].Clear();
                     StackPtr--;
                 }

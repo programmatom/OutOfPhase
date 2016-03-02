@@ -1713,6 +1713,71 @@ namespace OutOfPhase
                 SynthParamRec SynthParams,
                 bool writeOutputLogs)
             {
+                if (Oscillator != null)
+                {
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.InputGainEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.InputGainLFOs,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.OutputGainEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.OutputGainLFOs,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.NormalPowerEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.NormalPowerLFOs,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.ThreshPowerEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.ThreshPowerLFOs,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.RatioEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.RatioLFOs,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.FilterCutoffEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.FilterCutoffLFOs,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.DecayRateEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.DecayRateLFOs,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.AttackRateEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.AttackRateLFOs,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.LimitingExcessEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.LimitingExcessLFOs,
+                        SynthParams);
+                }
             }
         }
     }

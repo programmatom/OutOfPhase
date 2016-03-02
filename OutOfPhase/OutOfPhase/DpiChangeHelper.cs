@@ -48,7 +48,7 @@ namespace OutOfPhase
         [Category("Context")]
         public Form Form { get { return form; } set { form = value; } }
 
-        private const int WM_DPICHANGED = 0x02E0;
+        public const int WM_DPICHANGED = 0x02E0;
 
         private float currentDpi = 96f;
 
@@ -78,16 +78,42 @@ namespace OutOfPhase
 
         public bool WndProcDelegate(ref Message m)
         {
-            return WndProcDelegate(ref m, null);
+            return WndProcDelegate(ref m, (ScaleCallback)null);
         }
 
-        public static void ScaleFont(Control control, float scale)
+        public delegate Control[] GetControlsMethod();
+
+        public bool WndProcDelegate(ref Message m, GetControlsMethod explicitScaleNeeded)
         {
-            if (scale != 1)
+            return WndProcDelegate(ref m, delegate (float scale) { ScaleControls(scale, explicitScaleNeeded()); });
+        }
+
+        private static void ScaleControls(float scale, Control[] controls)
+        {
+            foreach (Control control in controls)
+            {
+                ScaleFont(control, scale);
+            }
+        }
+
+        public static void ScaleFont(Control control, float scale, bool force)
+        {
+            if (force || (scale != 1))
             {
                 Font newFont = new Font(control.Font.FontFamily, control.Font.Size * scale, control.Font.Style);
                 control.Font = newFont;
             }
+        }
+
+        public static void ScaleFont(Control control, float scale)
+        {
+            ScaleFont(control, scale, false/*force*/);
+        }
+
+        public static void ScaleFont(Control control, float scale, GetControlsMethod explicitScaleNeeded)
+        {
+            ScaleFont(control, scale);
+            ScaleControls(scale, explicitScaleNeeded());
         }
     }
 }

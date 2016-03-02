@@ -942,7 +942,8 @@ namespace OutOfPhase
             menuStripManager.ProcessCmdKeyDelegate(ref msg, keyData);
             localMenuHandler.ProcessCmdKeyDelegate(ref msg, keyData);
 
-            if (textEditorWindowHelper.ProcessCmdKeyDelegate(ref msg, keyData))
+            if ((ActiveControl == textEditorWindowHelper.TextEditControl)
+                && textEditorWindowHelper.ProcessCmdKeyDelegate(ref msg, keyData))
             {
                 return true;
             }
@@ -950,7 +951,7 @@ namespace OutOfPhase
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        // local
+        // local menu handler
 
         void EnableMenuItems_Local(MenuStripManager menuStrip)
         {
@@ -1155,7 +1156,7 @@ namespace OutOfPhase
             return false;
         }
 
-        // global
+        // global menu handler
 
         void IMenuStripManagerHandler.EnableMenuItems(MenuStripManager menuStrip)
         {
@@ -1222,6 +1223,9 @@ namespace OutOfPhase
                     }
                 };
             }
+
+            menuStrip.disassembleApplicationMethodToolStripMenuItem.Visible = true;
+            menuStrip.disassembleApplicationMethodToolStripMenuItem.Enabled = true;
         }
 
         bool IMenuStripManagerHandler.ExecuteMenuItem(MenuStripManager menuStrip, ToolStripMenuItem menuItem)
@@ -1491,6 +1495,15 @@ namespace OutOfPhase
             else if (menuItem == menuStrip.aboutToolStripMenuItem)
             {
                 new AboutBox().Show();
+                return true;
+            }
+            else if (menuItem == menuStrip.disassembleApplicationMethodToolStripMenuItem)
+            {
+                string name = String.Empty;
+                if (CmdDlgOneParam.CommandDialogOneString2("Enter fully qualified function name:", "Name:", ref name))
+                {
+                    new DisassemblyWindow(CILObject.GetDisassembly(name), this, name).Show();
+                }
                 return true;
             }
 

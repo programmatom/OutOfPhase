@@ -597,8 +597,102 @@ namespace OutOfPhase
                     VectorOffset,
                     Length);
 
+                int i = 0;
+
+#if VECTOR
+                if (EnableVector)
+                {
+#if DEBUG
+                    Debug.Assert(!SynthParams.ScratchWorkspace2InUse);
+                    Debug.Assert(!SynthParams.ScratchWorkspace4InUse);
+                    SynthParams.ScratchWorkspace2InUse = true;
+                    SynthParams.ScratchWorkspace4InUse = true;
+#endif
+                    int MangleOffset2 = SynthParams.ScratchWorkspace2LOffset;
+                    int MangleOffset3 = SynthParams.ScratchWorkspace2ROffset;
+                    int MangleOffset4 = SynthParams.ScratchWorkspace4LOffset;
+
+                    /* process matrix */
+                    for (; i <= BandCount - 4; i += 4)
+                    {
+                        /* initialize mangle vector with raw data */
+                        FloatVectorCopy(
+                            SourceBase,
+                            SourceOffset,
+                            MangleBase,
+                            MangleOffset,
+                            Length);
+                        FloatVectorCopy(
+                            SourceBase,
+                            SourceOffset,
+                            MangleBase,
+                            MangleOffset2,
+                            Length);
+                        FloatVectorCopy(
+                            SourceBase,
+                            SourceOffset,
+                            MangleBase,
+                            MangleOffset3,
+                            Length);
+                        FloatVectorCopy(
+                            SourceBase,
+                            SourceOffset,
+                            MangleBase,
+                            MangleOffset4,
+                            Length);
+
+                        /* apply filters to succession, copying out on the last one */
+                        for (int j = 0; j < OrderCount; j++)
+                        {
+                            if (j != OrderCount - 1)
+                            {
+                                /* interior filters modify the buffer, with unity gain */
+                                ButterworthBandpassRec.ApplyButterworthBandpassVectorModify(
+                                    BandMatrix[BandMatrixOffset + (i + 0) * OrderCount + j],
+                                    BandMatrix[BandMatrixOffset + (i + 1) * OrderCount + j],
+                                    BandMatrix[BandMatrixOffset + (i + 2) * OrderCount + j],
+                                    BandMatrix[BandMatrixOffset + (i + 3) * OrderCount + j],
+                                    MangleBase,
+                                    MangleOffset,
+                                    MangleOffset2,
+                                    MangleOffset3,
+                                    MangleOffset4,
+                                    Length);
+                            }
+                            else
+                            {
+                                /* final filter adds to output */
+                                ButterworthBandpassRec.Apply4(
+                                    BandMatrix[BandMatrixOffset + (i + 0) * OrderCount + j],
+                                    BandMatrix[BandMatrixOffset + (i + 1) * OrderCount + j],
+                                    BandMatrix[BandMatrixOffset + (i + 2) * OrderCount + j],
+                                    BandMatrix[BandMatrixOffset + (i + 3) * OrderCount + j],
+                                    MangleBase,
+                                    MangleOffset,
+                                    MangleOffset2,
+                                    MangleOffset3,
+                                    MangleOffset4,
+                                    Vector,
+                                    VectorOffset,
+                                    Length,
+                                    CombinedGainFactorVector[CombinedGainFactorVectorOffset + i + 0],
+                                    CombinedGainFactorVector[CombinedGainFactorVectorOffset + i + 1],
+                                    CombinedGainFactorVector[CombinedGainFactorVectorOffset + i + 2],
+                                    CombinedGainFactorVector[CombinedGainFactorVectorOffset + i + 3],
+                                    SynthParams);
+                            }
+                        }
+                    }
+
+#if DEBUG
+                    SynthParams.ScratchWorkspace2InUse = false;
+                    SynthParams.ScratchWorkspace4InUse = false;
+#endif
+                }
+#endif
+
                 /* process matrix */
-                for (int i = 0; i < BandCount; i++)
+                for (; i < BandCount; i++)
                 {
                     /* initialize mangle vector with raw data */
                     FloatVectorCopy(
@@ -720,6 +814,22 @@ namespace OutOfPhase
                 SynthParamRec SynthParams,
                 bool writeOutputLogs)
             {
+                if (Oscillator != null)
+                {
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.OutputScalingEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.OutputScalingLFO,
+                        SynthParams);
+
+                    FreeEnvelopeStateRecord(
+                        ref Oscillator.WaveTableIndexEnvelope,
+                        SynthParams);
+                    FreeLFOGenerator(
+                        ref Oscillator.WaveTableIndexLFO,
+                        SynthParams);
+                }
             }
         }
     }

@@ -479,14 +479,11 @@ namespace OutOfPhase
             PlayTrackInfoRec TrackInfo,
             ReleaseRec Op)
         {
-            ReleaseRec List;
-            ReleaseRec ListLag;
-
             /* insert into sorted list.  this sort puts new things after any existing */
             /* things that occur at the same time, so that they happen in the same order */
             /* as they were specified in the track */
-            List = TrackInfo.PendingChannelOperations;
-            ListLag = null;
+            ReleaseRec List = TrackInfo.PendingChannelOperations;
+            ReleaseRec ListLag = null;
             while ((List != null) && (Op.When >= List.When))
             {
                 ListLag = List;
@@ -513,7 +510,13 @@ namespace OutOfPhase
             int ScanningGapFrontInEnvelopeTicks,
             SynthParamRec SynthParams)
         {
-            ReleaseRec TieBreakTime = new ReleaseRec();
+            ReleaseRec TieBreakTime = New(ref SynthParams.freelists.ReleaseRecFreeList);
+
+            // must assign all fields: TieBreakTime
+
+            TieBreakTime.Releaser_Which = (WhichEnvType)0;
+            TieBreakTime.Next = null;
+
             TieBreakTime.Type = RelType.eTieBreaker;
 
             /* remember which jump we're breaking for, so we don't break ones that */
@@ -560,12 +563,9 @@ namespace OutOfPhase
                 }
                 else
                 {
-                    FrozenNoteConsCell TargScan;
-                    FrozenNoteConsCell TargLag;
-
                     /* search tie continuation list to see if note is on the list */
-                    TargScan = OscBankScan.TieContinuationList;
-                    TargLag = null;
+                    FrozenNoteConsCell TargScan = OscBankScan.TieContinuationList;
+                    FrozenNoteConsCell TargLag = null;
                     while (!OKToAdd && (TargScan != null))
                     {
                         if ((TargScan.TieTarget == Note)
@@ -585,14 +585,12 @@ namespace OutOfPhase
                 /* allocate new cons cell */
                 if (OKToAdd)
                 {
-                    FrozenNoteConsCell InsertScan;
-                    FrozenNoteConsCell InsertLag;
+                    FrozenNoteConsCell PlaceToPut = New(ref SynthParams.freelists.frozenNoteConsCellFreeList);
+
+                    // must assign all fields
+
                     int StartAdjust;
-
-                    FrozenNoteConsCell PlaceToPut = new FrozenNoteConsCell();
-
-                    /* fill in the fields */
-                    PlaceToPut.FrozenNote = FixNoteParameters(
+                    FixNoteParameters(
                         TrackInfo.ParameterController,
                         Note,
                         out StartAdjust,
@@ -600,6 +598,7 @@ namespace OutOfPhase
                         (Instr != null)
                             ? (short)(Instr.EffectiveBasePitch - Instr.BasePitch)
                             : (short)(OscBankScan.MyInstr.EffectiveBasePitch - OscBankScan.MyInstr.BasePitch),
+                        ref PlaceToPut.FrozenNote,
                         SynthParams);
                     PlaceToPut.ContinuationTime = StartAdjust + ScanningGapFrontInEnvelopeTicks;
                     PlaceToPut.TieTarget = Note.GetNoteTieTarget();
@@ -609,8 +608,8 @@ namespace OutOfPhase
                     PlaceToPut.noteIndex = noteIndex;
 
                     /* insert it into the proper place */
-                    InsertScan = OscBankScan.TieContinuationList;
-                    InsertLag = null;
+                    FrozenNoteConsCell InsertScan = OscBankScan.TieContinuationList;
+                    FrozenNoteConsCell InsertLag = null;
                     while ((InsertScan != null) && (InsertScan.ContinuationTime <= PlaceToPut.ContinuationTime))
                     {
                         InsertLag = InsertScan;
@@ -827,7 +826,7 @@ namespace OutOfPhase
 
 
                             /* if we got here, then it's not a tie target */
-                            NewOscBank = new OscBankConsCell();
+                            NewOscBank = New(ref SynthParams.freelists.oscBankConsCellFreeList);
 
                             SynthErrorCodes Error = NewOscBankState(
                                 InstrScan.OscillatorBankTemplate,
@@ -931,7 +930,7 @@ namespace OutOfPhase
                                 FirstTie.LeadingPortamentoNeedsInitiation = false; /* mark */
                                 RestartOscBankStatePortamento(
                                     OscBankScan.OscBank,
-                                    FirstTie.FrozenNote);
+                                    ref FirstTie.FrozenNote);
                             }
                         }
                     }
@@ -967,11 +966,12 @@ namespace OutOfPhase
                         /* delink */
                         FrozenNoteConsCell Temp = OscBankScan.TieContinuationList;
                         OscBankScan.TieContinuationList = OscBankScan.TieContinuationList.Next;
+                        Temp.Next = null;
 
                         /* execute */
                         ResetOscBankState(
                             OscBankScan.OscBank,
-                            Temp.FrozenNote,
+                            ref Temp.FrozenNote,
                             SynthParams);
                         OscBankScan.TieTarget = Temp.TieTarget;
 
@@ -993,6 +993,9 @@ namespace OutOfPhase
                             throw new InvalidOperationException();
                         }
 #endif
+
+                        // relink
+                        Free(ref SynthParams.freelists.frozenNoteConsCellFreeList, ref Temp);
                     }
 
                     OscBankScan = OscBankScan.Next;
@@ -1160,6 +1163,8 @@ namespace OutOfPhase
                         }
                         break;
                 }
+
+                Free(ref SynthParams.freelists.ReleaseRecFreeList, ref Temp);
             }
         }
 
@@ -1260,6 +1265,7 @@ namespace OutOfPhase
                         {
                             FrozenNoteConsCell FrozenNote = OscBankScan.TieContinuationList;
                             OscBankScan.TieContinuationList = OscBankScan.TieContinuationList.Next;
+                            Free(ref SynthParams.freelists.frozenNoteConsCellFreeList, ref FrozenNote);
                         }
                         OscBankScan.TieTarget = null;
 
@@ -1635,7 +1641,12 @@ namespace OutOfPhase
                 case NoteCommands.eCmdReleaseAll3:
                     {
                         /* allocate new release record */
-                        ReleaseRec ReleaseTime = new ReleaseRec();
+                        ReleaseRec ReleaseTime = New(ref SynthParams.freelists.ReleaseRecFreeList);
+
+                        // must assign all fields: TieBreakTime
+
+                        ReleaseTime.Next = null;
+                        ReleaseTime.TieBreaker_JumpIteration = 0;
 
                         ReleaseTime.Type = RelType.eReleaser;
 
@@ -2156,8 +2167,9 @@ namespace OutOfPhase
                             }
 
                             /* not tied to anybody, so kill it */
+                            OscBankConsCell killed = OscBankScan;
                             FinalizeOscStateBank(
-                                OscBankScan.OscBank,
+                                killed.OscBank,
                                 SynthParams,
                                 true/*writeOutputLogs*/);
                             if (OscBankLag == null)
@@ -2170,6 +2182,9 @@ namespace OutOfPhase
                             }
 
                             OscBankScan = OscBankScan.Next;
+
+                            FreeOscStateBank(killed.OscBank, SynthParams);
+                            Free(ref SynthParams.freelists.oscBankConsCellFreeList, ref killed);
                         }
                         else
                         {
@@ -2252,33 +2267,57 @@ namespace OutOfPhase
             SynthParamRec SynthParams,
             bool writeOutputLogs)
         {
-            OscBankConsCell OscBankScan;
-
             // finalize oscillator banks scheduled but not yet running
-            OscBankScan = TrackInfo.ScanningGapListHead;
-            while (OscBankScan != null)
+            while (TrackInfo.ScanningGapListHead != null)
             {
+                OscBankConsCell Temp = TrackInfo.ScanningGapListHead;
+
+                TrackInfo.ScanningGapListHead = TrackInfo.ScanningGapListHead.Next;
+
                 FinalizeOscStateBank(
-                    OscBankScan.OscBank,
+                    Temp.OscBank,
                     SynthParams,
                     writeOutputLogs);
+                FreeOscStateBank(
+                    Temp.OscBank,
+                    SynthParams);
 
-                OscBankScan = OscBankScan.Next;
+                while (Temp.TieContinuationList != null)
+                {
+                    FrozenNoteConsCell Temp2 = Temp.TieContinuationList;
+                    Temp.TieContinuationList = Temp.TieContinuationList.Next;
+                    Free(ref SynthParams.freelists.frozenNoteConsCellFreeList, ref Temp2);
+                }
+
+                Free(ref SynthParams.freelists.oscBankConsCellFreeList, ref Temp);
             }
 
             // finalize all running objects
             PerInstrRec InstrScan = TrackInfo.Instrs;
             while (InstrScan != null)
             {
-                OscBankScan = InstrScan.ExecutingOscillatorBanks;
-                while (OscBankScan != null)
+                while (InstrScan.ExecutingOscillatorBanks != null)
                 {
+                    OscBankConsCell Temp = InstrScan.ExecutingOscillatorBanks;
+
+                    InstrScan.ExecutingOscillatorBanks = InstrScan.ExecutingOscillatorBanks.Next;
+
                     FinalizeOscStateBank(
-                        OscBankScan.OscBank,
+                        Temp.OscBank,
                         SynthParams,
                         writeOutputLogs);
+                    FreeOscStateBank(
+                        Temp.OscBank,
+                        SynthParams);
 
-                    OscBankScan = OscBankScan.Next;
+                    while (Temp.TieContinuationList != null)
+                    {
+                        FrozenNoteConsCell Temp2 = Temp.TieContinuationList;
+                        Temp.TieContinuationList = Temp.TieContinuationList.Next;
+                        Free(ref SynthParams.freelists.frozenNoteConsCellFreeList, ref Temp2);
+                    }
+
+                    Free(ref SynthParams.freelists.oscBankConsCellFreeList, ref Temp);
                 }
 
                 FinalizeTrackEffectGenerator(
@@ -2287,6 +2326,13 @@ namespace OutOfPhase
                     writeOutputLogs);
 
                 InstrScan = InstrScan.Next;
+            }
+
+            while (TrackInfo.PendingChannelOperations != null)
+            {
+                ReleaseRec Temp = TrackInfo.PendingChannelOperations;
+                TrackInfo.PendingChannelOperations = TrackInfo.PendingChannelOperations.Next;
+                Free(ref SynthParams.freelists.ReleaseRecFreeList, ref Temp);
             }
         }
     }

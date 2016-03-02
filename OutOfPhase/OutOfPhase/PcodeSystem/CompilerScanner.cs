@@ -22,6 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace OutOfPhase
@@ -96,6 +97,7 @@ namespace OutOfPhase
         eScannerUnknownCharacter,
     }
 
+    [StructLayout(LayoutKind.Auto)]
     public struct KeywordRec<T> where T : struct
     {
         public string KeywordName;

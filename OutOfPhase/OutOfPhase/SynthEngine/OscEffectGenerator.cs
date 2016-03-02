@@ -29,16 +29,11 @@ namespace OutOfPhase
 {
     public static partial class Synthesizer
     {
-        public class OscOneEffectRec
-        {
-            public OscOneEffectRec Next;
-            public IOscillatorEffect u;
-        }
-
         public class OscEffectGenRec
         {
-            /* list of effects records */
-            public OscOneEffectRec List;
+            public int count;
+
+            public IOscillatorEffect[] List;
         }
 
         /* create a new oscillator effect generator */
@@ -58,189 +53,186 @@ namespace OutOfPhase
             GeneratorOut = null;
             PreOriginTimeOut = 0;
 
-            OscEffectGenRec Generator = new OscEffectGenRec();
+            OscEffectGenRec Generator = New(ref SynthParams.freelists.OscEffectGenRecFreeList);
+            int count = Generator.count = GetEffectSpecListEnabledLength(SpecList);
+            IOscillatorEffect[] List = Generator.List = New(ref SynthParams.freelists.IOscillatorEffectFreeList, count); // zeroed
+            if (unchecked((uint)count > (uint)List.Length))
+            {
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
 
             int MaxPreOrigin = 0;
 
             /* build list of thingers */
-            OscOneEffectRec Appender = null;
-            int List = GetEffectSpecListLength(SpecList);
-            for (int Scan = 0; Scan < List; Scan += 1)
+            int j = 0;
+            for (int i = 0; j < count; i++)
             {
                 /* see if effect is enabled */
-                if (IsEffectFromEffectSpecListEnabled(SpecList, Scan))
+                if (!IsEffectFromEffectSpecListEnabled(SpecList, i))
                 {
-                    OscOneEffectRec Effect = new OscOneEffectRec();
-
-                    /* append */
-                    Effect.Next = null;
-                    if (Appender == null)
-                    {
-                        Generator.List = Effect;
-                    }
-                    else
-                    {
-                        Appender.Next = Effect;
-                    }
-                    Appender = Effect;
-
-                    /* fill in fields */
-                    EffectTypes Type = GetEffectSpecListElementType(SpecList, Scan);
-                    switch (Type)
-                    {
-                        default:
-                            Debug.Assert(false);
-                            throw new ArgumentException();
-                        case EffectTypes.eDelayEffect:
-                            Effect.u = DelayUnifiedRec.NewOscUnifiedDelayLineProcessor(
-                                GetDelayEffectFromEffectSpecList(SpecList, Scan),
-                                ref Accents,
-                                HurryUp,
-                                InitialFrequency,
-                                FreqForMultisampling,
-                                out OnePreOrigin,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            break;
-                        case EffectTypes.eNLProcEffect:
-                            Effect.u = NLProcUnifiedRec.NewOscNLProcProcessor(
-                                GetNLProcEffectFromEffectSpecList(SpecList, Scan),
-                                ref Accents,
-                                HurryUp,
-                                InitialFrequency,
-                                FreqForMultisampling,
-                                out OnePreOrigin,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            break;
-                        case EffectTypes.eFilterEffect:
-                            Effect.u = FilterArrayRec.NewOscFilterArrayProcessor(
-                                GetFilterEffectFromEffectSpecList(SpecList, Scan),
-                                ref Accents,
-                                HurryUp,
-                                InitialFrequency,
-                                FreqForMultisampling,
-                                out OnePreOrigin,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            break;
-                        case EffectTypes.eAnalyzerEffect:
-                            Effect.u = AnalyzerRec.NewAnalyzer(
-                                GetAnalyzerEffectFromEffectSpecList(SpecList, Scan),
-                                SynthParams);
-                            break;
-                        case EffectTypes.eHistogramEffect:
-                            Effect.u = HistogramRec.NewHistogram(
-                                GetHistogramEffectFromEffectSpecList(SpecList, Scan),
-                                SynthParams);
-                            break;
-                        case EffectTypes.eResamplerEffect:
-                            Effect.u = ResamplerRec.NewResampler(
-                                GetResamplerEffectFromEffectSpecList(SpecList, Scan),
-                                SynthParams);
-                            break;
-                        case EffectTypes.eCompressorEffect:
-                            Effect.u = CompressorRec.NewOscCompressor(
-                                GetCompressorEffectFromEffectSpecList(SpecList, Scan),
-                                ref Accents,
-                                HurryUp,
-                                InitialFrequency,
-                                FreqForMultisampling,
-                                out OnePreOrigin,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            break;
-                        case EffectTypes.eVocoderEffect:
-                            Effect.u = VocoderRec.NewOscVocoder(
-                                GetVocoderEffectFromEffectSpecList(SpecList, Scan),
-                                ref Accents,
-                                HurryUp,
-                                InitialFrequency,
-                                FreqForMultisampling,
-                                out OnePreOrigin,
-                                TrackInfo,
-                                SynthParams);
-                            if (OnePreOrigin > MaxPreOrigin)
-                            {
-                                MaxPreOrigin = OnePreOrigin;
-                            }
-                            break;
-                        case EffectTypes.eIdealLowpassEffect:
-                            Effect.u = IdealLPRec.NewIdealLP(
-                                GetIdealLPEffectFromEffectSpecList(SpecList, Scan),
-                                SynthParams);
-                            break;
-                        case EffectTypes.eUserEffect:
-                            {
-                                UserEffectProcRec userEffect;
-                                SynthErrorCodes error = UserEffectProcRec.NewOscUserEffectProc(
-                                    GetUserEffectFromEffectSpecList(SpecList, Scan),
-                                    ref Accents,
-                                    HurryUp,
-                                    InitialFrequency,
-                                    FreqForMultisampling,
-                                    out OnePreOrigin,
-                                    TrackInfo,
-                                    SynthParams,
-                                    out userEffect);
-                                if (error != SynthErrorCodes.eSynthDone)
-                                {
-                                    return error;
-                                }
-                                Effect.u = userEffect;
-                                if (OnePreOrigin > MaxPreOrigin)
-                                {
-                                    MaxPreOrigin = OnePreOrigin;
-                                }
-                            }
-                            break;
-                        case EffectTypes.ePluggableEffect:
-                            {
-                                PluggableSpec Spec = GetPluggableEffectFromEffectSpecList(SpecList, Scan);
-                                Debug.Assert(Spec is PluggableOscSpec);
-                                PluggableOscEffectTemplate template = new PluggableOscEffectTemplate(
-                                    (PluggableOscSpec)Spec,
-                                    SynthParams);
-                                IOscillatorEffect effect;
-                                SynthErrorCodes error = template.Create(
-                                    ref Accents,
-                                    HurryUp,
-                                    InitialFrequency,
-                                    FreqForMultisampling,
-                                    out OnePreOrigin,
-                                    TrackInfo,
-                                    SynthParams,
-                                    out effect);
-                                if (error != SynthErrorCodes.eSynthDone)
-                                {
-                                    return error;
-                                }
-                                Effect.u = effect;
-                                if (OnePreOrigin > MaxPreOrigin)
-                                {
-                                    MaxPreOrigin = OnePreOrigin;
-                                }
-                            }
-                            break;
-                    }
+                    continue;
                 }
+
+                /* fill in fields */
+                EffectTypes Type = GetEffectSpecListElementType(SpecList, i);
+                switch (Type)
+                {
+                    default:
+                        Debug.Assert(false);
+                        throw new ArgumentException();
+                    case EffectTypes.eDelayEffect:
+                        List[j] = DelayUnifiedRec.NewOscUnifiedDelayLineProcessor(
+                            GetDelayEffectFromEffectSpecList(SpecList, i),
+                            ref Accents,
+                            HurryUp,
+                            InitialFrequency,
+                            FreqForMultisampling,
+                            out OnePreOrigin,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
+                        break;
+                    case EffectTypes.eNLProcEffect:
+                        List[j] = NLProcUnifiedRec.NewOscNLProcProcessor(
+                            GetNLProcEffectFromEffectSpecList(SpecList, i),
+                            ref Accents,
+                            HurryUp,
+                            InitialFrequency,
+                            FreqForMultisampling,
+                            out OnePreOrigin,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
+                        break;
+                    case EffectTypes.eFilterEffect:
+                        List[j] = FilterArrayRec.NewOscFilterArrayProcessor(
+                            GetFilterEffectFromEffectSpecList(SpecList, i),
+                            ref Accents,
+                            HurryUp,
+                            InitialFrequency,
+                            FreqForMultisampling,
+                            out OnePreOrigin,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
+                        break;
+                    case EffectTypes.eAnalyzerEffect:
+                        List[j] = AnalyzerRec.NewAnalyzer(
+                            GetAnalyzerEffectFromEffectSpecList(SpecList, i),
+                            SynthParams);
+                        break;
+                    case EffectTypes.eHistogramEffect:
+                        List[j] = HistogramRec.NewHistogram(
+                            GetHistogramEffectFromEffectSpecList(SpecList, i),
+                            SynthParams);
+                        break;
+                    case EffectTypes.eResamplerEffect:
+                        List[j] = ResamplerRec.NewResampler(
+                            GetResamplerEffectFromEffectSpecList(SpecList, i),
+                            SynthParams);
+                        break;
+                    case EffectTypes.eCompressorEffect:
+                        List[j] = CompressorRec.NewOscCompressor(
+                            GetCompressorEffectFromEffectSpecList(SpecList, i),
+                            ref Accents,
+                            HurryUp,
+                            InitialFrequency,
+                            FreqForMultisampling,
+                            out OnePreOrigin,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
+                        break;
+                    case EffectTypes.eVocoderEffect:
+                        List[j] = VocoderRec.NewOscVocoder(
+                            GetVocoderEffectFromEffectSpecList(SpecList, i),
+                            ref Accents,
+                            HurryUp,
+                            InitialFrequency,
+                            FreqForMultisampling,
+                            out OnePreOrigin,
+                            TrackInfo,
+                            SynthParams);
+                        if (OnePreOrigin > MaxPreOrigin)
+                        {
+                            MaxPreOrigin = OnePreOrigin;
+                        }
+                        break;
+                    case EffectTypes.eIdealLowpassEffect:
+                        List[j] = IdealLPRec.NewIdealLP(
+                            GetIdealLPEffectFromEffectSpecList(SpecList, i),
+                            SynthParams);
+                        break;
+                    case EffectTypes.eUserEffect:
+                        {
+                            UserEffectProcRec userEffect;
+                            SynthErrorCodes error = UserEffectProcRec.NewOscUserEffectProc(
+                                GetUserEffectFromEffectSpecList(SpecList, i),
+                                ref Accents,
+                                HurryUp,
+                                InitialFrequency,
+                                FreqForMultisampling,
+                                out OnePreOrigin,
+                                TrackInfo,
+                                SynthParams,
+                                out userEffect);
+                            if (error != SynthErrorCodes.eSynthDone)
+                            {
+                                return error;
+                            }
+                            List[j] = userEffect;
+                            if (OnePreOrigin > MaxPreOrigin)
+                            {
+                                MaxPreOrigin = OnePreOrigin;
+                            }
+                        }
+                        break;
+                    case EffectTypes.ePluggableEffect:
+                        {
+                            PluggableSpec Spec = GetPluggableEffectFromEffectSpecList(SpecList, i);
+                            Debug.Assert(Spec is PluggableOscSpec);
+                            PluggableOscEffectTemplate template = new PluggableOscEffectTemplate(
+                                (PluggableOscSpec)Spec,
+                                SynthParams);
+                            IOscillatorEffect effect;
+                            SynthErrorCodes error = template.Create(
+                                ref Accents,
+                                HurryUp,
+                                InitialFrequency,
+                                FreqForMultisampling,
+                                out OnePreOrigin,
+                                TrackInfo,
+                                SynthParams,
+                                out effect);
+                            if (error != SynthErrorCodes.eSynthDone)
+                            {
+                                return error;
+                            }
+                            List[j] = effect;
+                            if (OnePreOrigin > MaxPreOrigin)
+                            {
+                                MaxPreOrigin = OnePreOrigin;
+                            }
+                        }
+                        break;
+                }
+
+                j++;
             }
+            Debug.Assert(j == count);
 
             PreOriginTimeOut = MaxPreOrigin;
 
@@ -253,14 +245,18 @@ namespace OutOfPhase
             OscEffectGenRec Generator,
             int ActualPreOrigin)
         {
-            OscOneEffectRec Scan;
-
-            Scan = Generator.List;
-            while (Scan != null)
+            int count = Generator.count;
+            IOscillatorEffect[] List = Generator.List;
+            if (unchecked((uint)count > (uint)List.Length))
             {
-                Scan.u.OscFixEnvelopeOrigins(
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                List[i].OscFixEnvelopeOrigins(
                     ActualPreOrigin);
-                Scan = Scan.Next;
             }
         }
 
@@ -270,19 +266,23 @@ namespace OutOfPhase
             double OscillatorFrequency,
             SynthParamRec SynthParams)
         {
-            OscOneEffectRec Scan;
-
-            Scan = Generator.List;
-            while (Scan != null)
+            int count = Generator.count;
+            IOscillatorEffect[] List = Generator.List;
+            if (unchecked((uint)count > (uint)List.Length))
             {
-                SynthErrorCodes error = Scan.u.OscUpdateEnvelopes(
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                SynthErrorCodes error = List[i].OscUpdateEnvelopes(
                     OscillatorFrequency,
                     SynthParams);
                 if (error != SynthErrorCodes.eSynthDone)
                 {
                     return error;
                 }
-                Scan = Scan.Next;
             }
 
             return SynthErrorCodes.eSynthDone;
@@ -298,12 +298,17 @@ namespace OutOfPhase
             int nActualFrames,
             SynthParamRec SynthParams)
         {
-            OscOneEffectRec Scan;
-
-            Scan = Generator.List;
-            while (Scan != null)
+            int count = Generator.count;
+            IOscillatorEffect[] List = Generator.List;
+            if (unchecked((uint)count > (uint)List.Length))
             {
-                SynthErrorCodes error = Scan.u.Apply(
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                SynthErrorCodes error = List[i].Apply(
                     workspace,
                     lOffset,
                     rOffset,
@@ -313,7 +318,6 @@ namespace OutOfPhase
                 {
                     return error;
                 }
-                Scan = Scan.Next;
             }
 
             return SynthErrorCodes.eSynthDone;
@@ -325,51 +329,70 @@ namespace OutOfPhase
             SynthParamRec SynthParams,
             bool writeOutputLogs)
         {
-            OscOneEffectRec Scan;
-
-            Scan = Generator.List;
-            while (Scan != null)
+            int count = Generator.count;
+            IOscillatorEffect[] List = Generator.List;
+            if (unchecked((uint)count > (uint)List.Length))
             {
-                Scan.u.Finalize(
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                List[i].Finalize(
                     SynthParams,
                     writeOutputLogs);
-                Scan = Scan.Next;
             }
+
+            Free(ref SynthParams.freelists.IOscillatorEffectFreeList, ref Generator.List);
+            Free(ref SynthParams.freelists.OscEffectGenRecFreeList, ref Generator);
         }
 
         public static void OscEffectKeyUpSustain1(OscEffectGenRec Generator)
         {
-            OscOneEffectRec Scan;
-
-            Scan = Generator.List;
-            while (Scan != null)
+            int count = Generator.count;
+            IOscillatorEffect[] List = Generator.List;
+            if (unchecked((uint)count > (uint)List.Length))
             {
-                Scan.u.OscKeyUpSustain1();
-                Scan = Scan.Next;
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                List[i].OscKeyUpSustain1();
             }
         }
 
         public static void OscEffectKeyUpSustain2(OscEffectGenRec Generator)
         {
-            OscOneEffectRec Scan;
-
-            Scan = Generator.List;
-            while (Scan != null)
+            int count = Generator.count;
+            IOscillatorEffect[] List = Generator.List;
+            if (unchecked((uint)count > (uint)List.Length))
             {
-                Scan.u.OscKeyUpSustain2();
-                Scan = Scan.Next;
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                List[i].OscKeyUpSustain2();
             }
         }
 
         public static void OscEffectKeyUpSustain3(OscEffectGenRec Generator)
         {
-            OscOneEffectRec Scan;
-
-            Scan = Generator.List;
-            while (Scan != null)
+            int count = Generator.count;
+            IOscillatorEffect[] List = Generator.List;
+            if (unchecked((uint)count > (uint)List.Length))
             {
-                Scan.u.OscKeyUpSustain3();
-                Scan = Scan.Next;
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                List[i].OscKeyUpSustain3();
             }
         }
 
@@ -382,18 +405,22 @@ namespace OutOfPhase
             bool ActuallyRetrigger,
             SynthParamRec SynthParams)
         {
-            OscOneEffectRec Scan;
-
-            Scan = Generator.List;
-            while (Scan != null)
+            int count = Generator.count;
+            IOscillatorEffect[] List = Generator.List;
+            if (unchecked((uint)count > (uint)List.Length))
             {
-                Scan.u.OscRetriggerEnvelopes(
+                Debug.Assert(false);
+                throw new IndexOutOfRangeException();
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                List[i].OscRetriggerEnvelopes(
                     ref Accents,
                     HurryUp,
                     NewInitialFrequency,
                     ActuallyRetrigger,
                     SynthParams);
-                Scan = Scan.Next;
             }
         }
     }

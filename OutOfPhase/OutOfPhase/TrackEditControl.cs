@@ -169,7 +169,11 @@ namespace OutOfPhase
             trackViewControl.Focus();
         }
 
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public TrackViewControl View { get { return trackViewControl; } }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public NoteViewControl NoteView { get { return noteViewControl; } }
 
 
         // backgound menu code

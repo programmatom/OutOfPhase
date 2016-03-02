@@ -1446,6 +1446,55 @@ namespace OutOfPhase
                         SynthParams,
                         writeOutputLogs);
                 }
+
+                for (int i = 0; i < State.Template.NumStmts; i++)
+                {
+                    FMSynthOneStateRec Stmt = State.Stmts[i];
+
+                    switch (Stmt.Type)
+                    {
+                        default:
+                            Debug.Assert(false);
+                            throw new ArgumentException();
+                        case FMSynthStmtType.eFMSynthWave:
+                            {
+                                FMSynthOneStateRec_Wave Wave = (FMSynthOneStateRec_Wave)Stmt.u;
+
+                                FreeEnvelopeStateRecord(
+                                    ref Wave.IndexEnvelope,
+                                    SynthParams);
+                                FreeLFOGenerator(
+                                    ref Wave.IndexLFOGenerator,
+                                    SynthParams);
+                            }
+                            break;
+                        case FMSynthStmtType.eFMSynthMuladd:
+                            break;
+                        case FMSynthStmtType.eFMSynthEnvelope:
+                            {
+                                FMSynthOneStateRec_Env Env = (FMSynthOneStateRec_Env)Stmt.u;
+
+                                FreeEnvelopeStateRecord(
+                                    ref Env.Envelope,
+                                    SynthParams);
+                                FreeLFOGenerator(
+                                    ref Env.LFOGenerator,
+                                    SynthParams);
+                            }
+                            break;
+                    }
+                }
+
+                FreeEnvelopeStateRecord(
+                    ref State.LoudnessEnvelope,
+                    SynthParams);
+                FreeLFOGenerator(
+                    ref State.LoudnessLFOGenerator,
+                    SynthParams);
+
+                FreeLFOGenerator(
+                    ref State.PitchLFO,
+                    SynthParams);
             }
         }
     }
