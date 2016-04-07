@@ -7,7 +7,7 @@ Out of Phase is an open source music synthesis and sequencing program oriented t
 
 Official Web Site
 -------------
-http://outofphasemusic.com/
+http://programmatom.github.io/OutOfPhase/index.html
 
 Project Layout
 -------------
