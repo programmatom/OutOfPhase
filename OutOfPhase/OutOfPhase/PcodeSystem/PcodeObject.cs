@@ -258,7 +258,10 @@ namespace OutOfPhase
         epLoadImmediateInteger, /* <opcode> <integer>; also used for boolean */
         epLoadImmediateFloat, /* <opcode> ^<float> */
         epLoadImmediateDouble, /* <opcode> ^<double> */
-        epLoadImmediateNILArray, /* <opcode> */
+        epLoadImmediateNILArrayByte, /* <opcode> */
+        epLoadImmediateNILArrayInt32, /* <opcode> */
+        epLoadImmediateNILArrayFloat, /* <opcode> */
+        epLoadImmediateNILArrayDouble, /* <opcode> */
 
         /* new byte array from string */
         epMakeByteArrayFromString,  /* <opcode> ^"<data>" */
@@ -760,7 +763,10 @@ namespace OutOfPhase
                 case Pcodes.epGetIntegerArraySize:
                 case Pcodes.epGetFloatArraySize:
                 case Pcodes.epGetDoubleArraySize:
-                case Pcodes.epLoadImmediateNILArray: /* <opcode> */
+                case Pcodes.epLoadImmediateNILArrayByte: /* <opcode> */
+                case Pcodes.epLoadImmediateNILArrayInt32: /* <opcode> */
+                case Pcodes.epLoadImmediateNILArrayFloat: /* <opcode> */
+                case Pcodes.epLoadImmediateNILArrayDouble: /* <opcode> */
                 case Pcodes.epMakeByteArray: /* <opcode> */
                 case Pcodes.epMakeIntegerArray:
                 case Pcodes.epMakeFloatArray:

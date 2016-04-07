@@ -3602,10 +3602,16 @@ namespace OutOfPhase
                             break;
                         case DataTypes.eArrayOfBoolean:
                         case DataTypes.eArrayOfByte:
+                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayByte, out unused, this.LineNumber);
+                            break;
                         case DataTypes.eArrayOfInteger:
+                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayInt32, out unused, this.LineNumber);
+                            break;
                         case DataTypes.eArrayOfFloat:
+                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayFloat, out unused, this.LineNumber);
+                            break;
                         case DataTypes.eArrayOfDouble:
-                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArray, out unused, this.LineNumber);
+                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayDouble, out unused, this.LineNumber);
                             break;
                     }
                     StackDepth++;
@@ -3676,10 +3682,16 @@ namespace OutOfPhase
                             break;
                         case DataTypes.eArrayOfBoolean:
                         case DataTypes.eArrayOfByte:
+                            context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleByte).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
+                            break;
                         case DataTypes.eArrayOfInteger:
+                            context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleInt32).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
+                            break;
                         case DataTypes.eArrayOfFloat:
+                            context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleFloat).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
+                            break;
                         case DataTypes.eArrayOfDouble:
-                            context.ilGenerator.Emit(OpCodes.Ldnull);
+                            context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleDouble).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
                             break;
                     }
                 }
@@ -4838,8 +4850,8 @@ namespace OutOfPhase
                 }
 
                 /* create the return thing */
-                if ((exprList.Rest == null)
-                    && !isFunctionArgumentList
+                if (!isFunctionArgumentList
+                    && (exprList.Rest == null)
                     && (exprList.First.Kind != ExprKind.eExprArrayDeclaration)
                     && (exprList.First.Kind != ExprKind.eExprVariableDeclaration))
                 {
@@ -6026,10 +6038,16 @@ namespace OutOfPhase
                         break;
                     case DataTypes.eArrayOfBoolean:
                     case DataTypes.eArrayOfByte:
+                        FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayByte, out unused, this.LineNumber);
+                        break;
                     case DataTypes.eArrayOfInteger:
+                        FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayInt32, out unused, this.LineNumber);
+                        break;
                     case DataTypes.eArrayOfFloat:
+                        FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayFloat, out unused, this.LineNumber);
+                        break;
                     case DataTypes.eArrayOfDouble:
-                        FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArray, out unused, this.LineNumber);
+                        FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayDouble, out unused, this.LineNumber);
                         break;
                 }
                 StackDepth++;
@@ -6148,10 +6166,16 @@ namespace OutOfPhase
                         break;
                     case DataTypes.eArrayOfBoolean:
                     case DataTypes.eArrayOfByte:
+                        context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleByte).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
+                        break;
                     case DataTypes.eArrayOfInteger:
+                        context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleInt32).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
+                        break;
                     case DataTypes.eArrayOfFloat:
+                        context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleFloat).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
+                        break;
                     case DataTypes.eArrayOfDouble:
-                        context.ilGenerator.Emit(OpCodes.Ldnull);
+                        context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleDouble).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
                         break;
                 }
 
@@ -9683,10 +9707,16 @@ namespace OutOfPhase
                             break;
                         case DataTypes.eArrayOfBoolean:
                         case DataTypes.eArrayOfByte:
+                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayByte, out unused, this.LineNumber);
+                            break;
                         case DataTypes.eArrayOfInteger:
+                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayInt32, out unused, this.LineNumber);
+                            break;
                         case DataTypes.eArrayOfFloat:
+                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayFloat, out unused, this.LineNumber);
+                            break;
                         case DataTypes.eArrayOfDouble:
-                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArray, out unused, this.LineNumber);
+                            FuncCode.AddPcodeInstruction(Pcodes.epLoadImmediateNILArrayDouble, out unused, this.LineNumber);
                             break;
                     }
                     StackDepth++;
@@ -9754,10 +9784,16 @@ namespace OutOfPhase
                             break;
                         case DataTypes.eArrayOfBoolean:
                         case DataTypes.eArrayOfByte:
+                            context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleByte).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
+                            break;
                         case DataTypes.eArrayOfInteger:
+                            context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleInt32).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
+                            break;
                         case DataTypes.eArrayOfFloat:
+                            context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleFloat).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
+                            break;
                         case DataTypes.eArrayOfDouble:
-                            context.ilGenerator.Emit(OpCodes.Ldnull);
+                            context.ilGenerator.Emit(OpCodes.Ldsfld, typeof(ArrayHandleDouble).GetField("Nullish", BindingFlags.Public | BindingFlags.Static));
                             break;
                     }
                 }

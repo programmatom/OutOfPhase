@@ -35,7 +35,7 @@ namespace OutOfPhase
         private const float MINIMUMHORIZSCALE = 0.03125f;
         private const float MAXIMUMHORIZSCALE = 65536;
 
-        private int HorizontalIndex;
+        private int horizontalIndex;
 
         private SampleObjectRec sampleObject;
         private float xScale = 1;
@@ -259,7 +259,7 @@ namespace OutOfPhase
 
         private void SetScrollOffsetsForRendering(Graphics graphics)
         {
-            HorizontalIndex = -AutoScrollPosition.X;
+            horizontalIndex = -AutoScrollPosition.X;
         }
 
         private int OVERLINEHEIGHT { get { return FontHeight + 1; } }
@@ -309,7 +309,10 @@ namespace OutOfPhase
                         const TextFormatFlags format = TextFormatFlags.Left | TextFormatFlags.LeftAndRightPadding
                             | TextFormatFlags.NoPrefix | TextFormatFlags.PreserveGraphicsClipping | TextFormatFlags.SingleLine;
                         offscreenGraphics.FillRectangle(backBrush, rect);
-                        MyTextRenderer.DrawText(offscreenGraphics, line, Font, rect, ForeColor, BackColor, format);
+                        if (scrolling == 0)
+                        {
+                            MyTextRenderer.DrawText(offscreenGraphics, line, Font, rect, ForeColor, BackColor, format);
+                        }
                         offscreenGraphics.DrawLine(forePen, 0, rect.Y + rect.Height, ClientSize.Width, rect.Y + rect.Height);
                         rect.Offset(0, OVERLINEHEIGHT);
                     }
@@ -317,8 +320,8 @@ namespace OutOfPhase
                     int prevIndex = -1;
                     for (int X = 0; X < ClientSize.Width; X++)
                     {
-                        int Index = (int)((X + HorizontalIndex) * xScale);
-                        int IndexNext = (int)((X + 1 + HorizontalIndex) * xScale);
+                        int Index = (int)((X + horizontalIndex) * xScale);
+                        int IndexNext = (int)((X + 1 + horizontalIndex) * xScale);
                         if (IndexNext < Index + 1)
                         {
                             IndexNext = Index + 1;
@@ -418,8 +421,8 @@ namespace OutOfPhase
                     {
                         for (int X = XX; X < Limit; X++)
                         {
-                            int Index = (int)((X + HorizontalIndex) * xScale);
-                            int IndexNext = (int)((X + 1 + HorizontalIndex) * xScale);
+                            int Index = (int)((X + horizontalIndex) * xScale);
+                            int IndexNext = (int)((X + 1 + horizontalIndex) * xScale);
                             if (IndexNext > NumSampleFrames)
                             {
                                 IndexNext = NumSampleFrames;
@@ -599,15 +602,34 @@ namespace OutOfPhase
             }
         }
 
+        private int scrolling;
         protected override void OnScroll(ScrollEventArgs se)
         {
-            // Because of the position-invariant text on the loop/origin bar it creates artifacts when scrolled.
+            if (se.NewValue == se.OldValue)
+            {
+                base.OnScroll(se);
+                return;
+            }
 
-            Invalidate(GetBoundsOverline());
+            scrolling++;
+            try
+            {
+                // Redraw with scrolling!=0 to suppress annotation of field names, otherwise they leave artifacts
+                // as bits are blitted during base.OnScroll().
+                using (Graphics graphics = CreateGraphics())
+                {
+                    Redraw(graphics, false/*drawSample*/); // (remove annotation of field names)
+                }
 
-            base.OnScroll(se);
+                base.OnScroll(se);
+            }
+            finally
+            {
+                Update(); // redraw scrolled-in area immediately (without annotation of field names)
+                scrolling--;
+            }
 
-            Update(); // redraw scrolled-in area immediately
+            Invalidate(GetBoundsOverline()); // deferred update to repaint with annotation of field names
         }
 
 
@@ -677,13 +699,13 @@ namespace OutOfPhase
         // assumes HorizontalIndex is set, i.e. call SetScrollOffsetsForRendering()
         private int ClientXToFrame(int x)
         {
-            return (int)((x + HorizontalIndex) * xScale);
+            return (int)((x + horizontalIndex) * xScale);
         }
 
         // assumes HorizontalIndex is set, i.e. call SetScrollOffsetsForRendering()
         private int FrameToClientX(int frame)
         {
-            return (int)(frame / xScale - HorizontalIndex);
+            return (int)(frame / xScale - horizontalIndex);
         }
 
         private delegate int GetValue();
@@ -972,6 +994,9 @@ namespace OutOfPhase
 
         [Browsable(true), Category("Appearance"), DefaultValue("")]
         public string LoopEndLabel { get { return loopEndLabel; } set { loopEndLabel = value; Invalidate(); } }
+
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public int HorizontalIndex { get { return horizontalIndex; } }
 
 
         //

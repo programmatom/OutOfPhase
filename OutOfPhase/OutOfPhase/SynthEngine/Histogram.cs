@@ -428,32 +428,35 @@ namespace OutOfPhase
                 }
 
                 /* update bins */
-                for (int i = 0; i < nActualFrames; i += 1)
+                for (int i = 0; i < nActualFrames; i++)
                 {
-                    double Temp;
-
-                    Temp = workspace[i + WorkspaceOffset];
+                    double Temp = workspace[i + WorkspaceOffset];
                     if (Temp < Min)
                     {
                         if (!IgnoreUnders)
                         {
-                            Unders += 1;
+                            Unders++;
                         }
                     }
                     else if (Temp >= Max)
                     {
-                        Overs += 1;
+                        Overs++;
                     }
                     else
                     {
-                        int Index;
-
                         if (Logarithmic)
                         {
                             Temp = Math.Log(Temp);
                         }
-                        Index = (int)(NumBins * (Temp - lMin) * OneOverlMaxMinuslMin);
-                        BinArray[Index] += 1;
+                        int Index = (int)(NumBins * (Temp - lMin) * OneOverlMaxMinuslMin);
+                        if (unchecked((uint)Index >= (uint)BinArray.Length))
+                        {
+                            Overs++; // put NaN and Inf in Overs bin
+                        }
+                        else
+                        {
+                            BinArray[Index]++;
+                        }
                     }
                 }
 
@@ -493,7 +496,7 @@ namespace OutOfPhase
                 {
                     MaxBinCount = this.Overs;
                 }
-                for (int i = 0; i < this.NumBins; i += 1)
+                for (int i = 0; i < this.NumBins; i++)
                 {
                     NumFrames += this.BinArray[i];
                     if (MaxBinCount < this.BinArray[i])
@@ -528,7 +531,7 @@ namespace OutOfPhase
                             writer);
                     }
                     LastEnd = (float)this.Min;
-                    for (int i = 0; i < this.NumBins; i += 1)
+                    for (int i = 0; i < this.NumBins; i++)
                     {
                         double Start;
                         double End;

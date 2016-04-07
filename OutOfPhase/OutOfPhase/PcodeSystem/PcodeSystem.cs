@@ -1494,7 +1494,15 @@ namespace OutOfPhase
                                 ErrorCode = EvalErrors.eEvalArraySubscriptOutOfRange;
                                 goto ExceptionPoint;
                             }
-                            Stack[StackPtr - 1].reference.arrayHandleGeneric.Resize(Stack[StackPtr].Data.Integer);
+                            try
+                            {
+                                Stack[StackPtr - 1].reference.arrayHandleGeneric.Resize(Stack[StackPtr].Data.Integer);
+                            }
+                            catch (NullReferenceException)
+                            {
+                                ErrorCode = EvalErrors.eEvalArrayDoesntExist;
+                                goto ExceptionPoint;
+                            }
                             Stack[StackPtr].ClearScalar();
                             StackPtr--;
                             break;
@@ -1998,10 +2006,29 @@ namespace OutOfPhase
                                 = CurrentProcedureDoubles[CurrentProcedure[ProgramCounter + 0].ImmediateDouble_Ref];
                             ProgramCounter++;
                             break;
-                        case Pcodes.epLoadImmediateNILArray:
+                        case Pcodes.epLoadImmediateNILArrayByte:
                             /* <opcode> */
                             StackPtr++;
                             Debug.Assert(StackPtr < Stack.Length);
+                            Stack[StackPtr].reference.arrayHandleByte = ArrayHandleByte.Nullish;
+                            break;
+                        case Pcodes.epLoadImmediateNILArrayInt32:
+                            /* <opcode> */
+                            StackPtr++;
+                            Debug.Assert(StackPtr < Stack.Length);
+                            Stack[StackPtr].reference.arrayHandleInt32 = ArrayHandleInt32.Nullish;
+                            break;
+                        case Pcodes.epLoadImmediateNILArrayFloat:
+                            /* <opcode> */
+                            StackPtr++;
+                            Debug.Assert(StackPtr < Stack.Length);
+                            Stack[StackPtr].reference.arrayHandleFloat = ArrayHandleFloat.Nullish;
+                            break;
+                        case Pcodes.epLoadImmediateNILArrayDouble:
+                            /* <opcode> */
+                            StackPtr++;
+                            Debug.Assert(StackPtr < Stack.Length);
+                            Stack[StackPtr].reference.arrayHandleDouble = ArrayHandleDouble.Nullish;
                             break;
 
                         case Pcodes.epCopyArrayByte:

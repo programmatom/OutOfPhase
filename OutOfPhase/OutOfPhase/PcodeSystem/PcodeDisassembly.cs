@@ -424,8 +424,20 @@ namespace OutOfPhase
                         result.Append(OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
                         break;
-                    case Pcodes.epLoadImmediateNILArray: /* <opcode> */
-                        result.Append("loadnull");
+                    case Pcodes.epLoadImmediateNILArrayByte: /* <opcode> */
+                        result.Append("loadnullarray.b");
+                        i++;
+                        break;
+                    case Pcodes.epLoadImmediateNILArrayInt32: /* <opcode> */
+                        result.Append("loadnullarray.i");
+                        i++;
+                        break;
+                    case Pcodes.epLoadImmediateNILArrayFloat: /* <opcode> */
+                        result.Append("loadnullarray.s");
+                        i++;
+                        break;
+                    case Pcodes.epLoadImmediateNILArrayDouble: /* <opcode> */
+                        result.Append("loadnullarray.d");
                         i++;
                         break;
                     case Pcodes.epOperationIntegerAnd:
