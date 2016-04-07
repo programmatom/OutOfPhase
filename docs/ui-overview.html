@@ -1,0 +1,51 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head>
+    <title>Out Of Phase Music Software - </title>
+    <link rel="stylesheet" type="text/css" href="../styles.css"/>
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"/>
+</head>
+<body>
+<div class="outer">
+    <div class="topspacer"></div>
+    <div class="header">
+        <div class="header2">
+    <div class="headerleftpart">
+        <h1 class="header">Out Of Phase</h1>
+        <h2 class="header">Music Synthesis & Composition Software</h2>
+    </div>
+    <div class="headerrightpart">
+        <img alt="" width="178" height="140" src="../logo.png"/>
+    </div>
+    <div class="headerbottompart"></div>
+</div>
+
+    </div>
+    <div class="spacer"></div>
+    <div class="menu">
+        <div class="menu2">
+    <ul id="menulist">
+        <li><a href="../default.html"><span class="menuitemunselected">home</span></a></li>
+        <li><a href="../docs/top.html"><span class="menuitemselected">documentation</span></a></li>
+        <li><a href="../contact.html"><span class="menuitemunselected">contact</span></a></li>
+    </ul>
+    <div class="menuend"></div>
+</div>
+
+    </div>
+    <div class="spacer"></div>
+    <div class="content">
+        <div class="content2">
+            <p><b>A User Interface Road Map</b></p><p style="">The key objects that comprise a document are accessible in various places in the user interface. The following map and discussion shows how they tie together.</p><p style="text-align:center;"><img src="../ei/13.png" width="681" height="321" border="0"></img></p><p style="text-align:center;">Figure 1: User Interface Road Map</p><p style="">Descriptions of the primary objects in the user interface:</p><p style=""><b>1. Functions</b></p><p style="">The functions are pieces of code that implement algorithms which are used in three scenarios:</p><p style="">A. As audio data preprocessing functions for samples and wave tables (#2 in Figure 1)</p><p style="">B. As implementations of extensible user effects in instruments or score/section effects (#3, #4, #5 in Figure 1)</p><p style="">C. As functions that can be called from parameter formulas specified in instruments or score/section effects (#3, #4, #5 in Figure 1)</p><p style="">Functions are invoked by name in snippets of code (expressions) embedded in other objects.</p><p style=""><b>2. Wave Resources</b></p><p style="">Sampled and wave table data objects are stored in this section. "Wave Tables" and "Samples" are actual recorded audio data. "Algorithmic Wave Tables" and "Algorithmic Samples" represent audio data that is created through evaluation of code, possibly applied as a transformation to data from "Wave Tables" and "Samples".</p><p style="">The wave resources are usually referenced by name from instruments and sometimes score or section effects.</p><p style=""><b>3. Tracks/Instruments</b></p><p style="">Tracks and Instrumens are closely related. The Instrument defines the synthesis component chain for creating a particular as well as how that chain is parameterized. The Track provides the series of events that are fed to the instrument by the sequencer.</p><p style="">There is a natural one-to-one correspondence between tracks and instruments. In the simplest usage, each track has an instrument it is associated with. This is not a strict rule. Multiple tracks may use the same instrument. Since the instrument is a <i>definition</i>, a separate instance of the instrument is created for each track. Also, a track may reference multiple instruments via a pitch-split mechanism, where note events are assigned to the instruments based on nominal pitch. Finally, sometimes a track is used for parameter control and has no instrument associated with it.</p><p style="">Instruments are associated with tracks by name in the Instrument field of the Track Properties dialog.</p><p style="">An architectural overview of how instruments and tracks work together can be found <a href="../docs/syntharch.html#trackinstr">here</a>.</p><p style=""><b>4. Score Effects</b></p><p style="">The score effects is a special type of instrument that describes the processing chain for the entire score, after all tracks and sections have been mixed. Look for the "Score Effects" box in the flow diagram described <a href="../docs/syntharch.html#highlevel">here</a>.</p><p style=""><b>5. Sections Effects</b></p><p style="">Each track can be assigned to a section. The effects processing for a section is applied to the result of mixing the member tracks. Look for the "Section Effects" boxes in the flow diagram described <a href="../docs/syntharch.html#highlevel">here</a>.</p><p style=""></p><p></p>
+        </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="footer">
+        <p class="footer"><a href="../default.html">home</a> | <a href="../contact.html">contact</a> | Copyright &copy; 2015-2016 Thomas R. Lawrence, All Rights Reserved</p>
+<p class="footer">Built using custom site management software and <a href="http://dotliquidmarkup.org/">DotLiquid</a>.</p>
+
+    </div>
+    <div class="bottomspacer"></div>
+</div>
+</body>
+</html>

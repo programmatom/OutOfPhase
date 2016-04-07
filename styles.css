@@ -1,0 +1,53 @@
+body {margin: 0; padding: 0; background: olive url(background.png); color: black; font: 15px Arial, sans-serif; text-align: center; overflow-y: scroll;}
+div.outer {position: relative; width: 75%; margin: 0 auto;}
+div.topspacer {padding: 8px 0 0 0;}
+div.spacer {padding: 4px 0 0 0;}
+h1.header {margin: 20px 0 0 0; font: 48px Times, serif; font-weight: bold; font-style: italic;}
+h2.header {margin: 0 0 0 4px; font: 18px Times, serif; font-weight: bold; font-style: italic;}
+div.header {width: 100%; border: 1px solid #d8b65e; background: #f0f0f8; border-radius: 4px;}
+div.header2 {text-align: left;}
+div.headerleftpart {float: left; margin: 10px;}
+div.headerrightpart {float: right;}
+div.headerbottompart {clear: both;}
+div.menu {width: 100%; border: 1px solid #d8b65e; text-align: center; background: #f0e0a0; border-radius: 4px;}
+div.menu2 {padding: 0 10px 0 10px;}
+#menulist {margin: 0; padding: 0; list-style: none inside;}
+#menulist li {width: 33.33%; float: left;}
+span.menuitemselected {display: inline-block; width: 100%; background: #fcf0f0; padding: 2px 0 3px 0; border: solid #f0f0f8; border-width: 0 0 0 1px;}
+span.menuitemselected:hover {display: inline-block; width: 100%; color: black; background: #fef8f8; padding: 2px 0 3px 0; border: solid #f0f0f8; border-width: 0 0 0 1px;}
+span.menuitemunselected {display: inline-block; width: 100%; background: #f0e0a0; padding: 2px 0 3px 0; border: solid #f0f0f8; border-width: 0 0 0 1px;}
+span.menuitemunselected:hover {display: inline-block; width: 100%; color: black; background: #f8f0c0; padding: 2px 0 3px 0; border: solid #f0f0f8; border-width: 0 0 0 1px;}
+div.menuend {clear: both;}
+div.content {width: 100%; border: 1px solid #d8b65e; text-align: left; background: white; border-radius: 4px;}
+div.content2 {text-align: left; margin: 6px; min-height: 300px; height: auto !important; height: 300px;}
+div.contentrightfloat {float: right; margin-left: 6px;}
+div.contentleftfloat {float: left; margin-right: 6px;}
+div.contentend {clear: both;}
+div.contentfooter {width: 100%; text-align: center; padding: 6px 0 6px 0; background: #f0f0f8; font-size: 80%;}
+div.footer {width: 100%; border: 1px solid #d8b65e; text-align: center; padding: 6px 0 6px 0; background: #f0f0f8; border-radius: 4px; font-size: 80%;}
+p.footer {margin: 0;}
+div.bottomspacer {padding: 0 0 8px 0;}
+
+a {text-decoration: none;}
+a:hover {text-decoration: underline;}
+
+h1.content {margin: 0 0 20px 0; font-style: italic;}
+h2.content {margin: 0; padding: 0; font-size: 120%;}
+h3.content {margin: 0; padding: 0; font-size: 100%;}
+ul.contentlist {margin: 0 0 1em 0; padding-left: 1.5em; list-style: none inside;}
+ul.contentlistb {margin: 0 0 1em 0; padding-left: 1.5em; list-style: disc inside;}
+ul.contentlistc {margin: 0; padding-left: 2.5em; list-style: circle;}
+ul.contentlistd {margin: 0; padding-left: 3.5em; list-style: square;}
+ul.contentlistbi {margin: 0 0 1em 0; padding-left: 1.5em; text-indent: -3em; margin-left: 3em; list-style: disc inside;}
+ol.contentlist1 {margin: 0 0 1em 0; padding-left: 1.5em; list-style: numeric;}
+ol.contentlist2 {margin: 0; padding-left: 2.5em; list-style: lower-alpha;}
+li.contentlist {margin: 0;}
+li.contentlistsub {margin: 0; padding: 0 0 0 1em;}
+p {margin: 0 0 1em 0;}
+p.contentdetail {margin: 0 0 1em 1.5em;}
+p.contentitemheading {text-indent: -1.5em; margin-left: 1.5em; font-style: italic; text-decoration: underline;}
+p.contentitemheading2 {text-indent: -1.5em; margin-left: 1.5em; font-weight: bold;}
+p.contentauthortag {margin: 0; font-style: italic;}
+p.contentauthordate {font-style: italic;}
+p.continues {margin-bottom: 0;}
+ul.continues {margin-bottom: 0;}

@@ -1,0 +1,51 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head>
+    <title>Out Of Phase Music Software - </title>
+    <link rel="stylesheet" type="text/css" href="../styles.css"/>
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"/>
+</head>
+<body>
+<div class="outer">
+    <div class="topspacer"></div>
+    <div class="header">
+        <div class="header2">
+    <div class="headerleftpart">
+        <h1 class="header">Out Of Phase</h1>
+        <h2 class="header">Music Synthesis & Composition Software</h2>
+    </div>
+    <div class="headerrightpart">
+        <img alt="" width="178" height="140" src="../logo.png"/>
+    </div>
+    <div class="headerbottompart"></div>
+</div>
+
+    </div>
+    <div class="spacer"></div>
+    <div class="menu">
+        <div class="menu2">
+    <ul id="menulist">
+        <li><a href="../default.html"><span class="menuitemunselected">home</span></a></li>
+        <li><a href="../docs/top.html"><span class="menuitemselected">documentation</span></a></li>
+        <li><a href="../contact.html"><span class="menuitemunselected">contact</span></a></li>
+    </ul>
+    <div class="menuend"></div>
+</div>
+
+    </div>
+    <div class="spacer"></div>
+    <div class="content">
+        <div class="content2">
+            <p><b>Synthesis Engine Architecture</b></p><p style=""><b><a name="highlevel"></a>High Level View</b></p><p style="">The synthesis engine is organized as a set of reductions fixed in three phases: <i>track</i>/instrument, <i>section </i>effect, and <i>score </i>effect. There can be any number of tracks in a section and any number of sections. The output of all tracks in a section is mixed (summed) and the mix feeds into the section effects chain. The outputs of all section effects chains are mixed (summed) and the mix feeds into the score effects chain, which produces the final stereo output.</p><p style="">There is also a "section" that passes it's input through unchanged (called "default") when section effects processing is unneeded.</p><p style="text-align:center;"><img src="../ei/1.png" width="576" height="533" border="0"></img></p><p style="text-align:center;"></p><p style="text-align:center;">Figure 1: Synthesis engine architecture</p><p style=""><b><a name="trackinstr"></a>Track/Instrument Structure</b></p><p style="">Each Track/Instrument pair corresponds to a single (stereo) channel. The <i>track</i> describes the series of events (notes and commands) interpreted by the sequencer. The <i>instrument</i> defines the synthesizer audio generating elements that are driven by the sequencer.</p><p style="">The sequencer schedules the creation and destruction of an audio-generating entity called an <i>oscillator bank</i>. This entity corresponds to a single note (or sequence of notes tied together). The oscillator bank many contain multiple oscillators and effects in a processing chain. However, each oscillator bank is independent of the others and will be created and destroyed independently of the others. For polyphonic music there are multiple oscillator banks in existence at one time.</p><p style="">The stereo output data from the oscillator banks is mixed and processed through the track effects chain, which may have any number of effects processors. The final output of the track effects chain is routed to the mixer on the input of either one of the section effects (if the track is a member of a section) or directly to the score effects.</p><p style="">If there are no oscillator banks in existence at a particular point in time, silence is generated and fed through the track effects chain, which operates continuously without regard to the  number of oscillator banks.</p><p style="">The oscillator bank structure is defined by the 'oscillator' and 'effect' declarations in the instrument body. The track effects are defined by the 'trackeffect' declarations in the instrument body.</p><p style="text-align:center;"><img src="../ei/2.png" width="576" height="519" border="0"></img></p><p style="text-align:center;"></p><p style="text-align:center;">Figure 2: Track/instrument structure</p><p style=""><b>Oscillator Bank Structure</b></p><p style="">An oscillator bank must contain at least one oscillator, but may contain any number more than that. Each oscillator runs independently according to the schedule of it's primary envelope generator, which is the envelope in control of the loudness (amplitude) of output.</p><p style="">The output of all oscillators in a single oscillator bank is mixed and the mix fed through the effects chain for that oscillator.</p><p style="text-align:center;"><img src="../ei/3.png" width="576" height="449" border="0"></img></p><p style="text-align:center;">Figure 3: Oscillator bank structure</p><p style="">Documentation for individual oscillator types can be found here:</p><p style=""><a href="../docs/oscramp.html">Ramp</a></p><p style=""><a href="../docs/oscpulse.html">Pulse</a></p><p style=""><a href="../docs/oscsampled.html">Sampled</a></p><p style=""><a href="../docs/oscwavetable.html">Indexed Wave Table</a></p><p style=""><a href="../docs/oscfof.html">FOF</a></p><p style=""><a href="../docs/oscnetwork.html">Network</a></p><p></p>
+        </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="footer">
+        <p class="footer"><a href="../default.html">home</a> | <a href="../contact.html">contact</a> | Copyright &copy; 2015-2016 Thomas R. Lawrence, All Rights Reserved</p>
+<p class="footer">Built using custom site management software and <a href="http://dotliquidmarkup.org/">DotLiquid</a>.</p>
+
+    </div>
+    <div class="bottomspacer"></div>
+</div>
+</body>
+</html>

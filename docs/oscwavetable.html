@@ -1,0 +1,51 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head>
+    <title>Out Of Phase Music Software - </title>
+    <link rel="stylesheet" type="text/css" href="../styles.css"/>
+    <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"/>
+</head>
+<body>
+<div class="outer">
+    <div class="topspacer"></div>
+    <div class="header">
+        <div class="header2">
+    <div class="headerleftpart">
+        <h1 class="header">Out Of Phase</h1>
+        <h2 class="header">Music Synthesis & Composition Software</h2>
+    </div>
+    <div class="headerrightpart">
+        <img alt="" width="178" height="140" src="../logo.png"/>
+    </div>
+    <div class="headerbottompart"></div>
+</div>
+
+    </div>
+    <div class="spacer"></div>
+    <div class="menu">
+        <div class="menu2">
+    <ul id="menulist">
+        <li><a href="../default.html"><span class="menuitemunselected">home</span></a></li>
+        <li><a href="../docs/top.html"><span class="menuitemselected">documentation</span></a></li>
+        <li><a href="../contact.html"><span class="menuitemunselected">contact</span></a></li>
+    </ul>
+    <div class="menuend"></div>
+</div>
+
+    </div>
+    <div class="spacer"></div>
+    <div class="content">
+        <div class="content2">
+            <p><b>Indexed Wave Table Oscillator</b></p><p style="">The indexed wave table oscillator provides waveform generation through scanning a table of data corresponding to a single period of a waveform. The method is generalized to support indexing across an array of tables to provide one degree of freedom which can be parameterized to affect timbre in musical ways.</p><p style="">The array of tables is distributed linearly in the indexing interval [0..1]. Index values that do not fall exactly on a table result in a weighted linear interpolation between the two tables closest to the index.</p><p style="">The indexing effect can be used to create sounds that "morph" over time. However, note that the oscillator provides only indexing into a table dataset. Creation of meaningful waveform data must be provided by the author of the document.</p><p style="text-align:center;"><img src="../ei/11.png" width="502" height="628" border="0"></img></p><p style="text-align:center;">Figure 1: Indexed Wave Table Parameterization</p><p style="">The following example demonstrates creating an array of table data algorithmically, using the classic "reson" 2-poll all pass filter, with the table index parameter corresponding to the cutoff frequency of the filter. Sweeping the index smoothly from 0 to 1 results in a transition which looks like:</p><p style="text-align:center;"><img src="../ei/12.png" width="576" height="89" border="0"></img></p><p style="text-align:center;">Figure 2: Index Sweep</p><p style="">The indexed wave table example can be <a href="../examples/wavetable.oop">downloaded</a>.</p><p></p>
+        </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="footer">
+        <p class="footer"><a href="../default.html">home</a> | <a href="../contact.html">contact</a> | Copyright &copy; 2015-2016 Thomas R. Lawrence, All Rights Reserved</p>
+<p class="footer">Built using custom site management software and <a href="http://dotliquidmarkup.org/">DotLiquid</a>.</p>
+
+    </div>
+    <div class="bottomspacer"></div>
+</div>
+</body>
+</html>
