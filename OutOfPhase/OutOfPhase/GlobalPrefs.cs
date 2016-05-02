@@ -222,18 +222,29 @@ namespace OutOfPhase
                 new GlobalPrefsSimpleItem<bool>("EnableTrackViewOffscreenCompositing", true),
                 new GlobalPrefsSimpleItem<bool>("EnableFreeLists", true),
 
-                // for readability these are stashed at the end
-                new GlobalPrefsComputerNameKeyedItem<string>("FFTWWisdom32f", String.Empty),
-                new GlobalPrefsComputerNameKeyedItem<string>("FFTWWisdom64f", String.Empty),
+                // per-machine properties
+                new GlobalPrefsSimpleItem<string>("FFTWWisdom32f", String.Empty, false/*roaming*/),
+                new GlobalPrefsSimpleItem<string>("FFTWWisdom64f", String.Empty, false/*roaming*/),
             };
         }
 
         #region implementation
-        public GlobalPrefs(string path)
+        public GlobalPrefs(string pathRoaming, string pathLocal)
             : this()
         {
             StringBuilder errors = new StringBuilder();
 
+            ReadPrefs(pathRoaming, true/*roaming*/, errors);
+            ReadPrefs(pathLocal, false/*roaming*/, errors);
+
+            if (errors.Length != 0)
+            {
+                MessageBox.Show(String.Format("An error ocurred parsing the application preferences; some preferences will be reset. {0}", errors), "Out Of Phase");
+            }
+        }
+
+        private void ReadPrefs(string path, bool roaming, StringBuilder errors)
+        {
             if (File.Exists(path))
             {
                 try
@@ -249,13 +260,16 @@ namespace OutOfPhase
 
                     foreach (GlobalPrefsItem item in items)
                     {
-                        try
+                        if (item.Roaming == roaming)
                         {
-                            item.Read(settingsContainer);
-                        }
-                        catch (Exception exception)
-                        {
-                            errors.AppendLine(String.Format("{0}: {1}", item.PropertyName, exception.ToString()));
+                            try
+                            {
+                                item.Read(settingsContainer);
+                            }
+                            catch (Exception exception)
+                            {
+                                errors.AppendLine(String.Format("{0}: {1}", item.PropertyName, exception.ToString()));
+                            }
                         }
                     }
                 }
@@ -264,14 +278,15 @@ namespace OutOfPhase
                     errors.AppendLine(exception.ToString());
                 }
             }
-
-            if (errors.Length != 0)
-            {
-                MessageBox.Show(String.Format("An error ocurred parsing the application preferences; some preferences will be reset. {0}", errors), "Out Of Phase");
-            }
         }
 
-        public void Save(string path)
+        public void Save(string pathRoaming, string pathLocal)
+        {
+            SaveHelper(pathRoaming, true/*roaming*/);
+            SaveHelper(pathLocal, false/*roaming*/);
+        }
+
+        private void SaveHelper(string path, bool roaming)
         {
             XmlWriterSettings settings = new XmlWriterSettings();
             settings.Indent = true;
@@ -283,7 +298,10 @@ namespace OutOfPhase
 
                     foreach (GlobalPrefsItem item in items)
                     {
-                        item.Write(writer);
+                        if (item.Roaming == roaming)
+                        {
+                            item.Write(writer);
+                        }
                     }
 
                     writer.WriteEndElement();
@@ -309,16 +327,25 @@ namespace OutOfPhase
         private abstract class GlobalPrefsItem
         {
             protected readonly string propertyName;
+            protected readonly bool roaming = true;
 
             protected GlobalPrefsItem(string propertyName)
             {
                 this.propertyName = propertyName;
             }
 
+            protected GlobalPrefsItem(string propertyName, bool roaming)
+            {
+                this.propertyName = propertyName;
+                this.roaming = roaming;
+            }
+
             public abstract void Read(XPathNavigator containerNav);
             public abstract void Write(XmlWriter writer);
 
             public string PropertyName { get { return propertyName; } }
+
+            public bool Roaming { get { return roaming; } }
 
             public abstract bool CopyTo(GlobalPrefsItem dest);
         }
@@ -331,6 +358,12 @@ namespace OutOfPhase
 
             public GlobalPrefsSimpleItem(string propertyName, T defaultValue)
                 : base(propertyName)
+            {
+                this.value = this.defaultValue = defaultValue;
+            }
+
+            public GlobalPrefsSimpleItem(string propertyName, T defaultValue, bool roaming)
+                : base(propertyName, roaming)
             {
                 this.value = this.defaultValue = defaultValue;
             }
@@ -373,6 +406,7 @@ namespace OutOfPhase
             }
         }
 
+#if false // deprecated - if porting to non-Windows, reactivate for systems that don't support local/roaming distinction
         // Support for roaming profiles - so machine-specific items can be kept separate
         private class GlobalPrefsComputerNameKeyedItem<T> : GlobalPrefsSimpleItem<T>
         {
@@ -484,6 +518,7 @@ namespace OutOfPhase
                 return result;
             }
         }
+#endif
 
         private class GlobalPrefsListItem<T> : GlobalPrefsItem
         {

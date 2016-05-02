@@ -83,6 +83,7 @@ namespace OutOfPhase
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            source.Dispose();
             registration.Unregister(identity, this);
             base.OnFormClosed(e);
         }
@@ -102,7 +103,7 @@ namespace OutOfPhase
         [Bindable(true)]
         public Source SourceProperty { get { return source; } }
 
-        public class Source : HierarchicalBindingRoot, IPlayPrefsProvider
+        public class Source : HierarchicalBindingRoot, IPlayPrefsProvider, IDisposable
         {
             private int _SamplingRate;
             public const string SamplingRate_PropertyName = "SamplingRate";
@@ -254,6 +255,11 @@ namespace OutOfPhase
                 }
 
                 document.TrackList.ListChanged += TrackList_ListChanged;
+            }
+
+            public void Dispose()
+            {
+                _document.TrackList.ListChanged -= TrackList_ListChanged;
             }
 
             public void Save(Document document)

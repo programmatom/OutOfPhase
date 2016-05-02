@@ -343,7 +343,7 @@ namespace OutOfPhase
             if (path == null)
             {
                 string path2;
-                if (SecurePathCombine(Program.ConfigDirectory, name, out path2)
+                if (SecurePathCombine(Program.GetSettingsDirectory(false/*create*/, true/*roaming*/), name, out path2)
                     && File.Exists(path2))
                 {
                     path = path2;

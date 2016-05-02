@@ -40,20 +40,38 @@ namespace OutOfPhase
         private static GlobalPrefs config = new GlobalPrefs();
         public static GlobalPrefs Config { get { return config; } }
 
-        private static string configDirectory;
-        public static string ConfigDirectory { get { return configDirectory; } }
-
         private const string SettingsFileName = "Settings.xml";
+        private const string LocalApplicationDirectoryName = "OutOfPhase";
+
+        public static string GetSettingsDirectory(bool create, bool roaming)
+        {
+            string root = Environment.GetFolderPath(
+                roaming ? Environment.SpecialFolder.ApplicationData : Environment.SpecialFolder.LocalApplicationData,
+                Environment.SpecialFolderOption.None);
+            string dir = Path.Combine(root, LocalApplicationDirectoryName);
+            if (create)
+            {
+                Directory.CreateDirectory(dir);
+            }
+            return dir;
+        }
+
+        private static string GetSettingsPath(bool create, bool roaming)
+        {
+            string dir = GetSettingsDirectory(create, roaming);
+            string path = Path.Combine(dir, SettingsFileName);
+            return path;
+        }
 
         public static void LoadSettings()
         {
-            configDirectory = GetLocalAppDataPath(false, true);
-            string path = Path.Combine(ConfigDirectory, SettingsFileName);
-            if (File.Exists(path))
+            string pathRoaming = GetSettingsPath(false/*create*/, true/*roaming*/);
+            string pathLocal = GetSettingsPath(false/*create*/, false/*roaming*/);
+            if (File.Exists(pathRoaming) || File.Exists(pathLocal))
             {
                 try
                 {
-                    config = new GlobalPrefs(path);
+                    config = new GlobalPrefs(pathRoaming, pathLocal);
                 }
                 catch (Exception exception)
                 {
@@ -65,7 +83,9 @@ namespace OutOfPhase
 
         public static void SaveSettings()
         {
-            Config.Save(Path.Combine(GetLocalAppDataPath(true, true), SettingsFileName));
+            Config.Save(
+                GetSettingsPath(true/*create*/, true/*roaming*/),
+                GetSettingsPath(true/*create*/, false/*roaming*/));
         }
 
         public static void SaveFFTWWisdomIfNeeded()
@@ -82,22 +102,6 @@ namespace OutOfPhase
         {
             Program.Config.ReferenceRecentDocument(path);
             Program.SaveSettings();
-        }
-
-        private const string LocalApplicationDirectoryName = "OutOfPhase";
-        private static string GetLocalAppDataPath(bool create, bool roaming)
-        {
-            string applicationDataPath = Environment.GetEnvironmentVariable(roaming ? "APPDATA" : "LOCALAPPDATA");
-            if (applicationDataPath == null)
-            {
-                applicationDataPath = Environment.ExpandEnvironmentVariables("%USERPROFILE%\\Application Data"); // Windows XP fallback
-            }
-            applicationDataPath = Path.Combine(applicationDataPath, LocalApplicationDirectoryName);
-            if (create && !Directory.Exists(applicationDataPath))
-            {
-                Directory.CreateDirectory(applicationDataPath);
-            }
-            return applicationDataPath;
         }
 
         private static TextWriter log;
