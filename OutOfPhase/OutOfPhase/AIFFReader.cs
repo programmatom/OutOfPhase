@@ -20,10 +20,8 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 
 namespace OutOfPhase
 {
@@ -34,14 +32,22 @@ namespace OutOfPhase
         private readonly NumChannelsType numChannels;
         private readonly int numFrames;
         private readonly int samplingRate;
+        private readonly bool allowTruncated;
         private int remainingFrames;
         private byte[] buffer = new byte[0];
+        private bool truncated;
 
-        public AIFFReader(Stream stream)
+        public AIFFReader(Stream stream, bool allowTruncated)
         {
             this.stream = stream;
-            ReadPreamble(stream, out numBits, out  numChannels, out numFrames, out samplingRate);
+            this.allowTruncated = allowTruncated;
+            ReadPreamble(stream, out numBits, out numChannels, out numFrames, out samplingRate);
             remainingFrames = NumFrames;
+        }
+
+        public AIFFReader(Stream stream)
+            : this(stream, false/*allowTruncated*/)
+        {
         }
 
         public override NumChannelsType NumChannels { get { return numChannels; } }
@@ -104,130 +110,124 @@ namespace OutOfPhase
         /*        Multichannel sound is interleaved with the left channel first. */
         private static void ReadPreamble(
             Stream stream,
-            out NumBitsType NumBitsOut,
-            out NumChannelsType NumChannelsOut,
-            out int NumSampleFramesOut,
-            out int SamplingRateOut)
+            out NumBitsType numBitsOut,
+            out NumChannelsType numChannelsOut,
+            out int numSampleFramesOut,
+            out int samplingRateOut)
         {
-            const string ErrorUnrecognized = "The file is not an AIFF or AIFF-C file.";
-            const string ErrorUnsupportedVariant = "The file is not a supported variant of AIFF or AIFF-C.";
-            const string ErrorTooShort = "The file appears to be incomplete.";
-
-            string CharBuff;
-            bool IsAnAIFFCFile;
-            int FormChunkLength;
-            bool RawDataFromFileIsValid = false;
-            NumBitsType NumBits = (NumBitsType)(-1);
-            bool NumBitsIsValid = false;
-            NumChannelsType NumChannels = (NumChannelsType)(-1);
-            bool NumChannelsIsValid = false;
-            int SamplingRate = -1;
-            bool SamplingRateIsValid = false;
-            int NumSampleFrames = -1;
-            bool NumSampleFramesIsValid = false;
+            NumBitsType numBits = (NumBitsType)(-1);
+            bool numBitsIsValid = false;
+            NumChannelsType numChannels = (NumChannelsType)(-1);
+            bool numChannelsIsValid = false;
+            int numSampleFrames = -1;
+            bool numSampleFramesIsValid = false;
+            int samplingRate = -1;
+            bool samplingRateIsValid = false;
             long audioDataOffset = 0;
+            bool rawDataFromFileIsValid = false;
 
-            NumBitsOut = (NumBitsType)0;
-            NumChannelsOut = (NumChannelsType)0;
-            NumSampleFramesOut = 0;
-            SamplingRateOut = 0;
+            numBitsOut = (NumBitsType)0;
+            numChannelsOut = (NumChannelsType)0;
+            numSampleFramesOut = 0;
+            samplingRateOut = 0;
 
             try
             {
                 using (BinaryReader File = new BinaryReader(stream))
                 {
+                    string charBuff;
+
                     /*     "FORM" */
-                    CharBuff = File.ReadFixedStringASCII(4);
-                    if (!String.Equals(CharBuff, "FORM"))
+                    charBuff = File.ReadFixedStringASCII(4);
+                    if (!String.Equals(charBuff, "FORM"))
                     {
-                        throw new FormatException(ErrorUnrecognized);
+                        throw new AudioFileReaderException(AudioFileReaderErrors.UnrecognizedFileFormat);
                     }
 
                     /*     4-byte big endian form chunk length descriptor (minus 8 for "FORM" & this) */
-                    FormChunkLength = File.ReadInt32BigEndian();
+                    int formChunkLength = File.ReadInt32BigEndian();
 
                     /*     4-byte type */
                     /*        "AIFF" = AIFF format file */
                     /*        "AIFC" = AIFF-C format file */
-                    CharBuff = File.ReadFixedStringASCII(4);
-                    if (String.Equals(CharBuff, "AIFF"))
+                    charBuff = File.ReadFixedStringASCII(4);
+                    bool isAIFFC;
+                    if (String.Equals(charBuff, "AIFF"))
                     {
-                        IsAnAIFFCFile = false;
+                        isAIFFC = false;
                     }
-                    else if (String.Equals(CharBuff, "AIFC"))
+                    else if (String.Equals(charBuff, "AIFC"))
                     {
-                        IsAnAIFFCFile = true;
+                        isAIFFC = true;
                     }
                     else
                     {
-                        throw new FormatException(ErrorUnsupportedVariant);
+                        throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedVariant);
                     }
-                    FormChunkLength -= 4;
+                    formChunkLength -= 4;
 
                     /* now, read in chunks until we die */
-                    while (FormChunkLength > 0)
+                    while (formChunkLength > 0)
                     {
-                        int LocalChunkLength;
-
                         /* get the chunk type */
-                        CharBuff = File.ReadFixedStringASCII(4);
+                        charBuff = File.ReadFixedStringASCII(4);
                         /* get the chunk length */
-                        LocalChunkLength = File.ReadInt32BigEndian();
-                        FormChunkLength -= 8;
+                        int localChunkLength = File.ReadInt32BigEndian();
+                        formChunkLength -= 8;
                         /* adjust for even alignment */
-                        if ((LocalChunkLength % 2) != 0)
+                        if ((localChunkLength % 2) != 0)
                         {
-                            LocalChunkLength += 1;
+                            localChunkLength += 1;
                         }
-                        FormChunkLength -= LocalChunkLength;
+                        formChunkLength -= localChunkLength;
 
                         /* decode the chunk */
-                        if (String.Equals(CharBuff, "COMM"))
+                        if (String.Equals(charBuff, "COMM"))
                         {
-                            uint Exponent;
-                            uint Mantissa;
-                            byte[] StupidExtendedThang = new byte[10];
+                            uint exponent;
+                            uint mantissa;
+                            byte[] extendedFloat = new byte[10];
 
-                            if (!IsAnAIFFCFile)
+                            if (!isAIFFC)
                             {
-                                short ShortInteger;
+                                short s;
 
                                 /*   Common Chunk for AIFF files */
                                 /*     "COMM" */
                                 /*     4-byte big endian length. */
                                 /*        always 18 for AIFF files */
-                                if (LocalChunkLength != 18)
+                                if (localChunkLength != 18)
                                 {
-                                    throw new FormatException(ErrorUnsupportedVariant);
+                                    throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedVariant);
                                 }
 
                                 /*     2-byte big endian number of channels */
-                                ShortInteger = File.ReadInt16BigEndian();
-                                switch (ShortInteger)
+                                s = File.ReadInt16BigEndian();
+                                switch (s)
                                 {
                                     default:
-                                        throw new FormatException(ErrorUnsupportedVariant);
+                                        throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedNumberOfChannels);
                                     case 1:
-                                        NumChannels = NumChannelsType.eSampleMono;
-                                        NumChannelsIsValid = true;
+                                        numChannels = NumChannelsType.eSampleMono;
+                                        numChannelsIsValid = true;
                                         break;
                                     case 2:
-                                        NumChannels = NumChannelsType.eSampleStereo;
-                                        NumChannelsIsValid = true;
+                                        numChannels = NumChannelsType.eSampleStereo;
+                                        numChannelsIsValid = true;
                                         break;
                                 }
 
                                 /*     4-byte big endian number of sample frames */
-                                NumSampleFrames = File.ReadInt32BigEndian();
-                                NumSampleFramesIsValid = true;
+                                numSampleFrames = File.ReadInt32BigEndian();
+                                numSampleFramesIsValid = true;
 
                                 /*     2-byte big endian number of bits per sample */
                                 /*        a value in the domain 1..32 */
-                                ShortInteger = File.ReadInt16BigEndian();
-                                switch (ShortInteger)
+                                s = File.ReadInt16BigEndian();
+                                switch (s)
                                 {
                                     default:
-                                        throw new FormatException(ErrorUnsupportedVariant);
+                                        throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedNumberOfBits);
                                     case 1:
                                     case 2:
                                     case 3:
@@ -236,8 +236,8 @@ namespace OutOfPhase
                                     case 6:
                                     case 7:
                                     case 8:
-                                        NumBits = NumBitsType.eSample8bit;
-                                        NumBitsIsValid = true;
+                                        numBits = NumBitsType.eSample8bit;
+                                        numBitsIsValid = true;
                                         break;
                                     case 9:
                                     case 10:
@@ -247,8 +247,8 @@ namespace OutOfPhase
                                     case 14:
                                     case 15:
                                     case 16:
-                                        NumBits = NumBitsType.eSample16bit;
-                                        NumBitsIsValid = true;
+                                        numBits = NumBitsType.eSample16bit;
+                                        numBitsIsValid = true;
                                         break;
                                     case 17:
                                     case 18:
@@ -258,54 +258,54 @@ namespace OutOfPhase
                                     case 22:
                                     case 23:
                                     case 24:
-                                        NumBits = NumBitsType.eSample24bit;
-                                        NumBitsIsValid = true;
+                                        numBits = NumBitsType.eSample24bit;
+                                        numBitsIsValid = true;
                                         break;
                                 }
 
                                 /*     10-byte extended precision number of frames per second */
-                                File.ReadRaw(StupidExtendedThang, 0, 10);
+                                File.ReadRaw(extendedFloat, 0, 10);
                             }
                             else
                             {
-                                short ShortInteger;
+                                short s;
 
                                 /*   Common Chunk for AIFF-C files */
                                 /*     "COMM" */
                                 /*     4-byte big endian length. */
                                 /*        always 18 for AIFF files */
-                                if (LocalChunkLength < 22)
+                                if (localChunkLength < 22)
                                 {
-                                    throw new FormatException(ErrorUnsupportedVariant);
+                                    throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedVariant);
                                 }
 
                                 /*     2-byte big endian number of channels */
-                                ShortInteger = File.ReadInt16BigEndian();
-                                switch (ShortInteger)
+                                s = File.ReadInt16BigEndian();
+                                switch (s)
                                 {
                                     default:
-                                        throw new FormatException(ErrorUnsupportedVariant);
+                                        throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedNumberOfChannels);
                                     case 1:
-                                        NumChannels = NumChannelsType.eSampleMono;
-                                        NumChannelsIsValid = true;
+                                        numChannels = NumChannelsType.eSampleMono;
+                                        numChannelsIsValid = true;
                                         break;
                                     case 2:
-                                        NumChannels = NumChannelsType.eSampleStereo;
-                                        NumChannelsIsValid = true;
+                                        numChannels = NumChannelsType.eSampleStereo;
+                                        numChannelsIsValid = true;
                                         break;
                                 }
 
                                 /*     4-byte big endian number of sample frames */
-                                NumSampleFrames = File.ReadInt32BigEndian();
-                                NumSampleFramesIsValid = true;
+                                numSampleFrames = File.ReadInt32BigEndian();
+                                numSampleFramesIsValid = true;
 
                                 /*     2-byte big endian number of bits per sample */
                                 /*        a value in the domain 1..32 */
-                                ShortInteger = File.ReadInt16BigEndian();
-                                switch (ShortInteger)
+                                s = File.ReadInt16BigEndian();
+                                switch (s)
                                 {
                                     default:
-                                        throw new FormatException(ErrorUnsupportedVariant);
+                                        throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedNumberOfBits);
                                     case 1:
                                     case 2:
                                     case 3:
@@ -314,8 +314,8 @@ namespace OutOfPhase
                                     case 6:
                                     case 7:
                                     case 8:
-                                        NumBits = NumBitsType.eSample8bit;
-                                        NumBitsIsValid = true;
+                                        numBits = NumBitsType.eSample8bit;
+                                        numBitsIsValid = true;
                                         break;
                                     case 9:
                                     case 10:
@@ -325,8 +325,8 @@ namespace OutOfPhase
                                     case 14:
                                     case 15:
                                     case 16:
-                                        NumBits = NumBitsType.eSample16bit;
-                                        NumBitsIsValid = true;
+                                        numBits = NumBitsType.eSample16bit;
+                                        numBitsIsValid = true;
                                         break;
                                     case 17:
                                     case 18:
@@ -336,20 +336,20 @@ namespace OutOfPhase
                                     case 22:
                                     case 23:
                                     case 24:
-                                        NumBits = NumBitsType.eSample24bit;
-                                        NumBitsIsValid = true;
+                                        numBits = NumBitsType.eSample24bit;
+                                        numBitsIsValid = true;
                                         break;
                                 }
 
                                 /*     10-byte extended precision number of frames per second */
-                                File.ReadRaw(StupidExtendedThang, 0, 10);
+                                File.ReadRaw(extendedFloat, 0, 10);
 
                                 /*     4-byte character code ID for the compression method */
                                 /*        "NONE" means there is no compression method used */
-                                CharBuff = File.ReadFixedStringASCII(4);
-                                if (!String.Equals(CharBuff, "NONE"))
+                                charBuff = File.ReadFixedStringASCII(4);
+                                if (!String.Equals(charBuff, "NONE"))
                                 {
-                                    throw new FormatException(ErrorUnsupportedVariant);
+                                    throw new AudioFileReaderException(AudioFileReaderErrors.NotUncompressedPCM);
                                 }
 
                                 /*     some characters in a string identifying the compression method */
@@ -358,7 +358,7 @@ namespace OutOfPhase
                                 /*        for uncompressed data, the string should be */
                                 /*        "\x0enot compressed\x00", including the null, for 16 bytes. */
                                 /*        the total chunk length is thus 38 bytes. */
-                                for (int Dumper = 0; Dumper < LocalChunkLength - 22; Dumper += 1)
+                                for (int i = 0; i < localChunkLength - 22; i++)
                                 {
                                     File.ReadByte();
                                 }
@@ -368,50 +368,47 @@ namespace OutOfPhase
                             /* extended 22051 = 400D AC46000000000000 */
                             /* extended 44100 = 400E AC44000000000000 */
                             /* extended 44101 = 400E AC45000000000000 */
-                            Exponent = (((uint)StupidExtendedThang[0] & 0xff) << 8)
-                                | ((uint)StupidExtendedThang[1] & 0xff);
-                            Mantissa = (((uint)StupidExtendedThang[2] & 0xff) << 24)
-                                | (((uint)StupidExtendedThang[3] & 0xff) << 16)
-                                | (((uint)StupidExtendedThang[4] & 0xff) << 8)
-                                | ((uint)StupidExtendedThang[5] & 0xff);
-                            SamplingRate = (int)(Mantissa >> (0x401e - (int)Exponent));
-                            if (SamplingRate < Constants.MINSAMPLINGRATE)
+                            exponent = (((uint)extendedFloat[0] & 0xff) << 8)
+                                | ((uint)extendedFloat[1] & 0xff);
+                            mantissa = (((uint)extendedFloat[2] & 0xff) << 24)
+                                | (((uint)extendedFloat[3] & 0xff) << 16)
+                                | (((uint)extendedFloat[4] & 0xff) << 8)
+                                | ((uint)extendedFloat[5] & 0xff);
+                            samplingRate = (int)(mantissa >> (0x401e - (int)exponent));
+                            if (samplingRate < Constants.MINSAMPLINGRATE)
                             {
-                                SamplingRate = Constants.MINSAMPLINGRATE;
+                                samplingRate = Constants.MINSAMPLINGRATE;
                             }
-                            if (SamplingRate > Constants.MAXSAMPLINGRATE)
+                            if (samplingRate > Constants.MAXSAMPLINGRATE)
                             {
-                                SamplingRate = Constants.MAXSAMPLINGRATE;
+                                samplingRate = Constants.MAXSAMPLINGRATE;
                             }
-                            SamplingRateIsValid = true;
+                            samplingRateIsValid = true;
                         }
-                        else if (String.Equals(CharBuff, "SSND"))
+                        else if (String.Equals(charBuff, "SSND"))
                         {
-                            int AlignmentFactor;
-                            int OffsetToFirstByte;
-
                             /*   Sound Data Chunk */
                             /*     "SSND" */
                             /*     4-byte big endian number of bytes in sample data array */
 
                             /* only one of these is allowed */
-                            if (RawDataFromFileIsValid)
+                            if (rawDataFromFileIsValid)
                             {
-                                throw new FormatException(ErrorUnsupportedVariant);
+                                throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedVariant);
                             }
 
                             /*     4-byte big endian offset to the first byte of sample data in the array */
-                            OffsetToFirstByte = File.ReadInt32BigEndian();
-                            if (OffsetToFirstByte != 0)
+                            int offsetToFirstByte = File.ReadInt32BigEndian();
+                            if (offsetToFirstByte != 0)
                             {
-                                throw new FormatException(ErrorUnsupportedVariant);
+                                throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedVariant);
                             }
 
                             /*     4-byte big endian number of bytes to which the sound data is aligned. */
-                            AlignmentFactor = File.ReadInt32BigEndian();
-                            if (AlignmentFactor != 0)
+                            int alignmentFactor = File.ReadInt32BigEndian();
+                            if (alignmentFactor != 0)
                             {
-                                throw new FormatException(ErrorUnsupportedVariant);
+                                throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedVariant);
                             }
 
                             /*     any length vector of raw sound data. */
@@ -421,41 +418,41 @@ namespace OutOfPhase
                             /*        is required for the specified number of bits.  If this is not an even */
                             /*        multiple of 8, then the data is shifted left and the low bits are zeroed */
                             /*        Multichannel sound is interleaved with the left channel first. */
-                            if (stream.Length - stream.Position < LocalChunkLength - 8)
+                            if (stream.Length - stream.Position < localChunkLength - 8)
                             {
-                                throw new FormatException(ErrorTooShort);
+                                throw new AudioFileReaderException(AudioFileReaderErrors.Truncated);
                             }
-                            RawDataFromFileIsValid = true;
+                            rawDataFromFileIsValid = true;
                             audioDataOffset = stream.Position;
 
-                            stream.Seek(LocalChunkLength - 8, SeekOrigin.Current);
+                            stream.Seek(localChunkLength - 8, SeekOrigin.Current);
                         }
                         else
                         {
                             /* just read the data & get rid of it */
-                            while (LocalChunkLength > 0)
+                            while (localChunkLength > 0)
                             {
                                 File.ReadByte();
-                                LocalChunkLength -= 1;
+                                localChunkLength -= 1;
                             }
                         }
                     }
                 }
             }
-            catch (InvalidDataException exception)
+            catch (InvalidDataException)
             {
-                throw new FormatException(exception.Message);
+                throw new AudioFileReaderException(AudioFileReaderErrors.InvalidData);
             }
 
-            if (!RawDataFromFileIsValid || !NumBitsIsValid || !NumChannelsIsValid || !SamplingRateIsValid || !NumSampleFramesIsValid)
+            if (!rawDataFromFileIsValid || !numBitsIsValid || !numChannelsIsValid || !samplingRateIsValid || !numSampleFramesIsValid)
             {
-                throw new FormatException(ErrorUnsupportedVariant);
+                throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedVariant);
             }
 
-            NumBitsOut = NumBits;
-            NumChannelsOut = NumChannels;
-            NumSampleFramesOut = NumSampleFrames;
-            SamplingRateOut = SamplingRate;
+            numBitsOut = numBits;
+            numChannelsOut = numChannels;
+            numSampleFramesOut = numSampleFrames;
+            samplingRateOut = samplingRate;
 
             stream.Seek(audioDataOffset, SeekOrigin.Begin);
         }
@@ -463,8 +460,14 @@ namespace OutOfPhase
         public override int TotalFrames { get { return numFrames; } }
         public override int CurrentFrame { get { return numFrames - remainingFrames; } }
 
+        public override bool Truncated { get { return truncated; } }
+
         public override int ReadPoints(float[] data, int offset, int count)
         {
+            if (truncated && !allowTruncated)
+            {
+                throw new InvalidDataException();
+            }
             int frames = Math.Min(remainingFrames, count / PointsPerFrame);
             remainingFrames -= frames;
             int points = frames * PointsPerFrame;
@@ -497,7 +500,12 @@ namespace OutOfPhase
             }
             if (p != bytesPerFrame * frames)
             {
-                throw new InvalidDataException(); // truncated
+                truncated = true;
+                if (!allowTruncated)
+                {
+                    throw new AudioFileReaderException(AudioFileReaderErrors.Truncated);
+                }
+                Array.Clear(buffer, p, bytesPerFrame * frames - p);
             }
             using (Stream dataStream = new MemoryStream(buffer, 0, bytesPerFrame * frames))
             {

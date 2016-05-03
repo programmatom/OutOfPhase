@@ -20,10 +20,8 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 
 namespace OutOfPhase
 {
@@ -34,14 +32,22 @@ namespace OutOfPhase
         private readonly NumChannelsType numChannels;
         private readonly int numFrames;
         private readonly int samplingRate;
+        private readonly bool allowTruncated;
         private int remainingFrames;
         private byte[] buffer = new byte[0];
+        private bool truncated;
 
-        public WAVReader(Stream stream)
+        public WAVReader(Stream stream, bool allowTruncated)
         {
             this.stream = stream;
-            ReadPreamble(stream, out numBits, out  numChannels, out numFrames, out samplingRate);
+            this.allowTruncated = allowTruncated;
+            ReadPreamble(stream, out numBits, out numChannels, out numFrames, out samplingRate);
             remainingFrames = NumFrames;
+        }
+
+        public WAVReader(Stream stream)
+            : this(stream, false/*allowTruncated*/)
+        {
         }
 
         public override NumChannelsType NumChannels { get { return numChannels; } }
@@ -76,174 +82,162 @@ namespace OutOfPhase
         /*    from -32768 to 32767. */
         public static void ReadPreamble(
             Stream stream,
-            out NumBitsType NumBitsOut,
-            out NumChannelsType NumChannelsOut,
-            out int NumSampleFramesOut,
-            out int SamplingRateOut)
+            out NumBitsType numBitsOut,
+            out NumChannelsType numChannelsOut,
+            out int numSampleFramesOut,
+            out int samplingRateOut)
         {
-            const string eWAVImportUnrecognizedFileFormat = "The file does not appear to be a WAV file.  Try importing it as a RAW file.";
-            const string eWAVImportBadNumberOfChannels = "Only files with 1 or 2 channels can be imported.";
-            const string eWAVImportNotAPCMFile = "The file is not a PCM file.";
-            const string eWAVImportBadNumberOfBits = "Only 8, 16, or 24 bit files can be imported.";
-
-            string StringBuffer;
-            int TotalFileLength;
-            int HeaderLength;
-            short DataTypeDescriptor;
-            short NumberOfChannels;
-            int SamplingRate;
-            int AverageBytesPerSecond;
-            short BlockAlignment;
-            short NumberOfBitsRaw;
-            NumBitsType NumBits;
-            NumChannelsType NumChannels;
-            int SampledNumberOfBytes;
-            int NumberOfSampleFrames;
+            NumBitsType numBits;
+            NumChannelsType numChannels;
+            int numSampleFrames;
+            int samplingRate;
             long audioDataOffset;
 
-            NumBitsOut = (NumBitsType)0;
-            NumChannelsOut = (NumChannelsType)0;
-            NumSampleFramesOut = 0;
-            SamplingRateOut = 0;
+            numBitsOut = (NumBitsType)0;
+            numChannelsOut = (NumChannelsType)0;
+            numSampleFramesOut = 0;
+            samplingRateOut = 0;
 
             try
             {
                 using (BinaryReader File = new BinaryReader(stream))
                 {
+                    string stringBuffer;
+
                     /*  'RIFF' */
-                    StringBuffer = File.ReadFixedStringASCII(4);
-                    if (!String.Equals(StringBuffer, "RIFF"))
+                    stringBuffer = File.ReadFixedStringASCII(4);
+                    if (!String.Equals(stringBuffer, "RIFF"))
                     {
-                        throw new FormatException(eWAVImportUnrecognizedFileFormat);
+                        throw new AudioFileReaderException(AudioFileReaderErrors.UnrecognizedFileFormat);
                     }
 
                     /*  4-byte little endian length descriptor (minus 8 bytes for these 2 fields) */
-                    TotalFileLength = File.ReadInt32();
+                    int totalFileLength = File.ReadInt32();
 
                     /*  'WAVE' */
-                    StringBuffer = File.ReadFixedStringASCII(4);
-                    if (!String.Equals(StringBuffer, "WAVE"))
+                    stringBuffer = File.ReadFixedStringASCII(4);
+                    if (!String.Equals(stringBuffer, "WAVE"))
                     {
-                        throw new FormatException(eWAVImportUnrecognizedFileFormat);
+                        throw new AudioFileReaderException(AudioFileReaderErrors.UnrecognizedFileFormat);
                     }
 
                     /*  'fmt ' */
-                    StringBuffer = File.ReadFixedStringASCII(4);
-                    if (!String.Equals(StringBuffer, "fmt "))
+                    stringBuffer = File.ReadFixedStringASCII(4);
+                    if (!String.Equals(stringBuffer, "fmt "))
                     {
-                        throw new FormatException(eWAVImportUnrecognizedFileFormat);
+                        throw new AudioFileReaderException(AudioFileReaderErrors.UnrecognizedFileFormat);
                     }
 
                     /*  4-byte little endian length descriptor for the 'fmt ' header block */
                     /*      - this should be 16.  if not, then it's some other kind of WAV file */
-                    HeaderLength = File.ReadInt32();
-                    if (HeaderLength != 16)
+                    int headerLength = File.ReadInt32();
+                    if (headerLength != 16)
                     {
-                        throw new FormatException(eWAVImportUnrecognizedFileFormat);
+                        throw new AudioFileReaderException(AudioFileReaderErrors.UnrecognizedFileFormat);
                     }
 
                     /*  2-byte little endian format descriptor.  this is always here. */
                     /*      - 1 = PCM */
-                    DataTypeDescriptor = File.ReadInt16();
-                    if (DataTypeDescriptor != 1)
+                    short dataTypeDescriptor = File.ReadInt16();
+                    if (dataTypeDescriptor != 1)
                     {
-                        throw new FormatException(eWAVImportNotAPCMFile);
+                        throw new AudioFileReaderException(AudioFileReaderErrors.NotUncompressedPCM);
                     }
 
                     /*  2-byte little endian number of channels. */
-                    NumberOfChannels = File.ReadInt16();
-                    if ((NumberOfChannels != 1) && (NumberOfChannels != 2))
+                    short numberOfChannelsRaw = File.ReadInt16();
+                    if ((numberOfChannelsRaw != 1) && (numberOfChannelsRaw != 2))
                     {
-                        throw new FormatException(eWAVImportBadNumberOfChannels);
+                        throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedNumberOfChannels);
                     }
 
                     /*  4-byte little endian sampling rate integer. */
-                    SamplingRate = File.ReadInt32();
+                    samplingRate = File.ReadInt32();
 
                     /*  4-byte little endian average bytes per second. */
-                    AverageBytesPerSecond = File.ReadInt32();
+                    int averageBytesPerSecond = File.ReadInt32();
 
                     /*  2-byte little endian block align.  for 8-bit mono, this is 1; for 16-bit */
                     /*    stereo, this is 4. */
-                    BlockAlignment = File.ReadInt16();
+                    short blockAlignment = File.ReadInt16();
 
                     /*  2-byte little endian number of bits. */
                     /*      - 8 = 8-bit */
                     /*      - 16 = 16-bit */
                     /*      - 24 = 24-bit */
-                    NumberOfBitsRaw = File.ReadInt16();
-                    switch (NumberOfBitsRaw)
+                    short numberOfBitsRaw = File.ReadInt16();
+                    switch (numberOfBitsRaw)
                     {
                         default:
-                            throw new FormatException(eWAVImportBadNumberOfBits);
+                            throw new AudioFileReaderException(AudioFileReaderErrors.UnsupportedNumberOfBits);
                         case 8:
-                            NumBits = NumBitsType.eSample8bit;
+                            numBits = NumBitsType.eSample8bit;
                             break;
                         case 16:
-                            NumBits = NumBitsType.eSample16bit;
+                            numBits = NumBitsType.eSample16bit;
                             break;
                         case 24:
-                            NumBits = NumBitsType.eSample24bit;
+                            numBits = NumBitsType.eSample24bit;
                             break;
                     }
 
                     /*  'data' */
-                    StringBuffer = File.ReadFixedStringASCII(4);
-                    if (!String.Equals(StringBuffer, "data"))
+                    stringBuffer = File.ReadFixedStringASCII(4);
+                    if (!String.Equals(stringBuffer, "data"))
                     {
-                        throw new FormatException(eWAVImportUnrecognizedFileFormat);
+                        throw new AudioFileReaderException(AudioFileReaderErrors.UnrecognizedFileFormat);
                     }
 
                     /*  4-byte little endian length of sample data descriptor */
-                    SampledNumberOfBytes = File.ReadInt32();
+                    int sampledNumberOfBytes = File.ReadInt32();
 
                     audioDataOffset = stream.Position;
 
                     /* calculate number of sample frames */
-                    switch (NumBits)
+                    switch (numBits)
                     {
                         default:
                             Debug.Assert(false);
                             throw new InvalidOperationException();
                         case NumBitsType.eSample8bit:
-                            switch (NumberOfChannels)
+                            switch (numberOfChannelsRaw)
                             {
                                 default:
                                     Debug.Assert(false);
                                     throw new InvalidOperationException();
                                 case 1:
-                                    NumberOfSampleFrames = SampledNumberOfBytes / 1;
+                                    numSampleFrames = sampledNumberOfBytes / 1;
                                     break;
                                 case 2:
-                                    NumberOfSampleFrames = SampledNumberOfBytes / 2;
+                                    numSampleFrames = sampledNumberOfBytes / 2;
                                     break;
                             }
                             break;
                         case NumBitsType.eSample16bit:
-                            switch (NumberOfChannels)
+                            switch (numberOfChannelsRaw)
                             {
                                 default:
                                     Debug.Assert(false);
                                     throw new InvalidOperationException();
                                 case 1:
-                                    NumberOfSampleFrames = SampledNumberOfBytes / 2;
+                                    numSampleFrames = sampledNumberOfBytes / 2;
                                     break;
                                 case 2:
-                                    NumberOfSampleFrames = SampledNumberOfBytes / 4;
+                                    numSampleFrames = sampledNumberOfBytes / 4;
                                     break;
                             }
                             break;
                         case NumBitsType.eSample24bit:
-                            switch (NumberOfChannels)
+                            switch (numberOfChannelsRaw)
                             {
                                 default:
                                     Debug.Assert(false);
                                     throw new InvalidOperationException();
                                 case 1:
-                                    NumberOfSampleFrames = SampledNumberOfBytes / 3;
+                                    numSampleFrames = sampledNumberOfBytes / 3;
                                     break;
                                 case 2:
-                                    NumberOfSampleFrames = SampledNumberOfBytes / 6;
+                                    numSampleFrames = sampledNumberOfBytes / 6;
                                     break;
                             }
                             break;
@@ -251,29 +245,29 @@ namespace OutOfPhase
 
                     /*  any length data.  8-bit data goes from 0..255, but 16-bit data goes */
                     /*    from -32768 to 32767. */
-                    switch (NumberOfChannels)
+                    switch (numberOfChannelsRaw)
                     {
                         default:
                             Debug.Assert(false);
                             throw new InvalidOperationException();
                         case 1:
-                            NumChannels = NumChannelsType.eSampleMono;
+                            numChannels = NumChannelsType.eSampleMono;
                             break;
                         case 2:
-                            NumChannels = NumChannelsType.eSampleStereo;
+                            numChannels = NumChannelsType.eSampleStereo;
                             break;
                     }
                 }
             }
-            catch (InvalidDataException exception)
+            catch (InvalidDataException)
             {
-                throw new FormatException(exception.Message);
+                throw new AudioFileReaderException(AudioFileReaderErrors.InvalidData);
             }
 
-            NumBitsOut = NumBits;
-            NumChannelsOut = NumChannels;
-            NumSampleFramesOut = NumberOfSampleFrames;
-            SamplingRateOut = SamplingRate;
+            numBitsOut = numBits;
+            numChannelsOut = numChannels;
+            numSampleFramesOut = numSampleFrames;
+            samplingRateOut = samplingRate;
 
             stream.Seek(audioDataOffset, SeekOrigin.Begin);
         }
@@ -281,8 +275,14 @@ namespace OutOfPhase
         public override int TotalFrames { get { return numFrames; } }
         public override int CurrentFrame { get { return numFrames - remainingFrames; } }
 
+        public override bool Truncated { get { return truncated; } }
+
         public override int ReadPoints(float[] data, int offset, int count)
         {
+            if (truncated && !allowTruncated)
+            {
+                throw new InvalidDataException();
+            }
             int frames = Math.Min(remainingFrames, count / PointsPerFrame);
             remainingFrames -= frames;
             int points = frames * PointsPerFrame;
@@ -315,7 +315,12 @@ namespace OutOfPhase
             }
             if (p != bytesPerFrame * frames)
             {
-                throw new InvalidDataException(); // truncated
+                truncated = true;
+                if (!allowTruncated)
+                {
+                    throw new AudioFileReaderException(AudioFileReaderErrors.Truncated);
+                }
+                Array.Clear(buffer, p, bytesPerFrame * frames - p);
             }
             using (Stream dataStream = new MemoryStream(buffer, 0, bytesPerFrame * frames))
             {

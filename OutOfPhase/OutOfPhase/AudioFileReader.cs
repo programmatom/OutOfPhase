@@ -20,8 +20,7 @@
  * 
 */
 using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Diagnostics;
 
 namespace OutOfPhase
 {
@@ -38,7 +37,66 @@ namespace OutOfPhase
 
         public abstract int ReadPoints(float[] data, int offset, int count);
 
+        public abstract bool Truncated { get; }
+
         public abstract void Close();
         public abstract void Dispose();
+    }
+
+    public enum AudioFileReaderErrors
+    {
+        Success = 0,
+
+        UnrecognizedFileFormat,
+        UnsupportedVariant,
+        UnsupportedNumberOfChannels,
+        NotUncompressedPCM,
+        UnsupportedNumberOfBits,
+        InvalidData,
+        Truncated,
+        OutOfMemory,
+    }
+
+    public class AudioFileReaderException : Exception
+    {
+        private readonly AudioFileReaderErrors error;
+
+        public AudioFileReaderException(AudioFileReaderErrors error)
+        {
+            this.error = error;
+        }
+
+        public AudioFileReaderErrors Error { get { return error; } }
+
+        public static string MessageFromError(AudioFileReaderErrors error)
+        {
+            switch (error)
+            {
+                default:
+                    Debug.Assert(false);
+                    throw new InvalidOperationException();
+
+                case AudioFileReaderErrors.Success:
+                    Debug.Assert(false);
+                    throw new InvalidOperationException();
+
+                case AudioFileReaderErrors.UnrecognizedFileFormat:
+                    return "The format of file content is not recognized.";
+                case AudioFileReaderErrors.UnsupportedVariant:
+                    return "The file contains valid audio data but uses file format features that are not supported.";
+                case AudioFileReaderErrors.UnsupportedNumberOfChannels:
+                    return "Only files with 1 or 2 channels can be imported.";
+                case AudioFileReaderErrors.NotUncompressedPCM:
+                    return "The audio data is in a format other than uncompressed PCM. Only uncompressed PCM audio data is supported.";
+                case AudioFileReaderErrors.UnsupportedNumberOfBits:
+                    return "Only 8, 16, or 24 bit files can be imported.";
+                case AudioFileReaderErrors.InvalidData:
+                    return "The file contains invalid data.";
+                case AudioFileReaderErrors.Truncated:
+                    return "The file is shorter than the header indicates it should be.";
+                case AudioFileReaderErrors.OutOfMemory:
+                    return "There is not enough memory available to load the file.";
+            }
+        }
     }
 }
