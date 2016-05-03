@@ -1173,18 +1173,18 @@ namespace OutOfPhase
                     // 2. lack of robustness regarding wrap-around. The recurrence update checks for overflow and
                     //    subtracts 1 (but it is sufficient for a well-behaved score).
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                    float[] fb = SynthParams.vectorWorkspace2.Base;
-                    int fOffset = SynthParams.vectorWorkspace2.Offset;
+                    float[] fb = SynthParams.workspace;
+                    int fOffset = SynthParams.VectorWorkspace2Offset;
 #else
-                        uint[] uib = SynthParams.vectorWorkspace1.BaseUint;
-                        int uiOffset = SynthParams.vectorWorkspace1.Offset;
+                    uint[] uib = UnsafeArrayCast.AsUints(SynthParams.workspace);
+                    int uiOffset = SynthParams.VectorWorkspace1Offset;
 #endif
                     for (int j = 0; j < Vector<int>.Count; j++)
                     {
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
                         fb[j + fOffset] = LocalWaveTableSamplePosition_FracI;
 #else
-                            uib[j + uiOffset] = LocalWaveTableSamplePosition_FracI;
+                        uib[j + uiOffset] = LocalWaveTableSamplePosition_FracI;
 #endif
                         LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
                             + LocalWaveTableSamplePositionDifferential_FracI);
@@ -1192,7 +1192,7 @@ namespace OutOfPhase
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
                     Vector<float> vPosF = new Vector<float>(fb, fOffset);
 #else
-                        Vector<uint> vPos = new Vector<uint>(uib, uiOffset);
+                    Vector<uint> vPos = new Vector<uint>(uib, uiOffset);
 #endif
                     Vector<float> vFirstOffset = new Vector<float>(-1);
                     Vector<float> vSecondOffset = new Vector<float>(SecondOffset);
@@ -1205,8 +1205,8 @@ namespace OutOfPhase
                     Vector<float> vDifferentialF = new Vector<float>((float)(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI));
                     Vector<float> vRolloverLimit = new Vector<float>((float)Fixed64.FIXED64_WHOLE);
 #else
-                        Vector<uint> vLocalIndexFracI = new Vector<uint>(LocalIndex_FracI);
-                        Vector<uint> vDifferential = new Vector<uint>(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI);
+                    Vector<uint> vLocalIndexFracI = new Vector<uint>(LocalIndex_FracI);
+                    Vector<uint> vDifferential = new Vector<uint>(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI);
 #endif
                     for (; i <= nActualFrames - Vector<float>.Count; i += Vector<float>.Count)
                     {
@@ -1214,7 +1214,7 @@ namespace OutOfPhase
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
                         Vector<int> selector = Vector.LessThan(vPosF, vLocalIndexFracF);
 #else
-                            Vector<int> selector = Vector.AsVectorInt32(Vector.LessThan(vPos, vLocalIndexFracI));
+                        Vector<int> selector = Vector.AsVectorInt32(Vector.LessThan(vPos, vLocalIndexFracI));
 #endif
                         Vector<float> X =
                             Vector.ConditionalSelect(
@@ -1248,13 +1248,13 @@ namespace OutOfPhase
                             vPosF - vRolloverLimit,
                             vPosF);
 #else
-                            vPos = vPos + vDifferential;
+                        vPos = vPos + vDifferential;
 #endif
                     }
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
                     LocalWaveTableSamplePosition_FracI = unchecked((uint)vPosF[0]); // capture final-next recurrence value for cleanup loop
 #else
-                        LocalWaveTableSamplePosition_FracI = vPos[0]; // capture final-next recurrence value for cleanup loop
+                    LocalWaveTableSamplePosition_FracI = vPos[0]; // capture final-next recurrence value for cleanup loop
 #endif
                 }
 #endif
@@ -1619,18 +1619,18 @@ namespace OutOfPhase
                         // 2. lack of robustness regarding wrap-around. The recurrence update checks for overflow and
                         //    subtracts 1 (but it is sufficient for a well-behaved score).
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
-                        float[] fb = SynthParams.vectorWorkspace2.Base;
-                        int fOffset = SynthParams.vectorWorkspace2.Offset;
+                        float[] fb = SynthParams.workspace;
+                        int fOffset = SynthParams.VectorWorkspace2Offset;
 #else
-                            uint[] uib = SynthParams.vectorWorkspace1.BaseUint;
-                            int uiOffset = SynthParams.vectorWorkspace1.Offset;
+                        uint[] uib = UnsafeArrayCast.AsUints(SynthParams.workspace);
+                        int uiOffset = SynthParams.VectorWorkspace1Offset;
 #endif
                         for (int j = 0; j < Vector<int>.Count; j++)
                         {
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
                             fb[j + fOffset] = LocalWaveTableSamplePosition_FracI;
 #else
-                                uib[j + uiOffset] = LocalWaveTableSamplePosition_FracI;
+                            uib[j + uiOffset] = LocalWaveTableSamplePosition_FracI;
 #endif
                             LocalWaveTableSamplePosition_FracI = unchecked(LocalWaveTableSamplePosition_FracI
                                 + LocalWaveTableSamplePositionDifferential_FracI);
@@ -1638,7 +1638,7 @@ namespace OutOfPhase
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
                         Vector<float> vPosF = new Vector<float>(fb, fOffset);
 #else
-                            Vector<uint> vPos = new Vector<uint>(uib, uiOffset);
+                        Vector<uint> vPos = new Vector<uint>(uib, uiOffset);
 #endif
                         Vector<float> vOne = new Vector<float>((float)1);
                         Vector<uint> vSignBit = new Vector<uint>((uint)0x80000000);
@@ -1649,8 +1649,8 @@ namespace OutOfPhase
                         Vector<float> vDifferentialF = new Vector<float>((float)(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI));
                         Vector<float> vRolloverLimit = new Vector<float>((float)Fixed64.FIXED64_WHOLE);
 #else
-                            Vector<uint> vLocalIndexFracI = new Vector<uint>(LocalIndex_FracI);
-                            Vector<uint> vDifferential = new Vector<uint>(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI);
+                        Vector<uint> vLocalIndexFracI = new Vector<uint>(LocalIndex_FracI);
+                        Vector<uint> vDifferential = new Vector<uint>(Vector<uint>.Count * LocalWaveTableSamplePositionDifferential_FracI);
 #endif
                         for (; i <= nActualFrames - Vector<float>.Count; i += Vector<float>.Count)
                         {
@@ -1658,7 +1658,7 @@ namespace OutOfPhase
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
                             Vector<int> selector = Vector.GreaterThanOrEqual(vPosF, vLocalIndexFracF);
 #else
-                                Vector<int> selector = Vector.AsVectorInt32(Vector.LessThan(vPos, vLocalIndexFracI));
+                            Vector<int> selector = Vector.AsVectorInt32(Vector.LessThan(vPos, vLocalIndexFracI));
 #endif
                             Vector<float> X = Vector.AsVectorSingle((Vector.AsVectorUInt32(selector) & vSignBit) ^ Vector.AsVectorUInt32(vOne));
 
@@ -1676,13 +1676,13 @@ namespace OutOfPhase
                                 vPosF - vRolloverLimit,
                                 vPosF);
 #else
-                                vPos = vPos + vDifferential;
+                            vPos = vPos + vDifferential;
 #endif
                         }
 #if true // HACK for missing uint==>float conversion: https://github.com/dotnet/corefx/issues/1605
                         LocalWaveTableSamplePosition_FracI = unchecked((uint)vPosF[0]); // capture final-next recurrence value for cleanup loop
 #else
-                            LocalWaveTableSamplePosition_FracI = vPos[0]; // capture final-next recurrence value for cleanup loop
+                        LocalWaveTableSamplePosition_FracI = vPos[0]; // capture final-next recurrence value for cleanup loop
 #endif
                     }
 #endif

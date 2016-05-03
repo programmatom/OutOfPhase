@@ -20,10 +20,8 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -1672,9 +1670,6 @@ namespace OutOfPhase
                                 StackPtr++;
                                 Debug.Assert(StackPtr < Stack.Length);
                                 Stack[StackPtr].reference.arrayHandleGeneric = Stack[Index].reference.arrayHandleGeneric;
-#if false // TODO: what was this for?
-                                Stack[StackPtr].reference.generic = Stack[Index].reference.generic;
-#endif
                                 ProgramCounter++;
                             }
                             break;
@@ -2037,9 +2032,6 @@ namespace OutOfPhase
                                 Stack[StackPtr].AssertAnyArray();
 #endif
                                 if (Stack[StackPtr].reference.arrayHandleGeneric == null)
-#if false // TODO: what was this for?
-                                if (Stack[StackPtr].reference.generic == null)
-#endif
                                 {
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
@@ -2055,9 +2047,6 @@ namespace OutOfPhase
                                 Stack[StackPtr].AssertAnyArray();
 #endif
                                 if (Stack[StackPtr].reference.arrayHandleGeneric == null)
-#if false // TODO: what was this for?
-                                if (Stack[StackPtr].reference.generic == null)
-#endif
                                 {
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
@@ -2073,9 +2062,6 @@ namespace OutOfPhase
                                 Stack[StackPtr].AssertAnyArray();
 #endif
                                 if (Stack[StackPtr].reference.arrayHandleGeneric == null)
-#if false // TODO: what was this for?
-                                if (Stack[StackPtr].reference.generic == null)
-#endif
                                 {
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;
@@ -2091,9 +2077,6 @@ namespace OutOfPhase
                                 Stack[StackPtr].AssertAnyArray();
 #endif
                                 if (Stack[StackPtr].reference.arrayHandleGeneric == null)
-#if false // TODO: what was this for?
-                                if (Stack[StackPtr].reference.generic == null)
-#endif
                                 {
                                     ErrorCode = EvalErrors.eEvalArrayDoesntExist;
                                     goto ExceptionPoint;

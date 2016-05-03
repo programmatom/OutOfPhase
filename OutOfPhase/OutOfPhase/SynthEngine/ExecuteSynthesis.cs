@@ -605,6 +605,10 @@ namespace OutOfPhase
             public readonly int ScratchWorkspace2ROffset; // Length == nAllocatedPointsOneChannel
             public readonly int ScratchWorkspace4LOffset; // Length == nAllocatedPointsOneChannel
             public readonly int ScratchWorkspace4ROffset; // Length == nAllocatedPointsOneChannel
+#if VECTOR
+            public readonly int VectorWorkspace1Offset; // Length == Vector<float>.Count
+            public readonly int VectorWorkspace2Offset; // Length == Vector<float>.Count
+#endif
 #if DEBUG
             // these "in use" flags are not a proper check-out/check-in mechanism but just a way for parts of the code
             // to signal periods when they are using buffers so that invalid dual uses (code errors) are detected.
@@ -630,12 +634,6 @@ namespace OutOfPhase
 #endif
             // all float workspaces (incl. scratch 3) - to max required by smoothing and pluggable effects
             public readonly int[] AllScratchWorkspaces64;
-
-            // Vector workspaces
-#if VECTOR
-            public readonly AlignedWorkspace vectorWorkspace1;
-            public readonly AlignedWorkspace vectorWorkspace2;
-#endif
 
             // one bool for each processor-section: length SectionInputAccumulationWorkspaces.Length / 2
             public bool[] SectionWorkspaceUsed;
@@ -735,7 +733,14 @@ namespace OutOfPhase
                     const int NumberOfWorkspacesBase = 10; // this count is of L&R pairs: Score, Section, Track, Combined, Oscillator
                     int NumberOfWorkspacesAdditional = Math.Max(0, required32BitWorkspaceCount - 6/*Scratch {1, 2, 4} x {L, R}*/);
                     this.workspace = new float[(oneLength + WORKSPACEALIGNBYTES / sizeof(float)) *
-                        (2 * (NumberOfWorkspacesBase + sectionCount) + NumberOfWorkspacesAdditional)];
+                        (2 * (NumberOfWorkspacesBase + sectionCount) + NumberOfWorkspacesAdditional)
+                        +
+#if VECTOR
+                        (2 * (Vector<float>.Count + WORKSPACEALIGNBYTES / sizeof(float)))
+#else
+                        0
+#endif
+                        ];
                     this.hWorkspace = GCHandle.Alloc(this.workspace, GCHandleType.Pinned);
                     fixed (float* pWorkspace0 = &(this.workspace[0]))
                     {
@@ -774,6 +779,14 @@ namespace OutOfPhase
                         offset += oneLength;
                         this.ScratchWorkspace4ROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
                         offset += oneLength;
+#if VECTOR
+                        // one-vector scratch spaces are also assigned out of this.workspace[]
+                        this.VectorWorkspace1Offset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += Vector<float>.Count;
+                        this.VectorWorkspace2Offset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += Vector<float>.Count;
+                        // one-vector scratch spaces end
+#endif
                         Debug.Assert(offset <= this.workspace.Length);
 
                         this.SectionInputAccumulationWorkspaces = new int[2 * sectionCount];
@@ -799,12 +812,6 @@ namespace OutOfPhase
                         }
                         AllScratchWorkspaces32 = allScratch.ToArray();
                         Debug.Assert(offset <= this.workspace.Length);
-
-                        // TODO: move these into the main workspace array
-#if VECTOR
-                        vectorWorkspace1 = new AlignedWorkspace(Vector<float>.Count);
-                        vectorWorkspace2 = new AlignedWorkspace(Vector<float>.Count);
-#endif
 
                         this.SectionWorkspaceUsed = new bool[sectionCount];
                     }
@@ -879,16 +886,6 @@ namespace OutOfPhase
                 {
                     hWorkspace.Free();
                 }
-#if VECTOR
-                if (vectorWorkspace1 != null)
-                {
-                    vectorWorkspace1.Dispose();
-                }
-                if (vectorWorkspace2 != null)
-                {
-                    vectorWorkspace2.Dispose();
-                }
-#endif
                 GC.SuppressFinalize(this);
             }
 
@@ -899,7 +896,6 @@ namespace OutOfPhase
 #endif
                 Dispose();
             }
-
 #if DEBUG
             private readonly StackTrace allocatedFrom = new StackTrace(true);
 #endif
@@ -1663,6 +1659,12 @@ namespace OutOfPhase
                 SynthStateRec SynthState)
             {
                 // TODO: rebalance and prune
+                // This would be needed for the case where there are a lot of free objects on one thread's list and none
+                // on another thread's list and the latter thread needs to allocate more. However, there is a trade-off between
+                // allowing unbalanced lists and rebalancing - the latter will incur substantial cache penalty as one processor
+                // will be accessing other processors' free lists and updating in an interlocked way, and the memory inside
+                // the free objects will also potentally cache-miss, such that rebalancing might actually degrade performance.
+                // So far we are able to get away with doing nothing.
             }
 
             private static void ComputeWorkspaceRequirements1(

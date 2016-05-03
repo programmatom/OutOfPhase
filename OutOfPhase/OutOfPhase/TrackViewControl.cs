@@ -482,12 +482,25 @@ namespace OutOfPhase
 
         protected override void OnLostFocus(EventArgs e)
         {
+#if DEBUG
+            Debugger.Log(0, "TrackViewControl", "TrackViewControl: OnLostFocus" + Environment.NewLine);
+#endif
+
             using (GraphicsContext gc = new GraphicsContext(this))
             {
                 TrackViewUndrawCursorBar();
             }
 
             base.OnLostFocus(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e)
+        {
+#if DEBUG
+            Debugger.Log(0, "TrackViewControl", "TrackViewControl: OnGotFocus" + Environment.NewLine);
+#endif
+
+            base.OnGotFocus(e);
         }
 
 
@@ -1619,51 +1632,54 @@ namespace OutOfPhase
         /* or command is selected */
         public void TrackViewDeleteSingleNoteOrCommand()
         {
-            Debug.Assert((SelectionMode == SelectionModes.eTrackViewSingleNoteSelection)
-                || (SelectionMode == SelectionModes.eTrackViewSingleCommandSelection));
-
-            undoHelper.SaveUndoInfo(false/*forRedo*/, SelectionMode == SelectionModes.eTrackViewSingleNoteSelection ? "Delete Note" : "Delete Command");
-
-            FrameObjectRec Frame = trackObject.FrameArray[SelectedNoteFrame];
-            int Limit = Frame.Count;
-            for (int Scan = 0; Scan < Limit; Scan += 1)
+            using (GraphicsContext gc = new GraphicsContext(this))
             {
-                if (SelectedNote == Frame[Scan])
+                Debug.Assert((SelectionMode == SelectionModes.eTrackViewSingleNoteSelection)
+                    || (SelectionMode == SelectionModes.eTrackViewSingleCommandSelection));
+
+                undoHelper.SaveUndoInfo(false/*forRedo*/, SelectionMode == SelectionModes.eTrackViewSingleNoteSelection ? "Delete Note" : "Delete Command");
+
+                FrameObjectRec Frame = trackObject.FrameArray[SelectedNoteFrame];
+                int Limit = Frame.Count;
+                for (int Scan = 0; Scan < Limit; Scan += 1)
                 {
-                    /* we found the note to delete */
-                    /* zap ties to this note */
-                    trackObject.TrackObjectNullifyTies(SelectedNote);
-                    /* indicate that stuff needs to be redrawn */
-                    TrackObjectAltered(trackObject, SelectedNoteFrame);
-                    /* now do the actual deletion */
-                    if (Frame.Count == 1)
+                    if (SelectedNote == Frame[Scan])
                     {
-                        /* since this is the only note in the frame, we'll just delete the */
-                        /* whole frame. */
-                        trackObject.TrackObjectDeleteFrameRun(SelectedNoteFrame, 1);
-                    }
-                    else
-                    {
-                        /* there are other notes in the frame, so just delete this one note */
-                        Frame.RemoveAt(Scan);
-                    }
-                    SelectionMode = SelectionModes.eTrackViewNoSelection;
-                    InsertionPointIndex = SelectedNoteFrame;
-                    Debug.Assert(InsertionPointIndex <= trackObject.FrameArray.Count);
-                    SelectedNote = null;
-                    SelectedNoteFrame = -1;
-                    /* redrawing everything is overkill and should be fixed */
-                    TrackViewRedrawAll();
+                        /* we found the note to delete */
+                        /* zap ties to this note */
+                        trackObject.TrackObjectNullifyTies(SelectedNote);
+                        /* indicate that stuff needs to be redrawn */
+                        TrackObjectAltered(trackObject, SelectedNoteFrame);
+                        /* now do the actual deletion */
+                        if (Frame.Count == 1)
+                        {
+                            /* since this is the only note in the frame, we'll just delete the */
+                            /* whole frame. */
+                            trackObject.TrackObjectDeleteFrameRun(SelectedNoteFrame, 1);
+                        }
+                        else
+                        {
+                            /* there are other notes in the frame, so just delete this one note */
+                            Frame.RemoveAt(Scan);
+                        }
+                        SelectionMode = SelectionModes.eTrackViewNoSelection;
+                        InsertionPointIndex = SelectedNoteFrame;
+                        Debug.Assert(InsertionPointIndex <= trackObject.FrameArray.Count);
+                        SelectedNote = null;
+                        SelectedNoteFrame = -1;
+                        /* redrawing everything is overkill and should be fixed */
+                        TrackViewRedrawAll();
 
-                    if (trackObject.InlineParamVis != InlineParamVis.None)
-                    {
-                        RebuildInlineStrip();
-                    }
+                        if (trackObject.InlineParamVis != InlineParamVis.None)
+                        {
+                            RebuildInlineStrip();
+                        }
 
-                    return;
+                        return;
+                    }
                 }
+                Debug.Assert(false); // couldn't find the note
             }
-            Debug.Assert(false); // couldn't find the note
         }
 
         public void TrackViewSelectAll()
@@ -1692,29 +1708,32 @@ namespace OutOfPhase
         /* returns False if it fails.  undo information is automatically maintained */
         public void TrackViewDeleteRangeSelection()
         {
-            OnBeginBatchOperation(this, EventArgs.Empty);
-            try
+            using (GraphicsContext gc = new GraphicsContext(this))
             {
-                Debug.Assert(SelectionMode == SelectionModes.eTrackViewRangeSelection);
+                OnBeginBatchOperation(this, EventArgs.Empty);
+                try
+                {
+                    Debug.Assert(SelectionMode == SelectionModes.eTrackViewRangeSelection);
 
-                undoHelper.SaveUndoInfo(false/*forRedo*/, "Delete Range");
+                    undoHelper.SaveUndoInfo(false/*forRedo*/, "Delete Range");
 
-                /* delete the stuff */
-                trackObject.TrackObjectDeleteFrameRun(
-                    RangeSelectStart,
-                    RangeSelectEnd - RangeSelectStart);
-                SelectionMode = SelectionModes.eTrackViewNoSelection;
-                InsertionPointIndex = RangeSelectStart;
-                Debug.Assert(InsertionPointIndex <= trackObject.FrameArray.Count);
+                    /* delete the stuff */
+                    trackObject.TrackObjectDeleteFrameRun(
+                        RangeSelectStart,
+                        RangeSelectEnd - RangeSelectStart);
+                    SelectionMode = SelectionModes.eTrackViewNoSelection;
+                    InsertionPointIndex = RangeSelectStart;
+                    Debug.Assert(InsertionPointIndex <= trackObject.FrameArray.Count);
+                }
+                finally
+                {
+                    OnEndBatchOperation(this, EventArgs.Empty);
+                }
+
+                /* redraw with changes */
+                TrackViewRedrawAll();
+                TrackViewShowSelection();
             }
-            finally
-            {
-                OnEndBatchOperation(this, EventArgs.Empty);
-            }
-
-            /* redraw with changes */
-            TrackViewRedrawAll();
-            TrackViewShowSelection();
         }
 
         /* set a tie from the currently selected note to the note at the specified position. */
@@ -2398,26 +2417,29 @@ namespace OutOfPhase
         /* range.  it returns True if successful. */
         public void TrackViewCopyRangeSelection()
         {
-            OnBeginBatchOperation(this, EventArgs.Empty);
-            try
+            using (GraphicsContext gc = new GraphicsContext(this))
             {
-                Debug.Assert(SelectionMode == SelectionModes.eTrackViewRangeSelection);
-
-                FrameObjectRec[] CopyOfSelection = trackObject.TrackObjectCopyFrameRun(
-                    RangeSelectStart,
-                    RangeSelectEnd - RangeSelectStart);
-                TrackObjectRec copy = new TrackObjectRec(Window.MainWindow.Document);
-                foreach (FrameObjectRec frame in CopyOfSelection)
+                OnBeginBatchOperation(this, EventArgs.Empty);
+                try
                 {
-                    copy.FrameArray.Add(frame);
-                }
+                    Debug.Assert(SelectionMode == SelectionModes.eTrackViewRangeSelection);
 
-                TrackClipboard clipboard = new TrackClipboard(copy, Window.MainWindow.Document);
-                Clipboard.SetData(TrackClipboard.ClipboardIdentifer, clipboard);
-            }
-            finally
-            {
-                OnEndBatchOperation(this, EventArgs.Empty);
+                    FrameObjectRec[] CopyOfSelection = trackObject.TrackObjectCopyFrameRun(
+                        RangeSelectStart,
+                        RangeSelectEnd - RangeSelectStart);
+                    TrackObjectRec copy = new TrackObjectRec(Window.MainWindow.Document);
+                    foreach (FrameObjectRec frame in CopyOfSelection)
+                    {
+                        copy.FrameArray.Add(frame);
+                    }
+
+                    TrackClipboard clipboard = new TrackClipboard(copy, Window.MainWindow.Document);
+                    Clipboard.SetData(TrackClipboard.ClipboardIdentifer, clipboard);
+                }
+                finally
+                {
+                    OnEndBatchOperation(this, EventArgs.Empty);
+                }
             }
         }
 
