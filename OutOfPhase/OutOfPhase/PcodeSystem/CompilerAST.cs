@@ -247,7 +247,7 @@ namespace OutOfPhase
             {
                 Debug.Assert(!context.variableTable.ContainsKey(this.Symbol));
                 LocalBuilder localVariable = context.ilGenerator.DeclareLocal(
-                    CILObject.GetManagedType(this.Symbol.VariableDataType));
+                    PcodeMarshal.GetManagedType(this.Symbol.VariableDataType));
                 context.variableTable.Add(this.Symbol, localVariable);
 
                 /* evaluate size expression, leaving result on stack */
@@ -697,7 +697,7 @@ namespace OutOfPhase
                             // because we leave rval on stack (and stelem doesn't), need to save a copy in
                             // a scratch variable
                             LocalBuilder scratchVariable = context.ilGenerator.DeclareLocal(
-                                CILObject.GetManagedType(this.ObjectValue.ResultType));
+                                PcodeMarshal.GetManagedType(this.ObjectValue.ResultType));
                             context.ilGenerator.Emit(OpCodes.Dup, scratchVariable);
                             context.ilGenerator.Emit(OpCodes.Stloc, scratchVariable);
 
@@ -5315,7 +5315,7 @@ namespace OutOfPhase
 
                         Type[] managedArgsTypes;
                         Type managedReturnType;
-                        CILObject.GetManagedFunctionSignature(
+                        PcodeMarshal.GetManagedFunctionSignature(
                             inputTypes.ToArray(),
                             resultType,
                             out managedArgsTypes,
@@ -5455,7 +5455,7 @@ namespace OutOfPhase
 
                     Type[] managedArgsTypes;
                     Type managedReturnType;
-                    CILObject.GetManagedFunctionSignature(
+                    PcodeMarshal.GetManagedFunctionSignature(
                         argsTypes.ToArray(),
                         returnType,
                         out managedArgsTypes,
@@ -5861,7 +5861,7 @@ namespace OutOfPhase
 
                     Type[] managedArgsTypes;
                     Type managedReturnType;
-                    CILObject.GetManagedFunctionSignature(
+                    PcodeMarshal.GetManagedFunctionSignature(
                         argsTypes.ToArray(),
                         returnType,
                         out managedArgsTypes,
@@ -9752,7 +9752,7 @@ namespace OutOfPhase
             {
                 Debug.Assert(!context.variableTable.ContainsKey(this.Symbol));
                 LocalBuilder localVariable = context.ilGenerator.DeclareLocal(
-                    CILObject.GetManagedType(this.Symbol.VariableDataType));
+                    PcodeMarshal.GetManagedType(this.Symbol.VariableDataType));
                 context.variableTable.Add(this.Symbol, localVariable);
 
                 /* evaluate the value initializer expression if there is one */

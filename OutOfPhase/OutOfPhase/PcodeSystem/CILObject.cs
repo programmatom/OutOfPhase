@@ -24,7 +24,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -146,7 +145,7 @@ namespace OutOfPhase
 
             this.cilAssembly = cilAssembly;
 
-            GetManagedFunctionSignature(
+            PcodeMarshal.GetManagedFunctionSignature(
                 argsTypes,
                 returnType,
                 out managedArgsTypes,
@@ -612,47 +611,6 @@ namespace OutOfPhase
             public SignatureMismatchException()
             {
             }
-        }
-
-        public static Type GetManagedType(DataTypes type)
-        {
-            switch (type)
-            {
-                default:
-                    Debug.Assert(false);
-                    throw new ArgumentException();
-                case DataTypes.eBoolean:
-                    return typeof(Boolean);
-                case DataTypes.eInteger:
-                    return typeof(Int32);
-                case DataTypes.eFloat:
-                    return typeof(Single);
-                case DataTypes.eDouble:
-                    return typeof(Double);
-                case DataTypes.eArrayOfBoolean:
-                case DataTypes.eArrayOfByte:
-                    return typeof(ArrayHandleByte);
-                case DataTypes.eArrayOfInteger:
-                    return typeof(ArrayHandleInt32);
-                case DataTypes.eArrayOfFloat:
-                    return typeof(ArrayHandleFloat);
-                case DataTypes.eArrayOfDouble:
-                    return typeof(ArrayHandleDouble);
-            }
-        }
-
-        public static void GetManagedFunctionSignature(
-            DataTypes[] argsTypes,
-            DataTypes returnType,
-            out Type[] managedArgsTypes,
-            out Type managedReturnType)
-        {
-            managedArgsTypes = new Type[argsTypes.Length];
-            for (int i = 0; i < managedArgsTypes.Length; i++)
-            {
-                managedArgsTypes[i] = GetManagedType(argsTypes[i]);
-            }
-            managedReturnType = GetManagedType(returnType);
         }
 
         public string GetDisassembly()

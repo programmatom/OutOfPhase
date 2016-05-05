@@ -521,7 +521,7 @@ namespace OutOfPhase
                                 object[] methodArgs = new object[methodArgsTypes.Length];
                                 for (int i = 0; i < methodArgs.Length; i++)
                                 {
-                                    PcodeExterns.MarshalToManaged(
+                                    PcodeMarshal.MarshalToManaged(
                                         ref Stack[StackPtr - methodArgs.Length + 1 + i],
                                         methodArgsTypes[i],
                                         out methodArgs[i]);
@@ -534,7 +534,7 @@ namespace OutOfPhase
                                 {
                                     goto ExceptionPoint;
                                 }
-                                ErrorCode = PcodeExterns.TypeCheckValue(returnValue, methodReturnType);
+                                ErrorCode = PcodeMarshal.TypeCheckValue(returnValue, methodReturnType);
                                 if (ErrorCode != EvalErrors.eEvalNoError)
                                 {
                                     goto ExceptionPoint;
@@ -549,7 +549,7 @@ namespace OutOfPhase
                                 // push result
                                 StackPtr++;
                                 Debug.Assert(StackPtr < Stack.Length);
-                                PcodeExterns.MarshalToPcode(returnValue, ref Stack[StackPtr], methodReturnType);
+                                PcodeMarshal.MarshalToPcode(returnValue, ref Stack[StackPtr], methodReturnType);
 
                                 ProgramCounter += 3;
                             }
