@@ -22,13 +22,11 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Runtime.InteropServices;
 using System.IO;
-using System.Text;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 using Microsoft.Win32;
@@ -37,8 +35,6 @@ using TextEditor;
 
 namespace OutOfPhase
 {
-    // TODO: for WPF, all this custom drawn code should be rewritten as a hierarchy of modular elements
-
     public partial class TrackViewControl : ScrollableControl, IGraphicsContext, IUndoClient
     {
         private TrackObjectRec trackObject;
@@ -2742,7 +2738,6 @@ namespace OutOfPhase
             // custom paint code here
             if (trackObject != null)
             {
-                // TODO: use pe.Graphics.ScaleTransform(factor, factor) to implement zooming
                 using (GraphicsContext gc = new GraphicsContext(this, pe.Graphics))
                 {
                     TrackViewRedrawAll();
@@ -4171,7 +4166,7 @@ namespace OutOfPhase
         NoteFlags NoteState { get; set; }
 
         void EditNoteProperties();
-        MainWindow MainWindow { get; }
+        IMainWindowServices MainWindow { get; }
     }
 
     enum SelectionModes
@@ -5152,10 +5147,12 @@ namespace OutOfPhase
 
     public static class FrameDrawUtility
     {
-        // TODO: WidthOfFrameAndDraw() creates and destroys a lot of GDI bitmap objects due
-        // structure of legacy code. Would be more efficient to use static images as needed
-        // and use Graphics.DrawImage() to composite rather than compositing individual
-        // bitmap objects for each note.
+        // The old implementation of WidthOfFrameAndDraw() creates and destroys a lot of GDI
+        // bitmap objects due to the structure of legacy code. It would be more efficient to
+        // use static images as needed and use Graphics.DrawImage() to composite rather than
+        // compositing individual bitmap objects for each note. However, the bitmap implementation
+        // is deprecated since switching to the higher quality obtained via MyTextRenderer and the
+        // Bravura OpenType font - so it isn't worth doing any optimization on the old code.
 
         /* find out the width of this command/note frame and draw it if the flag is set. */
         /* it assumes the clipping rectangle is set up properly.  the X and Y parameters */

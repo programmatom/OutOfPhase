@@ -33,9 +33,9 @@ namespace OutOfPhase
 {
     public partial class InteractionWindow : Form, IMenuStripManagerHandler, IGlobalNameChange
     {
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
-        public InteractionWindow(MainWindow mainWindow)
+        public InteractionWindow(IMainWindowServices mainWindow)
         {
             this.mainWindow = mainWindow;
 

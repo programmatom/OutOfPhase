@@ -186,7 +186,7 @@ namespace OutOfPhase
                         {
                             uint exponent;
                             uint mantissa;
-                            byte[] extendedFloat = new byte[10];
+                            byte[] extended = new byte[10];
 
                             if (!isAIFFC)
                             {
@@ -264,7 +264,7 @@ namespace OutOfPhase
                                 }
 
                                 /*     10-byte extended precision number of frames per second */
-                                File.ReadRaw(extendedFloat, 0, 10);
+                                File.ReadRaw(extended, 0, 10);
                             }
                             else
                             {
@@ -342,7 +342,7 @@ namespace OutOfPhase
                                 }
 
                                 /*     10-byte extended precision number of frames per second */
-                                File.ReadRaw(extendedFloat, 0, 10);
+                                File.ReadRaw(extended, 0, 10);
 
                                 /*     4-byte character code ID for the compression method */
                                 /*        "NONE" means there is no compression method used */
@@ -368,12 +368,12 @@ namespace OutOfPhase
                             /* extended 22051 = 400D AC46000000000000 */
                             /* extended 44100 = 400E AC44000000000000 */
                             /* extended 44101 = 400E AC45000000000000 */
-                            exponent = (((uint)extendedFloat[0] & 0xff) << 8)
-                                | ((uint)extendedFloat[1] & 0xff);
-                            mantissa = (((uint)extendedFloat[2] & 0xff) << 24)
-                                | (((uint)extendedFloat[3] & 0xff) << 16)
-                                | (((uint)extendedFloat[4] & 0xff) << 8)
-                                | ((uint)extendedFloat[5] & 0xff);
+                            exponent = (((uint)extended[0] & 0xff) << 8)
+                                | ((uint)extended[1] & 0xff);
+                            mantissa = (((uint)extended[2] & 0xff) << 24)
+                                | (((uint)extended[3] & 0xff) << 16)
+                                | (((uint)extended[4] & 0xff) << 8)
+                                | ((uint)extended[5] & 0xff);
                             samplingRate = (int)(mantissa >> (0x401e - (int)exponent));
                             if (samplingRate < Constants.MINSAMPLINGRATE)
                             {

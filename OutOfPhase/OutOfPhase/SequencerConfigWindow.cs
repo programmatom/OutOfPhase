@@ -34,9 +34,9 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly SequencerRec sequencerObject;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
-        public SequencerConfigWindow(Registration registration, SequencerRec sequencerObject, MainWindow mainWindow)
+        public SequencerConfigWindow(Registration registration, SequencerRec sequencerObject, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.sequencerObject = sequencerObject;

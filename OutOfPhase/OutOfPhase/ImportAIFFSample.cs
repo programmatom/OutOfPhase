@@ -31,7 +31,7 @@ namespace OutOfPhase
         /* file as an AIFF sample.  it reports any errors to the user. */
         public static bool ImportAIFFSample(
             Registration registration,
-            MainWindow mainWindow,
+            IMainWindowServices mainWindow,
             out int index)
         {
             index = -1;

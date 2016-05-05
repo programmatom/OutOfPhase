@@ -42,10 +42,10 @@ namespace OutOfPhase
 
     public class PcodeExterns : PcodeSystem.IEvaluationContext
     {
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
         private bool interaction;
 
-        public PcodeExterns(MainWindow mainWindow)
+        public PcodeExterns(IMainWindowServices mainWindow)
         {
             this.mainWindow = mainWindow;
         }

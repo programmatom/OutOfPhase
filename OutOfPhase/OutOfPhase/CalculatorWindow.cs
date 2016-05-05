@@ -35,11 +35,11 @@ namespace OutOfPhase
     public partial class CalculatorWindow : Form, IMenuStripManagerHandler, IGlobalNameChange
     {
         private Document document;
-        private MainWindow mainWindow;
+        private IMainWindowServices mainWindow;
 
         private int LastLine;
 
-        public CalculatorWindow(Document document, MainWindow mainWindow)
+        public CalculatorWindow(Document document, IMainWindowServices mainWindow)
         {
             this.document = document;
             this.mainWindow = mainWindow;

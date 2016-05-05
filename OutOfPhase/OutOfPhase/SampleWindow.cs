@@ -35,13 +35,13 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly SampleObjectRec sampleObject;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
         private int currentLoop = 1;
 
         private readonly UndoHelper undoHelper;
 
-        public SampleWindow(Registration registration, SampleObjectRec sampleObject, MainWindow mainWindow)
+        public SampleWindow(Registration registration, SampleObjectRec sampleObject, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.sampleObject = sampleObject;
@@ -1096,7 +1096,7 @@ namespace OutOfPhase
             GeneratorMainLoopMethod<T, SampleTestGeneratorParams<T, W>, W> generatorMainLoop,
             SampleTestGeneratorParams<T, W> generatorParams,
             GeneratorCompletionMethod<SampleTestGeneratorParams<T, W>> generatorCompletion,
-            MainWindow mainWindow,
+            IMainWindowServices mainWindow,
             NumChannelsType channels,
             NumBitsType bits,
             int samplingRate,

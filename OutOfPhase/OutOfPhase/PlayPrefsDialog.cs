@@ -34,11 +34,11 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly object identity;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
         private readonly Document document;
         private readonly Source source;
 
-        public PlayPrefsDialog(Registration registration, object identity, MainWindow mainWindow, Document document)
+        public PlayPrefsDialog(Registration registration, object identity, IMainWindowServices mainWindow, Document document)
         {
             this.registration = registration;
             this.identity = identity;

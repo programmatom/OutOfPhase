@@ -33,7 +33,7 @@ namespace OutOfPhase
         private OutputGeneric<OutputDeviceDestination, AudioFilePlayGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>, OutputDeviceArguments> state;
         private AudioFilePlayGeneratorParams<OutputDeviceDestination, OutputDeviceArguments> generatorParams;
 
-        public void Play(string path, MainWindow mainWindow)
+        public void Play(string path, IMainWindowServices mainWindow)
         {
             Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, Constants.BufferSize);
             AudioFileReader reader = null;
@@ -99,7 +99,7 @@ namespace OutOfPhase
             GeneratorMainLoopMethod<T, AudioFilePlayGeneratorParams<T, W>, W> generatorMainLoop,
             AudioFilePlayGeneratorParams<T, W> generatorParams,
             GeneratorCompletionMethod<AudioFilePlayGeneratorParams<T, W>> generatorCompletion,
-            MainWindow mainWindow,
+            IMainWindowServices mainWindow,
             NumChannelsType channels,
             NumBitsType bits,
             int samplingRate,

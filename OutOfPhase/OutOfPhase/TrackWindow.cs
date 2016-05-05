@@ -34,11 +34,11 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly TrackObjectRec trackObject;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
         private readonly ToolStripMenuItem backgroundToolStripMenuItem;
         private readonly ToolStripMenuItem inlineEditToolStripMenuItem;
 
-        public TrackWindow(Registration registration, TrackObjectRec trackObject, MainWindow mainWindow)
+        public TrackWindow(Registration registration, TrackObjectRec trackObject, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.trackObject = trackObject;

@@ -34,10 +34,10 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly InstrObjectRec instrumentObject;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
         private readonly List<SegmentCalculatorDialog> segmentCalculators = new List<SegmentCalculatorDialog>();
 
-        public InstrumentWindow(Registration registration, InstrObjectRec instrumentObject, MainWindow mainWindow)
+        public InstrumentWindow(Registration registration, InstrObjectRec instrumentObject, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.instrumentObject = instrumentObject;

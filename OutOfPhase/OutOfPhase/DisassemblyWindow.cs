@@ -31,10 +31,10 @@ namespace OutOfPhase
 {
     public partial class DisassemblyWindow : Form, IMenuStripManagerHandler, IGlobalNameChange
     {
-        private MainWindow mainWindow;
+        private IMainWindowServices mainWindow;
         private string functionModuleName;
 
-        public DisassemblyWindow(string text, MainWindow mainWindow, string functionModuleName)
+        public DisassemblyWindow(string text, IMainWindowServices mainWindow, string functionModuleName)
         {
             this.mainWindow = mainWindow;
             this.functionModuleName = functionModuleName;

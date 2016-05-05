@@ -20,10 +20,8 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 
 namespace OutOfPhase
 {
@@ -376,10 +374,9 @@ namespace OutOfPhase
             NumChannelsType channels,
             NumBitsType bits)
         {
-            int totalBytesOfSamples;
             byte[] buffer = new byte[4];
 
-            totalBytesOfSamples = totalFrameCount;
+            int totalBytesOfSamples = totalFrameCount;
             if (channels == NumChannelsType.eSampleStereo)
             {
                 totalBytesOfSamples *= 2;

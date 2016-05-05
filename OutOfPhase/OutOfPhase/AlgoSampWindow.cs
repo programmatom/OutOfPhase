@@ -34,9 +34,9 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly AlgoSampObjectRec algoSampObject;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
-        public AlgoSampWindow(Registration registration, AlgoSampObjectRec algoSampObject, MainWindow mainWindow)
+        public AlgoSampWindow(Registration registration, AlgoSampObjectRec algoSampObject, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.algoSampObject = algoSampObject;

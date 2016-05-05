@@ -20,11 +20,9 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
@@ -359,18 +357,16 @@ namespace OutOfPhase
                 DEFAULTSAMPLINGRATE,
                 Constants.MIDDLEC);
             ReturnedSampleObject.Name = Path.GetFileName(path);
-
         }
 
         public static bool ImportRawSample(
             Registration registration,
-            MainWindow mainWindow,
+            IMainWindowServices mainWindow,
             out int index)
         {
-            string path;
-
             index = -1;
 
+            string path;
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
                 if (dialog.ShowDialog() != DialogResult.OK)

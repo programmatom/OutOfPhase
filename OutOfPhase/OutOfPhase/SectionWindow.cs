@@ -34,9 +34,9 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly SectionObjectRec section;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
-        public SectionWindow(Registration registration, SectionObjectRec section, MainWindow mainWindow)
+        public SectionWindow(Registration registration, SectionObjectRec section, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.section = section;

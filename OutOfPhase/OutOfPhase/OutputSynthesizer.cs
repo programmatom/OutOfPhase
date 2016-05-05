@@ -32,7 +32,7 @@ namespace OutOfPhase
 #if true // prevents "Add New Data Source..." from working
     public class SynthesizerGeneratorParams<T, W>
     {
-        public MainWindow mainWindow;
+        public IMainWindowServices mainWindow;
         public Document document;
         public List<TrackObjectRec> listOfTracks;
         public TrackObjectRec keyTrack;
@@ -61,7 +61,7 @@ namespace OutOfPhase
         public bool Completed { get { return completed; } }
 
         public SynthesizerGeneratorParams(
-            MainWindow mainWindow,
+            IMainWindowServices mainWindow,
             Document document,
             List<TrackObjectRec> listOfTracks,
             TrackObjectRec keyTrack,
@@ -108,7 +108,7 @@ namespace OutOfPhase
             GeneratorMainLoopMethod<T, SynthesizerGeneratorParams<T, W>, W> generatorMainLoop,
             SynthesizerGeneratorParams<T, W> generatorParams,
             GeneratorCompletionMethod<SynthesizerGeneratorParams<T, W>> generatorCompletion,
-            MainWindow mainWindow,
+            IMainWindowServices mainWindow,
             NumChannelsType channels,
             NumBitsType bits,
             int samplingRate,

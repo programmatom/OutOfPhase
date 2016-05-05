@@ -51,9 +51,9 @@ namespace OutOfPhase
 
     public class FindInFilesApplication : IFindInFilesApplication
     {
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
-        public FindInFilesApplication(MainWindow mainWindow)
+        public FindInFilesApplication(IMainWindowServices mainWindow)
         {
             this.mainWindow = mainWindow;
         }

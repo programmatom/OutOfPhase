@@ -34,9 +34,9 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly ScoreEffectsRec scoreEffectsObject;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
-        public ScoreEffectWindow(Registration registration, ScoreEffectsRec scoreEffectsObject, MainWindow mainWindow)
+        public ScoreEffectWindow(Registration registration, ScoreEffectsRec scoreEffectsObject, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.scoreEffectsObject = scoreEffectsObject;

@@ -35,9 +35,9 @@ namespace OutOfPhase
         private readonly Registration registration;
         private readonly FunctionObjectRec functionObject;
         private readonly Document document;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
-        public FunctionWindow(Registration registration, FunctionObjectRec functionObject, Document document, MainWindow mainWindow)
+        public FunctionWindow(Registration registration, FunctionObjectRec functionObject, Document document, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.functionObject = functionObject;

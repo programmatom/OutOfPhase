@@ -34,9 +34,9 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly AlgoWaveTableObjectRec algoWaveTableObject;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
-        public AlgoWaveTableWindow(Registration registration, AlgoWaveTableObjectRec algoWaveTableObject, MainWindow mainWindow)
+        public AlgoWaveTableWindow(Registration registration, AlgoWaveTableObjectRec algoWaveTableObject, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.algoWaveTableObject = algoWaveTableObject;

@@ -34,14 +34,14 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly WaveTableObjectRec waveTableObject;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
         private readonly Stack<WaveTableStorageRec> undo = new Stack<WaveTableStorageRec>();
         private readonly Stack<WaveTableStorageRec> redo = new Stack<WaveTableStorageRec>();
 
         private bool suppressTableOrFrameChange = true; // suppress until after form is loaded - since init fires notifications
 
-        public WaveTableWindow(Registration registration, WaveTableObjectRec waveTableObject, MainWindow mainWindow)
+        public WaveTableWindow(Registration registration, WaveTableObjectRec waveTableObject, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.waveTableObject = waveTableObject;
@@ -794,7 +794,7 @@ namespace OutOfPhase
             GeneratorMainLoopMethod<T, WaveTableTestGeneratorParams<T, W>, W> generatorMainLoop,
             WaveTableTestGeneratorParams<T, W> generatorParams,
             GeneratorCompletionMethod<WaveTableTestGeneratorParams<T, W>> generatorCompletion,
-            MainWindow mainWindow,
+            IMainWindowServices mainWindow,
             NumChannelsType channels,
             NumBitsType bits,
             int samplingRate,

@@ -34,11 +34,11 @@ namespace OutOfPhase
     {
         private readonly Registration registration;
         private readonly Document document;
-        private readonly MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
         private readonly MyBindingList<object> displayList = new MyBindingList<object>();
 
-        public SectionEditDialog(Registration registration, Document document, MainWindow mainWindow)
+        public SectionEditDialog(Registration registration, Document document, IMainWindowServices mainWindow)
         {
             this.registration = registration;
             this.document = document;

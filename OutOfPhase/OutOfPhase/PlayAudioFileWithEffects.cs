@@ -41,9 +41,9 @@ namespace OutOfPhase
         private static string filePath;
         private static short savedX, savedY, savedWidth, savedHeight;
 
-        private MainWindow mainWindow;
+        private readonly IMainWindowServices mainWindow;
 
-        public PlayAudioFileWithEffects(MainWindow mainWindow)
+        public PlayAudioFileWithEffects(IMainWindowServices mainWindow)
         {
             this.mainWindow = mainWindow;
 
@@ -265,7 +265,7 @@ namespace OutOfPhase
         public Stream stream;
         public AudioFileReader reader;
         public Synthesizer.EffectSpecListRec effectSpec;
-        public MainWindow mainWindow;
+        public IMainWindowServices mainWindow;
 
         public Synthesizer.SynthStateRec synthState;
         public StringWriter interactionLog = new StringWriter();
@@ -278,7 +278,7 @@ namespace OutOfPhase
             Stream stream,
             AudioFileReader reader,
             Synthesizer.EffectSpecListRec effectSpec,
-            MainWindow mainWindow)
+            IMainWindowServices mainWindow)
         {
             this.stream = stream;
             this.reader = reader;
@@ -294,7 +294,7 @@ namespace OutOfPhase
             GeneratorMainLoopMethod<T, PlayFileWithEffectsGeneratorParams<T, W>, W> generatorMainLoop,
             PlayFileWithEffectsGeneratorParams<T, W> generatorParams,
             GeneratorCompletionMethod<PlayFileWithEffectsGeneratorParams<T, W>> generatorCompletion,
-            MainWindow mainWindow,
+            IMainWindowServices mainWindow,
             NumChannelsType channels,
             NumBitsType bits,
             int samplingRate,

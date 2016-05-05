@@ -33,7 +33,7 @@ namespace OutOfPhase
     public partial class TrackEditControl : UserControl, ITrackViewContextUI, IMenuStripManagerHandler
     {
         private TrackObjectRec trackObject;
-        private MainWindow mainWindow;
+        private IMainWindowServices mainWindow;
         private MenuStripManager menuStripManager;
 
         public TrackEditControl()
@@ -43,7 +43,7 @@ namespace OutOfPhase
 
         public void Init(
             TrackObjectRec trackObject,
-            MainWindow mainWindow,
+            IMainWindowServices mainWindow,
             MenuStripManager menuStripManager,
             ToolStripMenuItem backgroundToolStripMenuItem,
             ToolStripMenuItem inlineEditToolStripMenuItem)
@@ -479,7 +479,7 @@ namespace OutOfPhase
         }
 
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public MainWindow MainWindow { get { return mainWindow; } }
+        public IMainWindowServices MainWindow { get { return mainWindow; } }
 
 
         //

@@ -33,7 +33,7 @@ using System.Windows.Forms;
 
 namespace OutOfPhase
 {
-    public partial class MainWindow : Form, IMenuStripManagerHandler, IGlobalNameChange
+    public partial class MainWindow : Form, IMenuStripManagerHandler, IGlobalNameChange, IMainWindowServices
     {
         private readonly Registration registration = new Registration();
         private static readonly List<MainWindow> topLevelEditors = new List<MainWindow>();
