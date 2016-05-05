@@ -357,8 +357,7 @@ namespace OutOfPhase
             Debug.Assert(miscForms.Count == 0);
         }
 
-        public delegate InteractionWindow GetInteractionWindowDelegate();
-        public InteractionWindow GetInteractionWindow()
+        public IInteractionWindowService GetInteractionWindow()
         {
             if (interactionWindow == null)
             {

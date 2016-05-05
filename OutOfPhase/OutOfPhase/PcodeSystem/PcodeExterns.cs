@@ -160,7 +160,7 @@ namespace OutOfPhase
         {
             if (!mainWindow.InvokeRequired)
             {
-                InteractionWindow interaction = mainWindow.GetInteractionWindow();
+                IInteractionWindowService interaction = mainWindow.GetInteractionWindow();
                 interaction.Append(text);
             }
             else
@@ -168,12 +168,10 @@ namespace OutOfPhase
                 // UI interaction must be marshaled to the main UI thread
                 // (see https://msdn.microsoft.com/en-us/library/ms171728%28v=vs.80%29.aspx)
                 interaction = true;
-                MainWindow.GetInteractionWindowDelegate d
-                    = new MainWindow.GetInteractionWindowDelegate(mainWindow.GetInteractionWindow);
+                MainWindowGetInteractionWindowDelegate d = new MainWindowGetInteractionWindowDelegate(mainWindow.GetInteractionWindow);
                 object o = mainWindow.Invoke(d, new object[] { });
-                InteractionWindow interactionWindow = (InteractionWindow)o;
-                InteractionWindow.AppendDelegate e
-                    = new InteractionWindow.AppendDelegate(interactionWindow.Append);
+                IInteractionWindowService interactionWindow = (IInteractionWindowService)o;
+                InteractionWindowAppendDelegate e = new InteractionWindowAppendDelegate(interactionWindow.Append);
                 interactionWindow.Invoke(e, new object[] { text });
             }
         }

@@ -460,7 +460,7 @@ namespace OutOfPhase
             string interactionLogFinal = generatorParams.interactionLog.ToString();
             if (interactionLogFinal.Length != 0)
             {
-                InteractionWindow interaction = generatorParams.mainWindow.GetInteractionWindow();
+                IInteractionWindowService interaction = generatorParams.mainWindow.GetInteractionWindow();
                 interaction.Append(interactionLogFinal);
             }
 

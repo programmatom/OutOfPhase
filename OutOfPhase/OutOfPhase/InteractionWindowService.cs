@@ -20,33 +20,12 @@
  * 
 */
 using System;
-using System.ComponentModel;
-using System.Windows.Forms;
 
 namespace OutOfPhase
 {
-    public interface IMainWindowServices : IMenuStripManagerHandler
+    public interface IInteractionWindowService
     {
-        string DisplayName { get; }
-
-        Document Document { get; }
-        string SavePath { get; }
-
-        Form CreateAndShowEditor(object dataObject);
-
-        void DeleteObject(object o, IBindingList list);
-
-        bool MakeUpToDate();
-        bool MakeUpToDateFunctions();
-        void DefaultBuildFailedCallback(object sender, BuildErrorInfo errorInfo);
-
-        IInteractionWindowService GetInteractionWindow();
-        bool PromptResumableError(string message);
-
-        void AddMiscForm(Form form);
-        void RemoveMiscForm(Form form);
-
-        IPlayPrefsProvider GetPlayPrefsProvider();
+        void Append(string text);
 
         // From System.Windows.Forms.Control
         bool InvokeRequired { get; }
@@ -54,5 +33,5 @@ namespace OutOfPhase
         object Invoke(Delegate method, params object[] args);
     }
 
-    public delegate IInteractionWindowService MainWindowGetInteractionWindowDelegate(); // for .Invoke()
+    public delegate void InteractionWindowAppendDelegate(string text); // for .Invoke()
 }

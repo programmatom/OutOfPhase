@@ -31,7 +31,7 @@ using TextEditor;
 
 namespace OutOfPhase
 {
-    public partial class InteractionWindow : Form, IMenuStripManagerHandler, IGlobalNameChange
+    public partial class InteractionWindow : Form, IMenuStripManagerHandler, IGlobalNameChange, IInteractionWindowService
     {
         private readonly IMainWindowServices mainWindow;
 
@@ -58,7 +58,6 @@ namespace OutOfPhase
             GlobalNameChanged();
         }
 
-        public delegate void AppendDelegate(string text);
         public void Append(string text)
         {
             textBox.ReplaceRangeAndSelect(
