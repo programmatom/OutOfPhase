@@ -23,7 +23,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace OutOfPhase
 {
@@ -222,11 +221,8 @@ namespace OutOfPhase
         /* deallocate one cell from the stack */
         epStackPop,  /* <opcode> */
 
-        /* deallocate several cells from the stack */
-        epStackPopMultiple,  /* <opcode> <numstackwords> */
-
         /* deallocate some cells from underneath the top cell */
-        epStackDeallocateUnder,  /* <opcode> <numwords> */
+        epStackPopMultipleUnder,  /* <opcode> <numwords> */
 
         /* duplicate word on top of stack */
         epDuplicate,  /* <opcode> */
@@ -819,8 +815,7 @@ namespace OutOfPhase
                 case Pcodes.epAtan2Double:
                     return 1;
                 case Pcodes.epReturnFromSubroutine: /* <opcode> <argcount> */
-                case Pcodes.epStackPopMultiple: /* <opcode> <numwords> */
-                case Pcodes.epStackDeallocateUnder: /* <opcode> <numwords> */
+                case Pcodes.epStackPopMultipleUnder: /* <opcode> <numwords> */
                 case Pcodes.epBranchUnconditional: /* <opcode> <branchoffset> */
                 case Pcodes.epBranchIfZero:
                 case Pcodes.epBranchIfNotZero:

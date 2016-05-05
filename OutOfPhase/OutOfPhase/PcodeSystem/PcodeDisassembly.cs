@@ -20,7 +20,6 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
@@ -525,7 +524,7 @@ namespace OutOfPhase
                         result.Append("pop");
                         i++;
                         break;
-                    case Pcodes.epStackDeallocateUnder: /* <opcode> <numwords> */
+                    case Pcodes.epStackPopMultipleUnder: /* <opcode> <numwords> */
                         result.Append("popmultipleunder ");
                         result.Append(OpcodeArray[i + 1].ImmediateInteger);
                         i += 2;
@@ -533,11 +532,6 @@ namespace OutOfPhase
                     case Pcodes.epDuplicate: /* <opcode> */
                         result.Append("dup");
                         i++;
-                        break;
-                    case Pcodes.epStackPopMultiple: /* <opcode> <numwords> */
-                        result.Append("popmultiple ");
-                        result.Append(OpcodeArray[i + 1].ImmediateInteger);
-                        i += 2;
                         break;
 
                     case Pcodes.epNop: /* <opcode> */

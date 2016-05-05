@@ -208,12 +208,14 @@
       <DependentUpon>ImportRawSampleDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="ImportWAVSample.cs" />
+    <Compile Include="InteractionWindowService.cs" />
     <Compile Include="LongRunningOperationWindow.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="LongRunningOperationWindow.Designer.cs">
       <DependentUpon>LongRunningOperationWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="MainWindowServices.cs" />
     <Compile Include="MIDIImport\ConvertIntToQuant.cs" />
     <Compile Include="MIDIImport\ConvertQuantToNote.cs" />
     <Compile Include="MIDIImport\ConvertRawToInterval.cs" />
@@ -283,6 +285,7 @@
     <Compile Include="PcodeSystem\CompilerScanner.cs" />
     <Compile Include="DataModel.cs" />
     <Compile Include="DataModelBuild.cs" />
+    <Compile Include="PcodeSystem\PcodeMarshal.cs" />
     <Compile Include="PersistWindowRect.cs" />
     <Compile Include="PlayAudioFileWithEffects.cs">
       <SubType>Form</SubType>

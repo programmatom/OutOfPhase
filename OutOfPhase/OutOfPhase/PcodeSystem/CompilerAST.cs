@@ -4706,7 +4706,7 @@ namespace OutOfPhase
                 if (StackDepth - StackDepthParam > 1)
                 {
                     int unused;
-                    FuncCode.AddPcodeInstruction(Pcodes.epStackDeallocateUnder, out unused, this.LineNumber);
+                    FuncCode.AddPcodeInstruction(Pcodes.epStackPopMultipleUnder, out unused, this.LineNumber);
                     FuncCode.AddPcodeOperandInteger(StackDepth - StackDepthParam - 1);
                     StackDepth = StackDepthParam + 1;
                     Debug.Assert(StackDepth <= MaxStackDepth);

@@ -1674,30 +1674,16 @@ namespace OutOfPhase
                             }
                             break;
 
-                        // TODO: would be more efficient to generate a Pcodes.epStackPopScalar when datatype is known
-
+                        // One might think it would be more efficient to generate a Pcodes.epStackPopScalar (or Pcodes.epStackPopReference)
+                        // when datatype is known, but it would only save one 64-bit write, which is probably in the same cache line
+                        // with the other 64-bit value, so on a typical processor it would make no difference.
                         case Pcodes.epStackPop:
                             Stack[StackPtr].Clear();
                             StackPtr--;
                             break;
 
-                        case Pcodes.epStackPopMultiple:
-                            {
-                                /*     -1       0   */
-                                /* <opcode> <numwords> */
-                                int Index = CurrentProcedure[ProgramCounter + 0].ImmediateInteger;
-                                while (Index > 0)
-                                {
-                                    Stack[StackPtr].Clear();
-                                    StackPtr--;
-                                    Index--;
-                                }
-                                ProgramCounter++;
-                            }
-                            break;
-
                         /* deallocate multiple cells under the current top */
-                        case Pcodes.epStackDeallocateUnder:
+                        case Pcodes.epStackPopMultipleUnder:
                             {
                                 /*    -1        0   */
                                 /* <opcode> <numwords> */
