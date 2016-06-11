@@ -24,6 +24,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
+using TreeLib;
+
 namespace OutOfPhase
 {
     public static partial class Synthesizer
@@ -56,9 +58,9 @@ namespace OutOfPhase
             public int MaxAbsValDelayIndexOld;
             public int MaxAbsValDelayIndexNew;
             public float[] MaxAbsValDelayLine;
-            // note: SplayTreeArray has better performance than SplayTree
+            // note: SplayTreeArrayMap has better performance than SplayTreeMap
             // TODO: the Single.CompareTo(Single) key comparer is not being inlined - figure out how
-            public SplayTreeArray<float, int> PeakAbsValTree; // key: sample data value, value: count seen in window
+            public SplayTreeArrayMap<float, int> PeakAbsValTree; // key: sample data value, value: count seen in window
             public float StartMax;
             public float EndMax;
             public int TransitionCount;
@@ -226,7 +228,7 @@ namespace OutOfPhase
                     //    Compressor.Track.MaxAbsValDelayLine,
                     //    DelayMask + 1);
 
-                    Compressor.Track.PeakAbsValTree = new SplayTreeArray<float, int>(Compressor.Track.Delay, true/*locked*/);
+                    Compressor.Track.PeakAbsValTree = new SplayTreeArrayMap<float, int>((uint)Compressor.Track.Delay, AllocationMode.PreallocatedFixed);
 
                     /* ensure tree always has an item */
                     // preload tree with one node of amplitude 0, cardinality length of delay line
@@ -1296,7 +1298,7 @@ namespace OutOfPhase
                 /* tracking iteration */
                 DelayIndexOld = Compressor.Track.MaxAbsValDelayIndexOld;
                 DelayIndexNew = Compressor.Track.MaxAbsValDelayIndexNew;
-                SplayTreeArray<float, int> PeakAbsValTree = Compressor.Track.PeakAbsValTree;
+                SplayTreeArrayMap<float, int> PeakAbsValTree = Compressor.Track.PeakAbsValTree;
                 int TransitionCount = Compressor.Track.TransitionCount;
                 float StartMax = Compressor.Track.StartMax;
                 float EndMax = Compressor.Track.EndMax;

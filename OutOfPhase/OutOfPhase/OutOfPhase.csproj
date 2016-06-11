@@ -124,6 +124,15 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\TextEditor\TextEditor\TextEditorLib\bin\$(Platform)\$(ConfigurationName)\TextEditorLib.dll</HintPath>
     </Reference>
+    <Reference Include="TreeLib">
+      <HintPath>..\..\..\TreeLib\TreeLib\TreeLib\bin\$(Configuration)\TreeLib.dll</HintPath>
+    </Reference>
+    <Reference Include="TreeLibArray">
+      <HintPath>..\..\..\TreeLib\TreeLib\TreeLibArray\bin\$(Configuration)\TreeLibArray.dll</HintPath>
+    </Reference>
+    <Reference Include="TreeLibInterface">
+      <HintPath>..\..\..\TreeLib\TreeLib\TreeLibInterface\bin\$(Configuration)\TreeLibInterface.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AboutBox.cs">
@@ -358,8 +367,6 @@
     <Compile Include="SynthEngine\PluggableOscSine.cs" />
     <Compile Include="SynthEngine\PluggableEffectUserEffect.cs" />
     <Compile Include="SynthEngine\SimpleFreeList.cs" />
-    <Compile Include="SynthEngine\SplayTree.cs" />
-    <Compile Include="SynthEngine\SplayTreeArray.cs" />
     <Compile Include="SymbolicDuration.cs" />
     <Compile Include="SynthBuild\BuildInstrument.cs" />
     <Compile Include="SynthBuild\BuildSequencer.cs" />

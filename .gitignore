@@ -1,19 +1,18 @@
 # application compilation intermediate files
 
-/OutOfPhase/.vs/*
-/OutOfPhase/ConvolverEL/*
+/OutOfPhase/.vs
+/OutOfPhase/ConvolverEL
 /OutOfPhase/OutOfPhase.ncb
 /OutOfPhase/OutOfPhase.suo
-/OutOfPhase/OutOfPhase/bin/*/*/OutOfPhase.vshost.*
-/OutOfPhase/OutOfPhase/bin/*/*/plugins/ConvolverEL.*
-/OutOfPhase/OutOfPhase/obj/*
+/OutOfPhase/OutOfPhase/bin
+/OutOfPhase/OutOfPhase/obj
 /OutOfPhase/OutOfPhase/OutOfPhase.csproj.user
 /OutOfPhase/packages
-/OutOfPhase/Setup/*
+/OutOfPhase/Setup
 /OutOfPhaseTraceScheduleAnalyzer/.vs/OutOfPhaseTraceScheduleAnalyzer/v14/.suo
 /OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer.suo
-/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer/bin/Debug/OutOfPhaseTraceScheduleAnalyzer.vshost.*
-/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer/obj/*
+/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer/bin
+/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer/obj
 /OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer/OutOfPhaseTraceScheduleAnalyzer.csproj.user
 
 # local utility scripts, etc.
