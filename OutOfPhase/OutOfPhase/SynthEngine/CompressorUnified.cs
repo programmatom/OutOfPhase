@@ -58,9 +58,9 @@ namespace OutOfPhase
             public int MaxAbsValDelayIndexOld;
             public int MaxAbsValDelayIndexNew;
             public float[] MaxAbsValDelayLine;
-            // note: SplayTreeArrayMap has better performance than SplayTreeMap
+            // TODO: test: tree type, array vs. normal
             // TODO: the Single.CompareTo(Single) key comparer is not being inlined - figure out how
-            public SplayTreeArrayMap<float, int> PeakAbsValTree; // key: sample data value, value: count seen in window
+            public AVLTreeMap<float, int> PeakAbsValTree; // key: sample data value, value: count seen in window
             public float StartMax;
             public float EndMax;
             public int TransitionCount;
@@ -228,7 +228,7 @@ namespace OutOfPhase
                     //    Compressor.Track.MaxAbsValDelayLine,
                     //    DelayMask + 1);
 
-                    Compressor.Track.PeakAbsValTree = new SplayTreeArrayMap<float, int>((uint)Compressor.Track.Delay, AllocationMode.PreallocatedFixed);
+                    Compressor.Track.PeakAbsValTree = new AVLTreeMap<float, int>((uint)Compressor.Track.Delay, AllocationMode.PreallocatedFixed);
 
                     /* ensure tree always has an item */
                     // preload tree with one node of amplitude 0, cardinality length of delay line
@@ -1228,6 +1228,20 @@ namespace OutOfPhase
                     SynthParams);
             }
 
+            private readonly static UpdatePredicate<float, int> _RemoveItem = RemoveItem;
+            private static bool RemoveItem(float key, ref int value, bool resident)
+            {
+                value--;
+                return value == 0;
+            }
+
+            private readonly static UpdatePredicate<float, int> _AddItem = AddItem;
+            private static bool AddItem(float key, ref int value, bool resident)
+            {
+                value++;
+                return value != 0;
+            }
+
             /* helper for lookahead peak limiting */
             private static void LookaheadPeakHelper(
                 CompressorRec Compressor,
@@ -1298,14 +1312,13 @@ namespace OutOfPhase
                 /* tracking iteration */
                 DelayIndexOld = Compressor.Track.MaxAbsValDelayIndexOld;
                 DelayIndexNew = Compressor.Track.MaxAbsValDelayIndexNew;
-                SplayTreeArrayMap<float, int> PeakAbsValTree = Compressor.Track.PeakAbsValTree;
+                AVLTreeMap<float, int> PeakAbsValTree = Compressor.Track.PeakAbsValTree;
                 int TransitionCount = Compressor.Track.TransitionCount;
                 float StartMax = Compressor.Track.StartMax;
                 float EndMax = Compressor.Track.EndMax;
                 for (int i = 0; i < nActualFrames; i += 1)
                 {
                     float key;
-                    int count;
 
                     // remove oldest value from heap
                     key = MaxAbsValDelayLine[DelayIndexOld];
@@ -1317,29 +1330,11 @@ namespace OutOfPhase
                         throw new InvalidOperationException();
                     }
 #endif
-                    count = PeakAbsValTree.GetValue(key);
-                    count--;
-                    if (count > 0)
-                    {
-                        PeakAbsValTree.SetValue(key, count);
-                    }
-                    else
-                    {
-                        PeakAbsValTree.Remove(key);
-                    }
+                    PeakAbsValTree.ConditionalSetOrRemove(key, _RemoveItem);
 
                     /* add new value to heap */
                     key = MaxAbsValDelayLine[DelayIndexNew] = workspace[i + LeftPowerOffset];
-                    if (PeakAbsValTree.ContainsKey(key))
-                    {
-                        count = PeakAbsValTree.GetValue(key);
-                        count++;
-                        PeakAbsValTree.SetValue(key, count);
-                    }
-                    else
-                    {
-                        PeakAbsValTree.Add(key, 1);
-                    }
+                    PeakAbsValTree.ConditionalSetOrAdd(key, _AddItem);
 
                     /* update power envelope */
                     TransitionCount -= 1;
@@ -1351,7 +1346,7 @@ namespace OutOfPhase
                         TransitionCount = TransitionMax;
                         StartMax = EndMax;
                         /* compute current maximum */
-                        PeakAbsValTree.NearestLessOrEqual(Single.MaxValue, out EndMax);
+                        PeakAbsValTree.Greatest(out EndMax);
                         if (EndMax < MINIMUMPEAKPOWER)
                         {
                             EndMax = MINIMUMPEAKPOWER;
