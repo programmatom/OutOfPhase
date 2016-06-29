@@ -53,7 +53,7 @@ namespace OutOfPhase
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
             this.label1 = new OutOfPhase.MyLabel();
-            this.label2 = new OutOfPhase.MyLabel();
+            this.labelVersion = new OutOfPhase.MyLabel();
             this.label3 = new OutOfPhase.MyLabel();
             this.richTextBox1 = new System.Windows.Forms.RichTextBox();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
@@ -90,7 +90,7 @@ namespace OutOfPhase
             this.flowLayoutPanel1.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.flowLayoutPanel1.AutoSize = true;
             this.flowLayoutPanel1.Controls.Add(this.label1);
-            this.flowLayoutPanel1.Controls.Add(this.label2);
+            this.flowLayoutPanel1.Controls.Add(this.labelVersion);
             this.flowLayoutPanel1.Controls.Add(this.label3);
             this.flowLayoutPanel1.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.flowLayoutPanel1.Location = new System.Drawing.Point(176, 3);
@@ -110,16 +110,16 @@ namespace OutOfPhase
             this.label1.Text = " Out Of Phase II ";
             this.label1.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
-            // label2
+            // labelVersion
             // 
-            this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(3, 43);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(282, 13);
-            this.label2.TabIndex = 1;
-            this.label2.Text = "Version 0.9";
-            this.label2.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            this.labelVersion.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelVersion.AutoSize = true;
+            this.labelVersion.Location = new System.Drawing.Point(3, 43);
+            this.labelVersion.Name = "labelVersion";
+            this.labelVersion.Size = new System.Drawing.Size(282, 13);
+            this.labelVersion.TabIndex = 1;
+            this.labelVersion.Text = "Version";
+            this.labelVersion.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
             // label3
             // 
@@ -193,7 +193,7 @@ namespace OutOfPhase
         private System.Windows.Forms.RichTextBox richTextBox1;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private MyLabel label1;
-        private MyLabel label2;
+        private MyLabel labelVersion;
         private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.PictureBox pictureBox2;
         private MyLabel label3;

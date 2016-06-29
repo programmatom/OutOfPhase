@@ -25,6 +25,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 
@@ -42,6 +43,11 @@ namespace OutOfPhase
             richTextBox1.Rtf = OutOfPhase._Resources.AboutBoxContent.License;
             pictureBox1.Image = OutOfPhase._Resources.AboutBoxContent.Icon2.ToBitmap();
             pictureBox2.Image = OutOfPhase._Resources.AboutBoxContent.Icon1.ToBitmap();
+
+            AssemblyFileVersionAttribute versionAttribute = (AssemblyFileVersionAttribute)Assembly.GetExecutingAssembly().GetCustomAttribute(typeof(AssemblyFileVersionAttribute));
+            string version = versionAttribute.Version;
+            version = version.Substring(0, version.LastIndexOf('.'));
+            labelVersion.Text = String.Format("{0} {1}", labelVersion.Text, version);
 
             richTextBox1.LinkClicked += new LinkClickedEventHandler(richTextBox1_LinkClicked);
         }
