@@ -72,7 +72,6 @@ namespace OutOfPhase
             this.panel1 = new System.Windows.Forms.Panel();
             this.textEditComment = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.menuStripManager = new OutOfPhase.MenuStripManager();
             this.trackListBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.waveTableListBindingSource = new System.Windows.Forms.BindingSource(this.components);
@@ -357,7 +356,6 @@ namespace OutOfPhase
             this.textEditComment.Name = "textEditComment";
             this.textEditComment.Size = new System.Drawing.Size(437, 106);
             this.textEditComment.TabIndex = 8;
-            this.textEditComment.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
             // 
@@ -499,7 +497,6 @@ namespace OutOfPhase
         private MenuStripManager menuStripManager;
         private TextEditor.TextEditControl textEditComment;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.Timer timerAutosave;
         private System.Windows.Forms.Panel panel1;
         private DpiChangeHelper dpiChangeHelper;

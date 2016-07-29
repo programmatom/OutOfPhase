@@ -87,7 +87,6 @@ namespace OutOfPhase
             this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxFunction = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.textBoxWindowHelper = new OutOfPhase.TextBoxWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
@@ -502,7 +501,6 @@ namespace OutOfPhase
             this.textBoxFunction.Size = new System.Drawing.Size(960, 72);
             this.textBoxFunction.TabIndex = 28;
             this.textBoxFunction.TextService = TextEditor.TextService.Simple;
-            this.textBoxFunction.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
             // 
@@ -601,7 +599,6 @@ namespace OutOfPhase
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextBoxWindowHelper textBoxWindowHelper;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Panel panel1;
         private DpiChangeHelper dpiChangeHelper;

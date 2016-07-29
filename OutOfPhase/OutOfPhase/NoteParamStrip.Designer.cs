@@ -51,7 +51,6 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.textEditControl = new TextEditor.TextEditControl();
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.toolTip = new System.Windows.Forms.ToolTip(this.components);
             this.SuspendLayout();
             // 
@@ -68,7 +67,6 @@ namespace OutOfPhase
             this.textEditControl.Name = "textEditControl";
             this.textEditControl.Size = new System.Drawing.Size(7, 13);
             this.textEditControl.TabIndex = 0;
-            this.textEditControl.TextStorageFactory = this.stringStorageFactory;
             this.textEditControl.Visible = false;
             // 
             // NoteParamStrip
@@ -85,7 +83,6 @@ namespace OutOfPhase
         #endregion
 
         private TextEditor.TextEditControl textEditControl;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.ToolTip toolTip;
     }
 }

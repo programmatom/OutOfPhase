@@ -58,7 +58,6 @@ namespace OutOfPhase
             this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxSectionText = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.textBoxWindowHelper = new OutOfPhase.TextBoxWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
@@ -136,18 +135,17 @@ namespace OutOfPhase
             // textBoxSectionText
             // 
             this.textBoxSectionText.AutoScroll = true;
-            this.textBoxSectionText.AutoScrollMinSize = new System.Drawing.Size(621, 13);
+            this.textBoxSectionText.AutoScrollMinSize = new System.Drawing.Size(619, 13);
             this.textBoxSectionText.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxSectionText.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxSectionText.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sectionObjectRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxSectionText.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxSectionText.Location = new System.Drawing.Point(0, 0);
             this.textBoxSectionText.Name = "textBoxSectionText";
+            this.textBoxSectionText.SimpleNavigation = true;
             this.textBoxSectionText.Size = new System.Drawing.Size(619, 306);
             this.textBoxSectionText.TabIndex = 4;
             this.textBoxSectionText.TextService = TextEditor.TextService.Simple;
-            this.textBoxSectionText.SimpleNavigation = true;
-            this.textBoxSectionText.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
             // 
@@ -215,7 +213,6 @@ namespace OutOfPhase
         private MenuStripManager menuStripManager;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextBoxWindowHelper textBoxWindowHelper;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.Panel panel1;
         private DpiChangeHelper dpiChangeHelper;
     }

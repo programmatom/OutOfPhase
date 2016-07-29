@@ -63,7 +63,6 @@ namespace OutOfPhase
             this.comboBoxTonic = new System.Windows.Forms.ComboBox();
             this.checkBoxReset = new System.Windows.Forms.CheckBox();
             this.textEditControl1 = new TextEditor.TextEditControl();
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.checkBoxRelativeCents = new System.Windows.Forms.CheckBox();
             this.tableLayoutPanel1.SuspendLayout();
             this.flowLayoutPanel1.SuspendLayout();
@@ -237,7 +236,6 @@ namespace OutOfPhase
             this.textEditControl1.Size = new System.Drawing.Size(1, 13);
             this.textEditControl1.TabIndex = 12;
             this.textEditControl1.TabStop = false;
-            this.textEditControl1.TextStorageFactory = this.stringStorageFactory;
             // 
             // checkBoxRelativeCents
             // 
@@ -282,7 +280,6 @@ namespace OutOfPhase
         private System.Windows.Forms.ComboBox comboBoxTonic;
         private System.Windows.Forms.CheckBox checkBoxReset;
         private TextEditor.TextEditControl textEditControl1;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.CheckBox checkBoxRelativeCents;
         private MyLabel label2;
         private MyLabel label1;

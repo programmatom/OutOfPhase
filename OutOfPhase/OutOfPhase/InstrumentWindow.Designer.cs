@@ -59,7 +59,6 @@ namespace OutOfPhase
             this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxInstrumentBody = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.textBoxWindowHelper = new OutOfPhase.TextBoxWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
@@ -145,7 +144,7 @@ namespace OutOfPhase
             // textBoxInstrumentBody
             // 
             this.textBoxInstrumentBody.AutoScroll = true;
-            this.textBoxInstrumentBody.AutoScrollMinSize = new System.Drawing.Size(596, 13);
+            this.textBoxInstrumentBody.AutoScrollMinSize = new System.Drawing.Size(594, 13);
             this.textBoxInstrumentBody.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxInstrumentBody.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxInstrumentBody.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.instrObjectRecBindingSource, "InstrDefinition", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
@@ -156,7 +155,6 @@ namespace OutOfPhase
             this.textBoxInstrumentBody.Size = new System.Drawing.Size(594, 266);
             this.textBoxInstrumentBody.TabIndex = 6;
             this.textBoxInstrumentBody.TextService = TextEditor.TextService.Simple;
-            this.textBoxInstrumentBody.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
             // 
@@ -225,7 +223,6 @@ namespace OutOfPhase
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextBoxWindowHelper textBoxWindowHelper;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.Panel panel1;
         private DpiChangeHelper dpiChangeHelper;
     }

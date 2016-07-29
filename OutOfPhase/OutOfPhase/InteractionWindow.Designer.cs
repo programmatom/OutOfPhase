@@ -51,7 +51,6 @@ namespace OutOfPhase
         {
             this.components = new System.ComponentModel.Container();
             this.textBox = new TextEditor.TextEditControl();
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.menuStripManager = new OutOfPhase.MenuStripManager();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
@@ -64,17 +63,16 @@ namespace OutOfPhase
             // textBox
             // 
             this.textBox.AutoScroll = true;
-            this.textBox.AutoScrollMinSize = new System.Drawing.Size(882, 13);
+            this.textBox.AutoScrollMinSize = new System.Drawing.Size(882, 16);
             this.textBox.BackColor = System.Drawing.SystemColors.Window;
             this.textBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBox.Font = new System.Drawing.Font("Consolas", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.textBox.Location = new System.Drawing.Point(0, 0);
             this.textBox.Name = "textBox";
+            this.textBox.SimpleNavigation = true;
             this.textBox.Size = new System.Drawing.Size(882, 143);
             this.textBox.TabIndex = 0;
             this.textBox.TextService = TextEditor.TextService.Simple;
-            this.textBox.SimpleNavigation = true;
-            this.textBox.TextStorageFactory = this.stringStorageFactory;
             // 
             // textEditorWindowHelper
             // 
@@ -153,7 +151,6 @@ namespace OutOfPhase
         #endregion
 
         private TextEditor.TextEditControl textBox;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private MenuStripManager menuStripManager;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;

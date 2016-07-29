@@ -56,7 +56,6 @@ namespace OutOfPhase
             this.textBoxScoreEffectsText = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.scoreEffectsRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
@@ -102,18 +101,17 @@ namespace OutOfPhase
             // textBoxScoreEffectsText
             // 
             this.textBoxScoreEffectsText.AutoScroll = true;
-            this.textBoxScoreEffectsText.AutoScrollMinSize = new System.Drawing.Size(568, 13);
+            this.textBoxScoreEffectsText.AutoScrollMinSize = new System.Drawing.Size(566, 13);
             this.textBoxScoreEffectsText.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxScoreEffectsText.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxScoreEffectsText.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.scoreEffectsRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxScoreEffectsText.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxScoreEffectsText.Location = new System.Drawing.Point(0, 0);
             this.textBoxScoreEffectsText.Name = "textBoxScoreEffectsText";
+            this.textBoxScoreEffectsText.SimpleNavigation = true;
             this.textBoxScoreEffectsText.Size = new System.Drawing.Size(566, 334);
             this.textBoxScoreEffectsText.TabIndex = 3;
             this.textBoxScoreEffectsText.TextService = TextEditor.TextService.Simple;
-            this.textBoxScoreEffectsText.SimpleNavigation = true;
-            this.textBoxScoreEffectsText.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
             // 
@@ -172,7 +170,6 @@ namespace OutOfPhase
         private TextEditor.TextEditControl textBoxScoreEffectsText;
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.Panel panel1;
         private DpiChangeHelper dpiChangeHelper;
     }

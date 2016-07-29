@@ -85,7 +85,6 @@ namespace OutOfPhase
             this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxFormula = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.textBoxWindowHelper = new OutOfPhase.TextBoxWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
@@ -503,7 +502,6 @@ namespace OutOfPhase
             this.textBoxFormula.Size = new System.Drawing.Size(693, 92);
             this.textBoxFormula.TabIndex = 5;
             this.textBoxFormula.TextService = TextEditor.TextService.Simple;
-            this.textBoxFormula.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
             // 
@@ -602,7 +600,6 @@ namespace OutOfPhase
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextBoxWindowHelper textBoxWindowHelper;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.TabControl tabControlWave;
         private System.Windows.Forms.TabPage tabPageWaveGrid;
         private System.Windows.Forms.TabPage tabPageWaveVisual;

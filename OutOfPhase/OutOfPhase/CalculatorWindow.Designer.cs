@@ -55,7 +55,6 @@ namespace OutOfPhase
             this.panel1 = new System.Windows.Forms.Panel();
             this.textBox = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
@@ -100,7 +99,7 @@ namespace OutOfPhase
             // textBox
             // 
             this.textBox.AutoScroll = true;
-            this.textBox.AutoScrollMinSize = new System.Drawing.Size(594, 13);
+            this.textBox.AutoScrollMinSize = new System.Drawing.Size(592, 13);
             this.textBox.BackColor = System.Drawing.SystemColors.Window;
             this.textBox.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBox.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -110,7 +109,6 @@ namespace OutOfPhase
             this.textBox.Size = new System.Drawing.Size(592, 369);
             this.textBox.TabIndex = 2;
             this.textBox.TextService = TextEditor.TextService.Simple;
-            this.textBox.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
             // 
@@ -163,7 +161,6 @@ namespace OutOfPhase
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private MenuStripManager menuStripManager;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.Panel panel1;
         private DpiChangeHelper dpiChangeHelper;
     }

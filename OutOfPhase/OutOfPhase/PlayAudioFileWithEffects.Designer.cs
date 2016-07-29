@@ -60,7 +60,6 @@ namespace OutOfPhase
             this.buttonClose = new System.Windows.Forms.Button();
             this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxEffectBody = new TextEditor.TextEditControl();
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper1 = new TextEditor.TextEditorWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
@@ -175,16 +174,15 @@ namespace OutOfPhase
             // textBoxEffectBody
             // 
             this.textBoxEffectBody.AutoScroll = true;
-            this.textBoxEffectBody.AutoScrollMinSize = new System.Drawing.Size(609, 13);
+            this.textBoxEffectBody.AutoScrollMinSize = new System.Drawing.Size(641, 13);
             this.textBoxEffectBody.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxEffectBody.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxEffectBody.Location = new System.Drawing.Point(0, 0);
             this.textBoxEffectBody.Name = "textBoxEffectBody";
+            this.textBoxEffectBody.SimpleNavigation = true;
             this.textBoxEffectBody.Size = new System.Drawing.Size(641, 276);
             this.textBoxEffectBody.TabIndex = 6;
             this.textBoxEffectBody.TextService = TextEditor.TextService.Simple;
-            this.textBoxEffectBody.SimpleNavigation = true;
-            this.textBoxEffectBody.TextStorageFactory = this.stringStorageFactory;
             // 
             // textEditorWindowHelper1
             // 
@@ -235,7 +233,6 @@ namespace OutOfPhase
         private System.Windows.Forms.Button buttonSelectAudioFile;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper1;
         private TextEditor.TextEditControl textBoxEffectBody;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
         private System.Windows.Forms.Button buttonPlay;
         private MyLabel label2;

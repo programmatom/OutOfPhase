@@ -85,7 +85,6 @@ namespace OutOfPhase
             this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxFormula = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.textBoxWindowHelper = new OutOfPhase.TextBoxWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
@@ -480,11 +479,10 @@ namespace OutOfPhase
             this.textBoxFormula.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxFormula.Location = new System.Drawing.Point(0, 0);
             this.textBoxFormula.Name = "textBoxFormula";
+            this.textBoxFormula.SimpleNavigation = true;
             this.textBoxFormula.Size = new System.Drawing.Size(571, 133);
             this.textBoxFormula.TabIndex = 5;
             this.textBoxFormula.TextService = TextEditor.TextService.Simple;
-            this.textBoxFormula.TextStorageFactory = this.stringStorageFactory;
-            this.textBoxFormula.SimpleNavigation = true;
             // 
             // documentBindingSource
             // 
@@ -584,7 +582,6 @@ namespace OutOfPhase
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
         private TextBoxWindowHelper textBoxWindowHelper;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.Panel panel1;
         private DpiChangeHelper dpiChangeHelper;
     }

@@ -57,7 +57,6 @@ namespace OutOfPhase
             this.textBoxSequencerConfig = new TextEditor.TextEditControl();
             this.documentBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.sequencerRecBindingSource = new System.Windows.Forms.BindingSource(this.components);
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
@@ -115,18 +114,17 @@ namespace OutOfPhase
             // textBoxSequencerConfig
             // 
             this.textBoxSequencerConfig.AutoScroll = true;
-            this.textBoxSequencerConfig.AutoScrollMinSize = new System.Drawing.Size(612, 13);
+            this.textBoxSequencerConfig.AutoScrollMinSize = new System.Drawing.Size(610, 13);
             this.textBoxSequencerConfig.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxSequencerConfig.DataBindings.Add(new System.Windows.Forms.Binding("TabSize", this.documentBindingSource, "TabSize", true));
             this.textBoxSequencerConfig.DataBindings.Add(new System.Windows.Forms.Binding("Text", this.sequencerRecBindingSource, "Source", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
             this.textBoxSequencerConfig.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxSequencerConfig.Location = new System.Drawing.Point(0, 0);
             this.textBoxSequencerConfig.Name = "textBoxSequencerConfig";
+            this.textBoxSequencerConfig.SimpleNavigation = true;
             this.textBoxSequencerConfig.Size = new System.Drawing.Size(610, 289);
             this.textBoxSequencerConfig.TabIndex = 3;
             this.textBoxSequencerConfig.TextService = TextEditor.TextService.Simple;
-            this.textBoxSequencerConfig.SimpleNavigation = true;
-            this.textBoxSequencerConfig.TextStorageFactory = this.stringStorageFactory;
             // 
             // documentBindingSource
             // 
@@ -186,7 +184,6 @@ namespace OutOfPhase
         private TextEditor.TextEditControl textBoxSequencerConfig;
         private System.Windows.Forms.BindingSource documentBindingSource;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.Panel panel1;
         private DpiChangeHelper dpiChangeHelper;
     }

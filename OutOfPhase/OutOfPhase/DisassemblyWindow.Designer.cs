@@ -54,7 +54,6 @@ namespace OutOfPhase
             this.menuStripManager = new OutOfPhase.MenuStripManager();
             this.panel1 = new System.Windows.Forms.Panel();
             this.textBoxDisassembly = new TextEditor.TextEditControl();
-            this.stringStorageFactory = new TextEditor.StringStorageFactory();
             this.textEditorWindowHelper = new TextEditor.TextEditorWindowHelper(this.components);
             this.dpiChangeHelper = new OutOfPhase.DpiChangeHelper(this.components);
             this.tableLayoutPanel1.SuspendLayout();
@@ -98,7 +97,7 @@ namespace OutOfPhase
             // textBoxDisassembly
             // 
             this.textBoxDisassembly.AutoScroll = true;
-            this.textBoxDisassembly.AutoScrollMinSize = new System.Drawing.Size(509, 13);
+            this.textBoxDisassembly.AutoScrollMinSize = new System.Drawing.Size(570, 11);
             this.textBoxDisassembly.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxDisassembly.Dock = System.Windows.Forms.DockStyle.Fill;
             this.textBoxDisassembly.Font = new System.Drawing.Font("Lucida Console", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -109,7 +108,6 @@ namespace OutOfPhase
             this.textBoxDisassembly.Size = new System.Drawing.Size(570, 493);
             this.textBoxDisassembly.TabIndex = 3;
             this.textBoxDisassembly.TextService = TextEditor.TextService.Simple;
-            this.textBoxDisassembly.TextStorageFactory = this.stringStorageFactory;
             this.textBoxDisassembly.UndoEnabled = false;
             // 
             // textEditorWindowHelper
@@ -157,7 +155,6 @@ namespace OutOfPhase
         private MenuStripManager menuStripManager;
         private TextEditor.TextEditControl textBoxDisassembly;
         private TextEditor.TextEditorWindowHelper textEditorWindowHelper;
-        private TextEditor.StringStorageFactory stringStorageFactory;
         private System.Windows.Forms.Panel panel1;
         private DpiChangeHelper dpiChangeHelper;
     }
