@@ -272,7 +272,7 @@ namespace OutOfPhase
             new KeyValuePair<string, IPluggableProcessorFactory>("usereffect", new PluggableEffectUserEffectFactory()),
         };
 
-        public static KeyValuePair<string, IPluggableProcessorFactory>[] ExternalPluggableProcessors;
+        public static KeyValuePair<string, IPluggableProcessorFactory>[] ExternalPluggableProcessors = new  KeyValuePair<string, IPluggableProcessorFactory>[0];
 
         public static IEnumerable<KeyValuePair<string, IPluggableProcessorFactory>> AllPluggableProcessors
         {
