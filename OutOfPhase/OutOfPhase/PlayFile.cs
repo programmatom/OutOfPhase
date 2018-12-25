@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,10 +20,7 @@
  * 
 */
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
@@ -57,7 +54,6 @@ namespace OutOfPhase
 
             const double BufferDuration = 2;
 
-#if true // prevents "Add New Data Source..." from working
             state = AudioFilePlayGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 mainWindow.DisplayName,
                 OutputDeviceEnumerator.OutputDeviceGetDestination,
@@ -74,11 +70,9 @@ namespace OutOfPhase
                 1/*oversampling*/,
                 true/*showProgressWindow*/,
                 true/*modal*/);
-#endif
         }
     }
 
-#if true // prevents "Add New Data Source..." from working
     public class AudioFilePlayGeneratorParams<T, W>
     {
         public AudioFileReader reader;
@@ -122,7 +116,8 @@ namespace OutOfPhase
                 samplingRate,
                 oversamplingFactor,
                 showProgressWindow,
-                modal);
+                modal,
+                null/*metering*/);
         }
 
         public static void MainLoop<U>(
@@ -182,5 +177,4 @@ namespace OutOfPhase
             generatorParams.reader = null;
         }
     }
-#endif
 }

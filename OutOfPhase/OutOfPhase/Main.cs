@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -102,6 +102,34 @@ namespace OutOfPhase
         {
             Program.Config.ReferenceRecentDocument(path);
             Program.SaveSettings();
+        }
+
+        public enum DocumentType { Classic, NewSchool, Invalid };
+        public static DocumentType SniffDocumentType(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return DocumentType.Invalid;
+            }
+            using (Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read))
+            {
+                using (BinaryReader reader = new BinaryReader(stream))
+                {
+                    string s = reader.ReadFixedStringASCII(4);
+                    if (Array.IndexOf(Document.ValidSynFileTypeHeaders, s) >= 0)
+                    {
+                        return DocumentType.Classic;
+                    }
+                    else if (String.Equals(s, NewSchoolDocument.FileHeaderTag))
+                    {
+                        return DocumentType.NewSchool;
+                    }
+                    else
+                    {
+                        return DocumentType.Invalid;
+                    }
+                }
+            }
         }
 
         private static TextWriter log;
@@ -278,7 +306,7 @@ namespace OutOfPhase
                                         bool success = false;
                                         int cumulativeFrame = 0, iterations = 1;
 
-                                    Again:
+                                        Again:
                                         int c;
                                         if (readerLeft.NumChannels == NumChannelsType.eSampleStereo)
                                         {
@@ -421,7 +449,7 @@ namespace OutOfPhase
                                         skipLeftOut = skipLeft;
                                         skipRightOut = skipRight;
 
-                                    Done:
+                                        Done:
                                         // reset readers
                                         readerLeft = TryGetAudioReader(streamLeft);
                                         readerRight = TryGetAudioReader(streamRight);
@@ -622,7 +650,7 @@ namespace OutOfPhase
                                 log.WriteLine("      files IDENTICAL within specified tolerances; {0}/{1}", readerLeft.CurrentFrame, readerRight.CurrentFrame);
                             }
 
-                        Finished:
+                            Finished:
                             if (histogram && (differCount > 0))
                             {
                                 int histoTop = histo.Length - 1;
@@ -791,10 +819,8 @@ namespace OutOfPhase
 
         private class AsyncPlaybackTestTask : IDisposable
         {
-#if true // prevents "Add New Data Source..." from working
             private SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments> synthParams;
             private OutputGeneric<OutputSelectableFileDestination, SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>, OutputSelectableFileArguments> state;
-#endif
             private MainWindow mainWindow;
 
             public AsyncPlaybackTestTask(
@@ -925,7 +951,6 @@ namespace OutOfPhase
                         included.Add(track);
                     }
                 }
-#if true // prevents "Add New Data Source..." from working
                 SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments> synthParams;
                 OutputGeneric<OutputSelectableFileDestination, SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>, OutputSelectableFileArguments> state;
                 state = SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.Do(
@@ -955,15 +980,17 @@ namespace OutOfPhase
                         clipWarning,
                         oversampling,
                         showSummary,
-                        false/*deterministic - no longer used*/,
                         randomSeed,
+                        false/*stayActiveIfNoFrames*/,
+                        false/*robust*/,
                         new Synthesizer.AutomationSettings(
                             perfCounters,
                             concurrency,
                             breakFrames.Count != 0 ? breakFrames.ToArray() : null,
                             traceSchedule ? traceScheduleLogPath : null,
                             traceFlags,
-                            mainWindow.SavePath != null ? Path.GetFileName(mainWindow.SavePath) : null)),
+                            mainWindow.SavePath != null ? Path.GetFileName(mainWindow.SavePath) : null),
+                        null/*clientCycleCallback*/),
                     SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.SynthesizerCompletion,
                     mainWindow,
                     numChannels,
@@ -971,7 +998,8 @@ namespace OutOfPhase
                     samplingRate,
                     oversampling,
                     true/*showProgressWindow*/,
-                    modal/*modal*/);
+                    modal/*modal*/,
+                    null/*metering*/);
                 if (obj != null)
                 {
                     obj.synthParams = synthParams;
@@ -984,7 +1012,6 @@ namespace OutOfPhase
                         log.WriteLine("      clipped sample points: {0}", state.clippedSampleCount);
                     }
                 }
-#endif
 
                 // TODO: on completion, the interaction log / summary from synthesis is written to the
                 // log file here using WriteLog(). The TextWriter is wrapped thread-safe and the text is
@@ -1173,6 +1200,14 @@ namespace OutOfPhase
                 Properties.Resources.Bravura);
         }
 
+        public interface ITopLevelWindow
+        {
+            void Show();
+            void Close();
+            void SaveCopyAs(string path);
+            string SavePath { get; }
+        }
+
         [STAThread]
         public static void Main(string[] args)
         {
@@ -1225,7 +1260,7 @@ namespace OutOfPhase
                     int concurrency = 0;
                     AsyncPlaybackTestTask[] tasks = new AsyncPlaybackTestTask[0];
                     Stack<string[]> stack = new Stack<string[]>();
-                    List<MainWindow> windows = new List<MainWindow>();
+                    List<ITopLevelWindow> windows = new List<ITopLevelWindow>();
                     Stopwatch timer = new Stopwatch();
                     string globalOptions = String.Empty;
                     bool pathUnicodeHack = false;
@@ -1324,8 +1359,20 @@ namespace OutOfPhase
                                             log.Flush();
                                         }
                                         string path = Path.GetFullPath(Environment.ExpandEnvironmentVariables(DecodePathUnicodeHack(pathUnicodeHack, args[1])));
-                                        Document document = new Document(path);
-                                        MainWindow window = new MainWindow(document, path);
+                                        ITopLevelWindow window;
+                                        switch (SniffDocumentType(path))
+                                        {
+                                            default:
+                                                throw new ArgumentException();
+                                            case DocumentType.Classic:
+                                                Document document = new Document(path);
+                                                window = new MainWindow(document, path);
+                                                break;
+                                            case DocumentType.NewSchool:
+                                                NewSchoolDocument documentNS = NewSchoolDocument.CreateFromSavedFile(path);
+                                                window = new MainNewSchoolWindow(documentNS, path);
+                                                break;
+                                        }
                                         windows.Add(window);
                                         window.Show();
                                     }
@@ -1415,7 +1462,7 @@ namespace OutOfPhase
                                             log.Flush();
                                         }
 
-                                        MainWindow mainWindow = windows[windows.Count - 1];
+                                        MainWindow mainWindow = (MainWindow)windows[windows.Count - 1];
                                         AsyncPlaybackTestTask.Start(
                                             null/*logHeader*/,
                                             mainWindow,

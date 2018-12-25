@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -26,8 +26,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Text;
-using System.Windows.Forms;
+using System.Threading;
 
 namespace OutOfPhase
 {
@@ -57,6 +56,8 @@ namespace OutOfPhase
         public const double MIDDLEC = 261.625565300598635;
         public const double LOG2 = 0.693147180559945309;
         public const double INVLOG2 = 1.44269504088896341;
+        public const double LN_DB = 8.685889638065035; // natural log to decibels
+        public const double DB_EXP = 0.11512925464970231; // decibels to natural log
 
         // common maximum possible denominator for note duration fractions
         public const int Denominator = 64 * 3 * 5 * 7 * 2; // should be equal to DURATIONUPDATECLOCKRESOLUTION
@@ -165,7 +166,7 @@ namespace OutOfPhase
                 }
                 Debug.Assert(false);
                 throw new ArgumentException();
-            ItemDone:
+                ItemDone:
                 ;
             }
             return descriptions.ToArray();
@@ -315,6 +316,7 @@ namespace OutOfPhase
             this.propertyNameInParent = propertyNameInParent;
         }
 
+        [Bindable(false)]
         public HierarchicalBindingBase Parent { get { return parent; } }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -337,9 +339,39 @@ namespace OutOfPhase
 
         protected bool Patch<T>(T newValue, ref T storage, string propertyName, bool modified) where T : IEquatable<T>
         {
+            return Patch(newValue, ref storage, new string[] { propertyName }, modified);
+        }
+
+        protected bool Patch<T>(T newValue, ref T storage, string[] propertyNames, bool modified) where T : IEquatable<T>
+        {
             if (!EqualityComparer<T>.Default.Equals(newValue, storage))
             {
                 storage = newValue;
+                for (int i = 0; i < propertyNames.Length; i++)
+                {
+                    Changed(propertyNames[i], modified);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        protected bool Patch<T>(T newValue, Func<T> getter, Action<T> setter, string propertyName, bool modified) where T : IEquatable<T>
+        {
+            if (!EqualityComparer<T>.Default.Equals(newValue, getter()))
+            {
+                setter(newValue);
+                Changed(propertyName, modified);
+                return true;
+            }
+            return false;
+        }
+
+        protected bool Patch<T>(T newValue, Func<T> getter, Action<T> setter, Func<T, T, bool> comparer, string propertyName, bool modified)
+        {
+            if (!comparer(newValue, getter()))
+            {
+                setter(newValue);
                 Changed(propertyName, modified);
                 return true;
             }
@@ -349,6 +381,21 @@ namespace OutOfPhase
         protected bool Patch<T>(T newValue, ref T storage, string propertyName) where T : IEquatable<T>
         {
             return Patch(newValue, ref storage, propertyName, true/*modified*/);
+        }
+
+        protected bool Patch<T>(T newValue, ref T storage, string[] propertyNames) where T : IEquatable<T>
+        {
+            return Patch(newValue, ref storage, propertyNames, true/*modified*/);
+        }
+
+        protected bool Patch<T>(T newValue, Func<T> getter, Action<T> setter, string propertyName) where T : IEquatable<T>
+        {
+            return Patch(newValue, getter, setter, propertyName, true/*modified*/);
+        }
+
+        protected bool Patch<T>(T newValue, Func<T> getter, Action<T> setter, Func<T, T, bool> comparer, string propertyName)
+        {
+            return Patch(newValue, getter, setter, comparer, propertyName, true/*modified*/);
         }
 
         protected bool PatchObject<T>(object newValue, ref T storage, string propertyName, bool modified)
@@ -362,9 +409,25 @@ namespace OutOfPhase
             return false;
         }
 
+        protected bool PatchObject<T>(object newValue, Func<T> getter, Action<T> setter, string propertyName, bool modified)
+        {
+            if (!object.Equals(newValue, getter()))
+            {
+                setter((T)newValue);
+                Changed(propertyName, modified);
+                return true;
+            }
+            return false;
+        }
+
         protected bool PatchObject<T>(object newValue, ref T storage, string propertyName)
         {
             return PatchObject(newValue, ref storage, propertyName, true/*modified*/);
+        }
+
+        protected bool PatchObject<T>(object newValue, Func<T> getter, Action<T> setter, string propertyName)
+        {
+            return PatchObject(newValue, getter, setter, propertyName, true/*modified*/);
         }
 
         protected bool PatchReference<T>(object newValue, ref T storage, string propertyName, bool modified)
@@ -431,6 +494,14 @@ namespace OutOfPhase
 
     public class MyBindingList<T> : BindingList<T> where T : class
     {
+        public void RemoveRange(int start, int count)
+        {
+            for (int i = start + count - 1; i >= start; i--)
+            {
+                RemoveAt(i);
+            }
+        }
+
         public int FindIndex(Predicate<T> predicate)
         {
             for (int i = 0; i < Count; i++)
@@ -447,6 +518,31 @@ namespace OutOfPhase
         {
             int i = FindIndex(predicate);
             return i >= 0 ? this[i] : null;
+        }
+
+        public T[] FindAll(Predicate<T> predicate)
+        {
+            List<T> result = new List<T>();
+            for (int i = 0; i < Count; i++)
+            {
+                if (predicate(this[i]))
+                {
+                    result.Add(this[i]);
+                }
+            }
+            return result.ToArray();
+        }
+
+        public bool Contains(Predicate<T> predicate)
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                if (predicate(this[i]))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -647,11 +743,11 @@ namespace OutOfPhase
         public MyBindingList<SectionObjectRec> SectionList { get { return _SectionList; } }
 
 
-        private NewSchoolRec _NewSchool;
-        public const string NewSchool_PropertyName = "NewSchool";
+        private DocumentFeatureExpansionAreaRec _DocumentFeatureExpansionArea;
+        public const string DocumentFeatureExpansionArea_PropertyName = "DocumentFeatureExpansionArea";
         [Bindable(true)]
         [Searchable]
-        public NewSchoolRec NewSchool { get { return _NewSchool; } }
+        public DocumentFeatureExpansionAreaRec DocumentFeatureExpansionArea { get { return _DocumentFeatureExpansionArea; } }
 
 
         // TODO: These values are not persisted, but perhaps should be
@@ -691,7 +787,7 @@ namespace OutOfPhase
         {
             _ScoreEffects = new ScoreEffectsRec(this);
             _Sequencer = new SequencerRec(this);
-            _NewSchool = new NewSchoolRec(this);
+            _DocumentFeatureExpansionArea = new DocumentFeatureExpansionAreaRec(this);
 
             functionBuilderProxy = new FunctionBuilderProxy(this, _FunctionList);
 
@@ -737,18 +833,21 @@ namespace OutOfPhase
             }
             catch (InvalidDataException)
             {
-                MessageBox.Show(String.Format("The file \"{0}\" does not appear to be an Out Of Phase document file.", path), "Out Of Phase");
+                // TODO: move error UI to caller
+                System.Windows.Forms.MessageBox.Show(String.Format("The file \"{0}\" does not appear to be an Out Of Phase document file.", path), "Out Of Phase");
             }
             catch (Exception exception)
             {
-                MessageBox.Show(String.Format("Something failed while trying to load the document \"{0}\": {1}", path, exception), "Out Of Phase");
+                // TODO: move error UI to caller
+                System.Windows.Forms.MessageBox.Show(String.Format("Something failed while trying to load the document \"{0}\": {1}", path, exception), "Out Of Phase");
             }
             return false;
         }
 
+        public static readonly string[] ValidSynFileTypeHeaders = new string[] { "Syn1", "Syn2", "Syn3" };
         private void Load(BinaryReader reader)
         {
-            short FormatVersionNumber;
+            int FormatVersionNumber;
 
             /*   4-byte file format version code */
             /*       "Syn1" - first file format */
@@ -756,19 +855,8 @@ namespace OutOfPhase
             /*       "Syn3" - miscellaneous changes to header */
             {
                 string s = reader.ReadFixedStringASCII(4);
-                if (String.Equals(s, "Syn1"))
-                {
-                    FormatVersionNumber = 1;
-                }
-                else if (String.Equals(s, "Syn2"))
-                {
-                    FormatVersionNumber = 2;
-                }
-                else if (String.Equals(s, "Syn3"))
-                {
-                    FormatVersionNumber = 3;
-                }
-                else
+                FormatVersionNumber = 1 + Array.IndexOf(ValidSynFileTypeHeaders, s);
+                if ((FormatVersionNumber < 1) || (FormatVersionNumber > 3))
                 {
                     throw new InvalidDataException();
                 }
@@ -928,7 +1016,7 @@ namespace OutOfPhase
                 _Seed = reader.ReadInt32();
 
                 // n-bytes new features area
-                _NewSchool = new NewSchoolRec(reader, loadContext);
+                _DocumentFeatureExpansionArea = new DocumentFeatureExpansionAreaRec(reader, loadContext);
             }
 
             _ScoreEffects = new ScoreEffectsRec(reader, loadContext);
@@ -1126,7 +1214,7 @@ namespace OutOfPhase
             writer.WriteInt32(_Seed);
 
             // n-bytes new features area
-            _NewSchool.Save(writer, saveContext);
+            _DocumentFeatureExpansionArea.Save(writer, saveContext);
 
             _ScoreEffects.Save(writer, saveContext);
 
@@ -1275,16 +1363,16 @@ namespace OutOfPhase
         }
     }
 
-    public class NewSchoolRec : HierarchicalBindingBase
+    public class DocumentFeatureExpansionAreaRec : HierarchicalBindingBase
     {
-        public NewSchoolRec(Document document)
-            : base(document, Document.NewSchool_PropertyName)
+        public DocumentFeatureExpansionAreaRec(Document document)
+            : base(document, Document.DocumentFeatureExpansionArea_PropertyName)
         {
         }
 
         private const int SubsectionFormatVersionNumber = 1;
 
-        public NewSchoolRec(BinaryReader reader, LoadContext loadContext)
+        public DocumentFeatureExpansionAreaRec(BinaryReader reader, LoadContext loadContext)
             : this(loadContext.document)
         {
             // 1-byte boolean - object is present [0 or 1]
@@ -1296,9 +1384,9 @@ namespace OutOfPhase
             }
         }
 
-        public static NewSchoolRec Create(BinaryReader reader, LoadContext loadContext)
+        public static DocumentFeatureExpansionAreaRec Create(BinaryReader reader, LoadContext loadContext)
         {
-            return new NewSchoolRec(reader, loadContext);
+            return new DocumentFeatureExpansionAreaRec(reader, loadContext);
         }
 
         public void Save(BinaryWriter writer, SaveContext saveContext)
@@ -1420,7 +1508,7 @@ namespace OutOfPhase
         public float[] CopyRawData(ChannelType WhichChannel)
         {
             float[] result = new float[NumFrames];
-            for (int i = 0; i < NumFrames; i += 1)
+            for (int i = 0; i < NumFrames; i++)
             {
                 result[i] = GetValue(i, WhichChannel);
             }
@@ -4488,6 +4576,298 @@ namespace OutOfPhase
         MaximumExponent = 31,
     }
 
+    // "Copy on write" binding list - allows cloning of list, and then first duplicates the array upon structure change
+    // (insert/delete) to avoid affecting structure of other list.
+    public class COWBindingList<T> : IList<T>, IBindingList
+    {
+        private BindingList<T> u;
+        private bool cow;
+        private uint version;
+
+        public event AddingNewEventHandler AddingNew;
+        public event ListChangedEventHandler ListChanged;
+
+        public COWBindingList()
+        {
+            u = new BindingList<T>();
+            HookEvents(u);
+        }
+
+        // needs to be threadsafe: one thread can call this to clone a list while another thread is modifying the source list
+        public COWBindingList(COWBindingList<T> source)
+        {
+            BindingList<T> originalU;
+
+            lock (source) // block until any in-progress modifications on source are finished
+            {
+                source.cow = true;
+                originalU = source.u;
+            }
+
+            this.u = originalU;
+            this.cow = true;
+        }
+
+        // invoked for any change that modifies the list array (i.e. insert/delete, but not updating an entry)
+        // - must acquire lock outside of this, for duration of modify, to prevent clone constructor from copying and
+        //   returning with list before modification is finish.
+        private void COW()
+        {
+            Debug.Assert(Monitor.IsEntered(this));
+
+            BumpVersion();
+            if (cow)
+            {
+                cow = false;
+
+                BindingList<T> originalU = this.u;
+                this.u = new BindingList<T>(originalU);
+
+                UnhookEvents(originalU);
+                HookEvents(this.u);
+            }
+        }
+
+        private void HookEvents(BindingList<T> list)
+        {
+            list.AddingNew += AddingNewRedirector;
+            list.ListChanged += ListChangedRedirector;
+        }
+
+        private void UnhookEvents(BindingList<T> list)
+        {
+            list.AddingNew -= AddingNewRedirector;
+            list.ListChanged -= ListChangedRedirector;
+        }
+
+        private void AddingNewRedirector(object sender, AddingNewEventArgs e)
+        {
+            if (this.AddingNew != null)
+            {
+                this.AddingNew.Invoke(sender, e);
+            }
+        }
+
+        private void ListChangedRedirector(object sender, ListChangedEventArgs e)
+        {
+            if (this.ListChanged != null)
+            {
+                this.ListChanged.Invoke(sender, e);
+            }
+        }
+
+        public void BumpVersion()
+        {
+            unchecked { version++; }
+        }
+
+        public uint Version { get { return version; } }
+
+
+        // IList<T>
+
+        public T this[int index] { get { return u[index]; } set { u[index] = value; } }
+
+        public int Count { get { return u.Count; } }
+
+        public bool IsReadOnly { get { return false; } }
+
+        public void Add(T item)
+        {
+            lock (this)
+            {
+                COW();
+                u.Add(item);
+            }
+        }
+
+        public void Clear()
+        {
+            lock (this)
+            {
+                COW();
+                u.Clear();
+            }
+        }
+
+        public bool Contains(T item)
+        {
+            return u.Contains(item);
+        }
+
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+            u.CopyTo(array, arrayIndex);
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            return u.GetEnumerator();
+        }
+
+        public int IndexOf(T item)
+        {
+            return u.IndexOf(item);
+        }
+
+        public void Insert(int index, T item)
+        {
+            lock (this)
+            {
+                COW();
+                u.Insert(index, item);
+            }
+        }
+
+        public bool Remove(T item)
+        {
+            lock (this)
+            {
+                COW();
+                return u.Remove(item);
+            }
+        }
+
+        public void RemoveAt(int index)
+        {
+            lock (this)
+            {
+                COW();
+                u.RemoveAt(index);
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return ((IEnumerable)u).GetEnumerator();
+        }
+
+
+        // IBindingList
+
+        public bool AllowNew { get { return u.AllowNew; } }
+
+        public bool AllowEdit { get { return u.AllowEdit; } }
+
+        public bool AllowRemove { get { return u.AllowRemove; } }
+
+        public bool SupportsChangeNotification { get { return ((IBindingList)u).SupportsChangeNotification; } }
+
+        public bool SupportsSearching { get { return ((IBindingList)u).SupportsSearching; } }
+
+        public bool SupportsSorting { get { return ((IBindingList)u).SupportsSorting; } }
+
+        public bool IsSorted { get { return ((IBindingList)u).IsSorted; } }
+
+        public PropertyDescriptor SortProperty { get { return ((IBindingList)u).SortProperty; } }
+
+        public ListSortDirection SortDirection { get { return ((IBindingList)u).SortDirection; } }
+
+        public bool IsFixedSize { get { return ((IBindingList)u).IsFixedSize; } }
+
+        public object SyncRoot { get { return ((IBindingList)u).SyncRoot; } }
+
+        public bool IsSynchronized { get { return ((IBindingList)u).IsSynchronized; } }
+
+        object IList.this[int index] { get { return ((IBindingList)u)[index]; } set { ((IBindingList)u)[index] = value; } }
+
+        public object AddNew()
+        {
+            lock (this)
+            {
+                COW();
+                return u.AddNew();
+            }
+        }
+
+        public void AddIndex(PropertyDescriptor property)
+        {
+            lock (this)
+            {
+                COW();
+                ((IBindingList)u).AddIndex(property);
+            }
+        }
+
+        public void ApplySort(PropertyDescriptor property, ListSortDirection direction)
+        {
+            lock (this)
+            {
+                COW();
+                ((IBindingList)u).ApplySort(property, direction);
+            }
+        }
+
+        public int Find(PropertyDescriptor property, object key)
+        {
+            return ((IBindingList)u).Find(property, key);
+        }
+
+        public void RemoveIndex(PropertyDescriptor property)
+        {
+            lock (this)
+            {
+                COW();
+                ((IBindingList)u).RemoveIndex(property);
+            }
+        }
+
+        public void RemoveSort()
+        {
+            lock (this)
+            {
+                COW();
+                ((IBindingList)u).RemoveSort();
+            }
+        }
+
+        public int Add(object value)
+        {
+            lock (this)
+            {
+                COW();
+                return ((IBindingList)u).Add(value);
+            }
+        }
+
+        public bool Contains(object value)
+        {
+            return ((IBindingList)u).Contains(value);
+        }
+
+        public int IndexOf(object value)
+        {
+            return ((IBindingList)u).IndexOf(value);
+        }
+
+        public void Insert(int index, object value)
+        {
+            lock (this)
+            {
+                COW();
+                ((IBindingList)u).Insert(index, value);
+            }
+        }
+
+        public void Remove(object value)
+        {
+            lock (this)
+            {
+                COW();
+                ((IBindingList)u).Remove(value);
+            }
+        }
+
+        public void CopyTo(Array array, int index)
+        {
+            lock (this)
+            {
+                COW();
+                ((IBindingList)u).CopyTo(array, index);
+            }
+        }
+    }
+
     public class TrackObjectRec : HierarchicalBindingBase
     {
         private string _Name = String.Empty;
@@ -4727,11 +5107,11 @@ namespace OutOfPhase
         [Searchable]
         public string InstrumentName { get { return _InstrumentName; } set { Patch(value, ref _InstrumentName, InstrumentName_PropertyName); } }
 
-        private MyBindingList<FrameObjectRec> _FrameArray = new MyBindingList<FrameObjectRec>();
+        private COWBindingList<FrameObjectRec> _FrameArray = new COWBindingList<FrameObjectRec>();
         public const string FrameArray_PropertyName = "FrameArray";
         [Bindable(true)]
         [Searchable]
-        public MyBindingList<FrameObjectRec> FrameArray { get { return _FrameArray; } }
+        public COWBindingList<FrameObjectRec> FrameArray { get { return _FrameArray; } }
 
         private MyBindingList<TrackObjectRec> _BackgroundObjects = new MyBindingList<TrackObjectRec>();
         public const string BackgroundObjects_PropertyName = "BackgroundObjects";
@@ -4783,11 +5163,6 @@ namespace OutOfPhase
         public const string Section_PropertyName = "Section";
         [Bindable(true)]
         public SectionObjectRec Section { get { return _Section; } set { PatchObject(value, ref _Section, Section_PropertyName); } }
-
-
-        // nonpersisted properties
-
-        public int AuxVal; // used by playback - breaks encapsulation for the sake of code brevity
 
 
 
@@ -5244,8 +5619,8 @@ namespace OutOfPhase
 
                 ((NoteNoteObjectRec)SourceNote).PutNoteTieTarget((NoteNoteObjectRec)TargetNote);
 
-            /* skip here when not putting tie */
-            SkipTieTargetSettingPoint:
+                /* skip here when not putting tie */
+                SkipTieTargetSettingPoint:
                 ;
             }
         }
@@ -5493,7 +5868,7 @@ namespace OutOfPhase
             /*       4-byte little endian number of notes in the frame */
             /*       n-bytes of data for all of the notes */
             int NumberOfTieRecords = 0;
-            for (int iFrame = 0; iFrame < _FrameArray.Count; iFrame += 1)
+            for (int iFrame = 0; iFrame < _FrameArray.Count; iFrame++)
             {
                 FrameObjectRec Frame = _FrameArray[iFrame];
 
@@ -5501,12 +5876,12 @@ namespace OutOfPhase
                 writer.WriteUInt32Delta((uint)Frame.Count);
 
                 /* write each note */
-                for (int iNote = 0; iNote < Frame.Count; iNote += 1)
+                for (int iNote = 0; iNote < Frame.Count; iNote++)
                 {
                     NoteObjectRec Note = Frame[iNote];
                     if (!Note.IsItACommand && (((NoteNoteObjectRec)Note).GetNoteTieTarget() != null))
                     {
-                        NumberOfTieRecords += 1;
+                        NumberOfTieRecords++;
                     }
                     Note.Save(writer);
                 }
@@ -5521,10 +5896,10 @@ namespace OutOfPhase
             /*         delta-coded index of the source note in the frame */
             /*         delta-coded index of the target frame */
             /*         delta-coded index of the target note in the frame */
-            for (int iSourceFrame = 0; iSourceFrame < _FrameArray.Count; iSourceFrame += 1)
+            for (int iSourceFrame = 0; iSourceFrame < _FrameArray.Count; iSourceFrame++)
             {
                 FrameObjectRec Frame = _FrameArray[iSourceFrame];
-                for (int iSourceNote = 0; iSourceNote < Frame.Count; iSourceNote += 1)
+                for (int iSourceNote = 0; iSourceNote < Frame.Count; iSourceNote++)
                 {
                     NoteObjectRec Note = Frame[iSourceNote];
                     if (!Note.IsItACommand)
@@ -5533,10 +5908,10 @@ namespace OutOfPhase
                         if (TieTarget != null)
                         {
                             NumberOfTieRecords -= 1;
-                            for (int iTargetFrame = iSourceFrame + 1; iTargetFrame < _FrameArray.Count; iTargetFrame += 1)
+                            for (int iTargetFrame = iSourceFrame + 1; iTargetFrame < _FrameArray.Count; iTargetFrame++)
                             {
                                 FrameObjectRec SearchFrame = _FrameArray[iTargetFrame];
-                                for (int iTargetNote = 0; iTargetNote < SearchFrame.Count; iTargetNote += 1)
+                                for (int iTargetNote = 0; iTargetNote < SearchFrame.Count; iTargetNote++)
                                 {
                                     NoteObjectRec SearchNote = SearchFrame[iTargetNote];
                                     if (!SearchNote.IsItACommand)
@@ -5556,8 +5931,8 @@ namespace OutOfPhase
                             Debug.Assert(false);
                             throw new ArgumentException();
 
-                        /* jump out here when tie target has been found */
-                        DoneSearchingForTieTargetPoint:
+                            /* jump out here when tie target has been found */
+                            DoneSearchingForTieTargetPoint:
                             ;
                         }
                     }
@@ -5575,7 +5950,7 @@ namespace OutOfPhase
             /*     4-byte index of the track to be in the background */
             /*       the index is respective to the order in which the tracks were loaded */
             /*       from the file, so 0 is the first track, 1 is the second, and so on. */
-            for (int i = 0; i < _BackgroundObjects.Count; i += 1)
+            for (int i = 0; i < _BackgroundObjects.Count; i++)
             {
                 int index = TrackList.IndexOf(_BackgroundObjects[i]);
                 if (index < 0)
@@ -5620,7 +5995,7 @@ namespace OutOfPhase
             TrackObjectBreakTiesFromRangeIntoRange(Index + Count, l, Index, Count);
 
             /* do the deletion */
-            for (int i = Index; i < Index + Count; i += 1)
+            for (int i = Index; i < Index + Count; i++)
             {
                 FrameArray.RemoveAt(Index);
             }
@@ -5633,7 +6008,7 @@ namespace OutOfPhase
             int TargetStart,
             int TargetLength)
         {
-            for (int i = SourceStart; i < SourceLength; i += 1)
+            for (int i = SourceStart; i < SourceLength; i++)
             {
                 FrameObjectRec Frame = FrameArray[i];
                 TrackObjectBreakTiesFromFrameIntoRange(Frame, TargetStart, TargetLength);
@@ -5648,7 +6023,7 @@ namespace OutOfPhase
         {
             if (!Frame.IsThisACommandFrame)
             {
-                for (int i = 0; i < Frame.Count; i += 1)
+                for (int i = 0; i < Frame.Count; i++)
                 {
                     NoteNoteObjectRec Note = (NoteNoteObjectRec)Frame[i];
                     NoteNoteObjectRec TargetOfTieNote = Note.GetNoteTieTarget();
@@ -5669,10 +6044,10 @@ namespace OutOfPhase
             Debug.Assert((Start >= 0) && (Start <= FrameArray.Count)
                 && (Length >= 0) && (Start + Length <= FrameArray.Count));
 
-            for (int i = 0; i < Length; i += 1)
+            for (int i = 0; i < Length; i++)
             {
                 FrameObjectRec Frame = FrameArray[i + Start];
-                for (int j = 0; j < Frame.Count; j += 1)
+                for (int j = 0; j < Frame.Count; j++)
                 {
                     NoteObjectRec TestNote = Frame[j];
                     if (TestNote == Note)
@@ -5703,27 +6078,27 @@ namespace OutOfPhase
             /* note in the old array.  if it corresponds to a note we copied to the new */
             /* array, then fix it up, otherwise set it to NIL. */
             int ReturnFrameLimit = ReturnList.Count;
-            for (ReturnFrameScan = 0; ReturnFrameScan < ReturnFrameLimit; ReturnFrameScan += 1)
+            for (ReturnFrameScan = 0; ReturnFrameScan < ReturnFrameLimit; ReturnFrameScan++)
             {
                 FrameObjectRec Frame = ReturnList[ReturnFrameScan];
                 /* it's either got some notes or one command */
                 if (!Frame.IsThisACommandFrame)
                 {
                     int ReturnNoteLimit = Frame.Count;
-                    for (int ReturnNoteScan = 0; ReturnNoteScan < ReturnNoteLimit; ReturnNoteScan += 1)
+                    for (int ReturnNoteScan = 0; ReturnNoteScan < ReturnNoteLimit; ReturnNoteScan++)
                     {
                         NoteNoteObjectRec Note = (NoteNoteObjectRec)Frame[ReturnNoteScan];
                         NoteNoteObjectRec OurNoteTieTarget = Note.GetNoteTieTarget();
                         if (OurNoteTieTarget != null)
                         {
                             int OriginalFrameLimit = FrameArray.Count;
-                            for (int OriginalFrameScan = 0; OriginalFrameScan < OriginalFrameLimit; OriginalFrameScan += 1)
+                            for (int OriginalFrameScan = 0; OriginalFrameScan < OriginalFrameLimit; OriginalFrameScan++)
                             {
                                 FrameObjectRec OrigFrame = FrameArray[OriginalFrameScan];
                                 if (!OrigFrame.IsThisACommandFrame)
                                 {
                                     int OriginalNoteLimit = OrigFrame.Count;
-                                    for (int OriginalNoteScan = 0; OriginalNoteScan < OriginalNoteLimit; OriginalNoteScan += 1)
+                                    for (int OriginalNoteScan = 0; OriginalNoteScan < OriginalNoteLimit; OriginalNoteScan++)
                                     {
                                         NoteNoteObjectRec Possibility = (NoteNoteObjectRec)OrigFrame[OriginalNoteScan];
                                         if (Possibility == OurNoteTieTarget)
@@ -5745,7 +6120,7 @@ namespace OutOfPhase
                                 }
                             } /* end inner frame list scan */
                             Debug.Assert(false); // tie target not found
-                        TieValidPoint1:
+                            TieValidPoint1:
                             ;
                         }
                     } /* end frame scan */
@@ -5820,7 +6195,7 @@ namespace OutOfPhase
 
     public class FrameObjectRec : IList
     {
-        private List<NoteObjectRec> NoteArray = new List<NoteObjectRec>();
+        private COWBindingList<NoteObjectRec> NoteArray = new COWBindingList<NoteObjectRec>();
 
         public int Count { get { return NoteArray.Count; } }
 
@@ -5896,7 +6271,7 @@ namespace OutOfPhase
             }
             /* obtain duration of first element */
             Frac = new FractionRec(uint.MaxValue, 0, Constants.Denominator);
-            for (int Scan = 0; Scan < NoteArray.Count; Scan += 1)
+            for (int Scan = 0; Scan < NoteArray.Count; Scan++)
             {
                 FractionRec TempFrac;
 
@@ -5910,7 +6285,7 @@ namespace OutOfPhase
             }
         }
 
-#region IList
+        #region IList
         bool IList.IsReadOnly { get { return false; } }
         bool IList.IsFixedSize { get { return false; } }
         int ICollection.Count { get { return Count; } }
@@ -5967,7 +6342,7 @@ namespace OutOfPhase
         {
             return NoteArray.GetEnumerator();
         }
-#endregion
+        #endregion
     }
 
     public abstract class NoteObjectRec : HierarchicalBindingBase

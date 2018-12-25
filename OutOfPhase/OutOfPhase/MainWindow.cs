@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,20 +20,17 @@
  * 
 */
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
 {
-    public partial class MainWindow : Form, IMenuStripManagerHandler, IGlobalNameChange, IMainWindowServices
+    public partial class MainWindow : Form, IMenuStripManagerHandler, IGlobalNameChange, IMainWindowServices, Program.ITopLevelWindow
     {
         private readonly Registration registration = new Registration();
         private static readonly List<MainWindow> topLevelEditors = new List<MainWindow>();
@@ -961,6 +958,9 @@ namespace OutOfPhase
             menuStrip.exitToolStripMenuItem.Enabled = true;
             menuStrip.exitToolStripMenuItem.Visible = true;
 
+            menuStrip.createNewSchoolToolStripMenuItem.Enabled = true;
+            menuStrip.createNewSchoolToolStripMenuItem.Visible = true;
+
             if (ActiveControl is MyListBox)
             {
                 MyListBox listBox = (MyListBox)ActiveControl;
@@ -1151,6 +1151,30 @@ namespace OutOfPhase
                 // main loop will exit when there are no windows
                 return true;
             }
+            else if (menuItem == menuStrip.createNewSchoolToolStripMenuItem)
+            {
+                MainWindow initialBlankWindow = null;
+                for (int i = 0; i < topLevelEditors.Count; i++)
+                {
+                    if (topLevelEditors[i].firstWindow && !topLevelEditors[i].document.Modified)
+                    {
+                        initialBlankWindow = topLevelEditors[i];
+                        // there would only be one
+                        break;
+                    }
+                }
+
+                if (initialBlankWindow != null)
+                {
+                    initialBlankWindow.Close();
+                }
+
+                string sourcePath = null;
+                if (MainNewSchoolWindow.QuerySourcePathForDocument(ref sourcePath))
+                {
+                    new MainNewSchoolWindow(NewSchoolDocument.CreateWithSourcePath(sourcePath), null).Show();
+                }
+            }
 
             return false;
         }
@@ -1209,13 +1233,28 @@ namespace OutOfPhase
                         if (menuStrip.recentDocumentsToolStripMenuItem.DropDownItems[i] == sender)
                         {
                             string path = Program.Config.RecentDocuments[i];
-                            if (!TryOpenFilePath(path))
+                            switch (Program.SniffDocumentType(path))
                             {
-                                if (DialogResult.Yes == MessageBox.Show(String.Format("Unable to open the file \"{0}\". Remove from Recent Documents list?", path), "Out Of Phase", MessageBoxButtons.YesNo))
-                                {
-                                    Program.Config.RecentDocuments.RemoveAt(i);
-                                    Program.SaveSettings();
-                                }
+                                default:
+                                    if (DialogResult.Yes == MessageBox.Show(String.Format("Unable to open the file \"{0}\". Remove from Recent Documents list?", path), "Out Of Phase", MessageBoxButtons.YesNo))
+                                    {
+                                        Program.Config.RecentDocuments.RemoveAt(i);
+                                        Program.SaveSettings();
+                                    }
+                                    break;
+                                case Program.DocumentType.Classic:
+                                    if (!TryOpenFilePath(path))
+                                    {
+                                        if (DialogResult.Yes == MessageBox.Show(String.Format("Unable to open the file \"{0}\". Remove from Recent Documents list?", path), "Out Of Phase", MessageBoxButtons.YesNo))
+                                        {
+                                            Program.Config.RecentDocuments.RemoveAt(i);
+                                            Program.SaveSettings();
+                                        }
+                                    }
+                                    break;
+                                case Program.DocumentType.NewSchool:
+                                    new MainNewSchoolWindow(NewSchoolDocument.CreateFromSavedFile(path), path).Show();
+                                    break;
                             }
                             return;
                         }

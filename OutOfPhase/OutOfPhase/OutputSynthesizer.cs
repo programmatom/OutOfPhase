@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -21,40 +21,38 @@
 */
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Text;
-using System.Threading;
 using System.Windows.Forms;
 
 namespace OutOfPhase
 {
-#if true // prevents "Add New Data Source..." from working
     public class SynthesizerGeneratorParams<T, W>
     {
-        public IMainWindowServices mainWindow;
-        public Document document;
-        public List<TrackObjectRec> listOfTracks;
-        public TrackObjectRec keyTrack;
-        public int frameToStartAt;
-        public int samplingRate;
-        public int envelopeRate;
-        public NumChannelsType channels;
-        public LargeBCDType defaultBeatsPerMinute;
-        public double overallVolumeScalingReciprocal;
-        public LargeBCDType scanningGap;
-        public NumBitsType bits;
-        public bool clipWarn;
-        public int oversamplingFactor;
-        public bool showSummary;
-        public bool deterministic; // now ignored - control by setting randomSeed to null or int
-        public int? randomSeed;
-        public Synthesizer.AutomationSettings automationSettings;
+        public readonly IMainWindowServices mainWindow;
+        public readonly Document document;
+        public readonly List<TrackObjectRec> listOfTracks;
+        public readonly TrackObjectRec keyTrack;
+        public readonly int frameToStartAt;
+        public readonly int samplingRate;
+        public readonly int envelopeRate;
+        public readonly NumChannelsType channels;
+        public readonly LargeBCDType defaultBeatsPerMinute;
+        public readonly double overallVolumeScalingReciprocal;
+        public readonly LargeBCDType scanningGap;
+        public readonly NumBitsType bits;
+        public readonly bool clipWarn;
+        public readonly int oversamplingFactor;
+        public readonly bool showSummary;
+        public readonly int? randomSeed;
+        public readonly bool stayActiveIfNoFrames;
+        public readonly bool robust;
+        public readonly Synthesizer.AutomationSettings automationSettings;
+        public readonly Synthesizer.SynthCycleClientCallback clientCycleCallback;
 
         public Synthesizer.SynthErrorCodes result;
         public Synthesizer.SynthErrorInfoRec errorInfo;
         public Exception exception;
-        public StringWriter interactionLog = new StringWriter();
+        public readonly StringWriter interactionLog = new StringWriter();
 
         private bool completed;
 
@@ -76,9 +74,11 @@ namespace OutOfPhase
             bool clipWarn,
             int oversamplingFactor,
             bool showSummary,
-            bool deterministic,// now ignored - control by setting randomSeed to null or int
             int? randomSeed,
-            Synthesizer.AutomationSettings automationSettings)
+            bool stayActiveIfNoFrames,
+            bool robust,
+            Synthesizer.AutomationSettings automationSettings,
+            Synthesizer.SynthCycleClientCallback clientCycleCallback)
         {
             this.mainWindow = mainWindow;
             this.document = document;
@@ -95,9 +95,11 @@ namespace OutOfPhase
             this.clipWarn = clipWarn;
             this.oversamplingFactor = oversamplingFactor;
             this.showSummary = showSummary;
-            this.deterministic = deterministic;
             this.randomSeed = randomSeed;
+            this.stayActiveIfNoFrames = stayActiveIfNoFrames;
+            this.robust = robust;
             this.automationSettings = automationSettings;
+            this.clientCycleCallback = clientCycleCallback;
         }
 
         public static OutputGeneric<T, SynthesizerGeneratorParams<T, W>, W> Do(
@@ -114,7 +116,8 @@ namespace OutOfPhase
             int samplingRate,
             int oversamplingFactor,
             bool showProgressWindow,
-            bool modal)
+            bool modal,
+            (float, OutputGeneric<T, SynthesizerGeneratorParams<T, W>, W>.MeteringCallback)? metering)
         {
             // prerequisites 
 
@@ -141,7 +144,8 @@ namespace OutOfPhase
                 samplingRate,
                 oversamplingFactor,
                 showProgressWindow,
-                modal);
+                modal,
+                metering);
         }
 
         public static void SynthesizerMainLoop<U>(
@@ -153,9 +157,9 @@ namespace OutOfPhase
             try
             {
                 generatorParams.result = Synthesizer.DoSynthesizer(
-                    generatorParams.document,
                     dataCallback,
                     dataCallbackState,
+                    generatorParams.document,
                     generatorParams.listOfTracks,
                     generatorParams.keyTrack,
                     generatorParams.frameToStartAt,
@@ -169,9 +173,11 @@ namespace OutOfPhase
                     generatorParams.showSummary,
                     out generatorParams.errorInfo,
                     generatorParams.interactionLog,
-                    generatorParams.deterministic,
                     generatorParams.randomSeed,
-                    generatorParams.automationSettings);
+                    generatorParams.stayActiveIfNoFrames,
+                    generatorParams.robust,
+                    generatorParams.automationSettings,
+                    generatorParams.clientCycleCallback);
             }
             catch (Exception exception)
             {
@@ -222,5 +228,4 @@ namespace OutOfPhase
             }
         }
     }
-#endif
 }

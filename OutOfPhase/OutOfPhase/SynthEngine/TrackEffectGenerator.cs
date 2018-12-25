@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,10 +20,7 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Text;
 
 namespace OutOfPhase
 {
@@ -77,19 +74,20 @@ namespace OutOfPhase
         }
 
         /* accent init helper */
-        private static void InitAccentTracker(ref IncrParamOneNDRec nd)
+        private static void InitAccentTracker(ref IncrParamOneNDRec nd, double initialValue)
         {
-            nd.Current = 0;
+            nd.Current = initialValue;
             nd.ChangeCountdown = 0;
             ResetLinearTransition(
                 ref nd.Change,
-                0,
-                0,
+                initialValue,
+                initialValue,
                 1);
         }
 
         /* create a new track effect generator */
         public static SynthErrorCodes NewTrackEffectGenerator(
+            ITrackParameterProvider trackParamProvider,
             EffectSpecListRec SpecList,
             SynthParamRec SynthParams,
             out TrackEffectGenRec GeneratorOut)
@@ -118,14 +116,30 @@ namespace OutOfPhase
             Generator.ExecutionIndex = -SynthParams.iScanningGapWidthInEnvelopeTicks;
 
             /* initialize accent trackers */
-            InitAccentTracker(ref Generator.Accents0);
-            InitAccentTracker(ref Generator.Accents1);
-            InitAccentTracker(ref Generator.Accents2);
-            InitAccentTracker(ref Generator.Accents3);
-            InitAccentTracker(ref Generator.Accents4);
-            InitAccentTracker(ref Generator.Accents5);
-            InitAccentTracker(ref Generator.Accents6);
-            InitAccentTracker(ref Generator.Accents7);
+            double a0, a1, a2, a3, a4, a5, a6, a7;
+            if (trackParamProvider != null)
+            {
+                a0 = trackParamProvider.DefaultTrackAccent1;
+                a1 = trackParamProvider.DefaultTrackAccent2;
+                a2 = trackParamProvider.DefaultTrackAccent3;
+                a3 = trackParamProvider.DefaultTrackAccent4;
+                a4 = trackParamProvider.DefaultTrackAccent5;
+                a5 = trackParamProvider.DefaultTrackAccent6;
+                a6 = trackParamProvider.DefaultTrackAccent7;
+                a7 = trackParamProvider.DefaultTrackAccent8;
+            }
+            else
+            {
+                a0 = a1 = a2 = a3 = a4 = a5 = a6 = a7 = 0;
+            }
+            InitAccentTracker(ref Generator.Accents0, a0);
+            InitAccentTracker(ref Generator.Accents1, a1);
+            InitAccentTracker(ref Generator.Accents2, a2);
+            InitAccentTracker(ref Generator.Accents3, a3);
+            InitAccentTracker(ref Generator.Accents4, a4);
+            InitAccentTracker(ref Generator.Accents5, a5);
+            InitAccentTracker(ref Generator.Accents6, a6);
+            InitAccentTracker(ref Generator.Accents7, a7);
 
             /* build list of thingers */
             OneEffectRec Appender = null;

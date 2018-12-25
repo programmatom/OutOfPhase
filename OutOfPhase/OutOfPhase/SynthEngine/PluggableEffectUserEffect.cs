@@ -1,5 +1,5 @@
 ﻿/*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -464,7 +464,7 @@ namespace OutOfPhase
                     string FuncName = initFuncName;
                     if (FuncName != null)
                     {
-                        FuncCodeRec FuncCode = synthParams.CodeCenter.ObtainFunctionHandle(FuncName);
+                        FuncCodeRec FuncCode = synthParams.perTrack.CodeCenter.ObtainFunctionHandle(FuncName);
                         if (FuncCode == null)
                         {
                             // Function missing; should have been found by CheckUnreferencedThings
@@ -499,7 +499,7 @@ namespace OutOfPhase
 
                     foreach (string FuncName in dataFuncNames)
                     {
-                        FuncCodeRec FuncCode = synthParams.CodeCenter.ObtainFunctionHandle(FuncName);
+                        FuncCodeRec FuncCode = synthParams.perTrack.CodeCenter.ObtainFunctionHandle(FuncName);
                         if (FuncCode == null)
                         {
                             // Function missing; should have been found by CheckUnreferencedThings
@@ -612,7 +612,7 @@ namespace OutOfPhase
                     EvalErrors Error = PcodeSystem.EvaluatePcode(
                         synthParams.FormulaEvalContext,
                         initFunc,
-                        synthParams.CodeCenter,
+                        synthParams.perTrack.CodeCenter,
                         out ErrorInfo,
                         PcodeExternsNull.Default,
                         ref synthParams.pcodeThreadContext);
@@ -958,7 +958,7 @@ namespace OutOfPhase
                 EvalErrors Error = PcodeSystem.EvaluatePcode(
                     SynthParams.FormulaEvalContext,
                     dataFunc,
-                    SynthParams.CodeCenter,
+                    SynthParams.perTrack.CodeCenter,
                     out ErrorInfo,
                     PcodeExternsNull.Default,
                     ref SynthParams.pcodeThreadContext);

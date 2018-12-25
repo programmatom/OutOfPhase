@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -151,8 +151,9 @@ namespace OutOfPhase
             this.toolStripMenuItem19 = new System.Windows.Forms.ToolStripSeparator();
             this.globalSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem21 = new System.Windows.Forms.ToolStripSeparator();
-            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.disassembleApplicationMethodToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.createNewSchoolToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -176,6 +177,7 @@ namespace OutOfPhase
             this.fileToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.newToolStripMenuItem,
             this.openToolStripMenuItem,
+            this.createNewSchoolToolStripMenuItem,
             this.toolStripMenuItem1,
             this.saveToolStripMenuItem,
             this.saveAsToolStripMenuItem,
@@ -884,17 +886,23 @@ namespace OutOfPhase
             this.toolStripMenuItem21.Name = "toolStripMenuItem21";
             this.toolStripMenuItem21.Size = new System.Drawing.Size(254, 6);
             // 
+            // disassembleApplicationMethodToolStripMenuItem
+            // 
+            this.disassembleApplicationMethodToolStripMenuItem.Name = "disassembleApplicationMethodToolStripMenuItem";
+            this.disassembleApplicationMethodToolStripMenuItem.Size = new System.Drawing.Size(257, 22);
+            this.disassembleApplicationMethodToolStripMenuItem.Text = "Disassemble Application Method...";
+            // 
             // aboutToolStripMenuItem
             // 
             this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
             this.aboutToolStripMenuItem.Size = new System.Drawing.Size(257, 22);
             this.aboutToolStripMenuItem.Text = "About";
             // 
-            // disassembleApplicationMethodToolStripMenuItem
+            // createNewSchoolToolStripMenuItem
             // 
-            this.disassembleApplicationMethodToolStripMenuItem.Name = "disassembleApplicationMethodToolStripMenuItem";
-            this.disassembleApplicationMethodToolStripMenuItem.Size = new System.Drawing.Size(257, 22);
-            this.disassembleApplicationMethodToolStripMenuItem.Text = "Disassemble Application Method...";
+            this.createNewSchoolToolStripMenuItem.Name = "createNewSchoolToolStripMenuItem";
+            this.createNewSchoolToolStripMenuItem.Size = new System.Drawing.Size(245, 22);
+            this.createNewSchoolToolStripMenuItem.Text = "Create NewSchool...";
             // 
             // MenuStripManager
             // 
@@ -1016,5 +1024,6 @@ namespace OutOfPhase
         public System.Windows.Forms.ToolStripMenuItem enterSelectionToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem envelopeSegmentCalculatorToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem disassembleApplicationMethodToolStripMenuItem;
+        public System.Windows.Forms.ToolStripMenuItem createNewSchoolToolStripMenuItem;
     }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -92,6 +92,7 @@ namespace OutOfPhase
             eSynthErrorExUndefinedWaveTable,
             eSynthErrorExUndefinedSample,
             eSynthErrorExUndefinedFunction,
+            eSynthErrorExUndefinedTrack,
             eSynthErrorExTypeMismatchFunction,
             eSynthErrorExTypeMismatchFunctionMultiple,
             eSynthErrorExPossibleInfiniteSequenceLoop,
@@ -110,6 +111,7 @@ namespace OutOfPhase
             eSynthErrorExUserEffectFunctionEvalError,
             eSynthErrorExUndefinedPitchTable,
             eSynthErrorExPluggableParameterOutOfRange,
+            eSynthErrorExUnableToResetFrameIndexAfterFrameArrayUpdate,
 
             eSynthErrorEx_End,
 
@@ -524,11 +526,22 @@ namespace OutOfPhase
             }
         }
 
+        public struct PerTrackSynthParamRec
+        {
+            /* dictionary of waveforms */
+            public WaveSampDictRec Dictionary;
+            /* code center for functions */
+            public CodeCenterRec CodeCenter;
+        }
+
         /* structure containing generally useful parameters for passing around in the */
         /* synthesizer */
         // This would be per-thread state
         public class SynthParamRec : IDisposable
         {
+            // stuff that changes for each track, based on tracks from multiple documents (contexts) being played simultaneously
+            public PerTrackSynthParamRec perTrack;
+
             /* number of envelope updates per second (actually an integer, but all users */
             /* use it in floating point calculations) */
             public readonly double dEnvelopeRate;
@@ -547,13 +560,9 @@ namespace OutOfPhase
             public bool InteractionLogAccessed { get { return _InteractionLogAccessed; } }
             private readonly TextWriter _InteractionLog;
             public TextWriter InteractionLog { get { _InteractionLogAccessed = true; return _InteractionLog; } }
-            /* main data object */
-            public readonly Document Document;
-            /* dictionary of waveforms */
-            public readonly WaveSampDictRec Dictionary;
 
             /* output scaling (most shouldn't need to use this) */
-            public readonly float fOverallVolumeScaling;
+            public float fOverallVolumeScaling;
 
             /* elapsed time since start of synthesis */
             public long lElapsedTimeInEnvelopeTicks;
@@ -562,12 +571,12 @@ namespace OutOfPhase
             /* beats per minute */
             public double dCurrentBeatsPerMinute;
 
-            /* code center for functions */
-            public readonly CodeCenterRec CodeCenter;
             /* context for evaluating formulas */
             public readonly ParamStackRec FormulaEvalContext;
 
             public readonly RandomSeedProvider randomSeedProvider; // ref to the one from SynthStateRec
+
+            public readonly bool stayActiveIfNoFrames;
 
             /* error information for the last error returned. */
             public SynthErrorCodes result;
@@ -589,6 +598,8 @@ namespace OutOfPhase
             // float[] workspaces
             public readonly float[] workspace;
             public readonly GCHandle hWorkspace;
+            public readonly int TrackStagingLOffset; // Length == nAllocatedPointsOneChannel
+            public readonly int TrackStagingROffset; // Length == nAllocatedPointsOneChannel
             public readonly int ScoreWorkspaceLOffset; // Length == nAllocatedPointsOneChannel
             public readonly int ScoreWorkspaceROffset; // Length == nAllocatedPointsOneChannel
             public readonly int SectionWorkspaceLOffset; // Length == nAllocatedPointsOneChannel
@@ -618,7 +629,8 @@ namespace OutOfPhase
 #endif
             // offsets to L, R, each section...
             // can't be moved to SynthState because it's tuned for the vector misalignment of this object's workspace array
-            public readonly int[] SectionInputAccumulationWorkspaces;
+            public readonly int sectionCount;
+            public int[] SectionInputAccumulationWorkspaces; // length = sectionCount * 2
             // all float workspaces (incl. scratch 1 & 2) - to max required by smoothing and pluggable effects
             public readonly int[] AllScratchWorkspaces32;
 
@@ -649,38 +661,70 @@ namespace OutOfPhase
             public ThreadFreeListsRec freelists;
 
 
-            private SynthParamRec(
-                ref SharedFreeListsRec sharedFreeLists)
+            public static void ReplaceSynthParam(ref SynthParamRec variable, SynthParamRec replacement)
             {
-                freelists = new ThreadFreeListsRec(ref sharedFreeLists);
+                if (variable != null)
+                {
+                    variable.Dispose();
+                }
+                variable = replacement;
+            }
+
+            private SynthParamRec(
+                ref SharedFreeListsRec sharedFreeLists,
+                bool createThreadFreeLists)
+            {
+                if (createThreadFreeLists)
+                {
+                    freelists = new ThreadFreeListsRec(ref sharedFreeLists);
+                }
             }
 
             public SynthParamRec(
                 SynthParamRec template,
                 int threadIndex,
-                ref SharedFreeListsRec sharedFreeLists)
+                ref SharedFreeListsRec sharedFreeLists,
+                bool createThreadFreeLists)
+                : this(
+                     template,
+                     threadIndex,
+                     template.sectionCount,
+                     ref sharedFreeLists,
+                     createThreadFreeLists)
+            {
+            }
+
+            public SynthParamRec(
+                SynthParamRec template,
+                int threadIndex,
+                int sectionCount,
+                ref SharedFreeListsRec sharedFreeLists,
+                bool createThreadFreeLists)
                 : this(
                     template.iEnvelopeRate,
                     template.iSamplingRate,
                     template.iOversampling,
                     template.iScanningGapWidthInEnvelopeTicks,
-                    template.Document,
-                    template.Dictionary,
                     template.InteractionLog,
                     template.fOverallVolumeScaling,
-                    template.CodeCenter,
                     template.randomSeedProvider,
-                    template.SectionInputAccumulationWorkspaces.Length / 2,
+                    template.stayActiveIfNoFrames,
+                    sectionCount,
                     template.AllScratchWorkspaces32.Length,
                     template.AllScratchWorkspaces64.Length,
                     threadIndex,
-                    ref sharedFreeLists)
+                    ref sharedFreeLists,
+                    createThreadFreeLists)
             {
                 this.dEnvelopeRate = template.dEnvelopeRate;
                 this.dSamplingRate = template.dSamplingRate;
                 this.lElapsedTimeInEnvelopeTicks = template.lElapsedTimeInEnvelopeTicks;
                 this.dElapsedTimeInSeconds = template.dElapsedTimeInSeconds;
                 this.dCurrentBeatsPerMinute = template.dCurrentBeatsPerMinute;
+                if (!createThreadFreeLists)
+                {
+                    this.freelists = template.freelists;
+                }
             }
 
             public unsafe SynthParamRec(
@@ -688,29 +732,26 @@ namespace OutOfPhase
                 int iSamplingRate,
                 int iOversampling,
                 int iScanningGapWidthInEnvelopeTicks,
-                Document Document,
-                WaveSampDictRec Dictionary,
                 TextWriter InteractionLog,
                 float fOverallVolumeScaling,
-                CodeCenterRec CodeCenter,
                 RandomSeedProvider randomSeedProvider,
+                bool stayActiveIfNoFrames,
                 int sectionCount,
                 int required32BitWorkspaceCount,
                 int required64BitWorkspaceCount,
                 int threadIndex,
-                ref SharedFreeListsRec sharedFreeLists)
-                : this(ref sharedFreeLists)
+                ref SharedFreeListsRec sharedFreeLists,
+                bool createThreadFreeLists)
+                : this(ref sharedFreeLists, createThreadFreeLists)
             {
                 this.dEnvelopeRate = this.iEnvelopeRate = iEnvelopeRate;
                 this.dSamplingRate = this.iSamplingRate = iSamplingRate;
                 this.iOversampling = iOversampling;
                 this.iScanningGapWidthInEnvelopeTicks = iScanningGapWidthInEnvelopeTicks;
-                this.Document = Document;
-                this.Dictionary = Dictionary;
                 this._InteractionLog = InteractionLog;
                 this.fOverallVolumeScaling = fOverallVolumeScaling;
-                this.CodeCenter = CodeCenter;
                 this.randomSeedProvider = randomSeedProvider;
+                this.stayActiveIfNoFrames = stayActiveIfNoFrames;
                 this.threadIndex = threadIndex;
 
                 this.FormulaEvalContext = new ParamStackRec();
@@ -747,6 +788,10 @@ namespace OutOfPhase
                         IntPtr iWorkspace0 = new IntPtr(pWorkspace0);
                         // assign workspace subsections
                         int offset = 0;
+                        this.TrackStagingLOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
+                        this.TrackStagingROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
+                        offset += oneLength;
                         this.ScoreWorkspaceLOffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
                         offset += oneLength;
                         this.ScoreWorkspaceROffset = Align(iWorkspace0, ref offset, WORKSPACEALIGNBYTES, sizeof(float));
@@ -796,6 +841,7 @@ namespace OutOfPhase
                             offset += oneLength;
                         }
                         Debug.Assert(offset <= this.workspace.Length);
+                        this.sectionCount = sectionCount;
 
                         List<int> allScratch = new List<int>();
                         allScratch.Add(this.ScratchWorkspace1LOffset);
@@ -911,6 +957,8 @@ namespace OutOfPhase
             public EffectSpecListRec SectionTemplate;
 
             public SectionObjectRec SectionObject;
+            public CodeCenterRec codeCenter;
+            public WaveSampDictRec dictionary;
 
 
             // for parallel
@@ -928,7 +976,7 @@ namespace OutOfPhase
             // cpu cost of last cycle
             public long lastCost;
 
-            public PlayListNodeRec[] inputTracks;
+            public readonly List<PlayListNodeRec> inputTracks = new List<PlayListNodeRec>();
 
 
             // for tracing
@@ -982,13 +1030,10 @@ namespace OutOfPhase
         /* node type for list of tracks to play */
         public class PlayListNodeRec
         {
-            /* next track */
-            public PlayListNodeRec Next;
-
             /* pointer to track player object */
             public PlayTrackInfoRec ThisTrack;
 
-            /* section effect processor (null if none) */
+            /* section effect processor */
             public SecEffRec SectionEffectHandle;
 
             /* pointer to the source track object */
@@ -996,6 +1041,8 @@ namespace OutOfPhase
 
             /* flag indicating whether track object is active */
             public bool IsActive;
+
+            public bool fault;
 
 
             // for parallel
@@ -1022,23 +1069,44 @@ namespace OutOfPhase
             public long end;
         }
 
+        public struct SynthCycleClientCallbackRec
+        {
+            public readonly SynthStateRec synthState;
+            public readonly int numNoteDurationTicks;
+
+            public SynthErrorInfoRec returnedErrrorInfo;
+
+            public SynthCycleClientCallbackRec(SynthStateRec synthState, int numNoteDurationTicks)
+            {
+                this.synthState = synthState;
+                this.numNoteDurationTicks = numNoteDurationTicks;
+
+                this.returnedErrrorInfo = null;
+            }
+        }
+        public delegate SynthErrorCodes SynthCycleClientCallback(ref SynthCycleClientCallbackRec context);
+
         public class SynthStateRec : IDisposable
         {
-            public List<PlayListNodeRec> TrackPlayersInFileOrder;
+            // Used for building sequencer table: semantics involve multiple dispatch in the order tracks appear in the file
+            public readonly List<PlayListNodeRec> TrackPlayersInFileOrder = new List<PlayListNodeRec>();
             public SequencerTableRec SequencerTable;
+
             public TrackEffectGenRec ScoreEffectProcessor;
-            public PlayListNodeRec PlayTrackList;
+
+            // List of track players in execution order (i.e. grouped by file order, within sections, in section order).
+            // At this time players are never removed, only set to inactive as they run off the end of the list of frames.
+            public readonly List<PlayListNodeRec> PlayTrackList = new List<PlayListNodeRec>();
 
 
             // for parallel
 
-            public int concurrency; // 0 = old, 1 = new serialized, >1 = new parallelized
+            public int concurrency;
             public SecEffRec DefaultSectionEffectSurrogate;
-            public int scoreEffectInputAccumulatorIndex; // synonymous with DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex
 
             // tracks and sections dependency-scheduled and cost-ordered (not including default section / score effect)
             // (all tracks for a section must come earlier than the section)
-            public object[] CombinedPlayArray; // each is either PlayListNodeRec or SecEffRec
+            public readonly List<object> CombinedPlayArray = new List<object>(); // each is either PlayListNodeRec or SecEffRec
 
             public SynthParamRec[] SynthParamsPerProc;
             public SynthParamRec SynthParams0; // synonymous with SynthParamsPerProc[0]
@@ -1053,11 +1121,13 @@ namespace OutOfPhase
             public int startingThreadCount;
             public int completionThreadCount;
 
-            public SecEffRec[] SectionArrayAll; // includes DefaultSectionEffectSurrogate
-            public SecEffRec[] SectionArrayExcludesDefault; // excludes DefaultSectionEffectSurrogate
+            public readonly List<SecEffRec> SectionArrayAll = new List<SecEffRec>(); // includes DefaultSectionEffectSurrogate, as the last element
+            public readonly List<SecEffRec> SectionArrayExcludesDefault = new List<SecEffRec>(); // excludes DefaultSectionEffectSurrogate
 
             public Thread[] threads; // [0]=main thread, [1..c-1] for each aux processor
             public int exit; // non-zero causes exit
+
+            public bool robust;
 
 
             //
@@ -1083,16 +1153,41 @@ namespace OutOfPhase
             public long lEnvelopeCyclesEmittingAudio;
             public long lTotalFramesGenerated;
 
-            public List<TrackObjectRec> ListOfTracks;
+            public struct TrackContextRec
+            {
+                public readonly TrackObjectRec track;
+                public readonly CodeCenterRec codeCenter;
+                public readonly WaveSampDictRec dictionary;
+
+                public int auxVal; // temporarily used for sorting
+
+                public TrackContextRec(TrackObjectRec track, CodeCenterRec codeCenter, WaveSampDictRec dictionary)
+                {
+                    this.track = track;
+                    this.codeCenter = codeCenter;
+                    this.dictionary = dictionary;
+
+                    this.auxVal = 0;
+                }
+
+                public TrackContextRec(TrackObjectRec track, CodeCenterRec codeCenter, WaveSampDictRec dictionary, int auxVal)
+                    : this(track, codeCenter, dictionary)
+                {
+                    this.auxVal = auxVal;
+                }
+            }
             public TrackObjectRec KeyTrack;
             public int FrameToStartAt;
-            public EffectSpecListRec ScoreEffectSpec;
+
+            private readonly Dictionary<Document, WaveSampDictRec> dictionaries = new Dictionary<Document, WaveSampDictRec>();
 
             public long phase0Time; // SynthGenerateOneCycle() - leading sequential setup
             public long phase1Time; // SynthGenerateOneCycle()- parallel time
             public long phase2Time; // SynthGenerateOneCycle() - trailing sequential operations, including score effects 
             public long phase3Time; // time between calls to SynthGenerateOneCycle()
             public long time3;
+
+            public float dutyCycle;
 
             public long[] breakFrames; // debugging helper
             public int breakFramesIndex;
@@ -1101,7 +1196,6 @@ namespace OutOfPhase
 
             public TextWriter traceScheduleWriter;
             public bool traceScheduleEnableLevel2;
-
 
             // resource reduction
 
@@ -1112,16 +1206,12 @@ namespace OutOfPhase
 
             public void Dispose()
             {
-                if (SynthParamsPerProc != null)
+                for (int i = 0; i < SynthParamsPerProc.Length; i++)
                 {
-                    for (int i = 0; i < SynthParamsPerProc.Length; i++)
+                    if (SynthParamsPerProc[i] != null)
                     {
                         SynthParamsPerProc[i].Dispose();
                     }
-                }
-                else
-                {
-                    SynthParams0.Dispose();
                 }
 
                 if (startBarrier != null)
@@ -1153,10 +1243,26 @@ namespace OutOfPhase
             private readonly StackTrace allocatedFrom = new StackTrace(true);
 #endif
 
+            private WaveSampDictRec EnsureDictionaryForDocument(Document document)
+            {
+                WaveSampDictRec dictionary;
+                if (dictionaries.TryGetValue(document, out dictionary))
+                {
+                    return dictionary;
+                }
+                dictionary = NewWaveSampDictionary(
+                    document.SampleList,
+                    document.AlgoSampList,
+                    document.WaveTableList,
+                    document.AlgoWaveTableList);
+                dictionaries.Add(document, dictionary);
+                return dictionary;
+            }
+
             /* allocate a new synthesizer object. */
             public static SynthErrorCodes InitializeSynthesizer(
                 out SynthStateRec SynthStateOut,
-                Document Document,
+                Document document,
                 List<TrackObjectRec> ListOfTracks,
                 TrackObjectRec KeyTrack,
                 int FrameToStartAt,
@@ -1168,8 +1274,9 @@ namespace OutOfPhase
                 LargeBCDType ScanningGap,
                 out SynthErrorInfoRec ErrorInfoOut,
                 TextWriter InteractionLog,
-                bool deterministic,// now ignored - control by setting randomSeed to null or int
                 int? randomSeed,
+                bool stayActiveIfNoFrames,
+                bool robust,
                 AutomationSettings automationSettings)
             {
                 SynthStateRec SynthState = null;
@@ -1182,22 +1289,104 @@ namespace OutOfPhase
                     SynthErrorCodes Result;
 
 
-                    // globals
-                    Synthesizer.EnableFreeLists = Program.Config.EnableFreeLists;
-
-
-                    /* check to see that there aren't objects with the same name */
+                    Result = InitializeSynthesizerEmpty(
+                        out SynthState,
+                        SamplingRate,
+                        Oversampling,
+                        EnvelopeRate,
+                        DefaultBeatsPerMinute,
+                        OverallVolumeScalingReciprocal,
+                        ScanningGap,
+                        out ErrorInfoOut,
+                        InteractionLog,
+                        randomSeed,
+                        document,
+                        stayActiveIfNoFrames,
+                        robust,
+                        automationSettings);
+                    if (Result != SynthErrorCodes.eSynthDone)
                     {
-                        SynthErrorInfoRec ErrorInfo = new SynthErrorInfoRec();
-                        Result = CheckNameUniqueness(
-                            Document,
-                            ErrorInfo);
+                        return Result;
+                    }
+
+
+                    if (ListOfTracks != null)
+                    {
+                        foreach (TrackObjectRec track in ListOfTracks)
+                        {
+                            PlayListNodeRec player;
+
+                            Result = InitializeSynthesizerAddTrack(
+                                SynthState,
+                                track,
+                                document,
+                                null/*trackParamProvider*/,
+                                null/*updateFrameArrayNeeded*/,
+                                out player,
+                                out ErrorInfoOut);
+                            if (Result != SynthErrorCodes.eSynthDone)
+                            {
+                                return Result;
+                            }
+                        }
+                    }
+
+
+                    if (KeyTrack != null)
+                    {
+                        Result = InitializeSynthesizerFinish(
+                            SynthState,
+                            document,
+                            KeyTrack,
+                            FrameToStartAt,
+                            out ErrorInfoOut);
                         if (Result != SynthErrorCodes.eSynthDone)
                         {
-                            ErrorInfoOut = ErrorInfo;
                             return Result;
                         }
                     }
+
+
+                    SynthStateOut = SynthState;
+
+                    return SynthErrorCodes.eSynthDone;
+                }
+                finally
+                {
+                    if ((SynthStateOut == null) && (SynthState != null))
+                    {
+                        SynthState.Dispose();
+                    }
+                }
+            }
+
+            public static SynthErrorCodes InitializeSynthesizerEmpty(
+                out SynthStateRec SynthStateOut,
+                int SamplingRate,
+                int Oversampling,
+                int EnvelopeRate,
+                LargeBCDType DefaultBeatsPerMinute,
+                double OverallVolumeScalingReciprocal,
+                LargeBCDType ScanningGap,
+                out SynthErrorInfoRec ErrorInfoOut,
+                TextWriter InteractionLog,
+                int? randomSeed,
+                Document scoreEffectsDocument,
+                bool stayActiveIfNoFrames,
+                bool robust,
+                AutomationSettings automationSettings)
+            {
+                SynthStateRec SynthState = null;
+
+                ErrorInfoOut = null;
+                SynthStateOut = null;
+
+                try
+                {
+                    SynthErrorCodes Result;
+
+
+                    Synthesizer.EnableFreeLists = Program.Config.EnableFreeLists;
 
 
                     /* constrain scanning gap to be reasonable */
@@ -1209,12 +1398,14 @@ namespace OutOfPhase
 
                     SynthState = new SynthStateRec();
 
+                    SynthState.robust = robust;
+
                     if (automationSettings.Concurrency.HasValue)
                     {
                         // explicit concurrency value overrides global settings
 
                         SynthState.concurrency = automationSettings.Concurrency.Value;
-                        if ((SynthState.concurrency < 0) || (SynthState.concurrency > 64))
+                        if ((SynthState.concurrency < 1) || (SynthState.concurrency > 64))
                         {
                             Debug.Assert(false);
                             throw new ArgumentException("AutomationSettings.Concurrency");
@@ -1250,34 +1441,10 @@ namespace OutOfPhase
 
                         SynthState.concurrency = Math.Max(1, SynthState.concurrency);
                     }
-
-                    int sectionCount = 0;
-                    if (SynthState.concurrency > 0)
-                    {
-                        // Count sections, to determine how many per-processor input accumulators are needed.
-                        // Score Effects count as one. The default (null) section, if used, also counts as another one.
-                        // Each explicit section used by one or more present tracks counts as an additional one.
-                        sectionCount = 1; // always one: score effects (equivalent to the default 'null' section)
-                        List<SectionObjectRec> sectionsSeen = new List<SectionObjectRec>();
-                        for (int i = 0; i < ListOfTracks.Count; i++)
-                        {
-                            if ((ListOfTracks[i].Section != null) && (sectionsSeen.IndexOf(ListOfTracks[i].Section) < 0))
-                            {
-                                sectionsSeen.Add(ListOfTracks[i].Section);
-                                sectionCount++;
-                            }
-                        }
-                    }
+                    Debug.Assert(SynthState.concurrency >= 1);
 
                     int iScanningGapWidthInEnvelopeTicks = (int)((double)ScanningGap * EnvelopeRate);
                     float fOverallVolumeScaling = (float)(1d / OverallVolumeScalingReciprocal);
-
-                    /* allocate sample/wavetable lookup */
-                    WaveSampDictRec Dictionary = NewWaveSampDictionary(
-                        Document.SampleList,
-                        Document.AlgoSampList,
-                        Document.WaveTableList,
-                        Document.AlgoWaveTableList);
 
                     /* set random number seed */
                     if (randomSeed.HasValue)
@@ -1309,260 +1476,143 @@ namespace OutOfPhase
                         scratch64Count = Math.Max(scratch64Count, scratch64Count1);
                     }
 
-                    SynthParamRec SynthParams = SynthState.SynthParams0 = new SynthParamRec(
+                    SynthState.SynthParams0 = new SynthParamRec(
                         EnvelopeRate,
                         SamplingRate,
                         Oversampling,
                         iScanningGapWidthInEnvelopeTicks,
-                        Document,
-                        Dictionary,
                         TextWriter.Synchronized(InteractionLog),
                         fOverallVolumeScaling,
-                        Document.CodeCenter,
                         SynthState.randomSeedProvider,
-                        sectionCount,
+                        stayActiveIfNoFrames,
+                        (SynthState.concurrency > 1 ? 0 : 2/*section & score*/)/*sectionCount*/, // will be increased as tracks are added
                         scratch32Count,
                         scratch64Count,
                         0,
-                        ref SynthState.freelists);
+                        ref SynthState.freelists,
+                        true/*createThreadFreeLists*/);
+                    // create per-thread contexts
+                    SynthState.SynthParamsPerProc = new SynthParamRec[Math.Max(SynthState.concurrency, 1)];
+                    SynthState.SynthParamsPerProc[0] = SynthState.SynthParams0;
+                    for (int i = 1; i < SynthState.concurrency; i++)
+                    {
+                        SynthParamRec.ReplaceSynthParam(
+                            ref SynthState.SynthParamsPerProc[i],
+                            new SynthParamRec(
+                                SynthState.SynthParams0,
+                                i/*thread*/,
+                                ref SynthState.freelists,
+                                true/*createThreadFreeLists*/));
+                    }
 
-                    SynthState.ListOfTracks = ListOfTracks;
-                    SynthState.KeyTrack = KeyTrack;
-                    SynthState.FrameToStartAt = FrameToStartAt;
-
-                    SynthParams.lElapsedTimeInEnvelopeTicks = -1;
-                    SynthParams.dCurrentBeatsPerMinute = (double)DefaultBeatsPerMinute;
+                    SynthState.SynthParams0.lElapsedTimeInEnvelopeTicks = -1;
+                    SynthState.SynthParams0.dCurrentBeatsPerMinute = (double)DefaultBeatsPerMinute;
 
                     /* allocate tempo transition tracker */
                     SynthState.TempoControl = NewTempoControl(DefaultBeatsPerMinute);
 
-                    SynthState.TrackPlayersInFileOrder = new List<PlayListNodeRec>(ListOfTracks.Count);
-
                     /* create the score effects processor */
-                    SynthState.ScoreEffectSpec = Document.ScoreEffects.ScoreEffectSpec;
-                    Result = NewTrackEffectGenerator(
-                        SynthState.ScoreEffectSpec,
-                        SynthParams,
-                        out SynthState.ScoreEffectProcessor);
-                    if (Result != SynthErrorCodes.eSynthDone)
+                    EffectSpecListRec ScoreEffectSpec = scoreEffectsDocument.ScoreEffects.ScoreEffectSpec;
+                    WaveSampDictRec dictionary = SynthState.EnsureDictionaryForDocument(scoreEffectsDocument);
                     {
-                        ErrorInfoOut = SynthParams.ErrorInfo;
-                        return Result;
+                        /* make sure score effects don't reference any unknown objects */
+                        CheckUnrefParamRec Param = new CheckUnrefParamRec();
+                        Param.Dictionary = dictionary;
+                        Param.CodeCenter = scoreEffectsDocument.CodeCenter;
+                        Param.ErrorInfo = new SynthErrorInfoRec();
+                        Result = CheckEffectListForUnreferencedSamples(
+                            ScoreEffectSpec,
+                            Param);
+                        if (Result != SynthErrorCodes.eSynthDone)
+                        {
+                            const string StrScoreSectionName = "Score effects list";
+
+                            // assign InitErrorInfo.ErrorEx?
+                            ErrorInfoOut = Param.ErrorInfo;
+                            ErrorInfoOut.SectionName = StrScoreSectionName;
+                            return Result;
+                        }
+
+                        SynthState.SynthParams0.perTrack.Dictionary = dictionary;
+                        SynthState.SynthParams0.perTrack.CodeCenter = scoreEffectsDocument.CodeCenter;
+
+                        Result = NewTrackEffectGenerator(
+                            null/*trackParamProvider*/,
+                            ScoreEffectSpec,
+                            SynthState.SynthParams0,
+                            out SynthState.ScoreEffectProcessor);
+                        if (Result != SynthErrorCodes.eSynthDone)
+                        {
+                            ErrorInfoOut = SynthState.SynthParams0.ErrorInfo;
+                            return Result;
+                        }
                     }
 
                     SynthState.SequencerTable = NewSequencerTable();
 
-                    /* create skip schedule holder */
                     SynthState.SkipSchedule = NewSkipSegments();
 
+                    SynthState.fSuppressingInitialSilence = EffectSpecListGetSuppressInitialSilence(ScoreEffectSpec);
 
-                    CheckUnrefParamRec Param = new CheckUnrefParamRec();
-                    Param.Dictionary = SynthParams.Dictionary;
-                    Param.CodeCenter = Document.CodeCenter;
-                    Param.ErrorInfo = new SynthErrorInfoRec();
-
-                    /* make sure instruments don't reference any unknown objects */
-                    Result = CheckInstrListForUnreferencedSamples(
-                        Document.InstrumentList,
-                        Param);
-                    if (Result != SynthErrorCodes.eSynthDone)
-                    {
-                        ErrorInfoOut = Param.ErrorInfo;
-                        return Result;
-                    }
-
-                    /* make sure score effects don't reference any unknown objects */
-                    Result = CheckEffectListForUnreferencedSamples(
-                        SynthState.ScoreEffectSpec,
-                        Param);
-                    if (Result != SynthErrorCodes.eSynthDone)
-                    {
-                        const string StrScoreSectionName = "Score effects list";
-
-                        // assign InitErrorInfo.ErrorEx?
-                        ErrorInfoOut = Param.ErrorInfo;
-                        ErrorInfoOut.SectionName = StrScoreSectionName;
-                        return Result;
-                    }
-
-
-                    /* build list of tracks to play */
-                    Result = BuildPlayList(
-                        out SynthState.PlayTrackList,
-                        SynthState.ListOfTracks,
-                        SynthState.ScoreEffectProcessor,
-                        SynthState.TrackPlayersInFileOrder,
-                        SynthState.TempoControl,
-                        SynthParams);
-                    if (Result != SynthErrorCodes.eSynthDone)
-                    {
-                        ErrorInfoOut = SynthParams.ErrorInfo;
-                        return Result;
-                    }
-
-                    /* build map from track/group names to playtrackinfo's */
-                    Result = BuildSequencerTable(
-                        SynthParams.Document,
-                        SynthState.SequencerTable,
-                        SynthState.TrackPlayersInFileOrder,
-                        SynthParams.ErrorInfo,
-                        SynthParams);
-                    if (Result != SynthErrorCodes.eSynthDone)
-                    {
-                        ErrorInfoOut = SynthParams.ErrorInfo;
-                        return Result;
-                    }
-                    PlayListNodeRec Scan = SynthState.PlayTrackList;
-                    while (Scan != null)
-                    {
-                        PlayTrackInfoSetSequencerTable(
-                            Scan.ThisTrack,
-                            SynthState.SequencerTable);
-                        Scan = Scan.Next;
-                    }
-
-
-                    SynthState.fSuppressingInitialSilence = EffectSpecListGetSuppressInitialSilence(
-                        SynthState.ScoreEffectSpec);
-
-
-                    /* calculate the moment of starting for tracks */
-                    FractionRec MomentOfStartingFrac;
-                    FindStartPoint(
-                        SynthState.KeyTrack,
-                        SynthState.FrameToStartAt,
-                        out MomentOfStartingFrac);
-                    SynthState.dMomentOfStartingDurationTick = FractionRec.Fraction2Double(MomentOfStartingFrac)
-                        * DURATIONUPDATECLOCKRESOLUTION;
-
-                    /* this value is for determining when in REAL time (not score time) */
-                    /* each note begins */
+                    /* this value is for determining when in REAL time (not score time) each note begins */
                     SynthState.iScanningGapFrontInEnvelopeTicks = 0;
 
                     /* initialize accumulators */
                     SynthState.dEnvelopeClockAccumulatorFraction = 0;
                     SynthState.dNoteDurationClockAccumulatorFraction = 0;
                     /* calculate increment factors */
-                    SynthState.dSamplesPerEnvelopeClock = SynthParams.dSamplingRate / SynthParams.dEnvelopeRate;
+                    SynthState.dSamplesPerEnvelopeClock = SynthState.SynthParams0.dSamplingRate / SynthState.SynthParams0.dEnvelopeRate;
                     SynthState.dDurationTicksPerEnvelopeClock
-                        = ((SynthParams.dCurrentBeatsPerMinute / (4/*beats per whole note*/ * 60/*seconds per minute*/))
-                            / SynthParams.dEnvelopeRate) * DURATIONUPDATECLOCKRESOLUTION;
+                        = ((SynthState.SynthParams0.dCurrentBeatsPerMinute / (4/*beats per whole note*/ * 60/*seconds per minute*/))
+                            / SynthState.SynthParams0.dEnvelopeRate) * DURATIONUPDATECLOCKRESOLUTION;
 
 
-                    // Assign section effect input accumulator indices.
-                    // Ensure that section count used to allocate workspaces is the same as the count
-                    // that BuildPlayList() came up with.
-                    if (SynthState.concurrency > 0)
+                    // set default section (i.e. direct to score effects)
+                    SynthState.DefaultSectionEffectSurrogate = new SecEffRec();
+                    SynthState.DefaultSectionEffectSurrogate.codeCenter = scoreEffectsDocument.CodeCenter;
+                    SynthState.DefaultSectionEffectSurrogate.dictionary = dictionary;
+                    Debug.Assert(SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex == 0); // score effect always in first accumulator slot
+                    SynthState.SectionArrayAll.Add(SynthState.DefaultSectionEffectSurrogate);
+                    //SynthState.CombinedPlayArray.Add(SynthState.DefaultSectionEffectSurrogate); -- surrogate not added to this
+                    Debug.Assert(SynthState.SectionArrayAll.Count == SynthState.SectionArrayExcludesDefault.Count + 1);
+                    if (SynthState.concurrency > 1)
                     {
-                        // assign section workspaces
-                        {
-                            int sectionPairIndex = 0;
-
-                            SynthState.DefaultSectionEffectSurrogate = new SecEffRec();
-                            SynthState.scoreEffectInputAccumulatorIndex = sectionPairIndex++; // always one: score effects (equivalent to the default 'null' section)
-                            SynthState.DefaultSectionEffectSurrogate.sectionInputAccumulatorIndex = SynthState.scoreEffectInputAccumulatorIndex; // synonymous
-
-                            Scan = SynthState.PlayTrackList;
-                            SecEffRec CurrentEffectHandle = null;
-                            List<SecEffRec> sections = new List<SecEffRec>();
-                            int trackCount = 0;
-                            SynthState.DefaultSectionEffectSurrogate.inputTracks = new PlayListNodeRec[0]; // build input list
-                            while (Scan != null)
-                            {
-                                trackCount++;
-
-                                if (CurrentEffectHandle != Scan.SectionEffectHandle)
-                                {
-                                    CurrentEffectHandle = Scan.SectionEffectHandle;
-                                    if (CurrentEffectHandle != null)
-                                    {
-                                        // assign section input workspace
-                                        sections.Add(CurrentEffectHandle);
-                                        CurrentEffectHandle.sectionInputAccumulatorIndex = sectionPairIndex++;
-
-                                        // build input list
-                                        CurrentEffectHandle.inputTracks = new PlayListNodeRec[0];
-                                    }
-                                    // else - default section already assigned before loop
-                                }
-
-                                if (CurrentEffectHandle != null)
-                                {
-                                    // build target count
-                                    CurrentEffectHandle.sectionInputTarget++;
-
-                                    // build input list
-                                    int l = CurrentEffectHandle.inputTracks.Length;
-                                    Array.Resize(ref CurrentEffectHandle.inputTracks, l + 1);
-                                    CurrentEffectHandle.inputTracks[l] = Scan;
-                                }
-                                else
-                                {
-                                    // build target count
-                                    SynthState.DefaultSectionEffectSurrogate.sectionInputTarget++;
-
-                                    // build input list
-                                    int l = SynthState.DefaultSectionEffectSurrogate.inputTracks.Length;
-                                    Array.Resize(ref SynthState.DefaultSectionEffectSurrogate.inputTracks, l + 1);
-                                    SynthState.DefaultSectionEffectSurrogate.inputTracks[l] = Scan;
-                                }
-
-                                Scan = Scan.Next;
-                            }
-                            // sectionCount includes default/score effect
-                            Debug.Assert(sectionCount == sectionPairIndex);
-                            Debug.Assert(sectionCount == sections.Count + 1); // sections currently excludes default/score effect
-
-                            SynthState.SectionArrayExcludesDefault = sections.ToArray();
-                            sections.Add(SynthState.DefaultSectionEffectSurrogate);
-                            Debug.Assert(sectionCount == sections.Count);
-                            SynthState.SectionArrayAll = sections.ToArray();
-
-                            SynthState.CombinedPlayArray = new object[trackCount + sections.Count - 1];
-                            {
-                                int index = 0;
-                                for (int i = 0; i < SynthState.SectionArrayAll.Length; i++)
-                                {
-                                    for (int j = 0; j < SynthState.SectionArrayAll[i].inputTracks.Length; j++)
-                                    {
-                                        SynthState.CombinedPlayArray[index++] = SynthState.SectionArrayAll[i].inputTracks[j];
-                                    }
-                                    if (SynthState.SectionArrayAll[i] != SynthState.DefaultSectionEffectSurrogate)
-                                    {
-                                        SynthState.CombinedPlayArray[index++] = SynthState.SectionArrayAll[i];
-                                    }
-                                }
-                                Debug.Assert(index == SynthState.CombinedPlayArray.Length);
-                            }
-
-                            // add all sections as inputs to the score effect input count
-                            SynthState.DefaultSectionEffectSurrogate.sectionInputTarget += SynthState.SectionArrayAll.Length - 1; // don't include self in input count
-                        }
-
-                        // create per-thread contexts
-                        SynthState.SynthParamsPerProc = new SynthParamRec[Math.Max(SynthState.concurrency, 1)];
-                        SynthState.SynthParamsPerProc[0] = SynthParams;
+                        // allocate accumulator slot for score effects (only for multithreaded case - in single threading
+                        // score effect output is accumulated directly to primary output)
+                        SynthParamRec.ReplaceSynthParam(
+                            ref SynthState.SynthParams0,
+                            new SynthParamRec(
+                                SynthState.SynthParams0,
+                                0/*thread*/,
+                                SynthState.SynthParams0.sectionCount + 1,
+                                ref SynthState.freelists,
+                                false/*createThreadFreeLists*/));
+                        SynthState.SynthParamsPerProc[0] = SynthState.SynthParams0;
                         for (int i = 1; i < SynthState.concurrency; i++)
                         {
-                            SynthState.SynthParamsPerProc[i] = new SynthParamRec(
-                                SynthParams,
-                                i,
-                                ref SynthState.freelists);
+                            SynthParamRec.ReplaceSynthParam(
+                                ref SynthState.SynthParamsPerProc[i],
+                                new SynthParamRec(
+                                    SynthState.SynthParamsPerProc[i],
+                                    i/*thread*/,
+                                    SynthState.SynthParams0.sectionCount,
+                                    ref SynthState.freelists,
+                                    false/*createThreadFreeLists*/));
                         }
-
-                        // create synchronization objects
-                        SynthState.startBarrier = new ManualResetEvent(false);
-                        SynthState.endBarrier = new ManualResetEvent(false);
-
-                        // start threads (empty array in case of concurrency == 1)
-                        SynthState.threads = new Thread[SynthState.concurrency];
-                        for (int i = 1; i < SynthState.concurrency; i++)
-                        {
-                            SynthState.threads[i] = new Thread(new ParameterizedThreadStart(ThreadMain));
-                            SynthState.threads[i].Start(new ThreadContext(i, SynthState));
-                        }
-                        SynthState.threads[0] = Thread.CurrentThread;
                     }
+
+                    // create synchronization objects
+                    SynthState.startBarrier = new ManualResetEvent(false);
+                    SynthState.endBarrier = new ManualResetEvent(false);
+
+                    // start threads (empty array in case of concurrency == 1)
+                    SynthState.threads = new Thread[SynthState.concurrency];
+                    for (int i = 1; i < SynthState.concurrency; i++)
+                    {
+                        SynthState.threads[i] = new Thread(new ParameterizedThreadStart(ThreadMain));
+                        SynthState.threads[i].Start(new ThreadContext(i, SynthState));
+                    }
+                    SynthState.threads[0] = Thread.CurrentThread;
 
 
                     // initialize debugging helpers
@@ -1572,7 +1622,7 @@ namespace OutOfPhase
                         Array.Sort(SynthState.breakFrames);
                     }
                     SynthState.summaryTag = automationSettings.SummaryTag;
-                    if ((automationSettings.TraceSchedulePath != null) && (SynthState.concurrency > 0))
+                    if ((automationSettings.TraceSchedulePath != null) && (SynthState.concurrency > 1))
                     {
                         if (automationSettings.Level2TraceFlags != AutomationSettings.TraceFlags.None)
                         {
@@ -1582,7 +1632,7 @@ namespace OutOfPhase
                             {
                                 SynthState.TrackPlayersInFileOrder[i].ThisTrack.events = new List<EventTraceRec>();
                             }
-                            for (int i = 0; i < SynthState.SectionArrayAll.Length; i++)
+                            for (int i = 0; i < SynthState.SectionArrayAll.Count; i++)
                             {
                                 SynthState.SectionArrayAll[i].events = new List<EventTraceRec>();
                             }
@@ -1604,6 +1654,7 @@ namespace OutOfPhase
                         SynthState.traceScheduleWriter.WriteLine("erate\t{0}", EnvelopeRate);
                         SynthState.traceScheduleWriter.WriteLine("threads\t{0}", SynthState.concurrency);
                         SynthState.traceScheduleWriter.WriteLine(":");
+#if false // TODO: need to modify trace tool and format to handle dynamic adding/removing of track players
                         int id = 0;
                         for (int i = 0; i < SynthState.SectionArrayAll.Length; i++)
                         {
@@ -1637,10 +1688,9 @@ namespace OutOfPhase
                             Scan = Scan.Next;
                         }
                         SynthState.traceScheduleWriter.WriteLine();
+#endif
                     }
 
-
-                    // epilogue
 
                     SynthStateOut = SynthState;
 
@@ -1653,6 +1703,435 @@ namespace OutOfPhase
                         SynthState.Dispose();
                     }
                 }
+            }
+
+            public static SynthErrorCodes InitializeSynthesizerAddTrack(
+                SynthStateRec SynthState,
+                TrackObjectRec track,
+                Document document,
+                ITrackParameterProvider trackParamProvider,
+                UpdateFrameArrayNeededMethod updateFrameArrayNeeded,
+                out PlayListNodeRec trackInfoOut,
+                out SynthErrorInfoRec ErrorInfoOut)
+            {
+                trackInfoOut = null;
+                ErrorInfoOut = null;
+
+                SynthErrorCodes Result;
+
+                WaveSampDictRec dictionary = SynthState.EnsureDictionaryForDocument(document);
+
+
+                /* check to see that there aren't objects with the same name */
+                SynthErrorInfoRec ErrorInfo = new SynthErrorInfoRec();
+                Result = CheckNameUniqueness(
+                    document,
+                    ErrorInfo);
+                if (Result != SynthErrorCodes.eSynthDone)
+                {
+                    ErrorInfoOut = ErrorInfo;
+                    return Result;
+                }
+
+                // check for invalid references
+                {
+                    CheckUnrefParamRec Param = new CheckUnrefParamRec();
+                    Param.Dictionary = dictionary;
+                    Param.CodeCenter = document.CodeCenter;
+                    Param.ErrorInfo = new SynthErrorInfoRec();
+
+                    /* make sure instruments don't reference any unknown objects */
+                    Result = CheckInstrListForUnreferencedSamples(
+                        document.InstrumentList,
+                        Param);
+                    if (Result != SynthErrorCodes.eSynthDone)
+                    {
+                        ErrorInfoOut = Param.ErrorInfo;
+                        return Result;
+                    }
+                }
+
+
+                // determine if a section is being added
+                SecEffRec sectionHandle = null; // will remain null for track in the default/surrogate section
+                if (track.Section != null)
+                {
+                    sectionHandle = null;
+                    for (int i = 0; i < SynthState.SectionArrayExcludesDefault.Count; i++)
+                    {
+                        if (track.Section == SynthState.SectionArrayExcludesDefault[i].SectionObject)
+                        {
+                            sectionHandle = SynthState.SectionArrayExcludesDefault[i];
+                            break;
+                        }
+                    }
+
+                    // need to add section?
+                    if (sectionHandle == null)
+                    {
+                        if (SynthState.concurrency > 1)
+                        {
+                            // must allocate accumulator slot for section input
+                            SynthParamRec.ReplaceSynthParam(
+                                ref SynthState.SynthParams0,
+                                new SynthParamRec(
+                                    SynthState.SynthParams0,
+                                    0/*thread*/,
+                                    SynthState.SynthParams0.sectionCount + 1,
+                                    ref SynthState.freelists,
+                                    false/*createThreadFreeLists*/));
+                            // recreate per-thread contexts
+                            SynthState.SynthParamsPerProc[0] = SynthState.SynthParams0;
+                            for (int i = 1; i < SynthState.concurrency; i++)
+                            {
+                                SynthParamRec.ReplaceSynthParam(
+                                    ref SynthState.SynthParamsPerProc[i],
+                                    new SynthParamRec(
+                                        SynthState.SynthParamsPerProc[i],
+                                        i/*thread*/,
+                                        SynthState.SynthParams0.sectionCount,
+                                        ref SynthState.freelists,
+                                        false/*createThreadFreeLists*/));
+                            }
+                        }
+
+                        int sectionAccumulatorSlot;
+                        if (SynthState.concurrency > 1)
+                        {
+                            sectionAccumulatorSlot = SynthState.SectionArrayAll.Count;
+                        }
+                        else
+                        {
+                            sectionAccumulatorSlot = 1;
+                        }
+
+                        sectionHandle = new SecEffRec();
+                        Debug.Assert(SynthState.SectionArrayAll.Count == SynthState.SectionArrayExcludesDefault.Count + 1);
+                        sectionHandle.sectionInputAccumulatorIndex = sectionAccumulatorSlot;
+                        SynthState.SectionArrayAll.Insert(SynthState.SectionArrayExcludesDefault.Count, sectionHandle); // insert in front of global effects processor which always should be at end
+                        SynthState.SectionArrayExcludesDefault.Add(sectionHandle);
+                        Debug.Assert(SynthState.SectionArrayAll.Count == SynthState.SectionArrayExcludesDefault.Count + 1);
+
+                        // initialize section effects processor
+
+                        sectionHandle.codeCenter = document.CodeCenter;
+                        sectionHandle.dictionary = dictionary;
+
+                        sectionHandle.SectionObject = track.Section;
+                        sectionHandle.SectionTemplate = track.Section.EffectSpec;
+                        if (sectionHandle.SectionTemplate == null)
+                        {
+                            return SynthErrorCodes.eSynthPrereqError;
+                        }
+
+                        SynthState.SynthParams0.perTrack.CodeCenter = sectionHandle.codeCenter;
+                        SynthState.SynthParams0.perTrack.Dictionary = sectionHandle.dictionary;
+
+                        Result = NewTrackEffectGenerator(
+                            null/*trackParamProvider*/,
+                            sectionHandle.SectionTemplate,
+                            SynthState.SynthParams0,
+                            out sectionHandle.SectionEffect);
+                        if (Result != SynthErrorCodes.eSynthDone)
+                        {
+                            return Result;
+                        }
+
+                        // look for references to nonexisting objects
+                        CheckUnrefParamRec Param = new CheckUnrefParamRec();
+                        Param.Dictionary = sectionHandle.dictionary;
+                        Param.CodeCenter = sectionHandle.codeCenter;
+                        Param.ErrorInfo = new SynthErrorInfoRec();
+                        Result = CheckEffectListForUnreferencedSamples(
+                            sectionHandle.SectionTemplate,
+                            Param);
+                        if (Result != SynthErrorCodes.eSynthDone)
+                        {
+                            string Name = track.Section.Name;
+                            Param.ErrorInfo.SectionName = Name;
+                            ErrorInfoOut = Param.ErrorInfo;
+                            return Result;
+                        }
+
+                        // new section gets inserted just after the last section in the array (but not the empty section surrogate),
+                        // or at the end if no sections exist yet
+                        int lastSecEffRecIndex = SynthState.CombinedPlayArray.FindLastIndex(delegate (object o) { return (o is SecEffRec) /*TODO:remove && (o != SynthState.DefaultSectionEffectSurrogate)*/; });
+                        if (lastSecEffRecIndex < 0)
+                        {
+                            lastSecEffRecIndex = SynthState.CombinedPlayArray.Count - 2; // before last item which is empty section surrogate
+                        }
+                        SynthState.CombinedPlayArray.Insert(lastSecEffRecIndex + 1, sectionHandle);
+
+                        SynthState.DefaultSectionEffectSurrogate.sectionInputTarget++; // new section input to wait for
+                    }
+                }
+
+
+                // create play info record
+                PlayListNodeRec NewListNode;
+                {
+                    NewListNode = new PlayListNodeRec();
+
+                    NewListNode.TrackObject = track;
+
+                    NewListNode.IsActive = true; // track starts out active
+                    NewListNode.SectionEffectHandle = sectionHandle;
+
+                    SynthState.SynthParams0.perTrack.CodeCenter = document.CodeCenter;
+                    SynthState.SynthParams0.perTrack.Dictionary = dictionary;
+
+                    Result = NewPlayTrackInfo(
+                        out NewListNode.ThisTrack,
+                        track,
+                        trackParamProvider != null ? trackParamProvider : new TrackObjectParameterProxyRec(track),
+                        document,
+                        SynthState.SynthParams0.perTrack.Dictionary,
+                        SynthState.ScoreEffectProcessor,
+                        track.Section != null
+                            ? sectionHandle.SectionEffect
+                            : null,
+                        SynthState.TempoControl,
+                        updateFrameArrayNeeded,
+                        SynthState.SynthParams0);
+                    if (Result != SynthErrorCodes.eSynthDone)
+                    {
+                        return Result;
+                    }
+
+                    // insert track immediately before the section it belongs to
+                    int i = SynthState.CombinedPlayArray.FindIndex(delegate (object o) { return o == sectionHandle; });
+                    if (i < 0)
+                    {
+                        i = SynthState.CombinedPlayArray.Count; // section not found == append to default/surrogate section, which is last
+                    }
+                    SynthState.CombinedPlayArray.Insert(i, NewListNode);
+                }
+
+
+                // update linkage
+
+                if (sectionHandle != null)
+                {
+                    sectionHandle.inputTracks.Add(NewListNode);
+                    sectionHandle.sectionInputTarget++;
+                }
+                else
+                {
+                    SynthState.DefaultSectionEffectSurrogate.inputTracks.Add(NewListNode);
+                    SynthState.DefaultSectionEffectSurrogate.sectionInputTarget++;
+                }
+
+                SynthState.TrackPlayersInFileOrder.Add(NewListNode);
+
+                // - insert as last item in a run of items sharing the same section effect
+                // - if first item for it's section effect, insert immediately before first item that belongs to surrogate (default) section
+                int lastSectionMemberIndex = -1;
+                int firstDefaultMemberIndex = SynthState.PlayTrackList.Count;
+                for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
+                {
+                    if (SynthState.PlayTrackList[i].SectionEffectHandle == null)
+                    {
+                        firstDefaultMemberIndex = i;
+#if DEBUG
+                        for (int j = i; j < SynthState.PlayTrackList.Count; j++)
+                        {
+                            Debug.Assert(SynthState.PlayTrackList[j].SectionEffectHandle == null);
+                        }
+#endif
+                        break;
+                    }
+                    else if (SynthState.PlayTrackList[i].SectionEffectHandle == NewListNode.SectionEffectHandle)
+                    {
+                        lastSectionMemberIndex = i;
+                    }
+#if DEBUG
+                    else
+                    {
+                        if (lastSectionMemberIndex >= 0)
+                        {
+                            for (int j = i; j < SynthState.PlayTrackList.Count; j++)
+                            {
+                                Debug.Assert(SynthState.PlayTrackList[j].SectionEffectHandle != NewListNode.SectionEffectHandle);
+                            }
+                        }
+                    }
+#endif
+                }
+                if (lastSectionMemberIndex >= 0)
+                {
+                    SynthState.PlayTrackList.Insert(lastSectionMemberIndex + 1, NewListNode); // append to run for this section
+                }
+                else
+                {
+                    SynthState.PlayTrackList.Insert(firstDefaultMemberIndex, NewListNode); // new section: insert before first item in surrogate (default) section
+                }
+
+#if DEBUG
+                // validate structure of CombinedPlayArray
+                {
+                    Dictionary<SecEffRec, bool> visitedSectionEffects = new Dictionary<SecEffRec, bool>();
+                    for (int i = 0; i < SynthState.CombinedPlayArray.Count; i++)
+                    {
+                        // surrogate must not appear
+                        Debug.Assert(SynthState.CombinedPlayArray[i] != SynthState.DefaultSectionEffectSurrogate);
+                        if (SynthState.CombinedPlayArray[i] is SecEffRec)
+                        {
+                            // section must occur only once
+                            Debug.Assert(!visitedSectionEffects.ContainsKey((SecEffRec)SynthState.CombinedPlayArray[i]));
+                            visitedSectionEffects.Add((SecEffRec)SynthState.CombinedPlayArray[i], false);
+                        }
+                        else
+                        {
+                            // track may not occur after section has been seen
+                            Debug.Assert((((PlayListNodeRec)SynthState.CombinedPlayArray[i]).SectionEffectHandle == null)
+                                || !visitedSectionEffects.ContainsKey(((PlayListNodeRec)SynthState.CombinedPlayArray[i]).SectionEffectHandle));
+                        }
+                    }
+                }
+#endif
+
+
+                trackInfoOut = NewListNode;
+
+                return SynthErrorCodes.eSynthDone;
+            }
+
+            public static SynthErrorCodes SynthesizerDeleteTrack(
+                SynthStateRec SynthState,
+                PlayListNodeRec ListNode,
+                out SynthErrorInfoRec ErrorInfoOut)
+            {
+                bool notFound;
+
+                ErrorInfoOut = null;
+
+                notFound = true;
+                for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
+                {
+                    if (SynthState.PlayTrackList[i] == ListNode)
+                    {
+                        SynthState.PlayTrackList.RemoveAt(i);
+                        notFound = false;
+                        break;
+                    }
+                }
+                if (notFound)
+                {
+                    ErrorInfoOut = new SynthErrorInfoRec();
+                    ErrorInfoOut.ErrorEx = SynthErrorSubCodes.eSynthErrorExUndefinedTrack;
+                    ErrorInfoOut.TrackName = ListNode.TrackObject.Name;
+                    return SynthErrorCodes.eSynthErrorEx;
+                }
+
+#if DEBUG
+                notFound = true;
+#endif
+                for (int i = 0; i < SynthState.TrackPlayersInFileOrder.Count; i++)
+                {
+                    if (SynthState.TrackPlayersInFileOrder[i] == ListNode)
+                    {
+                        SynthState.TrackPlayersInFileOrder.RemoveAt(i);
+#if DEBUG
+                        notFound = false;
+#endif
+                        break;
+                    }
+                }
+#if DEBUG
+                Debug.Assert(!notFound);
+#endif
+
+#if DEBUG
+                notFound = true;
+#endif
+                for (int i = 0; i < SynthState.CombinedPlayArray.Count; i++)
+                {
+                    if (SynthState.CombinedPlayArray[i] == ListNode)
+                    {
+                        SynthState.CombinedPlayArray.RemoveAt(i);
+#if DEBUG
+                        notFound = false;
+#endif
+                        break;
+                    }
+                }
+#if DEBUG
+                Debug.Assert(!notFound);
+#endif
+
+#if DEBUG
+                notFound = true;
+#endif
+                for (int i = 0; i < SynthState.SectionArrayAll.Count; i++)
+                {
+                    SecEffRec section = SynthState.SectionArrayAll[i];
+                    for (int j = 0; j < section.inputTracks.Count; j++)
+                    {
+                        if (section.inputTracks[j] == ListNode)
+                        {
+                            section.inputTracks.RemoveAt(j);
+                            section.sectionInputTarget--;
+#if DEBUG
+                            notFound = false;
+#endif
+                            break;
+                        }
+                    }
+                }
+#if DEBUG
+                Debug.Assert(!notFound);
+#endif
+
+                FinalizePlayTrack(ListNode.ThisTrack, SynthState.SynthParams0, false/*writeOutputLogs*/);
+
+                return SynthErrorCodes.eSynthDone;
+            }
+
+            public static SynthErrorCodes InitializeSynthesizerFinish(
+                SynthStateRec SynthState,
+                Document document,
+                TrackObjectRec KeyTrack,
+                int FrameToStartAt,
+                out SynthErrorInfoRec ErrorInfoOut)
+            {
+                ErrorInfoOut = null;
+
+                SynthErrorCodes Result;
+
+
+                /* build map from track/group names to playtrackinfo's */
+                // TODO: this will be hard to separate for multiple documents - use first document for all
+                Result = BuildSequencerTable(
+                    document,
+                    SynthState.SequencerTable,
+                    SynthState.TrackPlayersInFileOrder,
+                    SynthState.SynthParams0.ErrorInfo);
+                if (Result != SynthErrorCodes.eSynthDone)
+                {
+                    ErrorInfoOut = SynthState.SynthParams0.ErrorInfo;
+                    return Result;
+                }
+                for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
+                {
+                    PlayTrackInfoSetSequencerTable(
+                        SynthState.PlayTrackList[i].ThisTrack,
+                        SynthState.SequencerTable);
+                }
+
+
+                /* calculate the moment of starting for tracks */
+                SynthState.KeyTrack = KeyTrack;
+                SynthState.FrameToStartAt = FrameToStartAt;
+                FractionRec MomentOfStartingFrac;
+                FindStartPoint(
+                    SynthState.KeyTrack,
+                    SynthState.FrameToStartAt,
+                    out MomentOfStartingFrac);
+                SynthState.dMomentOfStartingDurationTick = FractionRec.Fraction2Double(MomentOfStartingFrac)
+                    * DURATIONUPDATECLOCKRESOLUTION;
+
+
+                return SynthErrorCodes.eSynthDone;
             }
 
             private static void RebalanceAndPruneFreeLists(
@@ -1677,16 +2156,6 @@ namespace OutOfPhase
                 scratch32Count1 += Math.Max(pluggable.MaximumSmoothedParameterCount, Program.Config.MaximumSmoothedParameterCount);
             }
 
-            /* compare tracks for sorting based on the section they are in.  before sorting, */
-            /* set the track objects' AuxVal to their position in the array to enable stable */
-            /* sorting. */
-            private static int ComparePlayListNodeOnAuxVal(
-                PlayListNodeRec Left,
-                PlayListNodeRec Right)
-            {
-                return Left.TrackObject.AuxVal.CompareTo(Right.TrackObject.AuxVal);
-            }
-
             /* build hash table for converting sequence command track/group identifier */
             /* into the actual thing.  The SequencerTableRec contains pointers to */
             /* PlayTrackInfoRec objects. */
@@ -1694,8 +2163,7 @@ namespace OutOfPhase
                 Document Document,
                 SequencerTableRec Table,
                 List<PlayListNodeRec> TrackPlayersInFileOrder,
-                SynthErrorInfoRec ErrorInfo,
-                SynthParamRec SynthParams)
+                SynthErrorInfoRec ErrorInfo)
             {
                 SequencerConfigSpecRec SeqConfig = Document.Sequencer.SequencerSpec;
 
@@ -1705,7 +2173,7 @@ namespace OutOfPhase
                 /* build up groups */
                 int l = GetSequencerConfigLength(SeqConfig);
                 int lPlayers = TrackPlayersInFileOrder.Count;
-                for (int i = 0; i < l; i += 1)
+                for (int i = 0; i < l; i++)
                 {
                     string TrackName = SequencerConfigGetTrackName(SeqConfig, i);
                     string GroupName = SequencerConfigGetGroupName(SeqConfig, i);
@@ -1726,7 +2194,7 @@ namespace OutOfPhase
 
                     /* find the player for that track object (may not find anything if */
                     /* that track has been turned off) */
-                    for (int j = 0; j < lPlayers; j += 1)
+                    for (int j = 0; j < lPlayers; j++)
                     {
                         PlayListNodeRec Player = TrackPlayersInFileOrder[j];
                         if (Player.TrackObject == TrackObject)
@@ -1742,7 +2210,7 @@ namespace OutOfPhase
 
 
                 /* build up individual tracks, and the default-all group */
-                for (int i = 0; i < lPlayers; i += 1)
+                for (int i = 0; i < lPlayers; i++)
                 {
                     PlayListNodeRec Player = TrackPlayersInFileOrder[i];
 
@@ -1774,8 +2242,8 @@ namespace OutOfPhase
             /* sorting. */
             // Public for use in SectionEditDialog
             public static int CompareTracksOnSection(
-                TrackObjectRec Left,
-                TrackObjectRec Right,
+                TrackContextRec Left,
+                TrackContextRec Right,
                 IList<SectionObjectRec> Sections)
             {
                 SectionObjectRec LeftSection;
@@ -1783,8 +2251,8 @@ namespace OutOfPhase
                 int LeftValue;
                 int RightValue;
 
-                LeftSection = Left.Section;
-                RightSection = Right.Section;
+                LeftSection = Left.track.Section;
+                RightSection = Right.track.Section;
                 if (LeftSection == null)
                 {
                     LeftValue = -1;
@@ -1804,182 +2272,10 @@ namespace OutOfPhase
                 if (LeftValue == RightValue)
                 {
                     /* subkey enables stable sorting */
-                    LeftValue = Left.AuxVal;
-                    RightValue = Right.AuxVal;
+                    LeftValue = Left.auxVal;
+                    RightValue = Right.auxVal;
                 }
                 return LeftValue.CompareTo(RightValue);
-            }
-
-            /* build the list of objects involved in playing.  the list can be scanned in */
-            /* sequence and all tracks which share the same effect processor will be */
-            /* next to each other. */
-            private static SynthErrorCodes BuildPlayList(
-                out PlayListNodeRec ListOut,
-                List<TrackObjectRec> TrackObjectList,
-                TrackEffectGenRec ScoreEffectProcessor,
-                List<PlayListNodeRec> TrackPlayersInFileOrder,
-                TempoControlRec TempoControl,
-                SynthParamRec SynthParams)
-            {
-                ListOut = null;
-
-                SynthErrorCodes Result;
-                PlayListNodeRec Tail = null;
-                SectionObjectRec CurrentSection = null; /* section or null for default section */
-                SecEffRec CurrentSectionHandle = null; /* processor, or null if above is null */
-
-                /* create track list */
-                List<TrackObjectRec> SortedTrackList = new List<TrackObjectRec>(TrackObjectList.Count);
-
-                /* fill in the track list */
-                int TrackCount = TrackObjectList.Count;
-                for (int i = 0; i < TrackCount; i += 1)
-                {
-                    /* get the track */
-                    TrackObjectRec TrackObj = TrackObjectList[i];
-                    SortedTrackList.Add(TrackObj);
-
-                    /* set stable sort key */
-                    TrackObj.AuxVal = i;
-                }
-                TrackCount = SortedTrackList.Count; /* may be fewer tracks */
-
-                /* sort, to group all tracks together which share the same section */
-                SortedTrackList.Sort(delegate (TrackObjectRec left, TrackObjectRec right) { return CompareTracksOnSection(left, right, SynthParams.Document.SectionList); });
-
-                /* build list of tracks that are being played */
-                /* NOTE: this loop iterates in the sorted order, so all tracks in a */
-                /* section are adjacent.  This makes it easy to assign all the appropriate */
-                /* tracks to a single section processor.  We can also set the position */
-                /* numbers for detecting bad sequence commands. */
-                for (int i = 0; i < TrackCount; i += 1)
-                {
-                    /* get the track */
-                    TrackObjectRec PossibleTrack = SortedTrackList[i];
-
-                    PlayListNodeRec NewListNode = new PlayListNodeRec();
-
-                    /* establish link */
-                    NewListNode.Next = null;
-                    if (Tail == null)
-                    {
-                        Debug.Assert(ListOut == null);
-                        ListOut = NewListNode;
-                    }
-                    else
-                    {
-                        Tail.Next = NewListNode;
-                    }
-                    Tail = NewListNode;
-
-                    /* get section for current track */
-                    SectionObjectRec ThisTracksSection = PossibleTrack.Section;
-
-                    /* build new section if current track isn't in current section */
-                    if (ThisTracksSection != CurrentSection)
-                    {
-                        /* new section */
-                        CurrentSection = ThisTracksSection;
-                        if (CurrentSection == null)
-                        {
-                            /* default section gets no proc */
-                            CurrentSectionHandle = null;
-                        }
-                        else
-                        {
-                            CurrentSectionHandle = new SecEffRec();
-
-                            CurrentSectionHandle.SectionObject = CurrentSection;
-
-                            CurrentSectionHandle.SectionTemplate = CurrentSection.EffectSpec;
-                            if (CurrentSectionHandle.SectionTemplate == null)
-                            {
-                                return SynthErrorCodes.eSynthPrereqError;
-                            }
-                            Result = NewTrackEffectGenerator(
-                                CurrentSectionHandle.SectionTemplate,
-                                SynthParams,
-                                out CurrentSectionHandle.SectionEffect);
-                            if (Result != SynthErrorCodes.eSynthDone)
-                            {
-                                return Result;
-                            }
-
-                            CheckUnrefParamRec Param = new CheckUnrefParamRec();
-                            Param.Dictionary = SynthParams.Dictionary;
-                            Param.CodeCenter = SynthParams.Document.CodeCenter;
-                            Param.ErrorInfo = SynthParams.ErrorInfo;
-                            Result = CheckEffectListForUnreferencedSamples(
-                                CurrentSectionHandle.SectionTemplate,
-                                Param);
-                            if (Result != SynthErrorCodes.eSynthDone)
-                            {
-                                string Name = CurrentSection.Name;
-                                SynthParams.ErrorInfo.SectionName = Name;
-                                return Result;
-                            }
-                        }
-                    }
-
-                    /* track starts out active */
-                    NewListNode.IsActive = true;
-
-                    /* remember the current effect processor */
-                    NewListNode.SectionEffectHandle = CurrentSectionHandle;
-
-                    /* build track player */
-                    NewListNode.TrackObject = PossibleTrack;
-                    Result = NewPlayTrackInfo(
-                        out NewListNode.ThisTrack,
-                        PossibleTrack,
-                        SynthParams.Document.InstrumentList,
-                        ScoreEffectProcessor,
-                        CurrentSectionHandle != null
-                            ? CurrentSectionHandle.SectionEffect
-                            : null,
-                        TempoControl,
-                        SynthParams);
-                    if (Result != SynthErrorCodes.eSynthDone)
-                    {
-                        return Result;
-                    }
-
-                    PlayTrackInfoSetPositionNumber(NewListNode.ThisTrack, i);
-                    TrackPlayersInFileOrder.Add(NewListNode);
-                }
-
-                /* finish the properly ordered list: */
-                /* TrackPlayersInFileOrder currently has PlayListNodeRec in the */
-                /* same order that the section-sorted list has */
-                /* sort them on AuxVal back to original order */
-                TrackPlayersInFileOrder.Sort(ComparePlayListNodeOnAuxVal);
-#if DEBUG
-                {
-                    int j = 0;
-                    for (int i = 0; i < TrackPlayersInFileOrder.Count; i += 1)
-                    {
-                        PlayListNodeRec Node = TrackPlayersInFileOrder[i];
-
-                        while (true)
-                        {
-                            if (j >= TrackObjectList.Count)
-                            {
-                                // TrackPlayersInFileOrder is wrong
-                                Debug.Assert(false);
-                                throw new InvalidOperationException();
-                            }
-                            TrackObjectRec TrackObject = TrackObjectList[j];
-                            if (TrackObject == Node.TrackObject)
-                            {
-                                break;
-                            }
-                            j += 1;
-                        }
-                    }
-                }
-#endif
-
-                return SynthErrorCodes.eSynthDone;
             }
 
             /* this routine scans through the key playlist and determines the exact point */
@@ -2004,7 +2300,7 @@ namespace OutOfPhase
                         throw new ArgumentException();
                     }
 #endif
-                    for (int i = 0; i < FrameToStartAt; i += 1)
+                    for (int i = 0; i < FrameToStartAt; i++)
                     {
                         FrameObjectRec Frame = KeyTrack.FrameArray[i];
                         FractionRec TempDuration;
@@ -2030,15 +2326,16 @@ namespace OutOfPhase
 #endif
                     SynthState.startBarrier.Set();
                     SynthState.endBarrier.Set();
+                    Thread.VolatileWrite(ref SynthState.startBarrierReleaseSpin, 1);
 
                     // wait for exit (not strictly necessary, but helps ensure correctness)
                     while (true)
                     {
                         bool allExited = true;
                         Debug.Assert(SynthState.concurrency == SynthState.threads.Length);
-                        for (int i = 1; i < SynthState.concurrency; i++)
+                        for (int j = 1; j < SynthState.concurrency; j++)
                         {
-                            if (SynthState.threads[i].ThreadState != System.Threading.ThreadState.Stopped)
+                            if (SynthState.threads[j].ThreadState != System.Threading.ThreadState.Stopped)
                             {
                                 allExited = false;
                                 break;
@@ -2052,18 +2349,18 @@ namespace OutOfPhase
                     }
                 }
 
-                PlayListNodeRec Scan = SynthState.PlayTrackList;
-                SecEffRec CurrentEffectHandle = Scan.SectionEffectHandle;
-                while (Scan != null)
+                int i = 0;
+                SecEffRec CurrentEffectHandle = null;
+                while (i < SynthState.PlayTrackList.Count)
                 {
-                    while ((Scan != null) && (Scan.SectionEffectHandle == CurrentEffectHandle))
+                    while ((i < SynthState.PlayTrackList.Count)
+                        && (SynthState.PlayTrackList[i].SectionEffectHandle == CurrentEffectHandle))
                     {
                         FinalizePlayTrack(
-                            Scan.ThisTrack,
+                            SynthState.PlayTrackList[i].ThisTrack,
                             SynthState.SynthParams0,
                             writeOutputLogs);
-
-                        Scan = Scan.Next;
+                        i++;
                     }
 
                     if (CurrentEffectHandle != null)
@@ -2075,9 +2372,9 @@ namespace OutOfPhase
                     }
 
                     /* grab the next section effect handle */
-                    if (Scan != null)
+                    if (i < SynthState.PlayTrackList.Count)
                     {
-                        CurrentEffectHandle = Scan.SectionEffectHandle;
+                        CurrentEffectHandle = SynthState.PlayTrackList[i].SectionEffectHandle;
                     }
                 }
 
@@ -2125,7 +2422,8 @@ namespace OutOfPhase
             /* finished, it returns with *NumFrames == 0. */
             public static SynthErrorCodes SynthGenerateOneCycle(
                 SynthStateRec SynthState,
-                out int nActualFramesOut)
+                out int nActualFramesOut,
+                SynthCycleClientCallback clientCycleCallback)
             {
                 long time0 = Timing.QueryPerformanceCounter();
                 if (SynthState.time3 != 0)
@@ -2155,19 +2453,15 @@ namespace OutOfPhase
 
                 /* are any tracks still active? if not, then just stop */
                 bool AnyTrackActive = false;
+                for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
                 {
-                    PlayListNodeRec Scan = SynthState.PlayTrackList;
-                    while (Scan != null)
+                    if (SynthState.PlayTrackList[i].IsActive)
                     {
-                        if (Scan.IsActive)
-                        {
-                            AnyTrackActive = true;
-                            break;
-                        }
-                        Scan = Scan.Next;
+                        AnyTrackActive = true;
+                        break;
                     }
                 }
-                if (AnyTrackActive)
+                if (AnyTrackActive || SynthState.SynthParams0.stayActiveIfNoFrames)
                 {
                     OkToTerminateIfNoData = false;
 
@@ -2180,6 +2474,21 @@ namespace OutOfPhase
                     /* leaving the extra little bit in there */
                     SynthState.dNoteDurationClockAccumulatorFraction -= NumNoteDurationTicks;
 
+                    // client participation
+                    if (clientCycleCallback != null)
+                    {
+                        SynthCycleClientCallbackRec context = new SynthCycleClientCallbackRec(
+                            SynthState,
+                            NumNoteDurationTicks);
+                        SynthErrorCodes callbackResult = clientCycleCallback(ref context);
+                        if (callbackResult != SynthErrorCodes.eSynthDone)
+                        {
+                            Result = callbackResult;
+                            SynthState.SynthParams0.ErrorInfo.CopyFrom(context.returnedErrrorInfo);
+                            goto Error;
+                        }
+                    }
+
                     /* determine if we are fast forwarding */
                     SynthState.dMomentOfStartingDurationTick -= NumNoteDurationTicks;
                     AreWeStillFastForwarding = (SynthState.dMomentOfStartingDurationTick > 0);
@@ -2191,21 +2500,18 @@ namespace OutOfPhase
                         int MinimumTicks = 0x7fffffff;
                         int ExtraTicks;
 
-                        PlayListNodeRec Scan = SynthState.PlayTrackList;
-                        while (Scan != null)
+                        for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
                         {
-                            if (Scan.IsActive)
+                            if (SynthState.PlayTrackList[i].IsActive)
                             {
                                 int ThisTrackTicks;
 
-                                ThisTrackTicks = PlayTrackEventLookahead(Scan.ThisTrack);
+                                ThisTrackTicks = PlayTrackEventLookahead(SynthState.PlayTrackList[i].ThisTrack);
                                 if (MinimumTicks > ThisTrackTicks)
                                 {
                                     MinimumTicks = ThisTrackTicks;
                                 }
                             }
-
-                            Scan = Scan.Next;
                         }
                         if (MinimumTicks > (int)(SynthState.dMomentOfStartingDurationTick - 1))
                         {
@@ -2248,7 +2554,7 @@ namespace OutOfPhase
                         SynthState.dEnvelopeClockAccumulatorFraction -= nActualFrames;
 
                         /* increment global clock */
-                        SynthState.SynthParams0.lElapsedTimeInEnvelopeTicks += 1;
+                        SynthState.SynthParams0.lElapsedTimeInEnvelopeTicks++;
                         SynthState.SynthParams0.dElapsedTimeInSeconds =
                             (double)SynthState.SynthParams0.lElapsedTimeInEnvelopeTicks
                             / SynthState.SynthParams0.dEnvelopeRate;
@@ -2288,13 +2594,11 @@ namespace OutOfPhase
                     if (fScheduledSkip != SynthState.fLastCycleWasScheduledSkip)
                     {
                         /* just entered a scheduled skip -- notify all tracks */
-                        PlayListNodeRec Scan = SynthState.PlayTrackList;
-                        while (Scan != null)
+                        for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
                         {
                             PlayTrackInfoEnteringOrJustLeftScheduledSkip(
-                                Scan.ThisTrack,
+                                SynthState.PlayTrackList[i].ThisTrack,
                                 fScheduledSkip);
-                            Scan = Scan.Next;
                         }
 
                         if (SynthState.DefaultSectionEffectSurrogate.events != null)
@@ -2358,15 +2662,18 @@ namespace OutOfPhase
                     // Factored out phase 1 of envelope update (non-parallelizable) to this loop here.
                     // Note that segmentation based on SectionEffectHandle grouping is not needed here
                     {
-                        PlayListNodeRec Scan = SynthState.PlayTrackList;
                         /* iterate over all active tracks */
-                        while (Scan != null)
+                        for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
                         {
                             /* if track is active, then play it */
-                            if (Scan.IsActive)
+                            if (SynthState.PlayTrackList[i].IsActive)
                             {
+                                // set per-track context state that resides in the params structure
+                                SynthState.SynthParams0.perTrack.CodeCenter = SynthState.PlayTrackList[i].ThisTrack.codeCenter;
+                                SynthState.SynthParams0.perTrack.Dictionary = SynthState.PlayTrackList[i].ThisTrack.dictionary;
+
                                 Result = PlayTrackUpdateControl(
-                                    Scan.ThisTrack,
+                                    SynthState.PlayTrackList[i].ThisTrack,
                                     UpdateEnvelopes/*scanning gap control*/,
                                     NumNoteDurationTicks,
                                     OneOverDurationTicksPerEnvelopeClock/*envelope ticks per duration tick*/,
@@ -2385,8 +2692,6 @@ namespace OutOfPhase
                                     }
                                 }
                             }
-                            /* next one please */
-                            Scan = Scan.Next;
                         }
                     }
                 }
@@ -2399,7 +2704,7 @@ namespace OutOfPhase
                 SynthState.randomSeedProvider.Freeze();
 
                 long time2 = time1; // bogus initialization for compiler
-                if (AnyTrackActive)
+                if (AnyTrackActive || SynthState.SynthParams0.stayActiveIfNoFrames)
                 {
                     // begin parallel section
 
@@ -2452,7 +2757,7 @@ namespace OutOfPhase
                     if (effectiveCurrency > 1)
                     {
                         for (int i = unchecked((int)(SynthState.SynthParamsPerProc[0].lElapsedTimeInEnvelopeTicks & 1));
-                            i + 1 < SynthState.SectionArrayAll.Length;
+                            i + 1 < SynthState.SectionArrayAll.Count;
                             i += 2)
                         {
                             long lcost = SynthState.SectionArrayAll[i].lastCost;
@@ -2465,7 +2770,7 @@ namespace OutOfPhase
                             }
                         }
                         int o = 0;
-                        for (int j = 0; j < SynthState.SectionArrayAll.Length; j++)
+                        for (int j = 0; j < SynthState.SectionArrayAll.Count; j++)
                         {
                             SecEffRec section = SynthState.SectionArrayAll[j];
                             // 'sortify' Section.inputTracks on .lastCost
@@ -2473,7 +2778,7 @@ namespace OutOfPhase
                             // The partial "bubble" sorting is meant to prevent large jumps in case of spurious timings
                             // - nothing moves more than one slot per cycle
                             for (int i = unchecked((int)(SynthState.SynthParamsPerProc[0].lElapsedTimeInEnvelopeTicks & 1));
-                                i + 1 < section.inputTracks.Length;
+                                i + 1 < section.inputTracks.Count;
                                 i += 2)
                             {
                                 long lcost = section.inputTracks[i].lastCost;
@@ -2485,7 +2790,7 @@ namespace OutOfPhase
                                     section.inputTracks[i + 1] = temp;
                                 }
                             }
-                            for (int i = 0; i < section.inputTracks.Length; i++)
+                            for (int i = 0; i < section.inputTracks.Count; i++)
                             {
                                 SynthState.CombinedPlayArray[o++] = section.inputTracks[i];
                             }
@@ -2497,13 +2802,11 @@ namespace OutOfPhase
                     }
 
                     // reset status variables
-                    PlayListNodeRec Scan = SynthState.PlayTrackList;
-                    while (Scan != null)
+                    for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
                     {
-                        Scan.processed = 0;
-                        Scan = Scan.Next;
+                        SynthState.PlayTrackList[i].processed = 0;
                     }
-                    for (int i = 0; i < SynthState.SectionArrayAll.Length; i++)
+                    for (int i = 0; i < SynthState.SectionArrayAll.Count; i++)
                     {
                         SynthState.SectionArrayAll[i].sectionInputCounter = 0;
                         SynthState.SectionArrayAll[i].processed = 0;
@@ -2539,13 +2842,11 @@ namespace OutOfPhase
 
                     // validate completion states
 #if DEBUG
-                    Scan = SynthState.PlayTrackList;
-                    while (Scan != null)
+                    for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
                     {
-                        Debug.Assert(Scan.processed == 1);
-                        Scan = Scan.Next;
+                        Debug.Assert(SynthState.PlayTrackList[i].processed == 1);
                     }
-                    for (int i = 0; i < SynthState.SectionArrayExcludesDefault.Length; i++)
+                    for (int i = 0; i < SynthState.SectionArrayExcludesDefault.Count; i++)
                     {
                         Debug.Assert(SynthState.SectionArrayExcludesDefault[i].processed == 1);
                         Debug.Assert(SynthState.SectionArrayExcludesDefault[i].sectionInputCounter
@@ -2640,6 +2941,23 @@ namespace OutOfPhase
                                         SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset])));
                             }
                         }
+
+                        if (!used && SynthState.SynthParams0.stayActiveIfNoFrames)
+                        {
+                            // if no active tracks but in loop mode then initialize output to zero
+                            used = true;
+                            FloatVectorSet(
+                                SynthState.SynthParamsPerProc[0].workspace,
+                                SynthState.SynthParamsPerProc[0].ScoreWorkspaceLOffset,
+                                nActualFrames,
+                                0);
+                            FloatVectorSet(
+                                SynthState.SynthParamsPerProc[0].workspace,
+                                SynthState.SynthParamsPerProc[0].ScoreWorkspaceROffset,
+                                nActualFrames,
+                                0);
+                        }
+
                         Debug.Assert(used); // by definition, at least one input must have been prepared somewhere
                     }
                     // early warning of uninitialized buffer use
@@ -2725,7 +3043,7 @@ namespace OutOfPhase
                         NumNoteDurationTicks);
 
                     /* keep track of what time it is */
-                    SynthState.iScanningGapFrontInEnvelopeTicks += 1;
+                    SynthState.iScanningGapFrontInEnvelopeTicks++;
 
                     /* submit the data */
                     if (!AreWeStillFastForwarding)
@@ -2789,7 +3107,7 @@ namespace OutOfPhase
                             /* set flag so we return to caller.  this stops the loop */
                             nActualFramesOut = nActualFrames;
                             SynthState.lEnvelopeCyclesEmittingAudio++;
-                            OkToTerminateIfNoData = true;
+                            OkToTerminateIfNoData = !SynthState.SynthParams0.stayActiveIfNoFrames; // do not terminate if loop mode
                         }
                     }
 
@@ -2821,14 +3139,17 @@ namespace OutOfPhase
                     SynthState.DefaultSectionEffectSurrogate.traceInfo.end = SynthState.time3;
                 }
 
+                const float IntegrationRate = .5f;
+                float dutyCycle1 = SynthState.phase0Time + SynthState.phase1Time + SynthState.phase2Time;
+                dutyCycle1 = dutyCycle1 / (dutyCycle1 + SynthState.phase3Time);
+                SynthState.dutyCycle += (dutyCycle1 - SynthState.dutyCycle) * IntegrationRate;
+
                 if (SynthState.traceScheduleWriter != null)
                 {
-                    PlayListNodeRec Scan;
-
                     bool level2ThisCycle = false;
                     if (SynthState.traceScheduleEnableLevel2)
                     {
-                        for (int i = 0; !level2ThisCycle && (i < SynthState.SectionArrayAll.Length); i++)
+                        for (int i = 0; !level2ThisCycle && (i < SynthState.SectionArrayAll.Count); i++)
                         {
                             if (((SynthState.SectionArrayAll[i].events != null)
                                     && (SynthState.SectionArrayAll[i].events.Count != 0))
@@ -2837,16 +3158,14 @@ namespace OutOfPhase
                                 level2ThisCycle = true;
                             }
                         }
-                        Scan = SynthState.PlayTrackList;
-                        while (!level2ThisCycle && (Scan != null))
+                        for (int i = 0; !level2ThisCycle && (i < SynthState.PlayTrackList.Count); i++)
                         {
-                            if (((Scan.ThisTrack.events != null)
-                                    && (Scan.ThisTrack.events.Count != 0))
-                                || (Scan.denormalCount != 0))
+                            if (((SynthState.PlayTrackList[i].ThisTrack.events != null)
+                                    && (SynthState.PlayTrackList[i].ThisTrack.events.Count != 0))
+                                || (SynthState.PlayTrackList[i].denormalCount != 0))
                             {
                                 level2ThisCycle = true;
                             }
-                            Scan = Scan.Next;
                         }
                     }
 
@@ -2860,7 +3179,7 @@ namespace OutOfPhase
                     SynthState.traceScheduleWriter.WriteLine("fr\t{0}\t{1}", SynthState.lTotalFramesGenerated, nActualFrames);
                     SynthState.traceScheduleWriter.WriteLine("ph\t{0}\t{1}\t{2}\t{3}", time0 - basis, time1 - basis, time2 - basis, SynthState.time3 - basis);
                     SynthState.traceScheduleWriter.WriteLine(":");
-                    for (int i = 0; i < SynthState.SectionArrayAll.Length; i++)
+                    for (int i = 0; i < SynthState.SectionArrayAll.Count; i++)
                     {
                         SynthState.traceScheduleWriter.WriteLine(
                             "{0}\t{1}\t{2}\t{3}",
@@ -2887,24 +3206,24 @@ namespace OutOfPhase
                             SynthState.SectionArrayAll[i].events.Clear();
                         }
                     }
-                    Scan = SynthState.PlayTrackList;
-                    while (Scan != null)
+                    for (int i = 0; i < SynthState.PlayTrackList.Count; i++)
                     {
+                        PlayListNodeRec item = SynthState.PlayTrackList[i];
                         SynthState.traceScheduleWriter.WriteLine(
                             "{0}\t{1}\t{2}\t{3}",
-                            Scan.traceInfo.id,
-                            Scan.traceInfo.processor,
-                            Scan.traceInfo.start - basis,
-                            Scan.traceInfo.end - basis);
+                            item.traceInfo.id,
+                            item.traceInfo.processor,
+                            item.traceInfo.start - basis,
+                            item.traceInfo.end - basis);
                         if (level2ThisCycle)
                         {
-                            SynthState.traceScheduleWriter.WriteLine("\tdn\t{0}", Scan.denormalCount);
-                            Scan.denormalCount = 0;
+                            SynthState.traceScheduleWriter.WriteLine("\tdn\t{0}", item.denormalCount);
+                            item.denormalCount = 0;
 
-                            SynthState.traceScheduleWriter.WriteLine("\t{0}", Scan.ThisTrack.events.Count);
-                            for (int ii = 0; ii < Scan.ThisTrack.events.Count; ii++)
+                            SynthState.traceScheduleWriter.WriteLine("\t{0}", item.ThisTrack.events.Count);
+                            for (int ii = 0; ii < item.ThisTrack.events.Count; ii++)
                             {
-                                EventTraceRec record = Scan.ThisTrack.events[ii];
+                                EventTraceRec record = item.ThisTrack.events[ii];
                                 SynthState.traceScheduleWriter.WriteLine(
                                     record.frameIndex.HasValue ? "\t{0}\t{1}\t{2}\t{3}" : "\t{0}\t{1}",
                                     record.seq,
@@ -2912,16 +3231,14 @@ namespace OutOfPhase
                                     record.frameIndex,
                                     record.noteIndex);
                             }
-                            Scan.ThisTrack.events.Clear();
+                            item.ThisTrack.events.Clear();
                         }
-
-                        Scan = Scan.Next;
                     }
                     SynthState.traceScheduleWriter.WriteLine();
                 }
 
 
-            Error:
+                Error:
 
 #if false // TODO: if we can
 		        (void)FloatingPointEnableDenormals(fOldDenormal); /* restore old mode */
@@ -2991,6 +3308,10 @@ namespace OutOfPhase
                 /* if track is active, then play it */
                 if (Scan.IsActive)
                 {
+                    // set per-track context state that resides in the params structure
+                    SynthParamsP.perTrack.CodeCenter = Scan.ThisTrack.codeCenter;
+                    SynthParamsP.perTrack.Dictionary = Scan.ThisTrack.dictionary;
+
                     // phase 2 (parallelizable) of envelope update
                     SynthErrorCodes error = PlayTrackUpdateEnvelopes(
                         Scan.ThisTrack,
@@ -3005,15 +3326,23 @@ namespace OutOfPhase
                     if (!SynthState.control.AreWeStillFastForwarding && !SynthState.control.fScheduledSkip)
                     {
                         /* only generate wave if we're playing for real */
+
+                        FloatVectorZero(
+                            SynthParamsP.workspace,
+                            SynthParamsP.TrackStagingLOffset,
+                            nActualFrames);
+                        FloatVectorZero(
+                            SynthParamsP.workspace,
+                            SynthParamsP.TrackStagingROffset,
+                            nActualFrames);
+
                         error = PlayTrackGenerateWave(
                             Scan.ThisTrack,
                             SynthState.control.UpdateEnvelopes/*scanning gap control*/,
                             SynthParamsP.workspace,
                             nActualFrames,
-                            SynthParamsP.SectionInputAccumulationWorkspaces[
-                                2 * CurrentEffectHandle.sectionInputAccumulatorIndex + 0], // left
-                            SynthParamsP.SectionInputAccumulationWorkspaces[
-                                2 * CurrentEffectHandle.sectionInputAccumulatorIndex + 1], // right
+                            SynthParamsP.TrackStagingLOffset,
+                            SynthParamsP.TrackStagingROffset,
                             SynthParamsP.TrackWorkspaceLOffset,
                             SynthParamsP.TrackWorkspaceROffset,
                             SynthParamsP.OscillatorWorkspaceLOffset,
@@ -3025,6 +3354,50 @@ namespace OutOfPhase
                         {
                             return error;
                         }
+
+                        // TODO: is this how I want to do this
+                        // (or remove TrackStaging*Offset and go back to direct to effect accumulator)?
+                        if (SynthState.robust)
+                        {
+                            bool fault = Scan.fault ||
+                                FloatVectorDetectNaNInf(
+                                    SynthParamsP.workspace,
+                                    SynthParamsP.TrackStagingLOffset,
+                                    nActualFrames) ||
+                                FloatVectorDetectNaNInf(
+                                    SynthParamsP.workspace,
+                                    SynthParamsP.TrackStagingROffset,
+                                    nActualFrames);
+                            Scan.fault = fault;
+                            if (Scan.fault)
+                            {
+                                FloatVectorZero(
+                                    SynthParamsP.workspace,
+                                    SynthParamsP.TrackStagingLOffset,
+                                    nActualFrames);
+                                FloatVectorZero(
+                                    SynthParamsP.workspace,
+                                    SynthParamsP.TrackStagingROffset,
+                                    nActualFrames);
+                            }
+                        }
+
+                        FloatVectorMAcc(
+                            SynthParamsP.workspace,
+                            SynthParamsP.TrackStagingLOffset,
+                            SynthParamsP.workspace,
+                            SynthParamsP.SectionInputAccumulationWorkspaces[
+                                2 * CurrentEffectHandle.sectionInputAccumulatorIndex + 0], // left
+                            nActualFrames,
+                            1/*TODO: track volume*/);
+                        FloatVectorMAcc(
+                            SynthParamsP.workspace,
+                            SynthParamsP.TrackStagingROffset,
+                            SynthParamsP.workspace,
+                            SynthParamsP.SectionInputAccumulationWorkspaces[
+                                2 * CurrentEffectHandle.sectionInputAccumulatorIndex + 1], // right
+                            nActualFrames,
+                            1/*TODO: track volume*/);
 
                         // early warning of uninitialized buffer use
                         Debug.Assert((nActualFrames == 0)
@@ -3056,7 +3429,7 @@ namespace OutOfPhase
                         SynthState.control.NumNoteDurationTicks,
                         SynthState.control.fScheduledSkip,
                         SynthParamsP);
-                    if (!PlayTrackIsItStillActive(Scan.ThisTrack))
+                    if (!SynthState.SynthParams0.stayActiveIfNoFrames && !PlayTrackIsItStillActive(Scan.ThisTrack))
                     {
                         Scan.IsActive = false;
                     }
@@ -3163,6 +3536,10 @@ namespace OutOfPhase
                             2 * CurrentEffectHandle.sectionInputAccumulatorIndex + 0]])
                         && !Single.IsNaN(SynthParamsP.workspace[SynthParamsP.SectionInputAccumulationWorkspaces[
                             2 * CurrentEffectHandle.sectionInputAccumulatorIndex + 1]])));
+
+                    // set per-track context state that resides in the params structure
+                    SynthParamsP.perTrack.CodeCenter = CurrentEffectHandle.codeCenter;
+                    SynthParamsP.perTrack.Dictionary = CurrentEffectHandle.dictionary;
 
                     /* if we are generating samples, then we should */
                     /* apply the score effects processor */
@@ -3271,7 +3648,7 @@ namespace OutOfPhase
                     SynthState.control.NumNoteDurationTicks);
 
                 // Each completed section increments the score effects count. When all inputs are accumulated
-                // (incl9uding the per-proc workspace initializations) the score effect surrogate is signalled.
+                // (including the per-proc workspace initializations) the score effect surrogate is signalled.
                 // One thread will pick that up and signal sectionDone, allowing all threads to proceed to
                 // barrier (and main thread to do score effect processing and output)
                 Interlocked.Increment(ref SynthState.DefaultSectionEffectSurrogate.sectionInputCounter);
@@ -3305,7 +3682,7 @@ namespace OutOfPhase
                 // process objects
 
                 long start = Timing.QueryPerformanceCounterFast();
-                for (int i = processor; i < SynthState.CombinedPlayArray.Length; i++)
+                for (int i = processor; i < SynthState.CombinedPlayArray.Count; i++)
                 {
                     object o = SynthState.CombinedPlayArray[i];
                     Debug.Assert((o is PlayListNodeRec) || (o is SecEffRec));
@@ -3338,6 +3715,10 @@ namespace OutOfPhase
                         {
                             if (Interlocked.CompareExchange(ref CurrentEffectHandle.processed, 1, 0) == 0)
                             {
+                                // set per-track context state that resides in the params structure
+                                SynthParamsP.perTrack.CodeCenter = CurrentEffectHandle.codeCenter;
+                                SynthParamsP.perTrack.Dictionary = CurrentEffectHandle.dictionary;
+
                                 SynthGenerateOneCycleParallelPhaseSection(
                                     processor,
                                     SynthState,
@@ -3350,7 +3731,7 @@ namespace OutOfPhase
                 }
 
 #if DEBUG
-                for (int ii = 0; ii < SynthState.SectionArrayAll.Length; ii++)
+                for (int ii = 0; ii < SynthState.SectionArrayAll.Count; ii++)
                 {
                     SecEffRec section = SynthState.SectionArrayAll[ii];
                     if (SynthParamsP.SectionWorkspaceUsed[section.sectionInputAccumulatorIndex])
@@ -3446,6 +3827,14 @@ namespace OutOfPhase
 
                     AuxThreadLoop(processor, SynthState);
                 }
+                catch (ObjectDisposedException exception)
+                {
+                    // if something bad happens the main thread might yank the WaitEvents from under us
+#if DEBUG
+                    Debug.Assert(false, exception.Message);
+                    Debugger.Log(0, null, exception.ToString() + Environment.NewLine);
+#endif
+                }
                 finally
                 {
                     priorityBoost.Revert(false/*mainThread*/);
@@ -3465,6 +3854,7 @@ namespace OutOfPhase
             DataOutCallbackMethod<V> DataOutCallback,
             V DataOutRefcon,
             IStoppedTask Stopped,
+            SynthCycleClientCallback clientCycleCallback,
             out SynthErrorInfoRec ErrorInfoOut)
         {
             ErrorInfoOut = null;
@@ -3476,7 +3866,8 @@ namespace OutOfPhase
                 // Results are posted to ScoreWorkspace
                 SynthErrorCodes Result = SynthStateRec.SynthGenerateOneCycle(
                     SynthState,
-                    out nActualFrames);
+                    out nActualFrames,
+                    clientCycleCallback);
                 if (((Result != SynthErrorCodes.eSynthDone) && (Result != SynthErrorCodes.eSynthDoneNoData))
                     || ((Result == SynthErrorCodes.eSynthDone) && (nActualFrames == 0)))
                 {
@@ -3524,9 +3915,9 @@ namespace OutOfPhase
         /* playback should occur.  if KeyTrack is null, then playback begins at the beginning. */
         /* the rate parameters are in operations per second. */
         public static SynthErrorCodes DoSynthesizer<V>(
-            Document Document,
             DataOutCallbackMethod<V> DataOutCallback,
             V DataOutRefcon,
+            Document document,
             List<TrackObjectRec> ListOfTracks,
             TrackObjectRec KeyTrack,
             int FrameToStartAt,
@@ -3540,9 +3931,11 @@ namespace OutOfPhase
             bool WriteSummary,
             out SynthErrorInfoRec ErrorInfoOut,
             TextWriter InteractionLog,
-            bool deterministic,// now ignored - control by setting randomSeed to null or int
             int? randomSeed,
-            AutomationSettings automationSettings)
+            bool stayActiveIfNoFrames,
+            bool robust,
+            AutomationSettings automationSettings,
+            SynthCycleClientCallback clientCycleCallback)
         {
             SynthErrorCodes Error;
             DateTime StartTime;
@@ -3597,7 +3990,7 @@ namespace OutOfPhase
                                 SynthErrorInfoRec InitErrorInfo;
                                 Error = SynthStateRec.InitializeSynthesizer(
                                     out SynthState,
-                                    Document,
+                                    document,
                                     ListOfTracks,
                                     KeyTrack,
                                     FrameToStartAt,
@@ -3609,8 +4002,9 @@ namespace OutOfPhase
                                     ScanningGap,
                                     out InitErrorInfo,
                                     InteractionLog,
-                                    deterministic,// now ignored - control by setting randomSeed to null or int
                                     randomSeed,
+                                    stayActiveIfNoFrames,
+                                    robust,
                                     automationSettings);
                                 if (Error != SynthErrorCodes.eSynthDone)
                                 {
@@ -3648,12 +4042,21 @@ namespace OutOfPhase
                                     priorityBoost.Boost(true/*mainThread*/);
 
                                     StartTime = DateTime.UtcNow;
-                                    Error = SynthesizerMainLoop(
-                                        SynthState,
-                                        DataOutCallback,
-                                        DataOutRefcon,
-                                        Stopper,
-                                        out ErrorInfo);
+                                    try// TODO:remove
+                                    {
+                                        Error = SynthesizerMainLoop(
+                                            SynthState,
+                                            DataOutCallback,
+                                            DataOutRefcon,
+                                            Stopper,
+                                            clientCycleCallback,
+                                            out ErrorInfo);
+                                    }
+                                    catch (Exception exception)// TODO:remove
+                                    {
+                                        Debugger.Break(); // TODO:remove
+                                        throw;
+                                    }
                                     EndTime = DateTime.UtcNow;
 
                                 }
@@ -3668,6 +4071,8 @@ namespace OutOfPhase
                                 {
                                     if (Error != SynthErrorCodes.eSynthDone)
                                     {
+                                        Thread.VolatileWrite(ref SynthState.exit, 1);
+
                                         SynthStateRec.FinalizeSynthesizer(
                                             SynthState,
                                             false/*writeOutputLogs*/);
@@ -3981,6 +4386,7 @@ namespace OutOfPhase
         private const string StrUndefinedWaveTable = "Undefined wave table referenced.";
         private const string StrUndefinedSample = "Undefined sample referenced.";
         private const string StrUndefinedFunction = "Undefined function referenced.";
+        private const string StrUndefinedTrack = "Track not found.";
         private const string StrTypeMismatchFunction = "Actual function type does not match expected type.";
         private const string StrTypeMismatchFunctionMultiple = "None of the specified functions match the expected function type.";
         private const string StrPossibleInfiniteSequenceLoop = "The track appeared to have an infinite loop in sequencing.";
@@ -3999,6 +4405,7 @@ namespace OutOfPhase
         private const string StrUserEffectFunctionEvalError = "An error ocurred evaluating function in user effect.";
         private const string StrUndefinedPitchTable = "Load pitch table specified an undefined built-in table.";
         private const string StrPluggableParameterOutOfRange = "Parameter to pluggable processor was out of range.";
+        private const string StrUnableToResetFrameIndexAfterFrameArrayUpdate = "Unable to determine frame index after frame array update.";
 
         private static readonly SERec[] ErrorMessages = new SERec[]
         {
@@ -4008,6 +4415,7 @@ namespace OutOfPhase
             new SERec(SynthErrorSubCodes.eSynthErrorExUndefinedWaveTable, StrUndefinedWaveTable),
             new SERec(SynthErrorSubCodes.eSynthErrorExUndefinedSample, StrUndefinedSample),
             new SERec(SynthErrorSubCodes.eSynthErrorExUndefinedFunction, StrUndefinedFunction),
+            new SERec(SynthErrorSubCodes.eSynthErrorExUndefinedTrack, StrUndefinedTrack),
             new SERec(SynthErrorSubCodes.eSynthErrorExTypeMismatchFunction, StrTypeMismatchFunction),
             new SERec(SynthErrorSubCodes.eSynthErrorExTypeMismatchFunctionMultiple, StrTypeMismatchFunctionMultiple),
             new SERec(SynthErrorSubCodes.eSynthErrorExPossibleInfiniteSequenceLoop, StrPossibleInfiniteSequenceLoop),
@@ -4026,6 +4434,7 @@ namespace OutOfPhase
             new SERec(SynthErrorSubCodes.eSynthErrorExUserEffectFunctionEvalError, StrUserEffectFunctionEvalError),
             new SERec(SynthErrorSubCodes.eSynthErrorExUndefinedPitchTable, StrUndefinedPitchTable),
             new SERec(SynthErrorSubCodes.eSynthErrorExPluggableParameterOutOfRange, StrPluggableParameterOutOfRange),
+            new SERec(SynthErrorSubCodes.eSynthErrorExUnableToResetFrameIndexAfterFrameArrayUpdate, StrUnableToResetFrameIndexAfterFrameArrayUpdate),
         };
 
         /* display synth error */
@@ -4034,7 +4443,7 @@ namespace OutOfPhase
             SynthErrorInfoRec ErrorEx)
         {
 #if DEBUG
-            for (int i = 0; i < ErrorMessages.Length; i += 1)
+            for (int i = 0; i < ErrorMessages.Length; i++)
             {
                 if (ErrorMessages[i].ErrorEx != i + SynthErrorSubCodes.eSynthErrorEx_Start)
                 {

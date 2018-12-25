@@ -1,5 +1,5 @@
 ﻿/*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -22,10 +22,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
 using System.Drawing;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
@@ -717,7 +715,6 @@ namespace OutOfPhase
 
                 if (menuItem == menuStrip.playTrackFromHereToolStripMenuItem)
                 {
-#if true // prevents "Add New Data Source..." from working
                     SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                         mainWindow.DisplayName,
                         OutputDeviceEnumerator.OutputDeviceGetDestination,
@@ -740,9 +737,11 @@ namespace OutOfPhase
                             false/*clipWarning*/,
                             playPrefsProvider.Oversampling,
                             playPrefsProvider.ShowSummary,
-                            playPrefsProvider.Deterministic,
-                            playPrefsProvider.Seed,
-                            null/*automationSettings*/),
+                            playPrefsProvider.Deterministic ? (int?)playPrefsProvider.Seed : null,
+                            false/*stayActiveIfNoFrames*/,
+                            false/*robust*/,
+                            null/*automationSettings*/,
+                            null/*clientCycleCallback*/),
                         SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.SynthesizerCompletion,
                         mainWindow,
                         playPrefsProvider.NumChannels,
@@ -750,12 +749,11 @@ namespace OutOfPhase
                         playPrefsProvider.SamplingRate,
                         playPrefsProvider.Oversampling,
                         true/*showProgressWindow*/,
-                        true/*modal*/);
-#endif
+                        true/*modal*/,
+                        null/*metering*/);
                 }
                 else
                 {
-#if true // prevents "Add New Data Source..." from working
                     SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.Do(
                         mainWindow.DisplayName,
                         OutputSelectableFileDestinationHandler.OutputSelectableFileGetDestination,
@@ -778,9 +776,11 @@ namespace OutOfPhase
                             false/*clipWarning*/,
                             playPrefsProvider.Oversampling,
                             playPrefsProvider.ShowSummary,
-                            playPrefsProvider.Deterministic,
-                            playPrefsProvider.Seed,
-                            null/*automationSettings*/),
+                            playPrefsProvider.Deterministic ? (int?)playPrefsProvider.Seed : null,
+                            false/*stayActiveIfNoFrames*/,
+                            false/*robust*/,
+                            null/*automationSettings*/,
+                            null/*clientCycleCallback*/),
                         SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.SynthesizerCompletion,
                         mainWindow,
                         playPrefsProvider.NumChannels,
@@ -788,8 +788,8 @@ namespace OutOfPhase
                         playPrefsProvider.SamplingRate,
                         playPrefsProvider.Oversampling,
                         true/*showProgressWindow*/,
-                        true/*modal*/);
-#endif
+                        true/*modal*/,
+                        null/*metering*/);
                 }
                 return true;
             }
@@ -829,7 +829,6 @@ namespace OutOfPhase
 
                 if (menuItem == menuStrip.playAllFromHereToolStripMenuItem)
                 {
-#if true // prevents "Add New Data Source..." from working
                     SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                         mainWindow.DisplayName,
                         OutputDeviceEnumerator.OutputDeviceGetDestination,
@@ -852,9 +851,11 @@ namespace OutOfPhase
                             false/*clipWarning*/,
                             playPrefsProvider.Oversampling,
                             playPrefsProvider.ShowSummary,
-                            playPrefsProvider.Deterministic,
-                            playPrefsProvider.Seed,
-                            null/*automationSettings*/),
+                            playPrefsProvider.Deterministic ? (int?)playPrefsProvider.Seed : null,
+                            false/*stayActiveIfNoFrames*/,
+                            false/*robust*/,
+                            null/*automationSettings*/,
+                            null/*clientCycleCallback*/),
                         SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.SynthesizerCompletion,
                         mainWindow,
                         playPrefsProvider.NumChannels,
@@ -862,12 +863,11 @@ namespace OutOfPhase
                         playPrefsProvider.SamplingRate,
                         playPrefsProvider.Oversampling,
                         true/*showProgressWindow*/,
-                        true/*modal*/);
-#endif
+                        true/*modal*/,
+                        null/*metering*/);
                 }
                 else
                 {
-#if true // prevents "Add New Data Source..." from working
                     SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.Do(
                         mainWindow.DisplayName,
                         OutputSelectableFileDestinationHandler.OutputSelectableFileGetDestination,
@@ -890,9 +890,11 @@ namespace OutOfPhase
                             false/*clipWarning*/,
                             playPrefsProvider.Oversampling,
                             playPrefsProvider.ShowSummary,
-                            playPrefsProvider.Deterministic,
-                            playPrefsProvider.Seed,
-                            null/*automationSettings*/),
+                            playPrefsProvider.Deterministic ? (int?)playPrefsProvider.Seed : null,
+                            false/*stayActiveIfNoFrames*/,
+                            false/*robust*/,
+                            null/*automationSettings*/,
+                            null/*clientCycleCallback*/),
                         SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.SynthesizerCompletion,
                         mainWindow,
                         playPrefsProvider.NumChannels,
@@ -900,8 +902,8 @@ namespace OutOfPhase
                         playPrefsProvider.SamplingRate,
                         playPrefsProvider.Oversampling,
                         true/*showProgressWindow*/,
-                        true/*modal*/);
-#endif
+                        true/*modal*/,
+                        null/*metering*/);
                 }
                 return true;
             }

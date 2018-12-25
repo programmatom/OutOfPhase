@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,10 +20,8 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace OutOfPhase
 {
@@ -172,7 +170,7 @@ namespace OutOfPhase
     /* value that is 1 000 000 (one million) times the decimal value (micro-unit precision) */
     /* It's range is -1999.999999 to 1999.999999 */
     [StructLayout(LayoutKind.Auto)]
-    public struct LargeBCDType : IEquatable<LargeBCDType>
+    public struct LargeBCDType : IEquatable<LargeBCDType>, IComparable<LargeBCDType>
     {
         public int rawInt32;
         public const int LARGEBCDPRECISION = 1000000;
@@ -225,6 +223,21 @@ namespace OutOfPhase
         {
             return this.rawInt32 == other.rawInt32;
         }
+
+        public int CompareTo(LargeBCDType other)
+        {
+            return this.rawInt32.CompareTo(other.rawInt32);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return this.Equals((LargeBCDType)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return this.rawInt32.GetHashCode();
+        }
     }
 
 
@@ -232,7 +245,7 @@ namespace OutOfPhase
     /* value that is 1000 (one thousand) times the decimal value. */
     /* It's range is -1999999.999 to 1999999.999 */
     [StructLayout(LayoutKind.Auto)]
-    public struct SmallExtBCDType : IEquatable<SmallExtBCDType>
+    public struct SmallExtBCDType : IEquatable<SmallExtBCDType>, IComparable<SmallExtBCDType>
     {
         public int rawInt32;
         public const int SMALLEXTBCDPRECISION = 1000;
@@ -279,6 +292,21 @@ namespace OutOfPhase
         public bool Equals(SmallExtBCDType other)
         {
             return this.rawInt32 == other.rawInt32;
+        }
+
+        public int CompareTo(SmallExtBCDType other)
+        {
+            return this.rawInt32.CompareTo(other.rawInt32);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return this.Equals((SmallExtBCDType)obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return this.rawInt32.GetHashCode();
         }
     }
 

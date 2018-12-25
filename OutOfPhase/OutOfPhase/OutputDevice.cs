@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -22,11 +22,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
-using System.Windows.Forms;
 
 namespace OutOfPhase
 {
@@ -37,7 +34,6 @@ namespace OutOfPhase
     // https://msdn.microsoft.com/en-us/library/dd370811%28v=vs.85%29.aspx
 
 
-#if true // prevents "Add New Data Source..." from working
     public class OutputDeviceDestination
     {
     }
@@ -310,7 +306,7 @@ namespace OutOfPhase
             int offset,
             int points)
         {
-        Retry:
+            Retry:
             int padding;
             int hr = audioClient.GetCurrentPadding(out padding);
             if (hr >= 0)
@@ -446,7 +442,6 @@ namespace OutOfPhase
             }
         }
     }
-#endif
 
     #region WASAPI Interop
     public enum EDataFlow
@@ -1063,7 +1058,6 @@ namespace OutOfPhase
     }
     #endregion
 
-#if true // prevents "Add New Data Source..." from working
     public class OutputDeviceLegacyDestinationHandler : DestinationHandler<OutputDeviceDestination>, IBufferLoading
     {
         private readonly NumChannelsType channels;
@@ -1283,7 +1277,7 @@ namespace OutOfPhase
         {
             if (pointCount != 0)
             {
-            Restart:
+                Restart:
                 try
                 {
                     while (!avail.WaitOne(1000))
@@ -1439,7 +1433,6 @@ namespace OutOfPhase
             }
         }
     }
-#endif
 
     #region Legacy Interop
     public static class WaveOut

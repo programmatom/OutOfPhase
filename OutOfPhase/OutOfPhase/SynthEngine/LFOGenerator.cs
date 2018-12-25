@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -545,7 +545,7 @@ namespace OutOfPhase
 
                         LFOVector[i].WaveTableSourceSelector = NewMultiWaveTable(
                             GetLFOSpecSampleSelector(OneLFOSpec),
-                            SynthParams.Dictionary);
+                            SynthParams.perTrack.Dictionary);
                         LFOVector[i].WaveTableWasDefined = GetMultiWaveTableReference(
                             LFOVector[i].WaveTableSourceSelector,
                             FreqForMultisampling,

@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -238,7 +238,7 @@ namespace OutOfPhase
 
                             WaveT.WaveTableSourceSelector = NewMultiWaveTable(
                                 FMSynthWaveStmtGetSampleIntervalList(WaveTmpl),
-                                SynthParams.Dictionary);
+                                SynthParams.perTrack.Dictionary);
 
                             /* these are just references */
                             WaveT.IndexEnvelopeTemplate = FMSynthWaveStmtGetIndexEnvelope(WaveTmpl);

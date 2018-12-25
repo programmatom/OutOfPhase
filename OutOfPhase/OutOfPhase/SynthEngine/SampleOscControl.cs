@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -85,7 +85,7 @@ namespace OutOfPhase
 
                 Template.SampleSourceSelector = NewMultiSample(
                     OscillatorGetSampleIntervalList(Oscillator),
-                    SynthParams.Dictionary);
+                    SynthParams.perTrack.Dictionary);
 
                 /* it might be better to handle divisor and multiplier separately -- we would */
                 /* want to do that if we were trying to guarantee that all harmonic */

@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -23,9 +23,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Data;
-using System.Drawing;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
@@ -335,7 +332,7 @@ namespace OutOfPhase
             }
             Debug.Assert(false);
             throw new ArgumentException();
-        Found:
+            Found:
 
             // copy table with bit conversion
             WaveTableStorageRec newTable = new WaveTableStorageRec(
@@ -718,7 +715,6 @@ namespace OutOfPhase
 
             IPlayPrefsProvider playPrefsProvider = mainWindow.GetPlayPrefsProvider();
 
-#if true // prevents "Add New Data Source..." from working
             state = WaveTableTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 mainWindow.DisplayName,
                 OutputDeviceEnumerator.OutputDeviceGetDestination,
@@ -740,7 +736,6 @@ namespace OutOfPhase
                 1/*oversampling*/,
                 false/*showProgressWindow*/,
                 false/*modal*/);
-#endif
         }
 
         private void buttonTest_MouseUp(object sender, MouseEventArgs e)
@@ -758,7 +753,6 @@ namespace OutOfPhase
         }
     }
 
-#if true // prevents "Add New Data Source..." from working
     public class WaveTableTestGeneratorParams<T, W>
     {
         public WaveTableStorageRec data;
@@ -816,8 +810,9 @@ namespace OutOfPhase
                 bits,
                 samplingRate,
                 oversamplingFactor,
-                showProgressWindow,
-                modal);
+                showProgressWindow, // TODO: replace non-changing arguments with constants
+                modal,
+                null/*metering*/);
         }
 
         public static void MainLoop<U>(
@@ -923,5 +918,4 @@ namespace OutOfPhase
         {
         }
     }
-#endif
 }

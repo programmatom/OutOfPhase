@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -21,11 +21,7 @@
 */
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.IO;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
@@ -190,7 +186,6 @@ namespace OutOfPhase
                 }
             }
 
-#if true // prevents "Add New Data Source..." from working
 #if false
             state =
 #endif
@@ -216,7 +211,6 @@ namespace OutOfPhase
                 1/*oversampling*/,
                 true/*showProgressWindow*/,
                 true/*modal*/);
-#endif
         }
 
 #if false
@@ -259,7 +253,6 @@ namespace OutOfPhase
         }
     }
 
-#if true // prevents "Add New Data Source..." from working
     public class PlayFileWithEffectsGeneratorParams<T, W>
     {
         public Stream stream;
@@ -317,7 +310,8 @@ namespace OutOfPhase
                 samplingRate,
                 oversamplingFactor,
                 showProgressWindow,
-                modal);
+                modal,
+                null/*metering*/);
         }
 
         public static void MainLoop<U>(
@@ -342,8 +336,11 @@ namespace OutOfPhase
                     (LargeBCDType)0d/*ScanningGap*/,
                     out generatorParams.errorInfo,
                     TextWriter.Synchronized(generatorParams.interactionLog),
-                    generatorParams.mainWindow.Document.Deterministic,
-                    generatorParams.mainWindow.Document.Seed,
+                    generatorParams.mainWindow.Document.Deterministic
+                        ? (int?)generatorParams.mainWindow.Document.Seed
+                        : null,
+                    false/*stayActiveIfNoFrames*/,
+                    false/*robust*/,
                     new Synthesizer.AutomationSettings());
                 if (generatorParams.result != Synthesizer.SynthErrorCodes.eSynthDone)
                 {
@@ -352,6 +349,7 @@ namespace OutOfPhase
 
                 // HACK!
                 generatorParams.result = Synthesizer.NewTrackEffectGenerator(
+                    null/*trackParamProvider*/,
                     generatorParams.effectSpec,
                     generatorParams.synthState.SynthParams0,
                     out generatorParams.synthState.ScoreEffectProcessor);
@@ -479,5 +477,4 @@ namespace OutOfPhase
             }
         }
     }
-#endif
 }

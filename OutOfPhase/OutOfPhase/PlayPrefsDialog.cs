@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -22,10 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.Drawing;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
@@ -389,7 +386,7 @@ namespace OutOfPhase
                     included.Add(inclusion.Track);
                 }
             }
-#if true // prevents "Add New Data Source..." from working
+
             SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 mainWindow.DisplayName,
                 OutputDeviceEnumerator.OutputDeviceGetDestination,
@@ -412,9 +409,11 @@ namespace OutOfPhase
                     source.ClipWarning,
                     source.Oversampling,
                     source.ShowSummary,
-                    source.Deterministic,
-                    source.Seed,
-                    null/*automationSettings*/),
+                    source.Deterministic ? (int?)source.Seed : null,
+                    false/*stayActiveIfNoFrames*/,
+                    false/*robust*/,
+                    null/*automationSettings*/,
+                    null/*clientCycleCallback*/),
                 SynthesizerGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.SynthesizerCompletion,
                 mainWindow,
                 source.NumChannels,
@@ -422,8 +421,8 @@ namespace OutOfPhase
                 source.SamplingRate,
                 source.Oversampling,
                 true/*showProgressWindow*/,
-                true/*modal*/);
-#endif
+                true/*modal*/,
+                null/*metering*/);
         }
 
         private void buttonPlayToDisk_Click(object sender, EventArgs e)
@@ -442,7 +441,7 @@ namespace OutOfPhase
                     included.Add(inclusion.Track);
                 }
             }
-#if true // prevents "Add New Data Source..." from working
+
             SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.Do(
                 mainWindow.DisplayName,
                 OutputSelectableFileDestinationHandler.OutputSelectableFileGetDestination,
@@ -465,9 +464,11 @@ namespace OutOfPhase
                     source.ClipWarning,
                     source.Oversampling,
                     source.ShowSummary,
-                    source.Deterministic,
-                    source.Seed,
-                    null/*automationSettings*/),
+                    source.Deterministic ? (int?)source.Seed : null,
+                    false/*stayActiveIfNoFrames*/,
+                    false/*robust*/,
+                    null/*automationSettings*/,
+                    null/*clientCycleCallback*/),
                 SynthesizerGeneratorParams<OutputSelectableFileDestination, OutputSelectableFileArguments>.SynthesizerCompletion,
                 mainWindow,
                 source.NumChannels,
@@ -475,8 +476,8 @@ namespace OutOfPhase
                 source.SamplingRate,
                 source.Oversampling,
                 true/*showProgressWindow*/,
-                true/*modal*/);
-#endif
+                true/*modal*/,
+                null/*metering*/);
         }
 
         private void buttonSelectAllTracks_Click(object sender, EventArgs e)

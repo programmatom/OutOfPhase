@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,9 +20,7 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 
 namespace OutOfPhase
 {
@@ -647,6 +645,13 @@ namespace OutOfPhase
                 this.Order = Order;
 
                 this.broken = broken;
+
+                this.iir0.Y8 = 0;
+                this.iir0.Y9 = 0;
+                this.iir1.Y8 = 0;
+                this.iir1.Y9 = 0;
+                this.iir2.Y8 = 0;
+                this.iir2.Y9 = 0;
             }
 
             private static void RLP2InitCoeffHelper(
@@ -737,6 +742,7 @@ namespace OutOfPhase
                 double Q,
                 double SamplingRate)
             {
+                Cutoff = Math.Max(1, Math.Min(SamplingRate / 2 - 1, Cutoff));
                 if ((Cutoff == Filter.OldCutoff) && (Q == Filter.OldQ))
                 {
                     return;

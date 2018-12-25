@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -125,16 +125,20 @@ namespace OutOfPhase
             TrackObjectRec[] tracks = new List<TrackObjectRec>(document.TrackList).ToArray();
 
             /* set stable sort subkey */
+            Dictionary<TrackObjectRec, int> baseOrdering = new Dictionary<TrackObjectRec, int>();
             for (int i = 0; i < tracks.Length; i++)
             {
-                tracks[i].AuxVal = i;
+                baseOrdering.Add(tracks[i], i);
             }
 
             Array.Sort(
                 tracks,
                 delegate (TrackObjectRec left, TrackObjectRec right)
                 {
-                    return Synthesizer.SynthStateRec.CompareTracksOnSection(left, right, document.SectionList);
+                    return Synthesizer.SynthStateRec.CompareTracksOnSection(
+                        new Synthesizer.SynthStateRec.TrackContextRec(left, null, null, baseOrdering[left]),
+                        new Synthesizer.SynthStateRec.TrackContextRec(right, null, null, baseOrdering[right]),
+                        document.SectionList);
                 });
 
             SectionObjectRec section = null;

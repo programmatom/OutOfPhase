@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -203,7 +203,7 @@ namespace OutOfPhase
             EvalErrors Error = PcodeSystem.EvaluatePcode(
                 SynthParams.FormulaEvalContext,
                 SpecifiedFormula,
-                SynthParams.CodeCenter,
+                SynthParams.perTrack.CodeCenter,
                 out ErrorInfo,
                 PcodeExternsNull.Default,
                 ref SynthParams.pcodeThreadContext);
@@ -271,7 +271,7 @@ namespace OutOfPhase
             EvalErrors Error = PcodeSystem.EvaluatePcode(
                 SynthParams.FormulaEvalContext,
                 Formula,
-                SynthParams.CodeCenter,
+                SynthParams.perTrack.CodeCenter,
                 out ErrorInfo,
                 PcodeExternsNull.Default,
                 ref SynthParams.pcodeThreadContext);
@@ -337,7 +337,7 @@ namespace OutOfPhase
             EvalErrors Error = PcodeSystem.EvaluatePcode(
                 SynthParams.FormulaEvalContext,
                 Formula,
-                SynthParams.CodeCenter,
+                SynthParams.perTrack.CodeCenter,
                 out ErrorInfo,
                 PcodeExternsNull.Default,
                 ref SynthParams.pcodeThreadContext);

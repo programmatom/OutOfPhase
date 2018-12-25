@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -128,8 +128,11 @@ namespace OutOfPhase
         {
             // stage non-databound settings
             localPrefs.Concurrency = concurrency;
-            localPrefs.OutputDevice = devices[comboBoxOutputDevice.SelectedIndex].Key;
-            localPrefs.OutputDeviceName = devices[comboBoxOutputDevice.SelectedIndex].Value;
+            if (comboBoxOutputDevice.SelectedIndex >= 0)
+            {
+                localPrefs.OutputDevice = devices[comboBoxOutputDevice.SelectedIndex].Key;
+                localPrefs.OutputDeviceName = devices[comboBoxOutputDevice.SelectedIndex].Value;
+            }
             localPrefs.PriorityMode = comboBoxPriority.SelectedIndex;
             localPrefs.AdditionalUIZoom = ZoomLevels[comboBoxZoom.SelectedIndex];
 

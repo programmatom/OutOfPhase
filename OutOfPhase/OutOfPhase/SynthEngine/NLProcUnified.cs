@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -82,7 +82,7 @@ namespace OutOfPhase
                 /* get the wave table to use for this instance */
                 string Name = GetNLProcSpecWaveTableName(Template);
                 if (!WaveSampDictGetWaveTableInfo(
-                    SynthParams.Dictionary,
+                    SynthParams.perTrack.Dictionary,
                     Name,
                     out NLProc.WaveTableMatrix,
                     out NLProc.FramesPerTable,

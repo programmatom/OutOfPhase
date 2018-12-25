@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,13 +20,11 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 #if VECTOR
 using System.Numerics;
 #endif
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace OutOfPhase
 {
@@ -930,6 +928,45 @@ namespace OutOfPhase
             return new Vector<float>(t);
         }
 #endif
+
+        public static bool FloatVectorDetectNaNInf(
+            float[] source, // permitted to be non-vector-aligned
+            int sourceOffset,
+            int count)
+        {
+            int i = 0;
+
+#if VECTOR
+            if (EnableVector)
+            {
+                Vector<int> latch = Vector<int>.Zero;
+                Vector<int> mask = new Vector<int>(0x7f800000); // nan/inf
+                for (; i <= count - Vector<float>.Count; i += Vector<float>.Count)
+                {
+                    Vector<float> input = new Vector<float>(source, sourceOffset + i);
+                    Vector<int> b = Vector.AsVectorInt32(input);
+                    b = b & mask;
+                    latch = latch | Vector.Equals(mask, b);
+                }
+                if (latch != Vector<int>.Zero)
+                {
+                    return true;
+                }
+            }
+#endif
+
+            for (; i < count; i++)
+            {
+                float v = source[sourceOffset + i];
+
+                if (Single.IsNaN(v) || Single.IsInfinity(v))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         // remove non-numbers
         public static void FloatVectorCopyReplaceNaNInf(
@@ -1898,8 +1935,6 @@ namespace OutOfPhase
                 youtVector[youtVectorOffset + i + 3] = Z3 + Y3 * outputScaling;
             }
 
-        /* cleanup loop */
-        Cleanup:
             for (; i < count; i++)
             {
                 float X0 = xinVector[xinVectorOffset + i];

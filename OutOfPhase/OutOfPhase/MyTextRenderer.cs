@@ -1,5 +1,5 @@
 ﻿/*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -33,6 +33,7 @@ namespace OutOfPhase
     {
         public static void DrawText(Graphics graphics, string text, Font font, Point pt, Color foreColor)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -58,6 +59,7 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Rectangle bounds, Color foreColor)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -83,6 +85,7 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Point pt, Color foreColor, Color backColor)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -108,6 +111,7 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Point pt, Color foreColor, TextFormatFlags flags)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -133,6 +137,7 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Rectangle bounds, Color foreColor, Color backColor)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -158,6 +163,7 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Rectangle bounds, Color foreColor, TextFormatFlags flags)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -183,6 +189,7 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Point pt, Color foreColor, Color backColor, TextFormatFlags flags)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -208,6 +215,7 @@ namespace OutOfPhase
 
         public static void DrawText(Graphics graphics, string text, Font font, Rectangle bounds, Color foreColor, Color backColor, TextFormatFlags flags)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -260,6 +268,7 @@ namespace OutOfPhase
 
         public static Size MeasureText(Graphics graphics, string text, Font font)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -312,6 +321,7 @@ namespace OutOfPhase
 
         public static Size MeasureText(Graphics graphics, string text, Font font, Size proposedSize)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -364,6 +374,7 @@ namespace OutOfPhase
 
         public static Size MeasureText(Graphics graphics, string text, Font font, Size proposedSize, TextFormatFlags flags)
         {
+            text = NonNullString(text);
         Retry:
             try
             {
@@ -422,6 +433,11 @@ namespace OutOfPhase
             {
                 DirectWriteTextRenderer.FinalizeBeforeShutdown();
             }
+        }
+
+        private static string NonNullString(string s)
+        {
+            return s != null ? s : String.Empty;
         }
     }
 }

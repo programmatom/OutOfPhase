@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -23,7 +23,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace OutOfPhase
 {
@@ -86,11 +85,11 @@ namespace OutOfPhase
             public bool DurationAdjustAdditive; /* True = additive, False = multiplicative */
         }
 
-        private delegate double GetDefaultValueMethod(TrackObjectRec TrackObj);
+        private delegate double GetDefaultValueMethod(ITrackParameterProvider TrackObj);
 
         /* init tracker helper */
         private static void InitTrackerHelper(
-            TrackObjectRec Template,
+            ITrackParameterProvider Template,
             GetDefaultValueMethod GetDefaultValue,
             ref IncrParamOneRec Tracker)
         {
@@ -111,9 +110,98 @@ namespace OutOfPhase
             Tracker.nd.ChangeCountdown = 0;
         }
 
+        public interface ITrackParameterProvider
+        {
+            double DefaultStereoPositioning { get; }
+            double DefaultOverallLoudness { get; }
+            double DefaultReleasePoint1 { get; }
+            NoteFlags DefaultReleasePoint1ModeFlag { get; }
+            double DefaultReleasePoint2 { get; }
+            NoteFlags DefaultReleasePoint2ModeFlag { get; }
+            double DefaultAccent1 { get; }
+            double DefaultAccent2 { get; }
+            double DefaultAccent3 { get; }
+            double DefaultAccent4 { get; }
+            double DefaultAccent5 { get; }
+            double DefaultAccent6 { get; }
+            double DefaultAccent7 { get; }
+            double DefaultAccent8 { get; }
+            double DefaultPitchDisplacementDepthAdjust { get; }
+            double DefaultPitchDisplacementRateAdjust { get; }
+            double DefaultPitchDisplacementStartPoint { get; }
+            NoteFlags DefaultPitchDisplacementStartPointModeFlag { get; }
+            double DefaultPortamentoDuration { get; }
+            double DefaultHurryUpFactor { get; }
+            double DefaultDetune { get; }
+            NoteFlags DefaultDetuneModeFlag { get; }
+            double DefaultEarlyLateAdjust { get; }
+            double DefaultDuration { get; }
+            NoteFlags DefaultDurationModeFlag { get; }
+            double DefaultTrackAccent1 { get; } // TODO: actually read these
+            double DefaultTrackAccent2 { get; }
+            double DefaultTrackAccent3 { get; }
+            double DefaultTrackAccent4 { get; }
+            double DefaultTrackAccent5 { get; }
+            double DefaultTrackAccent6 { get; }
+            double DefaultTrackAccent7 { get; }
+            double DefaultTrackAccent8 { get; }
+            int DefaultTranspose { get; }
+            string DefaultFrequencyModel { get; }
+            int DefaultFrequencyModelTonicOffset { get; }
+            bool DefaultFrequencyModelRelativeToCurrent { get; }
+        }
+
+        public class TrackObjectParameterProxyRec : ITrackParameterProvider
+        {
+            private readonly TrackObjectRec track;
+
+            public TrackObjectParameterProxyRec(TrackObjectRec track)
+            {
+                this.track = track;
+            }
+
+            public double DefaultStereoPositioning { get { return track.DefaultStereoPositioning; } }
+            public double DefaultOverallLoudness { get { return track.DefaultOverallLoudness; } }
+            public double DefaultReleasePoint1 { get { return track.DefaultReleasePoint1; } }
+            public NoteFlags DefaultReleasePoint1ModeFlag { get { return track.DefaultReleasePoint1ModeFlag; } }
+            public double DefaultReleasePoint2 { get { return track.DefaultReleasePoint2; } }
+            public NoteFlags DefaultReleasePoint2ModeFlag { get { return track.DefaultReleasePoint2ModeFlag; } }
+            public double DefaultAccent1 { get { return track.DefaultAccent1; } }
+            public double DefaultAccent2 { get { return track.DefaultAccent2; } }
+            public double DefaultAccent3 { get { return track.DefaultAccent3; } }
+            public double DefaultAccent4 { get { return track.DefaultAccent4; } }
+            public double DefaultAccent5 { get { return track.DefaultAccent5; } }
+            public double DefaultAccent6 { get { return track.DefaultAccent6; } }
+            public double DefaultAccent7 { get { return track.DefaultAccent7; } }
+            public double DefaultAccent8 { get { return track.DefaultAccent8; } }
+            public double DefaultPitchDisplacementDepthAdjust { get { return track.DefaultPitchDisplacementDepthAdjust; } }
+            public double DefaultPitchDisplacementRateAdjust { get { return track.DefaultPitchDisplacementRateAdjust; } }
+            public double DefaultPitchDisplacementStartPoint { get { return track.DefaultPitchDisplacementStartPoint; } }
+            public NoteFlags DefaultPitchDisplacementStartPointModeFlag { get { return track.DefaultPitchDisplacementStartPointModeFlag; } }
+            public double DefaultPortamentoDuration { get { return 0; } } // never had a default portamento parameter
+            public double DefaultHurryUpFactor { get { return track.DefaultHurryUpFactor; } }
+            public double DefaultDetune { get { return track.DefaultDetune; } }
+            public NoteFlags DefaultDetuneModeFlag { get { return track.DefaultDetuneModeFlag; } }
+            public double DefaultEarlyLateAdjust { get { return track.DefaultEarlyLateAdjust; } }
+            public double DefaultDuration { get { return track.DefaultDuration; } }
+            public NoteFlags DefaultDurationModeFlag { get { return track.DefaultDurationModeFlag; } }
+            public double DefaultTrackAccent1 { get { return 0; } } // never had track accent parameters
+            public double DefaultTrackAccent2 { get { return 0; } }
+            public double DefaultTrackAccent3 { get { return 0; } }
+            public double DefaultTrackAccent4 { get { return 0; } }
+            public double DefaultTrackAccent5 { get { return 0; } }
+            public double DefaultTrackAccent6 { get { return 0; } }
+            public double DefaultTrackAccent7 { get { return 0; } }
+            public double DefaultTrackAccent8 { get { return 0; } }
+            public int DefaultTranspose { get { return 0; } } // never had default transpose parameter
+            public string DefaultFrequencyModel { get { return null; } } // never had default frequency model
+            public int DefaultFrequencyModelTonicOffset { get { return 0; } } // never had default frequency model
+            public bool DefaultFrequencyModelRelativeToCurrent { get { return false; } } // never had default frequency model
+        }
+
         /* build a new incremental parameter updator */
         public static IncrParamUpdateRec NewInitializedParamUpdator(
-            TrackObjectRec Template,
+            ITrackParameterProvider Template,
             TempoControlRec TempoControl,
             SynthParamRec SynthParams)
         {
@@ -127,23 +215,23 @@ namespace OutOfPhase
                 Updator.FrequencyTableLastLoaded[i] = Math.Pow(2, i / 12d);
                 InitTrackerHelper(
                     Template,
-                    delegate (TrackObjectRec track) { return Updator.FrequencyTableLastLoaded[i]; },
+                    delegate (ITrackParameterProvider track) { return Updator.FrequencyTableLastLoaded[i]; },
                     ref Updator.FrequencyTable[i]);
             }
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultStereoPositioning; },
+                delegate (ITrackParameterProvider track) { return track.DefaultStereoPositioning; },
                 ref Updator.StereoPosition);
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultOverallLoudness; },
+                delegate (ITrackParameterProvider track) { return track.DefaultOverallLoudness; },
                 ref Updator.Volume);
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultReleasePoint1; },
+                delegate (ITrackParameterProvider track) { return track.DefaultReleasePoint1; },
                 ref Updator.ReleasePoint1);
 #if DEBUG
             if ((Template.DefaultReleasePoint1ModeFlag != NoteFlags.eRelease1FromStart)
@@ -157,7 +245,7 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultReleasePoint2; },
+                delegate (ITrackParameterProvider track) { return track.DefaultReleasePoint2; },
                 ref Updator.ReleasePoint2);
 #if DEBUG
             if ((Template.DefaultReleasePoint2ModeFlag != NoteFlags.eRelease2FromStart)
@@ -171,50 +259,50 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultAccent1; },
+                delegate (ITrackParameterProvider track) { return track.DefaultAccent1; },
                 ref Updator.Accent1);
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultAccent2; },
+                delegate (ITrackParameterProvider track) { return track.DefaultAccent2; },
                 ref Updator.Accent2);
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultAccent3; },
+                delegate (ITrackParameterProvider track) { return track.DefaultAccent3; },
                 ref Updator.Accent3);
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultAccent4; },
+                delegate (ITrackParameterProvider track) { return track.DefaultAccent4; },
                 ref Updator.Accent4);
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultAccent5; },
+                delegate (ITrackParameterProvider track) { return track.DefaultAccent5; },
                 ref Updator.Accent5);
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultAccent6; },
+                delegate (ITrackParameterProvider track) { return track.DefaultAccent6; },
                 ref Updator.Accent6);
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultAccent7; },
+                delegate (ITrackParameterProvider track) { return track.DefaultAccent7; },
                 ref Updator.Accent7);
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultAccent8; },
+                delegate (ITrackParameterProvider track) { return track.DefaultAccent8; },
                 ref Updator.Accent8);
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultPitchDisplacementDepthAdjust; },
+                delegate (ITrackParameterProvider track) { return track.DefaultPitchDisplacementDepthAdjust; },
                 ref Updator.PitchDisplacementDepthLimit);
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultPitchDisplacementRateAdjust; },
+                delegate (ITrackParameterProvider track) { return track.DefaultPitchDisplacementRateAdjust; },
                 ref Updator.PitchDisplacementRateLimit);
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultPitchDisplacementStartPoint; },
+                delegate (ITrackParameterProvider track) { return track.DefaultPitchDisplacementStartPoint; },
                 ref Updator.PitchDisplacementStartPoint);
 #if DEBUG
             if ((Template.DefaultPitchDisplacementStartPointModeFlag != NoteFlags.ePitchDisplacementStartFromStart)
@@ -228,12 +316,17 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultHurryUpFactor; },
+                delegate (ITrackParameterProvider track) { return track.DefaultPortamentoDuration; },
+                ref Updator.Portamento);
+
+            InitTrackerHelper(
+                Template,
+                delegate (ITrackParameterProvider track) { return track.DefaultHurryUpFactor; },
                 ref Updator.HurryUp);
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultDetune; },
+                delegate (ITrackParameterProvider track) { return track.DefaultDetune; },
                 ref Updator.Detune);
 #if DEBUG
             if ((Template.DefaultDetuneModeFlag != NoteFlags.eDetuningModeHalfSteps)
@@ -247,12 +340,12 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultEarlyLateAdjust; },
+                delegate (ITrackParameterProvider track) { return track.DefaultEarlyLateAdjust; },
                 ref Updator.EarlyLateAdjust);
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultDuration; },
+                delegate (ITrackParameterProvider track) { return track.DefaultDuration; },
                 ref Updator.DurationAdjust);
 #if DEBUG
             if ((Template.DefaultDurationModeFlag != NoteFlags.eDurationAdjustAdditive)
@@ -266,11 +359,22 @@ namespace OutOfPhase
 
             InitTrackerHelper(
                 Template,
-                delegate (TrackObjectRec track) { return track.DefaultDuration; },
+                delegate (ITrackParameterProvider track) { return track.DefaultDuration; },
                 ref Updator.Portamento);
 
             Updator.TempoControl = TempoControl;
-            Updator.TransposeHalfsteps = 0;
+            Updator.TransposeHalfsteps = Template.DefaultTranspose;
+
+            if (!String.IsNullOrEmpty(Template.DefaultFrequencyModel))
+            {
+                LoadPitchTable(
+                    Template.DefaultFrequencyModel,
+                    Template.DefaultFrequencyModelTonicOffset,
+                    Template.DefaultFrequencyModelRelativeToCurrent,
+                    Updator.FrequencyTable,
+                    Updator.FrequencyTableLastLoaded,
+                    SynthParams);
+            }
 
             return Updator;
         }
@@ -412,7 +516,7 @@ namespace OutOfPhase
             }
             else
             {
-                nd.Current = (double)TargetValue;
+                nd.Current = (double)TargetValue + nd.Current;
             }
         }
 
@@ -591,7 +695,7 @@ namespace OutOfPhase
                 Debug.Assert(tableName.StartsWith("!"));
                 tableName = tableName.Substring(1);
 
-                FuncCodeRec userFunction = SynthParams.CodeCenter.ObtainFunctionHandle(tableName);
+                FuncCodeRec userFunction = SynthParams.perTrack.CodeCenter.ObtainFunctionHandle(tableName);
                 if (userFunction == null)
                 {
                     SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUserParamFunctionEvalError;
@@ -624,7 +728,7 @@ namespace OutOfPhase
                 EvalErrors Error = PcodeSystem.EvaluatePcode(
                     SynthParams.FormulaEvalContext,
                     userFunction.GetFunctionPcode(),
-                    SynthParams.CodeCenter,
+                    SynthParams.perTrack.CodeCenter,
                     out ErrorInfo,
                     PcodeExternsNull.Default,
                     ref SynthParams.pcodeThreadContext);

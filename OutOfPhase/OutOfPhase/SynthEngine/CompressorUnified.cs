@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,9 +20,7 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 
 using TreeLib;
 
@@ -1228,15 +1226,15 @@ namespace OutOfPhase
                     SynthParams);
             }
 
-            private readonly static UpdatePredicate<float, int> _RemoveItem = RemoveItem;
-            private static bool RemoveItem(float key, ref int value, bool resident)
+            public readonly static UpdatePredicate<float, int> _RemoveItem = RemoveItem;
+            public static bool RemoveItem(float key, ref int value, bool resident)
             {
                 value--;
                 return value == 0;
             }
 
-            private readonly static UpdatePredicate<float, int> _AddItem = AddItem;
-            private static bool AddItem(float key, ref int value, bool resident)
+            public readonly static UpdatePredicate<float, int> _AddItem = AddItem;
+            public static bool AddItem(float key, ref int value, bool resident)
             {
                 value++;
                 return value != 0;

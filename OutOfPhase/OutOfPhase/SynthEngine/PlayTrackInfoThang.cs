@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -22,14 +22,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 
 namespace OutOfPhase
 {
     public static partial class Synthesizer
     {
         /* if we see more jumps than this during one cycle, assume an infinite loop */
-        private const int MAXALLOWEDJUMPS = 4000;
+        private const int MAXALLOWEDJUMPS = 4000; // TODO: reduce
 
         public class FrozenNoteConsCell
         {
@@ -142,8 +141,10 @@ namespace OutOfPhase
         {
             /* frame source */
             public TrackObjectRec TrackObject;
-            /* total number of frames in the track object */
-            public int TotalNumberOfFrames;
+            public COWBindingList<FrameObjectRec> FrameArray; // current local copy
+            public Document document;
+            public CodeCenterRec codeCenter;
+            public WaveSampDictRec dictionary;
             /* index into frame array. */
             public int FrameArrayIndex;
             /* number of cycles until the next frame should be processed.  this is in */
@@ -183,6 +184,7 @@ namespace OutOfPhase
 
             /* information for sequence looping */
             public int CurrentSequenceStartFrameIndex; /* -1 == not looping */
+            public string CurrentSequenceName; // used to restart from different index if frame array update was needed
             public Dictionary<string, int> SequenceIndexMap; /* string to int */
             public int JumpCounter; /* used to detect infinite loops & keep ties straight */
             /* for terminating sequencing */
@@ -194,6 +196,9 @@ namespace OutOfPhase
             public string CurrentCommandRedirection;
             /* this object tells maps from track/group name to array of tracks */
             public SequencerTableRec SequencerTable;
+            // allow external participation in loop starting (allows track to change)
+            public UpdateFrameArrayNeededMethod updateFrameArrayNeeded;
+            public uint frameArrayVersion;
 
             /* information for pending channel releases and tie breaking */
             public ReleaseRec PendingChannelOperations;
@@ -205,6 +210,8 @@ namespace OutOfPhase
             public List<EventTraceRec> events; // null == not tracing
         }
 
+        public delegate bool UpdateFrameArrayNeededMethod(TrackObjectRec track, uint version);
+
         /* fill in the sequence index map for the track by finding the location */
         /* of all sequence begin commands. */
         /* NOTE: the frame index is stored in the "stack location" property of the symbol */
@@ -213,10 +220,10 @@ namespace OutOfPhase
             SynthParamRec SynthParams)
         {
             bool SequenceBeginSeenWithNoDuration = false;
-            int c = TrackInfo.TrackObject.FrameArray.Count;
-            for (int i = 0; i < c; i += 1)
+            int c = TrackInfo.FrameArray.Count;
+            for (int i = 0; i < c; i++)
             {
-                FrameObjectRec Frame = TrackInfo.TrackObject.FrameArray[i];
+                FrameObjectRec Frame = TrackInfo.FrameArray[i];
                 if (Frame.IsThisACommandFrame)
                 {
                     CommandNoteObjectRec Command;
@@ -265,8 +272,38 @@ namespace OutOfPhase
             return SynthErrorCodes.eSynthDone;
         }
 
+        private static SynthErrorCodes SynthErrorCodesRebuildSequenceMapIfNeeded(
+            PlayTrackInfoRec TrackInfo,
+            SynthParamRec SynthParams,
+            out bool wasUpdated)
+        {
+            wasUpdated = false;
+
+            SynthErrorCodes Error;
+
+            if ((TrackInfo.updateFrameArrayNeeded != null) && TrackInfo.updateFrameArrayNeeded(TrackInfo.TrackObject, TrackInfo.frameArrayVersion))
+            {
+                TrackInfo.FrameArray = new COWBindingList<FrameObjectRec>(TrackInfo.FrameArray); // make safe local copy
+
+                TrackInfo.SequenceIndexMap.Clear();
+                Error = FillInSequenceIndexMap(
+                    TrackInfo,
+                    SynthParams);
+                if (Error != SynthErrorCodes.eSynthDone)
+                {
+                    return Error;
+                }
+
+                TrackInfo.frameArrayVersion = TrackInfo.FrameArray.Version;
+                wasUpdated = true;
+            }
+
+            return SynthErrorCodes.eSynthDone;
+        }
+
         /* helper for initializing the per-instrument records */
         private static SynthErrorCodes InitializePerInstrTemplates(
+            ITrackParameterProvider trackParamProvider,
             PlayTrackInfoRec TrackInfo,
             MyBindingList<InstrObjectRec> InstrList,
             TrackObjectRec TrackObject,
@@ -329,6 +366,7 @@ namespace OutOfPhase
 
                 /* set up track effects */
                 SynthErrorCodes Result = NewTrackEffectGenerator(
+                    trackParamProvider,
                     GetInstrumentEffectSpecList(InstrumentSpecification),
                     SynthParams,
                     out OneInstr.EffectGenerator);
@@ -345,11 +383,14 @@ namespace OutOfPhase
         /* builds the internal representations for instruments & oscillators for this track. */
         public static SynthErrorCodes NewPlayTrackInfo(
             out PlayTrackInfoRec TrackInfoOut,
-            TrackObjectRec TheTrack,
-            MyBindingList<InstrObjectRec> InstrList,
+            TrackObjectRec track,
+            ITrackParameterProvider trackParamProvider,
+            Document document,
+            WaveSampDictRec dictionary,
             TrackEffectGenRec ScoreEffectGenerator,
             TrackEffectGenRec SectionEffectGenerator,
             TempoControlRec TempoControl,
+            UpdateFrameArrayNeededMethod updateFrameArrayNeeded,
             SynthParamRec SynthParams)
         {
             TrackInfoOut = null;
@@ -363,10 +404,11 @@ namespace OutOfPhase
             TrackInfo.SectionEffectGenerator = SectionEffectGenerator; /* may be null */
 
             /* frame source */
-            TrackInfo.TrackObject = TheTrack;
-
-            /* total number of frames in the track object */
-            TrackInfo.TotalNumberOfFrames = TheTrack.FrameArray.Count;
+            TrackInfo.TrackObject = track;
+            TrackInfo.FrameArray = new COWBindingList<FrameObjectRec>(track.FrameArray); // make safe local copy
+            TrackInfo.document = document;
+            TrackInfo.codeCenter = document.CodeCenter;
+            TrackInfo.dictionary = dictionary;
 
             /* this is the current envelope update index for removing things from the */
             /* scanning gap list (i.e. the back edge of the scanning gap) */
@@ -376,15 +418,16 @@ namespace OutOfPhase
             /* this object keeps track of the current value of all parameters, updates */
             /* them as time passes, and evaluates commands passed in from here. */
             TrackInfo.ParameterController = NewInitializedParamUpdator(
-                TheTrack,
+                trackParamProvider,
                 TempoControl,
                 SynthParams);
 
             /* build the per-instrument template/state list */
             Result = InitializePerInstrTemplates(
+                trackParamProvider,
                 TrackInfo,
-                InstrList,
-                TheTrack,
+                document.InstrumentList,
+                track,
                 SynthParams);
             if (Result != SynthErrorCodes.eSynthDone)
             {
@@ -395,6 +438,8 @@ namespace OutOfPhase
 
             /* no looping yet */
             TrackInfo.CurrentSequenceStartFrameIndex = -1;
+            TrackInfo.CurrentSequenceName = String.Empty;
+            TrackInfo.updateFrameArrayNeeded = updateFrameArrayNeeded;
 
             Result = FillInSequenceIndexMap(
                 TrackInfo,
@@ -438,7 +483,7 @@ namespace OutOfPhase
             /*  - there are still notes which haven't been scanned yet */
             /*  - there is a termination time that hasn't been reached */
 
-            if (TrackInfo.FrameArrayIndex < TrackInfo.TotalNumberOfFrames)
+            if (TrackInfo.FrameArrayIndex < TrackInfo.FrameArray.Count)
             {
                 return true;
             }
@@ -635,7 +680,7 @@ namespace OutOfPhase
             return false;
         }
 
-        private delegate SynthErrorCodes InvokeSequenceTargetFunctionMethod(
+        public delegate SynthErrorCodes InvokeSequenceTargetFunctionMethod(
             PlayTrackInfoRec TrackInfo,
             int ScanningGapFrontInEnvelopeTicks,
             CommandNoteObjectRec SequenceCommand,
@@ -644,7 +689,7 @@ namespace OutOfPhase
             SynthParamRec SynthParams);
 
         /* aux routine to invoke a sequence control on target tracks */
-        private static SynthErrorCodes InvokeSequenceTarget(
+        public static SynthErrorCodes InvokeSequenceTarget(
             PlayTrackInfoRec TrackInfo,
             string TrackOrGroupName,
             CommandNoteObjectRec Command,
@@ -653,30 +698,61 @@ namespace OutOfPhase
             SynthParamRec SynthParams,
             InvokeSequenceTargetFunctionMethod Function)
         {
-            List<PlayTrackInfoRec> Players = SequencerTableQuery(
-                TrackInfo.SequencerTable,
-                TrackOrGroupName);
-            if (Players != null)
+            if (TrackInfo.SequencerTable != null)
             {
+                List<PlayTrackInfoRec> Players = SequencerTableQuery(
+                    TrackInfo.SequencerTable,
+                    TrackOrGroupName);
                 /* that track or group does actually exist */
-                for (int i = 0; i < Players.Count; i += 1)
+                for (int i = 0; i < Players.Count; i++)
                 {
                     PlayTrackInfoRec TrackPlayer = Players[i];
-                    SynthErrorCodes Error = Function(
+                    SynthErrorCodes Error = InvokeSequenceTarget1(
                         TrackPlayer/*them*/,
                         ScanningGapFrontInEnvelopeTicks,
                         Command,
                         TrackInfo/*us*/,
                         SkipSchedule,
-                        SynthParams);
+                        SynthParams,
+                        Function);
                     if (Error != SynthErrorCodes.eSynthDone)
                     {
                         return Error;
                     }
                 }
             }
+            else
+            {
+                // SequencerTable ==> loop mode
+                SynthErrorCodes Error = InvokeSequenceTarget1(
+                    TrackInfo/*them*/,
+                    ScanningGapFrontInEnvelopeTicks,
+                    Command,
+                    TrackInfo/*us*/,
+                    SkipSchedule,
+                    SynthParams,
+                    Function);
+            }
 
             return SynthErrorCodes.eSynthDone;
+        }
+
+        private static SynthErrorCodes InvokeSequenceTarget1(
+            PlayTrackInfoRec TrackPlayer,
+            int ScanningGapFrontInEnvelopeTicks,
+            CommandNoteObjectRec Command,
+            PlayTrackInfoRec TrackInfo,
+            SkipSegmentsRec SkipSchedule,
+            SynthParamRec SynthParams,
+            InvokeSequenceTargetFunctionMethod Function)
+        {
+            return Function(
+                TrackPlayer/*them*/,
+                ScanningGapFrontInEnvelopeTicks,
+                Command,
+                TrackInfo/*us*/,
+                SkipSchedule,
+                SynthParams);
         }
 
         /* auxiliary routine for PlayTrackUpdate */
@@ -692,13 +768,13 @@ namespace OutOfPhase
             int InitialJumpCount = TrackInfo.JumpCounter;
 
             while ((TrackInfo.NextFrameCountDown <= 0)
-                && (TrackInfo.FrameArrayIndex < TrackInfo.TotalNumberOfFrames))
+                && (TrackInfo.FrameArrayIndex < TrackInfo.FrameArray.Count))
             {
                 int frameIndex = TrackInfo.FrameArrayIndex;
 
                 /* schedule a frame */
-                FrameObjectRec Frame = TrackInfo.TrackObject.FrameArray[TrackInfo.FrameArrayIndex];
-                TrackInfo.FrameArrayIndex += 1;
+                FrameObjectRec Frame = TrackInfo.FrameArray[TrackInfo.FrameArrayIndex];
+                TrackInfo.FrameArrayIndex++;
 
                 if (Frame.IsThisACommandFrame)
                 {
@@ -1248,6 +1324,11 @@ namespace OutOfPhase
                 }
 #endif
 
+                if (SynthParams.stayActiveIfNoFrames)
+                {
+                    TrackInfo.TerminationPending = false; // reset in loop mode so that scheduling can be restarted
+                }
+
                 PerInstrRec InstrScan = TrackInfo.Instrs;
                 while (InstrScan != null)
                 {
@@ -1526,12 +1607,32 @@ namespace OutOfPhase
                     /* go back to beginning, if looping is engaged */
                     if (TrackInfo.CurrentSequenceStartFrameIndex != -1)
                     {
+#if true                // TODO: is this desirable? it could make things hard because editing in a way that changes loop
+                        // length will generate undesired sequencing and in that case have to be retriggered manually anyway.
+                        bool frameArrayWasUpdated;
+                        Error = SynthErrorCodesRebuildSequenceMapIfNeeded(TrackInfo, SynthParams, out frameArrayWasUpdated);
+                        if (Error != SynthErrorCodes.eSynthDone)
+                        {
+                            return Error;
+                        }
+                        if (frameArrayWasUpdated)
+                        {
+                            if (!TrackInfo.SequenceIndexMap.TryGetValue(TrackInfo.CurrentSequenceName, out TrackInfo.CurrentSequenceStartFrameIndex))
+                            {
+                                SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUnableToResetFrameIndexAfterFrameArrayUpdate;
+                                SynthParams.ErrorInfo.IssuingTrackName = CommandSourceTrackInfo.TrackObject.Name;
+                                SynthParams.ErrorInfo.SequenceName = TrackInfo.CurrentSequenceName;
+                                return SynthErrorCodes.eSynthErrorEx;
+                            }
+                        }
+#endif
+
                         TrackInfo.FrameArrayIndex = TrackInfo.CurrentSequenceStartFrameIndex;
                         ScheduleBreakPendingTies(
                             TrackInfo,
                             ScanningGapFrontInEnvelopeTicks,
                             SynthParams); /* break ties that are still waiting */
-                        TrackInfo.JumpCounter += 1; /* this constitutes a jump, must be AFTER scheduler */
+                        TrackInfo.JumpCounter++; /* this constitutes a jump, must be AFTER scheduler */
                     }
                     break;
 
@@ -1612,10 +1713,10 @@ namespace OutOfPhase
 
                         /* at this point FrameArrayIndex is the next command (already */
                         /* been incremented past us), so we don't have to add 1 */
-                        if (TrackInfo.FrameArrayIndex < TrackInfo.TotalNumberOfFrames)
+                        if (TrackInfo.FrameArrayIndex < TrackInfo.FrameArray.Count)
                         {
                             /* make sure thing after us is a command */
-                            FrameObjectRec Frame = TrackInfo.TrackObject.FrameArray[TrackInfo.FrameArrayIndex];
+                            FrameObjectRec Frame = TrackInfo.FrameArray[TrackInfo.FrameArrayIndex];
                             if (Frame.IsThisACommandFrame)
                             {
                                 /* for probability == 1, don't waste our precious random number stream. */
@@ -1629,7 +1730,7 @@ namespace OutOfPhase
                                 }
                                 if (DoIt)
                                 {
-                                    TrackInfo.FrameArrayIndex += 1; /* skip */
+                                    TrackInfo.FrameArrayIndex++; /* skip */
                                 }
                             }
                         }
@@ -1715,8 +1816,18 @@ namespace OutOfPhase
             }
 
             /* only if sequencing hasn't been terminated */
-            if (!TrackInfo.TerminationPending)
+            if (!TrackInfo.TerminationPending || SynthParams.stayActiveIfNoFrames)
             {
+                bool frameArrayWasUpdated = false;
+                if (ResetCurrentPosition)
+                {
+                    Error = SynthErrorCodesRebuildSequenceMapIfNeeded(TrackInfo, SynthParams, out frameArrayWasUpdated);
+                    if (Error != SynthErrorCodes.eSynthDone)
+                    {
+                        return Error;
+                    }
+                }
+
                 string SequenceName = SequenceCommand.GetCommandStringArg2();
 
                 /* do we know about this sequence? (ignore if we don't) */
@@ -1725,7 +1836,7 @@ namespace OutOfPhase
                 {
                     /* remember that as the start point for the current sequence. */
 #if DEBUG
-                    if ((NewSequenceStartFrameIndex >= TrackInfo.TotalNumberOfFrames)
+                    if ((NewSequenceStartFrameIndex >= TrackInfo.FrameArray.Count)
                         || (NewSequenceStartFrameIndex < 0))
                     {
                         // screwed up sequence index
@@ -1734,6 +1845,7 @@ namespace OutOfPhase
                     }
 #endif
                     TrackInfo.CurrentSequenceStartFrameIndex = NewSequenceStartFrameIndex;
+                    TrackInfo.CurrentSequenceName = SequenceName;
 
                     /* if desired, immediately go there */
                     if (ResetCurrentPosition)
@@ -1744,7 +1856,17 @@ namespace OutOfPhase
                             TrackInfo,
                             ScanningGapFrontInEnvelopeTicks,
                             SynthParams); /* break ties that are still waiting */
-                        TrackInfo.JumpCounter += 1; /* must be AFTER scheduler */
+                        TrackInfo.JumpCounter++; /* must be AFTER scheduler */
+                    }
+                }
+                else
+                {
+                    if (frameArrayWasUpdated)
+                    {
+                        SynthParams.ErrorInfo.ErrorEx = SynthErrorSubCodes.eSynthErrorExUnableToResetFrameIndexAfterFrameArrayUpdate;
+                        SynthParams.ErrorInfo.IssuingTrackName = CommandSourceTrackInfo.TrackObject.Name;
+                        SynthParams.ErrorInfo.SequenceName = SequenceName;
+                        return SynthErrorCodes.eSynthErrorEx;
                     }
                 }
             }
@@ -1828,19 +1950,20 @@ namespace OutOfPhase
 
             /* stop any active loops */
             /* TrackInfo.CurrentSequenceStartFrameIndex = -1; */
+            TrackInfo.CurrentSequenceName = String.Empty; // for status display purposes
             /* not needed because the next statement will prevent us from looking */
             /* at an end-sequence command ever again. */
 
             /* jump to end, so no more notes will be scheduled (i.e. whoever is in */
             /* the scanning gap right now are the last ones to go) */
-            TrackInfo.FrameArrayIndex = TrackInfo.TotalNumberOfFrames;
+            TrackInfo.FrameArrayIndex = TrackInfo.FrameArray.Count;
 
             /* this constitutes a jump */
             ScheduleBreakPendingTies(
                 TrackInfo,
                 ScanningGapFrontInEnvelopeTicks,
                 SynthParams);
-            TrackInfo.JumpCounter += 1; /* must be AFTER scheduler */
+            TrackInfo.JumpCounter++; /* must be AFTER scheduler */
 
             /* indicate termination is pending, as soon as the current batch of */
             /* notes in the scanning gap have been executed */
@@ -1954,7 +2077,7 @@ namespace OutOfPhase
                 /* increment our scanning gap back edge clock, after scheduling commands */
                 /* (this way, commands are scheduled on the beginning of the clock they */
                 /* should occur on). */
-                TrackInfo.ExecutionIndex += 1;
+                TrackInfo.ExecutionIndex++;
             }
 
             return SynthErrorCodes.eSynthDone;

@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,17 +20,14 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using TreeLib;
 
 namespace OutOfPhase
 {
-#if true // prevents "Add New Data Source..." from working
     // T: destination object (e.g. file path of audio file to write)
     // U: generator parameters (e.g. configuration of synth engine)
     // W: destination handler arguments (e.g. audio device configuration)
@@ -117,6 +114,12 @@ namespace OutOfPhase
         public int TotalFrames { get { return totalSampleCount; } }
         public int TotalClippedPoints { get { return clippedSampleCount; } }
 
+        public AVLTreeMap<float, int> ranks;
+        public int delayIndex;
+        public float[] delayLine;
+        public delegate void MeteringCallback(float shortMax, float longMax, out bool mute);
+        public MeteringCallback meteringCallback;
+
         public T destination;
         public W destinationHandlerParams;
         public CreateDestinationHandlerMethod<T, W> createDestinationHandler;
@@ -140,7 +143,8 @@ namespace OutOfPhase
             int samplingRate,
             int oversamplingFactor,
             bool showProgressWindow,
-            bool modal) // modal is only meaningful when showProgressWindow==true
+            bool modal,
+            (float, MeteringCallback)? metering) // modal is only meaningful when showProgressWindow==true
         {
             // set up processing record
 
@@ -156,6 +160,15 @@ namespace OutOfPhase
             state.maxClipExtent = 0;
             state.oversamplingSkipCarryover = 0;
 
+            if (metering.HasValue)
+            {
+                float delayLengthSeconds = metering.Value.Item1;
+                int delayLength = (int)(samplingRate * delayLengthSeconds);
+                state.delayLine = new float[delayLength];
+                state.ranks = new AVLTreeMap<float, int>((uint)delayLength, AllocationMode.PreallocatedFixed);
+                state.ranks.Add(0, delayLength);
+                state.meteringCallback = metering.Value.Item2;
+            }
 
             if ((state.bits == NumBitsType.eSample8bit) || (state.bits == NumBitsType.eSample16bit))
             {
@@ -217,6 +230,7 @@ namespace OutOfPhase
                 {
                     state.progressWindow.ShowDialog();
                     state.Dispose(); // suppress finalize
+                    state = null;
                 }
                 else
                 {
@@ -304,31 +318,63 @@ namespace OutOfPhase
             }
 #endif
 
-            /* drop samples for oversampling */
+            // drop samples for oversampling
             if (state.oversamplingFactor > 1)
             {
-                /* initialize read scan and write scan where we left off last time */
                 int writeScan = 0;
                 int readScan = state.oversamplingSkipCarryover;
 
-                /* scan over, dropping all but each OversamplingFactor sample */
                 while (readScan < frameCount)
                 {
-                    /* copy value over */
                     data[2 * writeScan + 0 + offset] = data[2 * readScan + 0 + offset];
                     data[2 * writeScan + 1 + offset] = data[2 * readScan + 1 + offset];
 
-                    /* step to next value */
                     writeScan += 1;
                     readScan += state.oversamplingFactor;
                 }
 
-                /* update buffer size and save state */
                 state.oversamplingSkipCarryover = readScan - frameCount;
                 frameCount = writeScan;
             }
 
-            /* if output is mono, average the channels */
+            if (state.ranks != null)
+            {
+                if (frameCount != 0)
+                {
+                    float shortMax = 0;
+                    UpdatePredicate<float, int> removeItem = Synthesizer.CompressorRec._RemoveItem;
+                    UpdatePredicate<float, int> addItem = Synthesizer.CompressorRec._AddItem;
+                    for (int i = 0; i < frameCount; i++)
+                    {
+                        state.ranks.ConditionalSetOrRemove(state.delayLine[state.delayIndex], removeItem);
+                        float last = Math.Max(Math.Abs(data[2 * i + 0 + offset]), Math.Abs(data[2 * i + 1 + offset]));
+                        if (Single.IsNaN(last) || Single.IsInfinity(last))
+                        {
+                            last = 100;
+                        }
+                        state.delayLine[state.delayIndex] = last;
+                        if (++state.delayIndex >= state.delayLine.Length)
+                        {
+                            state.delayIndex = 0;
+                        }
+                        state.ranks.ConditionalSetOrAdd(last, addItem);
+                        shortMax = Math.Max(shortMax, last);
+                    }
+                    float longMax;
+                    state.ranks.Greatest(out longMax);
+                    bool mute;
+                    state.meteringCallback(shortMax, longMax, out mute);
+                    if (mute)
+                    {
+                        for (int i = 0; i < frameCount; i++)
+                        {
+                            data[2 * i + 0 + offset] = 0;
+                            data[2 * i + 1 + offset] = 0;
+                        }
+                    }
+                }
+            }
+
             if (state.channels == NumChannelsType.eSampleMono)
             {
                 for (int i = 0; i < frameCount; i++)
@@ -337,37 +383,14 @@ namespace OutOfPhase
                 }
             }
 
-            /* compute number of samples */
             int pointCount = frameCount;
             if (state.channels == NumChannelsType.eSampleStereo)
             {
                 pointCount *= 2;
             }
 
-            /* load state */
             float localMaxClipExtent = state.maxClipExtent;
             int localClippedSampleCount = state.clippedSampleCount;
-
-            /* apply dither */
-            if ((state.bits == NumBitsType.eSample8bit) || (state.bits == NumBitsType.eSample16bit))
-            {
-                if (state.channels == NumChannelsType.eSampleStereo)
-                {
-                    state.ditherState.DoStereo(
-                        frameCount,
-                        data,
-                        offset);
-                }
-                else
-                {
-                    state.ditherState.DoMono(
-                        frameCount,
-                        data,
-                        offset);
-                }
-            }
-
-            /* clip, round, and scale the data */
             for (int i = 0; i < pointCount; i++)
             {
                 float value = data[i + offset];
@@ -393,10 +416,26 @@ namespace OutOfPhase
 
                 data[i + offset] = sign * value;
             }
-
-            /* save state */
             state.maxClipExtent = localMaxClipExtent;
             state.clippedSampleCount = localClippedSampleCount;
+
+            if ((state.bits == NumBitsType.eSample8bit) || (state.bits == NumBitsType.eSample16bit))
+            {
+                if (state.channels == NumChannelsType.eSampleStereo)
+                {
+                    state.ditherState.DoStereo(
+                        frameCount,
+                        data,
+                        offset);
+                }
+                else
+                {
+                    state.ditherState.DoMono(
+                        frameCount,
+                        data,
+                        offset);
+                }
+            }
 
             state.destinationHandler.Post(data, offset, pointCount);
 
@@ -458,5 +497,4 @@ namespace OutOfPhase
             }
         }
     }
-#endif
 }

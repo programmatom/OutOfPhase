@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,15 +20,12 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
 {
-#if true // prevents "Add New Data Source..." from working
     public class OutputSelectableFileDestination
     {
         public string path;
@@ -142,5 +139,4 @@ namespace OutOfPhase
             outputStream = null;
         }
     }
-#endif
 }

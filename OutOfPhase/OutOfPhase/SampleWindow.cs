@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,13 +20,8 @@
  * 
 */
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
@@ -1026,7 +1021,6 @@ namespace OutOfPhase
 
             IPlayPrefsProvider playPrefsProvider = mainWindow.GetPlayPrefsProvider();
 
-#if true // prevents "Add New Data Source..." from working
             state = SampleTestGeneratorParams<OutputDeviceDestination, OutputDeviceArguments>.Do(
                 mainWindow.DisplayName,
                 OutputDeviceEnumerator.OutputDeviceGetDestination,
@@ -1048,7 +1042,6 @@ namespace OutOfPhase
                 1/*oversampling*/,
                 false/*showProgressWindow*/,
                 false/*modal*/);
-#endif
         }
 
         private void buttonTest_MouseUp(object sender, MouseEventArgs e)
@@ -1058,7 +1051,6 @@ namespace OutOfPhase
         }
     }
 
-#if true // prevents "Add New Data Source..." from working
     public class SampleTestGeneratorParams<T, W>
     {
         public SampleStorageActualRec data;
@@ -1118,8 +1110,9 @@ namespace OutOfPhase
                 bits,
                 samplingRate,
                 oversamplingFactor,
-                showProgressWindow,
-                modal);
+                showProgressWindow, // TODO: replace non-changing parameters with constants
+                modal,
+                null/*metering*/);
         }
 
         public static void MainLoop<U>(
@@ -1224,5 +1217,4 @@ namespace OutOfPhase
         {
         }
     }
-#endif
 }

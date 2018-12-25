@@ -1,5 +1,5 @@
 ﻿/*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,19 +20,15 @@
  * 
 */
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace OutOfPhase
 {
     public class MyLabel : Label
     {
+        private Size? preferredSize;
+
         protected override void OnPaint(PaintEventArgs e)
         {
             Rectangle face = DeflateRect(ClientRectangle, Padding);
@@ -54,10 +50,14 @@ namespace OutOfPhase
 
         public override Size GetPreferredSize(Size proposedSize)
         {
-            using (Graphics graphics = CreateGraphics())
+            if (!preferredSize.HasValue)
             {
-                return MyTextRenderer.MeasureText(graphics, Text, Font);
+                using (Graphics graphics = CreateGraphics())
+                {
+                    preferredSize = MyTextRenderer.MeasureText(graphics, Text, Font);
+                }
             }
+            return preferredSize.Value;
         }
 
         private static Rectangle DeflateRect(Rectangle rect, Padding padding)
@@ -67,6 +67,18 @@ namespace OutOfPhase
             rect.Width -= padding.Horizontal;
             rect.Height -= padding.Vertical;
             return rect;
+        }
+
+        protected override void OnTextChanged(EventArgs e)
+        {
+            preferredSize = null;
+            base.OnTextChanged(e);
+        }
+
+        protected override void OnFontChanged(EventArgs e)
+        {
+            preferredSize = null;
+            base.OnFontChanged(e);
         }
     }
 }

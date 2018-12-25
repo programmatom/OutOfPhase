@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -20,12 +20,9 @@
  * 
 */
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Text;
 using System.Windows.Forms;
 
 namespace OutOfPhase
@@ -45,9 +42,9 @@ namespace OutOfPhase
 
         [Category("Appearance"), DefaultValue(typeof(Color), "Firebrick")]
         public Color CritColor { get { return criticalColor; } set { criticalColor = value; } }
-        [Category("Appearance"), DefaultValue(typeof(Color), "Firebrick")]
+        [Category("Appearance"), DefaultValue(typeof(Color), "LimeGreen")]
         public Color GoodColor { get { return goodColor; } set { goodColor = value; } }
-        
+
         [Category("Appearance"), DefaultValue(0f)]
         public float CritThreshhold { get { return criticalThreshhold; } set { criticalThreshhold = value; } }
 
@@ -62,7 +59,10 @@ namespace OutOfPhase
             float cutoff = Math.Min(Math.Max((float)level / maximum, 0), 1);
             if (!Single.IsNaN(cutoff))
             {
-                using (Brush brush = new SolidBrush(level >= criticalThreshhold ? goodColor : criticalColor))
+                Color fore = criticalThreshhold >= 0
+                    ? (level >= criticalThreshhold ? goodColor : criticalColor)
+                    : (level <= -criticalThreshhold ? goodColor : criticalColor);
+                using (Brush brush = new SolidBrush(fore))
                 {
                     graphics.FillRectangle(brush, 0, 0, Width * cutoff, Height);
                 }
@@ -80,38 +80,21 @@ namespace OutOfPhase
             }
         }
 
-        [Browsable(false)]
-        public float Maximum
+        public void SetAll(float maximum, float level, float critical)
         {
-            get
+            this.maximum = maximum;
+            this.level = level;
+            this.criticalThreshhold = critical;
+            using (Graphics graphics = CreateGraphics())
             {
-                return maximum;
-            }
-            set
-            {
-                maximum = value;
-                using (Graphics graphics = CreateGraphics())
-                {
-                    Redraw(graphics);
-                }
+                Redraw(graphics);
             }
         }
 
-        [Browsable(false)]
-        public float Level
-        {
-            get
-            {
-                return level;
-            }
-            set
-            {
-                level = value;
-                using (Graphics graphics = CreateGraphics())
-                {
-                    Redraw(graphics);
-                }
-            }
-        }
+        [Category("Appearance"), DefaultValue(0f)]
+        public float Maximum { get { return maximum; } set { SetAll(value, level, criticalThreshhold); } }
+
+        [Category("Appearance"), DefaultValue(0f)]
+        public float Level { get { return level; } set { SetAll(maximum, value, criticalThreshhold); } }
     }
 }

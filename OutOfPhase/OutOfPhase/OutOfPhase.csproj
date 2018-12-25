@@ -113,6 +113,9 @@
     <Reference Include="System.Numerics.Vectors, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Numerics.Vectors.4.4.0-preview1-25305-02\lib\net46\System.Numerics.Vectors.dll</HintPath>
     </Reference>
+    <Reference Include="System.ValueTuple, Version=4.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.ValueTuple.4.4.0-preview1-25305-02\lib\net461\System.ValueTuple.dll</HintPath>
+    </Reference>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="TextEditorDirectWrite, Version=1.0.5781.17299, Culture=neutral, processorArchitecture=AMD64">
@@ -190,6 +193,7 @@
     <Compile Include="CmdDlgTwoParams.Designer.cs">
       <DependentUpon>CmdDlgTwoParams.cs</DependentUpon>
     </Compile>
+    <Compile Include="DataModelNewSchool.cs" />
     <Compile Include="DataModelNumericTypes.cs" />
     <Compile Include="DpiChangeHelper.cs">
       <SubType>Component</SubType>
@@ -207,6 +211,12 @@
     </Compile>
     <Compile Include="GlobalPrefsDialog.Designer.cs">
       <DependentUpon>GlobalPrefsDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GroupDefinitionsNewSchoolWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GroupDefinitionsNewSchoolWindow.Designer.cs">
+      <DependentUpon>GroupDefinitionsNewSchoolWindow.cs</DependentUpon>
     </Compile>
     <Compile Include="Hacks.cs" />
     <Compile Include="IHighlightLine.cs" />
@@ -226,7 +236,19 @@
     <Compile Include="LongRunningOperationWindow.Designer.cs">
       <DependentUpon>LongRunningOperationWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="MainNewSchoolWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MainNewSchoolWindow.Designer.cs">
+      <DependentUpon>MainNewSchoolWindow.cs</DependentUpon>
+    </Compile>
     <Compile Include="MainWindowServices.cs" />
+    <Compile Include="Meter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Meter.Designer.cs">
+      <DependentUpon>Meter.cs</DependentUpon>
+    </Compile>
     <Compile Include="MIDIImport\ConvertIntToQuant.cs" />
     <Compile Include="MIDIImport\ConvertQuantToNote.cs" />
     <Compile Include="MIDIImport\ConvertRawToInterval.cs" />
@@ -240,6 +262,12 @@
     <Compile Include="MIDIImport\RawMIDIEvent.cs" />
     <Compile Include="MIDIImport\RawMIDIScore.cs" />
     <Compile Include="MIDIImport\RawMIDITrack.cs" />
+    <Compile Include="MyGrid.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MyGrid.Designer.cs">
+      <DependentUpon>MyGrid.cs</DependentUpon>
+    </Compile>
     <Compile Include="MyLabel.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -262,6 +290,18 @@
       <DependentUpon>MyProgressBar.cs</DependentUpon>
     </Compile>
     <Compile Include="MyTextRenderer.cs" />
+    <Compile Include="PresetDefinitionNewSchoolWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PresetDefinitionNewSchoolWindow.Designer.cs">
+      <DependentUpon>PresetDefinitionNewSchoolWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SaveComponentNewSchoolDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SaveComponentNewSchoolDialog.Designer.cs">
+      <DependentUpon>SaveComponentNewSchoolDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="NoteAttributeDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -278,6 +318,7 @@
     <Compile Include="OutputDevice.cs" />
     <Compile Include="OutputGeneric.cs" />
     <Compile Include="OutputFile.cs" />
+    <Compile Include="OutputNewSchool.cs" />
     <Compile Include="OutputSynthesizer.cs" />
     <Compile Include="PcodeSystem\CILObject.cs" />
     <Compile Include="PcodeSystem\CompilerAST.cs" />
@@ -311,6 +352,12 @@
     </Compile>
     <Compile Include="PlayPrefsDialog.Designer.cs">
       <DependentUpon>PlayPrefsDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PlayPrefsDialogNewSchool.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PlayPrefsDialogNewSchool.Designer.cs">
+      <DependentUpon>PlayPrefsDialogNewSchool.cs</DependentUpon>
     </Compile>
     <Compile Include="RandomNumbers.cs" />
     <Compile Include="ScoreEffectWindow.cs">
@@ -360,6 +407,12 @@
     </Compile>
     <Compile Include="SimpleTextDisplayControl.Designer.cs">
       <DependentUpon>SimpleTextDisplayControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Slider.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Slider.Designer.cs">
+      <DependentUpon>Slider.cs</DependentUpon>
     </Compile>
     <Compile Include="SynthBuild\PluggableSpec.cs" />
     <Compile Include="SynthEngine\AlignedWorkspace.cs" />
@@ -467,6 +520,9 @@
       <SubType>Designer</SubType>
       <DependentUpon>GlobalPrefsDialog.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="GroupDefinitionsNewSchoolWindow.resx">
+      <DependentUpon>GroupDefinitionsNewSchoolWindow.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="ImportRawSampleDialog.resx">
       <SubType>Designer</SubType>
       <DependentUpon>ImportRawSampleDialog.cs</DependentUpon>
@@ -483,6 +539,9 @@
       <SubType>Designer</SubType>
       <DependentUpon>LongRunningOperationWindow.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="MainNewSchoolWindow.resx">
+      <DependentUpon>MainNewSchoolWindow.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="MainWindow.resx">
       <SubType>Designer</SubType>
       <DependentUpon>MainWindow.cs</DependentUpon>
@@ -490,6 +549,15 @@
     <EmbeddedResource Include="MenuStripManager.resx">
       <SubType>Designer</SubType>
       <DependentUpon>MenuStripManager.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MyGrid.resx">
+      <DependentUpon>MyGrid.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PresetDefinitionNewSchoolWindow.resx">
+      <DependentUpon>PresetDefinitionNewSchoolWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SaveComponentNewSchoolDialog.resx">
+      <DependentUpon>SaveComponentNewSchoolDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="NoteAttributeDialog.resx">
       <SubType>Designer</SubType>
@@ -508,6 +576,9 @@
     <EmbeddedResource Include="PlayPrefsDialog.resx">
       <SubType>Designer</SubType>
       <DependentUpon>PlayPrefsDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PlayPrefsDialogNewSchool.resx">
+      <DependentUpon>PlayPrefsDialogNewSchool.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -551,6 +622,9 @@
       <SubType>Designer</SubType>
       <DependentUpon>SequencerConfigWindow.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Slider.resx">
+      <DependentUpon>Slider.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="TrackAttributeDialog.resx">
       <SubType>Designer</SubType>
       <DependentUpon>TrackAttributeDialog.cs</DependentUpon>
@@ -592,6 +666,7 @@
     <None Include="Properties\DataSources\GlobalPrefs.datasource" />
     <None Include="Properties\DataSources\Import.ImportRawSettings.datasource" />
     <None Include="Properties\DataSources\InstrObjectRec.datasource" />
+    <None Include="Properties\DataSources\NewSchoolDocument.datasource" />
     <None Include="Properties\DataSources\NoteNoteObjectRec.datasource" />
     <None Include="Properties\DataSources\PlayPrefsDialog.Source.datasource" />
     <None Include="Properties\DataSources\SampleObjectRec.datasource" />
@@ -759,6 +834,7 @@
     </Compile>
     <Compile Include="WAVReader.cs" />
     <Compile Include="WAVWriter.cs" />
+    <Compile Include="XmlUtil.cs" />
     <Compile Include="_Resources\AboutBoxContent.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

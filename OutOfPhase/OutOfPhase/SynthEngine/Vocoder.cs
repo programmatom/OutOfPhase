@@ -1,5 +1,5 @@
 /*
- *  Copyright © 1994-2002, 2015-2016 Thomas R. Lawrence
+ *  Copyright © 1994-2002, 2015-2017 Thomas R. Lawrence
  * 
  *  GNU General Public License
  * 
@@ -111,7 +111,7 @@ namespace OutOfPhase
                 int NumberOfTables;
 
                 if (!WaveSampDictGetWaveTableInfo(
-                    SynthParams.Dictionary,
+                    SynthParams.perTrack.Dictionary,
                     GetVocoderSpecWaveTableName(Template),
                     out WaveTableMatrix,
                     out FramesPerTable,
